@@ -1,0 +1,81 @@
+def simple_mesh():
+    nx = 10
+    ny = 10
+    n = nx * ny
+    block1 = {'nBLK': 1,
+              'NE': (5, 5),
+              'NW': (0, 5),
+              'SE': (5, 0),
+              'SW': (0, 0),
+              'nx': nx,
+              'ny': ny,
+              'n': n,
+              'NeighborE': 4,
+              'NeighborW': None,
+              'NeighborN': 2,
+              'NeighborS': None,
+              'BCTypeEast': 'None',
+              'BCTypeWest': 'Reflection',
+              'BCTypeNorth': 'None',
+              'BCTypeSouth': 'Reflection'}
+
+    block2 = {'nBLK': 2,
+              'NE': (5, 10),
+              'NW': (0, 10),
+              'SE': (5, 5),
+              'SW': (0, 5),
+              'nx': nx,
+              'ny': ny,
+              'n': n,
+              'NeighborE': 3,
+              'NeighborW': None,
+              'NeighborN': None,
+              'NeighborS': 1,
+              'BCTypeEast': 'None',
+              'BCTypeWest': 'Reflection',
+              'BCTypeNorth': 'Reflection',
+              'BCTypeSouth': 'None'}
+
+    block3 = {'nBLK': 3,
+              'NE': (10, 10),
+              'NW': (5, 10),
+              'SE': (10, 5),
+              'SW': (5, 5),
+              'nx': nx,
+              'ny': ny,
+              'n': n,
+              'NeighborE': None,
+              'NeighborW': 2,
+              'NeighborN': None,
+              'NeighborS': 4,
+              'BCTypeEast': 'Reflection',
+              'BCTypeWest': 'None',
+              'BCTypeNorth': 'Reflection',
+              'BCTypeSouth': 'None'}
+
+    block4 = {'nBLK': 4,
+              'NE': (10, 5),
+              'NW': (5, 5),
+              'SE': (10, 0),
+              'SW': (5, 0),
+              'nx': nx,
+              'ny': ny,
+              'n': n,
+              'NeighborE': None,
+              'NeighborW': 1,
+              'NeighborN': 3,
+              'NeighborS': None,
+              'BCTypeEast': 'Reflection',
+              'BCTypeWest': 'None',
+              'BCTypeNorth': 'None',
+              'BCTypeSouth': 'Reflection'}
+
+    mesh = {'nx': nx,
+            'ny': ny,
+            'n': n,
+            block1.get('nBLK'): block1,
+            block2.get('nBLK'): block2,
+            block3.get('nBLK'): block3,
+            block4.get('nBLK'): block4}
+
+    return mesh
