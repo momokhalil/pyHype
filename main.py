@@ -1,5 +1,6 @@
-import block
-import input
+from pyHype import block
+import inputs
 import numpy as np
+from pyHype import euler_2D
 
-block = block.BoundaryBlockWest(input.E4(), 'Outflow')
+solver = euler_2D.Euler2DExplicitSolver(inputs.E4())

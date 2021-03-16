@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Union
 from abc import abstractmethod
-from states import ConservativeState
-from finite_volume_methods import FirstOrderUnlimited, SecondOrderLimited
+from pyHype.states import ConservativeState
+from pyHype.finite_volume_methods import FirstOrderUnlimited, SecondOrderLimited
 
 #-----------------------------------------------------------------------------------------------------------------------
 # General Classes
@@ -52,9 +52,18 @@ class Mesh:
         self.dx     = self.Lx / (self.nx + 1)
         self.dy     = self.Lx / (self.nx + 1)
 
-        X, Y        = np.meshgrid(np.linspace(0, self.Lx, self.nx), np.linspace(0, self.Ly, self.ny))
+        X, Y        = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
+                                  np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
         self._x     = X
         self._y     = Y
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
 
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -97,10 +106,10 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        BC_East     = BoundaryBlockEast(self._input, mesh_data_.get(self.global_nBLK).get('BCTypeEast'))
-        BC_West     = BoundaryBlockWest(self._input, mesh_data_.get(self.global_nBLK).get('BCTypeWest'))
-        BC_North    = BoundaryBlockEast(self._input, mesh_data_.get(self.global_nBLK).get('BCTypeNorth'))
-        BC_South    = BoundaryBlockWest(self._input, mesh_data_.get(self.global_nBLK).get('BCTypeSouth'))
+        BC_East     = BoundaryBlockEast(self._input, mesh_data_.get('BCTypeEast'))
+        BC_West     = BoundaryBlockWest(self._input, mesh_data_.get('BCTypeWest'))
+        BC_North    = BoundaryBlockEast(self._input, mesh_data_.get('BCTypeNorth'))
+        BC_South    = BoundaryBlockWest(self._input, mesh_data_.get('BCTypeSouth'))
         self.boundary_blocks = BoundaryBlocks(E=BC_East, W=BC_West, N=BC_North, S=BC_South)
 
     @property
@@ -110,6 +119,10 @@ class QuadBlock:
     @property
     def state(self):
         return self._state
+
+    @property
+    def mesh(self):
+        return self._mesh
 
     def build_connectivity(self, NeighborE: 'QuadBlock', NeighborW: 'QuadBlock',
                                  NeighborN: 'QuadBlock', NeighborS: 'QuadBlock') -> None:
@@ -242,8 +255,8 @@ class BoundaryBlock:
         self._idx_from_U = None
         self._state = None
         self._type = type_
-        self.nx = input_.get('mesh_inputs').get('nx')
-        self.ny = input_.get('mesh_inputs').get('ny')
+        self.nx = input_.get('nx')
+        self.ny = input_.get('ny')
 
     @property
     def state(self):

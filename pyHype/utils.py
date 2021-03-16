@@ -1,5 +1,5 @@
 import numpy as np
-from states import PrimitiveState, RoePrimitiveState
+from .states import PrimitiveState, RoePrimitiveState
 
 
 def harten_correction_xdir_wavespeeds(WL: PrimitiveState, WR: PrimitiveState):

@@ -1,9 +1,8 @@
 import numpy as np
-from block import QuadBlock
 from abc import ABC, abstractmethod
 from scipy.sparse import bsr_matrix as bsrmat
-from flux_functions import ROE_FLUX_X, ROE_FLUX_Y, HLLE_FLUX_X, HLLE_FLUX_Y, HLLL_FLUX_X, HLLL_FLUX_Y
-from flux_limiters import van_leer, van_albada
+from .flux_functions import ROE_FLUX_X, ROE_FLUX_Y, HLLE_FLUX_X, HLLE_FLUX_Y, HLLL_FLUX_X, HLLL_FLUX_Y
+from .flux_limiters import van_leer, van_albada
 
 
 class FiniteVolumeMethod(ABC):
@@ -14,8 +13,8 @@ class FiniteVolumeMethod(ABC):
         self._flux_function_Y = None
         self._limiter = None
         self.global_nBLK = global_nBLK
-        self.nx = input_.get('mesh_inputs').get('nx')
-        self.ny = input_.get('mesh_inputs').get('ny')
+        self.nx = input_.get('nx')
+        self.ny = input_.get('ny')
         self.Flux_X = np.empty((4 * self.nx * self.ny, 1))
         self.Flux_Y = np.empty((4 * self.nx * self.ny, 1))
         self._set_flux_function()

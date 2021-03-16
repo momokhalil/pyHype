@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.sparse import bsr_matrix as bsrmat
 from abc import ABC, abstractmethod
-from states import RoePrimitiveState, PrimitiveState, ConservativeState
-from utils import *
+from .states import RoePrimitiveState, PrimitiveState, ConservativeState
+from .utils import *
 
 class FluxFunction(ABC):
     def __init__(self, input_):

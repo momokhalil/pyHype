@@ -1,7 +1,4 @@
-def simple_mesh():
-    nx = 10
-    ny = 10
-    n = nx * ny
+def simple_mesh(nx, ny, n):
     block1 = {'nBLK': 1,
               'NE': (5, 5),
               'NW': (0, 5),
@@ -70,12 +67,9 @@ def simple_mesh():
               'BCTypeNorth': 'None',
               'BCTypeSouth': 'Reflection'}
 
-    mesh = {'nx': nx,
-            'ny': ny,
-            'n': n,
-            block1.get('nBLK'): block1,
-            block2.get('nBLK'): block2,
-            block3.get('nBLK'): block3,
-            block4.get('nBLK'): block4}
+    mesh = {1: block1,
+            2: block2,
+            3: block3,
+            4: block4}
 
     return mesh
