@@ -108,8 +108,8 @@ class QuadBlock:
         # Build boundary blocks
         BC_East     = BoundaryBlockEast(self._input, mesh_data_.get('BCTypeEast'))
         BC_West     = BoundaryBlockWest(self._input, mesh_data_.get('BCTypeWest'))
-        BC_North    = BoundaryBlockEast(self._input, mesh_data_.get('BCTypeNorth'))
-        BC_South    = BoundaryBlockWest(self._input, mesh_data_.get('BCTypeSouth'))
+        BC_North    = BoundaryBlockNorth(self._input, mesh_data_.get('BCTypeNorth'))
+        BC_South    = BoundaryBlockSouth(self._input, mesh_data_.get('BCTypeSouth'))
         self.boundary_blocks = BoundaryBlocks(E=BC_East, W=BC_West, N=BC_North, S=BC_South)
 
     @property
@@ -124,51 +124,71 @@ class QuadBlock:
     def mesh(self):
         return self._mesh
 
-    def build_connectivity(self, NeighborE: 'QuadBlock', NeighborW: 'QuadBlock',
-                                 NeighborN: 'QuadBlock', NeighborS: 'QuadBlock') -> None:
+    # ------------------------------------------------------------------------------------------------------------------
+    # Grid methods
+
+    # Build connectivity with neigbor blocks
+    def connect(self, NeighborE: 'QuadBlock',
+                      NeighborW: 'QuadBlock',
+                      NeighborN: 'QuadBlock',
+                      NeighborS: 'QuadBlock') -> None:
+
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS)
 
-    def get_east_edge(self):
-        return self.boundary_blocks.E.from_ref_U(self._state)
+    def get_east_edge(self) -> np.ndarray:
+        return self.boundary_blocks.E.from_ref_U(self)
 
-    def get_west_edge(self):
-        return self.boundary_blocks.W.from_ref_U(self._state)
+    def get_west_edge(self) -> np.ndarray:
+        return self.boundary_blocks.W.from_ref_U(self)
 
-    def get_north_edge(self):
-        return self.boundary_blocks.N.from_ref_U(self._state)
+    def get_north_edge(self) -> np.ndarray:
+        return self.boundary_blocks.N.from_ref_U(self)
 
-    def get_south_edge(self):
-        return self.boundary_blocks.S.from_ref_U(self._state)
+    def get_south_edge(self) -> np.ndarray:
+        return self.boundary_blocks.S.from_ref_U(self)
 
-    def update_state(self):
-        self._time_integrator(self.get_dt())
+    # ------------------------------------------------------------------------------------------------------------------
+    # Time stepping methods
 
-    def get_residual(self):
-        self._finite_volume_method.get_flux(self)
-        return -self._finite_volume_method.Flux_X, -self._finite_volume_method.Flux_Y
+    # Update solution state
+    def update(self, dt):
+        self._time_integrator(dt)
 
+    # Explicit Euler time stepping
     def explicit_euler(self):
         pass
 
+    # RK2 time stepping
     def RK2(self, dt):
         Rx, Ry = self.get_residual()
         u = self._state.U
 
-        k1 = dt * ((Rx / self._mesh.dx) + (Ry / self._mesh.dy))
+        k1 = dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+
         self._state.U += 0.5 * k1
+        self._state.set_vars_from_state()
         self.update_BC()
 
         Rx, Ry = self.get_residual()
-        self._state.U = u + dt * ((Rx / self._mesh.dx) + (Ry / self._mesh.dy))
+        self._state.U = u + dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+        self._state.set_vars_from_state()
+        self.update_BC()
 
+    # RK3 TVD time stepping
     def RK3TVD(self, dt):
         pass
 
+    # RK4 time stepping
     def RK4(self, dt):
         pass
 
-    def set_BC(self, dt):
-        pass
+    # Calculate residuals in x and y directions
+    def get_residual(self):
+        self._finite_volume_method.get_flux(self)
+        return -self._finite_volume_method.Flux_X, -self._finite_volume_method.Flux_Y
+
+    def set_BC(self):
+        self.update_BC()
 
     def update_BC(self):
         self.boundary_blocks.E.set(ref_BLK=self)
@@ -176,11 +196,6 @@ class QuadBlock:
         self.boundary_blocks.N.set(ref_BLK=self)
         self.boundary_blocks.S.set(ref_BLK=self)
         pass
-
-    def get_dt(self):
-        W = self._state.to_W()
-        a = W.a()
-        return self._input.get('CFL') * np.min(self._mesh.dx / (W.u + a), self._mesh.dy / (W.v + a))
 
 class Blocks:
     def __init__(self, input_):
@@ -201,9 +216,9 @@ class Blocks:
     def get(self, block_idx):
         return self._blocks[block_idx]
 
-    def update(self):
+    def update(self, dt):
         for block in self._blocks.values():
-            block.update()
+            block.update(dt)
 
     def set_BC(self):
         for block in self._blocks.values():
@@ -227,14 +242,10 @@ class Blocks:
             Neighbor_N_idx = mesh_inputs.get(block.global_nBLK).get('NeighborN')
             Neighbor_S_idx = mesh_inputs.get(block.global_nBLK).get('NeighborS')
 
-            block.build_connectivity(NeighborE=self._blocks[Neighbor_E_idx]
-                                               if isinstance(Neighbor_E_idx, int) else None,
-                                     NeighborW=self._blocks[Neighbor_W_idx]
-                                               if isinstance(Neighbor_W_idx, int) else None,
-                                     NeighborN=self._blocks[Neighbor_N_idx]
-                                               if isinstance(Neighbor_N_idx, int) else None,
-                                     NeighborS=self._blocks[Neighbor_S_idx]
-                                               if isinstance(Neighbor_S_idx, int) else None)
+            block.connect(NeighborE=self._blocks[Neighbor_E_idx] if isinstance(Neighbor_E_idx, int) else None,
+                          NeighborW=self._blocks[Neighbor_W_idx] if isinstance(Neighbor_W_idx, int) else None,
+                          NeighborN=self._blocks[Neighbor_N_idx] if isinstance(Neighbor_N_idx, int) else None,
+                          NeighborS=self._blocks[Neighbor_S_idx] if isinstance(Neighbor_S_idx, int) else None)
 
     def print_connectivity(self):
         for _, block in self._blocks.items():
@@ -266,13 +277,13 @@ class BoundaryBlock:
     def set(self, ref_BLK):
         pass
 
-    def from_ref_U(self, ref_BLK_state):
-        return ref_BLK_state.U[self._idx_from_U]
+    def from_ref_U(self, ref_BLK):
+        return ref_BLK.state.U[self._idx_from_U]
 
 class BoundaryBlockNorth(BoundaryBlock):
     def __init__(self, input_, type_):
         super().__init__(input_, type_)
-        self._idx_from_U = np.arange(4 * self.nx * (self.ny - 1), 4 * self.nx * self.ny)
+        self._idx_from_U = slice(4 * self.nx * (self.ny - 1), 4 * self.nx * self.ny)
         self._state = ConservativeState(input_, self.nx)
 
     def set(self, ref_BLK: QuadBlock) -> None:
@@ -287,7 +298,7 @@ class BoundaryBlockNorth(BoundaryBlock):
 class BoundaryBlockSouth(BoundaryBlock):
     def __init__(self, input_, type_):
         super().__init__(input_, type_)
-        self._idx_from_U = np.arange(0, 4 * self.nx)
+        self._idx_from_U = slice(0, 4 * self.nx)
         self._state = ConservativeState(input_, self.nx)
 
     def set(self, ref_BLK: QuadBlock) -> None:
@@ -302,13 +313,13 @@ class BoundaryBlockSouth(BoundaryBlock):
 class BoundaryBlockEast(BoundaryBlock):
     def __init__(self, input_, type_):
         super().__init__(input_, type_)
-        self._idx_from_U = np.empty((4*self.ny))
+        self._idx_from_U = np.empty((4*self.ny), dtype=np.int32)
         self._state = ConservativeState(input_, self.ny)
 
         for j in range(1, self.ny + 1):
             iF = 4 * self.nx * j - 4
             iE = 4 * self.nx * j
-            self._idx_from_U[4 * j - 4:4 * j] = np.arange(iF, iE)
+            self._idx_from_U[4 * j - 4:4 * j] = np.arange(iF, iE, dtype=np.int32)
 
     def set(self, ref_BLK: QuadBlock) -> None:
         if self._type   == 'Outflow':
@@ -322,13 +333,13 @@ class BoundaryBlockEast(BoundaryBlock):
 class BoundaryBlockWest(BoundaryBlock):
     def __init__(self, input_, type_):
         super().__init__(input_, type_)
-        self._idx_from_U = np.empty((4*self.ny))
+        self._idx_from_U = np.empty((4*self.ny), dtype=np.int32)
         self._state = ConservativeState(input_, self.ny)
 
         for j in range(1, self.ny + 1):
             iF = (4 * j - 4) + 4 * (j - 1) * (self.nx - 1)
             iE = (4 * j - 0) + 4 * (j - 1) * (self.ny - 1)
-            self._idx_from_U[4 * j - 4: 4 * j] = np.arange(iF, iE)
+            self._idx_from_U[4 * j - 4: 4 * j] = np.arange(iF, iE, dtype=np.int32)
 
     def set(self, ref_BLK: QuadBlock) -> None:
         if self._type == 'Outflow':

@@ -28,17 +28,17 @@ class State:
         self._size = size_
 
         # Public
-        self.g = input_.get('g')
+        self.g = input_.get('gamma')
 
     @abstractmethod
-    def _set_state_from_vars(self, **kwargs):
+    def set_state_from_vars(self, **kwargs):
         """
         Sets the state vector from present state variable attributes
         """
         pass
 
     @abstractmethod
-    def _set_vars_from_state(self, **kwargs):
+    def set_vars_from_state(self, **kwargs):
         """
         Sets the state variable attributes from present state vector
         """
@@ -109,7 +109,7 @@ class PrimitiveState(State):
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
-    def _set_vars_from_state(self):
+    def set_vars_from_state(self):
         """
         Sets primitive variables from primitive state vector
         """
@@ -118,7 +118,7 @@ class PrimitiveState(State):
         self.v      = self.W[2::4]
         self.p      = self.W[3::4]
 
-    def _set_state_from_vars(self):
+    def set_state_from_vars(self):
         """
         Sets primitive variables from primitive state vector
         """
@@ -147,7 +147,11 @@ class PrimitiveState(State):
         self.p = p
 
         # Set W components appropriately
-        self._set_state_from_vars()
+        self.set_state_from_vars()
+
+    def from_state_vector(self, W: 'PrimitiveState') -> None:
+        self.W = W
+        self.set_vars_from_state()
 
     def from_U(self, U: 'ConservativeState') -> None:
         """
@@ -169,7 +173,7 @@ class PrimitiveState(State):
         self.v = U.rhov / U.rho
         self.p = (self.g - 1) * (U.e - 0.5 * (U.rhou**2 + U.rhov**2) / U.rho)
 
-        self._set_state_from_vars()
+        self.set_state_from_vars()
 
     def to_U(self) -> 'ConservativeState':
         """
@@ -183,6 +187,8 @@ class PrimitiveState(State):
         return (self.g / (self.g - 1)) * (self.p / self.rho) + np.mean(self.u**2 + self.v**2)
 
     def a(self) -> np.ndarray:
+        #print(self.p)
+        #print(self.rho)
         return np.sqrt(self.g * self.p / self.rho)
 
     def non_dim(self) -> None:
@@ -204,7 +210,7 @@ class PrimitiveState(State):
         self.W[3::4] /= self._input.get('rho_inf') * self._input.get('a_inf') ** 2
 
         # Set variables from non-dimensionalized W
-        self._set_vars_from_state()
+        self.set_vars_from_state()
 
 
 class ConservativeState(State):
@@ -242,7 +248,7 @@ class ConservativeState(State):
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
-    def _set_vars_from_state(self):
+    def set_vars_from_state(self):
         """
         Sets conservative variables from conservativestate vector
         """
@@ -251,7 +257,7 @@ class ConservativeState(State):
         self.rhov   = self.U[2::4]
         self.e      = self.U[3::4]
 
-    def _set_state_from_vars(self):
+    def set_state_from_vars(self):
         """
         Sets conservative variables from conservative state vector
         """
@@ -284,7 +290,11 @@ class ConservativeState(State):
         self.e = e
 
         # Set state vector from state variables
-        self._set_state_from_vars()
+        self.set_state_from_vars()
+
+    def from_state_vector(self, U: 'ConservativeState') -> None:
+        self.U = U
+        self.set_vars_from_state()
 
     def from_W(self, W: PrimitiveState):
         """
@@ -306,7 +316,7 @@ class ConservativeState(State):
         self.rhov   = W.rho * W.v
         self.e      = W.p / (self.g - 1) + 0.5 * W.rho * (W.u**2 + W.v**2)
 
-        self._set_state_from_vars()
+        self.set_state_from_vars()
 
     def to_W(self) -> PrimitiveState:
         """
@@ -334,13 +344,32 @@ class ConservativeState(State):
         If `ConservativeState` is created from a non-dimentionalized `PrimitiveState`, it will be non-dimentional.
         """
 
-
         self.U[0::4] /= self._input.get('rho_inf')
         self.U[1::4] /= self._input.get('rho_inf') * self._input.get('a_inf')
         self.U[2::4] /= self._input.get('rho_inf') * self._input.get('a_inf')
         self.U[3::4] /= self._input.get('rho_inf') * self._input.get('a_inf') ** 2
 
-        self._set_vars_from_state()
+        self.set_vars_from_state()
+
+    def F(self):
+        F = np.zeros((4 * self._input.get('nx') + 4, 1))
+
+        F[0::4] = self.rhou
+        F[1::4] = self._p() + self.rhou ** 2 / self.rho
+        F[2::4] = self.rhou * self.rhov / self.rho
+        F[3::4] = (self.rhou / self.rho) * (self.e + self._p())
+
+        return F
+
+    def G(self):
+        G = np.zeros((4 * self._input.get('ny') + 4, 1))
+
+        G[0::4] = self.rhov
+        G[1::4] = self.rhou * self.rhov / self.rho
+        G[2::4] = self._p() + self.rhov ** 2 / self.rho
+        G[3::4] = (self.rhov / self.rho) * (self.e + self._p())
+
+        return G
 
 class RoePrimitiveState(PrimitiveState):
     """

@@ -73,3 +73,25 @@ def simple_mesh(nx, ny, n):
             4: block4}
 
     return mesh
+
+def one_mesh(nx, ny, n):
+    block1 = {'nBLK': 1,
+              'NE': (10, 10),
+              'NW': (0, 10),
+              'SE': (10, 0),
+              'SW': (0, 0),
+              'nx': nx,
+              'ny': ny,
+              'n': n,
+              'NeighborE': None,
+              'NeighborW': None,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeEast': 'Reflection',
+              'BCTypeWest': 'Reflection',
+              'BCTypeNorth': 'Reflection',
+              'BCTypeSouth': 'Reflection'}
+
+    mesh = {1: block1}
+
+    return mesh
