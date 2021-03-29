@@ -8,3 +8,7 @@ pyHype is an educational project in Computational Fluid Dynamics. It brings toge
 Here is an example of an implosion simulation, performed with a rudimentary prototype version of pyHype on one block. This was run with a 650x650 mesh, Roe approximate riemann solver, van-Albada flux limiter, second-order reconstruction and RK4 time stepping. The solver perfectly resolves the interaction of all shocks, contacts, and expansion waves.
 
 ![Alt Text](/cool_gif.gif)
+
+Current work:
+1. Integrate numba for JIT compilation
+2. Create a fully documented simple example to explain usage
