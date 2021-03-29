@@ -4,13 +4,21 @@ from .block import Blocks
 
 class Euler2DExplicitSolver:
     def __init__(self, input_):
+
+        print('In const')
+
+        print('input')
         self._input = input_
+
+        print('blocks')
         self._blocks = Blocks(input_)
 
+        print('time step')
         self.numTimeStep = 0
         self.t = 0
-        self.t_final = input_.get('t_final') * input_.get('a_inf')
-        self.CFL = input_.get('CFL')
+        self.t_final = input_.t_final * input_.a_inf
+        print(self.t_final)
+        self.CFL = input_.CFL
 
     @property
     def blocks(self):
@@ -18,10 +26,10 @@ class Euler2DExplicitSolver:
 
     def set_IC(self):
 
-        problem_type = self._input.get('problem_type')
-        g = self._input.get('gamma')
-        ny = self._input.get('ny')
-        nx = self._input.get('nx')
+        problem_type = self._input.problem_type
+        g = self._input.gamma
+        ny = self._input.ny
+        nx = self._input.nx
 
         if problem_type == 'shockbox':
 
@@ -109,20 +117,32 @@ class Euler2DExplicitSolver:
 
     def solve(self):
 
+        print('IN SOLVE')
+
+        print('Set IC')
         self.set_IC()
+
+        print('SET BC')
         self.set_BC()
 
         plt.ion()
 
-        nx = self._input.get('nx')
-        ny = self._input.get('ny')
+        print('nx')
+        nx = self._input.nx
+        print('ny')
+        ny = self._input.ny
 
+        print('fig')
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
 
         while self.t < self.t_final:
+
+            print('get dt')
             dt = self.dt()
             self.numTimeStep += 1
+
+            print('update block')
             self._blocks.update(dt)
 
             if self.numTimeStep % 1 == 0:

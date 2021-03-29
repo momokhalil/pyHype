@@ -1,3 +1,6 @@
+from pyHype.mesh import mesh_builder
+
+# Meshes
 def simple_mesh(nx, ny, n):
     block1 = {'nBLK': 1,
               'NE': (5, 5),
@@ -8,9 +11,9 @@ def simple_mesh(nx, ny, n):
               'ny': ny,
               'n': n,
               'NeighborE': 4,
-              'NeighborW': None,
+              'NeighborW': 0,
               'NeighborN': 2,
-              'NeighborS': None,
+              'NeighborS': 0,
               'BCTypeEast': 'None',
               'BCTypeWest': 'Reflection',
               'BCTypeNorth': 'None',
@@ -25,8 +28,8 @@ def simple_mesh(nx, ny, n):
               'ny': ny,
               'n': n,
               'NeighborE': 3,
-              'NeighborW': None,
-              'NeighborN': None,
+              'NeighborW': 0,
+              'NeighborN': 0,
               'NeighborS': 1,
               'BCTypeEast': 'None',
               'BCTypeWest': 'Reflection',
@@ -41,9 +44,9 @@ def simple_mesh(nx, ny, n):
               'nx': nx,
               'ny': ny,
               'n': n,
-              'NeighborE': None,
+              'NeighborE': 0,
               'NeighborW': 2,
-              'NeighborN': None,
+              'NeighborN': 0,
               'NeighborS': 4,
               'BCTypeEast': 'Reflection',
               'BCTypeWest': 'None',
@@ -58,40 +61,37 @@ def simple_mesh(nx, ny, n):
               'nx': nx,
               'ny': ny,
               'n': n,
-              'NeighborE': None,
+              'NeighborE': 0,
               'NeighborW': 1,
               'NeighborN': 3,
-              'NeighborS': None,
+              'NeighborS': 0,
               'BCTypeEast': 'Reflection',
               'BCTypeWest': 'None',
               'BCTypeNorth': 'None',
               'BCTypeSouth': 'Reflection'}
 
-    mesh = {1: block1,
-            2: block2,
-            3: block3,
-            4: block4}
+    mesh = mesh_builder.build_numba_dict_for_mesh(block1, block2, block3, block4)
 
     return mesh
 
 def one_mesh(nx, ny, n):
     block1 = {'nBLK': 1,
-              'NE': (10, 10),
-              'NW': (0, 10),
-              'SE': (10, 0),
-              'SW': (0, 0),
+              'NE': [10, 10],
+              'NW': [0, 10],
+              'SE': [10, 0],
+              'SW': [0, 0],
               'nx': nx,
               'ny': ny,
               'n': n,
-              'NeighborE': None,
-              'NeighborW': None,
-              'NeighborN': None,
-              'NeighborS': None,
-              'BCTypeEast': 'Reflection',
-              'BCTypeWest': 'Reflection',
-              'BCTypeNorth': 'Reflection',
-              'BCTypeSouth': 'Reflection'}
+              'NeighborE': 0,
+              'NeighborW': 0,
+              'NeighborN': 0,
+              'NeighborS': 0,
+              'BCTypeE': 'Reflection',
+              'BCTypeW': 'Reflection',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
 
-    mesh = {1: block1}
+    mesh = mesh_builder.build_numba_dict_for_mesh(block1)
 
     return mesh

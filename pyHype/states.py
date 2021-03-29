@@ -28,7 +28,7 @@ class State:
         self._size = size_
 
         # Public
-        self.g = input_.get('gamma')
+        self.g = input_.gamma
 
     @abstractmethod
     def set_state_from_vars(self, **kwargs):
@@ -204,10 +204,10 @@ class PrimitiveState(State):
         """
 
         # Non-dimentionalize each component of W
-        self.W[0::4] /= self._input.get('rho_inf')
-        self.W[1::4] /= self._input.get('a_inf')
-        self.W[2::4] /= self._input.get('a_inf')
-        self.W[3::4] /= self._input.get('rho_inf') * self._input.get('a_inf') ** 2
+        self.W[0::4] /= self._input.rho_inf
+        self.W[1::4] /= self._input.a_inf
+        self.W[2::4] /= self._input.a_inf
+        self.W[3::4] /= self._input.rho_inf * self._input.a_inf ** 2
 
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
@@ -344,15 +344,15 @@ class ConservativeState(State):
         If `ConservativeState` is created from a non-dimentionalized `PrimitiveState`, it will be non-dimentional.
         """
 
-        self.U[0::4] /= self._input.get('rho_inf')
-        self.U[1::4] /= self._input.get('rho_inf') * self._input.get('a_inf')
-        self.U[2::4] /= self._input.get('rho_inf') * self._input.get('a_inf')
-        self.U[3::4] /= self._input.get('rho_inf') * self._input.get('a_inf') ** 2
+        self.U[0::4] /= self._input.rho_inf
+        self.U[1::4] /= self._input.rho_inf * self._input.a_inf
+        self.U[2::4] /= self._input.rho_inf * self._input.a_inf
+        self.U[3::4] /= self._input.rho_inf * self._input.a_inf ** 2
 
         self.set_vars_from_state()
 
     def F(self):
-        F = np.zeros((4 * self._input.get('nx') + 4, 1))
+        F = np.zeros((4 * self._input.nx + 4, 1))
 
         F[0::4] = self.rhou
         F[1::4] = self._p() + self.rhou ** 2 / self.rho
@@ -362,7 +362,7 @@ class ConservativeState(State):
         return F
 
     def G(self):
-        G = np.zeros((4 * self._input.get('ny') + 4, 1))
+        G = np.zeros((4 * self._input.ny + 4, 1))
 
         G[0::4] = self.rhov
         G[1::4] = self.rhou * self.rhov / self.rho

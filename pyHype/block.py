@@ -40,15 +40,15 @@ class BoundaryBlocks:
 class Mesh:
     def __init__(self, input_, mesh_data_):
         self._input = input_
-        self.vertices = Vertices(NW=mesh_data_.get('NW'),
-                                 NE=mesh_data_.get('NE'),
-                                 SW=mesh_data_.get('SW'),
-                                 SE=mesh_data_.get('SE'))
+        self.vertices = Vertices(NW=mesh_data_.NW,
+                                 NE=mesh_data_.NE,
+                                 SW=mesh_data_.SW,
+                                 SE=mesh_data_.SE)
 
         self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
         self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
-        self.nx     = mesh_data_.get('nx')
-        self.ny     = mesh_data_.get('ny')
+        self.nx     = input_.nx
+        self.ny     = input_.ny
         self.dx     = self.Lx / (self.nx + 1)
         self.dy     = self.Lx / (self.nx + 1)
 
@@ -74,13 +74,13 @@ class QuadBlock:
     def __init__(self, input_, mesh_data_):
         self._input             = input_
         self._mesh              = Mesh(input_, mesh_data_)
-        self._state             = ConservativeState(input_, mesh_data_.get('n'))
-        self.global_nBLK        = mesh_data_.get('nBLK')
+        self._state             = ConservativeState(input_, input_.n)
+        self.global_nBLK        = mesh_data_.nBLK
         self.boundary_blocks    = None
         self.neighbors          = None
 
         # Set finite volume method
-        fvm = self._input.get('finite_volume_method')
+        fvm = self._input.finite_volume_method
 
         if fvm == 'FirstOrderUnlimited':
             self._finite_volume_method = FirstOrderUnlimited(self._input, self.global_nBLK)
@@ -92,7 +92,7 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Set time integrator
-        time_integrator = self._input.get('time_integrator')
+        time_integrator = self._input.time_integrator
 
         if time_integrator      == 'ExplicitEuler':
             self._time_integrator = self.explicit_euler
@@ -106,10 +106,10 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        BC_East     = BoundaryBlockEast(self._input, mesh_data_.get('BCTypeEast'))
-        BC_West     = BoundaryBlockWest(self._input, mesh_data_.get('BCTypeWest'))
-        BC_North    = BoundaryBlockNorth(self._input, mesh_data_.get('BCTypeNorth'))
-        BC_South    = BoundaryBlockSouth(self._input, mesh_data_.get('BCTypeSouth'))
+        BC_East     = BoundaryBlockEast(self._input, mesh_data_.BCTypeE)
+        BC_West     = BoundaryBlockWest(self._input, mesh_data_.BCTypeW)
+        BC_North    = BoundaryBlockNorth(self._input, mesh_data_.BCTypeN)
+        BC_South    = BoundaryBlockSouth(self._input, mesh_data_.BCTypeS)
         self.boundary_blocks = BoundaryBlocks(E=BC_East, W=BC_West, N=BC_North, S=BC_South)
 
     @property
@@ -229,7 +229,7 @@ class Blocks:
             block.update_BC()
 
     def build(self):
-        mesh_inputs = self._input.get('mesh_inputs')
+        mesh_inputs = self._input.mesh_inputs
 
         for BLK_data in mesh_inputs.values():
             self.add(QuadBlock(self._input, BLK_data))
@@ -237,15 +237,15 @@ class Blocks:
         self._number_of_blocks = len(self._blocks)
 
         for global_nBLK, block in self._blocks.items():
-            Neighbor_E_idx = mesh_inputs.get(block.global_nBLK).get('NeighborE')
-            Neighbor_W_idx = mesh_inputs.get(block.global_nBLK).get('NeighborW')
-            Neighbor_N_idx = mesh_inputs.get(block.global_nBLK).get('NeighborN')
-            Neighbor_S_idx = mesh_inputs.get(block.global_nBLK).get('NeighborS')
+            Neighbor_E_idx = mesh_inputs.get(block.global_nBLK).NeighborE
+            Neighbor_W_idx = mesh_inputs.get(block.global_nBLK).NeighborW
+            Neighbor_N_idx = mesh_inputs.get(block.global_nBLK).NeighborN
+            Neighbor_S_idx = mesh_inputs.get(block.global_nBLK).NeighborS
 
-            block.connect(NeighborE=self._blocks[Neighbor_E_idx] if isinstance(Neighbor_E_idx, int) else None,
-                          NeighborW=self._blocks[Neighbor_W_idx] if isinstance(Neighbor_W_idx, int) else None,
-                          NeighborN=self._blocks[Neighbor_N_idx] if isinstance(Neighbor_N_idx, int) else None,
-                          NeighborS=self._blocks[Neighbor_S_idx] if isinstance(Neighbor_S_idx, int) else None)
+            block.connect(NeighborE=self._blocks[Neighbor_E_idx] if Neighbor_E_idx != 0 else None,
+                          NeighborW=self._blocks[Neighbor_W_idx] if Neighbor_W_idx != 0 else None,
+                          NeighborN=self._blocks[Neighbor_N_idx] if Neighbor_N_idx != 0 else None,
+                          NeighborS=self._blocks[Neighbor_S_idx] if Neighbor_S_idx != 0 else None)
 
     def print_connectivity(self):
         for _, block in self._blocks.items():
@@ -266,8 +266,8 @@ class BoundaryBlock:
         self._idx_from_U = None
         self._state = None
         self._type = type_
-        self.nx = input_.get('nx')
-        self.ny = input_.get('ny')
+        self.nx = input_.nx
+        self.ny = input_.ny
 
     @property
     def state(self):

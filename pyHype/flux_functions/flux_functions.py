@@ -13,10 +13,10 @@ class FluxFunction(ABC):
         self._input = input_
         self._L = None
         self._R = None
-        self.g = input_.get('gamma')
-        self.nx = input_.get('nx')
-        self.ny = input_.get('ny')
-        self.n = input_.get('n')
+        self.g = input_.gamma
+        self.nx = input_.nx
+        self.ny = input_.ny
+        self.n = input_.n
 
     def set_left_state(self, UL):
         self._L = UL
@@ -71,7 +71,7 @@ class XDIR_EIGENSYSTEM_VECTORS:
         self.A_m2 = np.ones((2 * (nx + 1), 1))
         self.A_m3 = np.ones((1 * (nx + 1), 1))
         self.A_p1 = np.ones((2 * (nx + 1), 1))
-        self.A_p2 = (self.input.get('gamma') - 1) * np.ones((1 * (nx + 1), 1))
+        self.A_p2 = (self.input.gamma - 1) * np.ones((1 * (nx + 1), 1))
 
         self.X_d = np.ones((4 * (nx + 1), 1))
         self.X_m1 = np.ones((3 * (nx + 1), 1))
@@ -200,7 +200,7 @@ class YDIR_EIGENSYSTEM_VECTORS:
         self.B_m2 = np.ones((2 * (nx + 1), 1))
         self.B_m3 = np.ones((1 * (nx + 1), 1))
         self.B_p1 = np.ones((2 * (nx + 1), 1))
-        self.B_p1[1::2] = (self.input.get('gamma') - 1)
+        self.B_p1[1::2] = (self.input.gamma - 1)
         self.B_p2 = np.ones((1 * (nx + 1), 1))
 
         self.X_d = np.ones((4 * (nx + 1), 1))
@@ -428,7 +428,7 @@ class ROE_FLUX_X(FluxFunction):
 
     def get_flux(self):
         WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.get('nx') + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self._input, self._input.nx + 1, WL=WL, WR=WR)
         A, X, Xi, Lambda = self._get_eigen_system_from_roe_state(Wroe, WL, WR)
         return 0.5 * (A.dot(self.L_plus_R()) + X.dot(np.absolute(Lambda).dot(Xi.dot(self.dULR()))))
 
@@ -554,7 +554,7 @@ class ROE_FLUX_Y(FluxFunction):
 
     def get_flux(self):
         WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.get('ny') + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self._input, self._input.ny + 1, WL=WL, WR=WR)
         B, X, Xi, Lambda = self._get_eigen_system_from_roe_state(Wroe, WL, WR)
         return 0.5 * (B.dot(self.L_plus_R()) + X.dot(np.absolute(Lambda).dot(Xi.dot(self.dULR()))))
 
@@ -564,9 +564,9 @@ class HLLE_FLUX_X(FluxFunction):
         super().__init__(input_)
 
     def get_flux(self):
-        flux = np.empty((4 * self._input.get('nx') + 4, 1))
+        flux = np.empty((4 * self._input.nx + 4, 1))
         WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.get('nx') + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self._input, self._input.nx + 1, WL=WL, WR=WR)
 
         Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
 
@@ -576,7 +576,7 @@ class HLLE_FLUX_X(FluxFunction):
         Fl = self._L.get_flux_X()
         Fr = self._R.get_flux_X()
 
-        for i in range(1, self._input.get('nx') + 1):
+        for i in range(1, self._input.nx + 1):
             l_p = lambda_p[i - 1]
             l_m = lambda_m[i - 1]
 
@@ -597,9 +597,9 @@ class HLLE_FLUX_Y(FluxFunction):
         super().__init__(input_)
 
     def get_flux(self):
-        flux = np.empty((4 * self._input.get('ny') + 4, 1))
+        flux = np.empty((4 * self._input.ny + 4, 1))
         WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.get('nx') + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self._input, self._input.nx + 1, WL=WL, WR=WR)
 
         Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
 
@@ -609,7 +609,7 @@ class HLLE_FLUX_Y(FluxFunction):
         Gl = self._L.get_flux_Y()
         Gr = self._R.get_flux_Y()
 
-        for i in range(1, self._input.get('ny') + 1):
+        for i in range(1, self._input.ny + 1):
             l_p = lambda_p[i - 1]
             l_m = lambda_m[i - 1]
 
