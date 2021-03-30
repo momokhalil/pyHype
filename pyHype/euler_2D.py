@@ -1,24 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from .block import Blocks
+import pyHype.input_files.input_file_builder as input_file_builder
+import pyHype.mesh.mesh_builder as mesh_builder
 
-class Euler2DExplicitSolver:
-    def __init__(self, input_):
+class Euler2DSolver:
+    def __init__(self, input_dict):
+        print(input_dict['mesh_name'] == 'one_mesh')
+        mesh_inputs = mesh_builder.build(mesh_name=input_dict['mesh_name'],
+                                         nx=input_dict['nx'],
+                                         ny=input_dict['ny'])
 
-        print('In const')
-
-        print('input')
-        self._input = input_
-
-        print('blocks')
-        self._blocks = Blocks(input_)
-
-        print('time step')
+        self._input = input_file_builder.build(input_dict, mesh_inputs)
+        self._blocks = Blocks(self._input)
         self.numTimeStep = 0
         self.t = 0
-        self.t_final = input_.t_final * input_.a_inf
-        print(self.t_final)
-        self.CFL = input_.CFL
+        self.t_final = self._input.t_final * self._input.a_inf
+        self.CFL = self._input.CFL
 
     @property
     def blocks(self):

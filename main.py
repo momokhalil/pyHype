@@ -1,5 +1,7 @@
-import inputs
+from pyHype.input_files import E4
 from pyHype import euler_2D
 
-solver = euler_2D.Euler2DExplicitSolver(inputs.E4())
+problem_inputs = E4.E4
+
+solver = euler_2D.Euler2DSolver(problem_inputs)
 solver.solve()

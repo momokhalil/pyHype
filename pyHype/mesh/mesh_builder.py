@@ -1,11 +1,9 @@
-import numba
 from pyHype.mesh import meshs as meshs
-from numba.core.types import string as nstr
-from numba.core.types import ListType
 from numba.typed import Dict as nDict
 from numba.typed import List as nList
-from numba import int32, float32
 from numba.experimental import jitclass
+from numba.core.types import ListType
+from numba.core.types import string as nstr, int32
 
 _MESH_INPUT_SPEC = [('nBLK', int32),
                     ('NE', ListType(int32)),
@@ -51,17 +49,7 @@ class BlockDescription:
 _block_description_type = BlockDescription.class_type.instance_type
 
 
-def build_numba_dict_for_mesh(*args):
-
-    mesh = nDict.empty(key_type=int32, value_type=_block_description_type)
-
-    for arg in args:
-        list_, int_, str_ = dict_to_numbadict(arg)
-        mesh[int_['nBLK']] = BlockDescription(list_, int_, str_)
-    return mesh
-
-
-def dict_to_numbadict(dict_: dict):
+def _to_nDict(dict_: dict):
 
     _lst = ListType(int32)
     _list_items = nDict.empty(key_type=nstr, value_type=_lst)
@@ -78,3 +66,32 @@ def dict_to_numbadict(dict_: dict):
         else:
             print('BRUH')
     return _list_items, _int_items, _str_items
+
+
+def make_mesh_inputs(*args):
+    _mesh = {}
+    for arg in args:
+        _mesh[arg['nBLK']] = arg
+    return _mesh
+
+
+# MESH INPUTS BUILDER
+def build(mesh_name: str, nx: int, ny: int):
+
+    _mesh = {}
+    n = nx * ny
+
+    if mesh_name == 'one_mesh':
+        _mesh = meshs.one_mesh(n, nx, ny)
+    elif mesh_name == 'simple_mesh':
+        _mesh = meshs.simple_mesh(n, nx, ny)
+    else:
+        raise ValueError('Specified mesh name does not exist')
+
+    mesh = nDict.empty(key_type=int32, value_type=_block_description_type)
+
+    for nBLK, block in _mesh.items():
+        list_, int_, str_ = _to_nDict(block)
+        mesh[nBLK] = BlockDescription(list_, int_, str_)
+
+    return mesh
