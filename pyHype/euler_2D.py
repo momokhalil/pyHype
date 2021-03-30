@@ -134,7 +134,7 @@ class Euler2DSolver:
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
 
-        while self.t < self.t_final:
+        while self.t <= self.t_final:
 
             print('get dt')
             dt = self.dt()
