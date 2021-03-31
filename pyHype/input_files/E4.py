@@ -1,4 +1,4 @@
-E4 = {'problem_type': 'shockbox',
+E4 = {'problem_type': 'implosion',
       'IC_type': 'from_IC',
       'flux_function': 'Roe',
       'realplot': 1,

@@ -3,20 +3,23 @@ import matplotlib.pyplot as plt
 from .block import Blocks
 import pyHype.input_files.input_file_builder as input_file_builder
 import pyHype.mesh.mesh_builder as mesh_builder
+from pyHype import execution_prints
+
 
 class Euler2DSolver:
     def __init__(self, input_dict):
-        print(input_dict['mesh_name'] == 'one_mesh')
+
         mesh_inputs = mesh_builder.build(mesh_name=input_dict['mesh_name'],
                                          nx=input_dict['nx'],
                                          ny=input_dict['ny'])
 
         self._input = input_file_builder.build(input_dict, mesh_inputs)
         self._blocks = Blocks(self._input)
-        self.numTimeStep = 0
+
         self.t = 0
-        self.t_final = self._input.t_final * self._input.a_inf
+        self.numTimeStep = 0
         self.CFL = self._input.CFL
+        self.t_final = self._input.t_final * self._input.a_inf
 
     @property
     def blocks(self):
@@ -115,22 +118,16 @@ class Euler2DSolver:
 
     def solve(self):
 
-        print('IN SOLVE')
-
-        print('Set IC')
+        print(execution_prints.pyhype)
+        print(execution_prints.began_solving + self._input.problem_type)
         self.set_IC()
-
-        print('SET BC')
         self.set_BC()
 
         plt.ion()
 
-        print('nx')
         nx = self._input.nx
-        print('ny')
         ny = self._input.ny
 
-        print('fig')
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
 
