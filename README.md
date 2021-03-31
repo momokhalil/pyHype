@@ -1,4 +1,5 @@
-# py**HYPE**
+![Alt Text](/logo.png)
+
 ## python + Hyperbolic flow = pyHype :)
 pyHype is a python software package that provides the capability to solve the 2D Euler equations of inviscid fluids on distributed, multi-block grids.
 
