@@ -1,10 +1,10 @@
 import numba
 from numba import int32, float32
-from numba.core.types import ListType, DictType
 from numba.typed import Dict as nDict
 from numba.typed import List as nList
 from numba.experimental import jitclass
 from numba.core.types import string as nstr
+from numba.core.types import ListType, DictType
 from pyHype.mesh.mesh_builder import BlockDescription
 
 

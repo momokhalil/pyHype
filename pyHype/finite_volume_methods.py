@@ -4,9 +4,9 @@ import scipy.sparse as sparse
 from abc import ABC, abstractmethod
 from pyHype.states import ConservativeState
 from pyHype.flux_limiters import van_leer, van_albada
-from pyHype.flux_functions.flux_functions import ROE_FLUX_X, ROE_FLUX_Y, \
-    HLLE_FLUX_X, HLLE_FLUX_Y, \
-    HLLL_FLUX_X, HLLL_FLUX_Y
+from pyHype.flux_functions.Roe import ROE_FLUX_X, ROE_FLUX_Y
+from pyHype.flux_functions.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
+from pyHype.flux_functions.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
 
 
 class FiniteVolumeMethod(ABC):
