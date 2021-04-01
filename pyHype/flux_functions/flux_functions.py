@@ -327,6 +327,33 @@ class ROE_FLUX_X(FluxFunction):
         self.Xi_i, self.Xi_j = idx.Xi_i, idx.Xi_j
         self.Li, self.Lj = idx.Li, idx.Lj
 
+        data = np.row_stack((self.A_m3,
+                             self.A_m2,
+                             self.A_m1,
+                             self.A_d,
+                             self.A_p1,
+                             self.A_p2))
+        self.A = sparse.coo_matrix((data.reshape(-1, ), (self.Ai, self.Aj)))
+
+        data = np.row_stack((self.X_m3,
+                             self.X_m2,
+                             self.X_m1,
+                             self.X_d,
+                             self.X_p1,
+                             self.X_p2))
+        self.X = sparse.coo_matrix((data.reshape(-1, ), (self.Xi, self.Xj)))
+
+        data = np.row_stack((self.Xi_m3,
+                             self.Xi_m2,
+                             self.Xi_m1,
+                             self.Xi_d,
+                             self.Xi_p1,
+                             self.Xi_p2,
+                             self.Xi_p3))
+        self.Xi = sparse.coo_matrix((data.reshape(-1, ), (self.Xi_i, self.Xi_j)))
+
+
+
     def _get_eig_vars(self, uroe, vroe, aroe, Hroe):
 
         gu      = self.g * uroe
@@ -364,14 +391,12 @@ class ROE_FLUX_X(FluxFunction):
         self.A_d[2::3] = gu
         self.A_p1[1::2] = -ghv
 
-        data = np.row_stack((self.A_m3,
-                             self.A_m2,
-                             self.A_m1,
-                             self.A_d,
-                             self.A_p1,
-                             self.A_p2))
-
-        A = sparse.csc_matrix((data.reshape(-1, ), (self.Ai, self.Aj)))
+        self.A.data = np.row_stack((self.A_m3,
+                                    self.A_m2,
+                                    self.A_m1,
+                                    self.A_d,
+                                    self.A_p1,
+                                    self.A_p2)).reshape(-1, )
 
         self.X_m3 = H - ua
         self.X_m2[::2] = Wroe.v
@@ -384,14 +409,12 @@ class ROE_FLUX_X(FluxFunction):
         self.X_d[3::4] = Wroe.v
         self.X_p1[1::3] = Lp
 
-        data = np.row_stack((self.X_m3,
-                             self.X_m2,
-                             self.X_m1,
-                             self.X_d,
-                             self.X_p1,
-                             self.X_p2))
-
-        X = sparse.csc_matrix((data.reshape(-1, ), (self.Xi, self.Xj)))
+        self.X.data = np.row_stack((self.X_m3,
+                                    self.X_m2,
+                                    self.X_m1,
+                                    self.X_d,
+                                    self.X_p1,
+                                    self.X_p2)).reshape(-1, )
 
         self.Xi_m3          = Wroe.v
         self.Xi_m2          = (ghek - ua) / ta2
@@ -407,30 +430,28 @@ class ROE_FLUX_X(FluxFunction):
         self.Xi_p2[1::2]    = self.gt / a2
         self.Xi_p3          = self.gh / ta2
 
-        data = np.row_stack((self.Xi_m3,
-                             self.Xi_m2,
-                             self.Xi_m1,
-                             self.Xi_d,
-                             self.Xi_p1,
-                             self.Xi_p2,
-                             self.Xi_p3))
-
-        Xi = sparse.csc_matrix((data.reshape(-1, ), (self.Xi_i, self.Xi_j)))
+        self.Xi.data = np.row_stack((self.Xi_m3,
+                                     self.Xi_m2,
+                                     self.Xi_m1,
+                                     self.Xi_d,
+                                     self.Xi_p1,
+                                     self.Xi_p2,
+                                     self.Xi_p3)).reshape(-1, )
 
         self.lam[0::4] = Lm
         self.lam[1::4] = Wroe.u
         self.lam[2::4] = Lp
         self.lam[3::4] = Wroe.u
 
-        Lambda = sparse.csc_matrix((self.lam.reshape(-1, ), (self.Li, self.Lj)))
+        Lambda = sparse.coo_matrix((self.lam.reshape(-1, ), (self.Li, self.Lj)))
 
-        return A, X, Xi, Lambda
+        return Lambda
 
     def get_flux(self):
         WL, WR = self._L.to_W(), self._L.to_W()
         Wroe = RoePrimitiveState(self._input, self._input.nx + 1, WL=WL, WR=WR)
-        A, X, Xi, Lambda = self._get_eigen_system_from_roe_state(Wroe, WL, WR)
-        return 0.5 * (A.dot(self.L_plus_R()) + X.dot(np.absolute(Lambda).dot(Xi.dot(self.dULR()))))
+        Lambda = self._get_eigen_system_from_roe_state(Wroe, WL, WR)
+        return 0.5 * (self.A.dot(self.L_plus_R()) + self.X.dot(np.absolute(Lambda).dot(self.Xi.dot(self.dULR()))))
 
 
 class ROE_FLUX_Y(FluxFunction):
@@ -460,6 +481,31 @@ class ROE_FLUX_Y(FluxFunction):
         self.Xi, self.Xj = idx.Xi, idx.Xj
         self.Xi_i, self.Xi_j = idx.Xi_i, idx.Xi_j
         self.Li, self.Lj = idx.Li, idx.Lj
+
+        data = np.row_stack((self.B_m3,
+                             self.B_m2,
+                             self.B_m1,
+                             self.B_d,
+                             self.B_p1,
+                             self.B_p2))
+        self.B = sparse.coo_matrix((data.reshape(-1, ), (self.Bi, self.Bj)))
+
+        data = np.row_stack((self.X_m3,
+                             self.X_m2,
+                             self.X_m1,
+                             self.X_d,
+                             self.X_p1,
+                             self.X_p2))
+        self.X = sparse.coo_matrix((data.reshape(-1, ), (self.Xi, self.Xj)))
+
+        data = np.row_stack((self.Xi_m3,
+                             self.Xi_m2,
+                             self.Xi_m1,
+                             self.Xi_d,
+                             self.Xi_p1,
+                             self.Xi_p2,
+                             self.Xi_p3))
+        self.Xi = sparse.coo_matrix((data.reshape(-1, ), (self.Xi_i, self.Xi_j)))
 
 
     def _get_eigen_system_from_roe_state(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState):
@@ -491,14 +537,12 @@ class ROE_FLUX_Y(FluxFunction):
         self.B_d[2::3] = gv
         self.B_p1[0::2] = Wroe.u
 
-        data = np.row_stack((self.B_m3,
-                             self.B_m2,
-                             self.B_m1,
-                             self.B_d,
-                             self.B_p1,
-                             self.B_p2))
-
-        B = sparse.csc_matrix((data.reshape(-1, ), (self.Bi, self.Bj)))
+        self.B.data = np.row_stack((self.B_m3,
+                                    self.B_m2,
+                                    self.B_m1,
+                                    self.B_d,
+                                    self.B_p1,
+                                    self.B_p2)).reshape(-1, )
 
         self.X_m3 = H - va
         self.X_m2[::2] = Lm
@@ -511,14 +555,12 @@ class ROE_FLUX_Y(FluxFunction):
         self.X_d[3::4] = Wroe.u
         self.X_p1[1::2] = Wroe.u
 
-        data = np.row_stack((self.X_m3,
-                             self.X_m2,
-                             self.X_m1,
-                             self.X_d,
-                             self.X_p1,
-                             self.X_p2))
-
-        X = sparse.csc_matrix((data.reshape(-1, ), (self.Xi, self.Xj)))
+        self.X.data = np.row_stack((self.X_m3,
+                                    self.X_m2,
+                                    self.X_m1,
+                                    self.X_d,
+                                    self.X_p1,
+                                    self.X_p2)).reshape(-1, )
 
         self.Xi_m3 = Wroe.u
         self.Xi_m2[::2] = (ghek - va) / ta2
@@ -534,29 +576,28 @@ class ROE_FLUX_Y(FluxFunction):
         self.Xi_p2[1::2] = self.gt / a2
         self.Xi_p3 = self.gh / ta2
 
-        data = np.row_stack((self.Xi_m3,
-                             self.Xi_m2,
-                             self.Xi_m1,
-                             self.Xi_d,
-                             self.Xi_p1,
-                             self.Xi_p2,
-                             self.Xi_p3))
-
-        Xi = sparse.csc_matrix((data.reshape(-1, ), (self.Xi_i, self.Xi_j)))
+        self.Xi.data = np.row_stack((self.Xi_m3,
+                                     self.Xi_m2,
+                                     self.Xi_m1,
+                                     self.Xi_d,
+                                     self.Xi_p1,
+                                     self.Xi_p2,
+                                     self.Xi_p3)).reshape(-1, )
 
         self.lam[0::4] = Lm
         self.lam[1::4] = Wroe.v
         self.lam[2::4] = Lp
         self.lam[3::4] = Wroe.v
-        Lambda = sparse.csc_matrix((self.lam.reshape(-1, ), (self.Li, self.Lj)))
 
-        return B, X, Xi, Lambda
+        Lambda = sparse.coo_matrix((self.lam.reshape(-1, ), (self.Li, self.Lj)))
+
+        return Lambda
 
     def get_flux(self):
         WL, WR = self._L.to_W(), self._L.to_W()
         Wroe = RoePrimitiveState(self._input, self._input.ny + 1, WL=WL, WR=WR)
-        B, X, Xi, Lambda = self._get_eigen_system_from_roe_state(Wroe, WL, WR)
-        return 0.5 * (B.dot(self.L_plus_R()) + X.dot(np.absolute(Lambda).dot(Xi.dot(self.dULR()))))
+        Lambda = self._get_eigen_system_from_roe_state(Wroe, WL, WR)
+        return 0.5 * (self.B.dot(self.L_plus_R()) + self.X.dot(np.absolute(Lambda).dot(self.Xi.dot(self.dULR()))))
 
 
 class HLLE_FLUX_X(FluxFunction):

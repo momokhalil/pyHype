@@ -151,15 +151,15 @@ class QuadBlock:
     # Time stepping methods
 
     # Update solution state
-    def update(self, dt):
+    def update(self, dt) -> None:
         self._time_integrator(dt)
 
     # Explicit Euler time stepping
-    def explicit_euler(self):
+    def explicit_euler(self) -> None:
         pass
 
     # RK2 time stepping
-    def RK2(self, dt):
+    def RK2(self, dt) -> None:
         Rx, Ry = self.get_residual()
         u = self._state.U
 
@@ -175,11 +175,11 @@ class QuadBlock:
         self.update_BC()
 
     # RK3 TVD time stepping
-    def RK3TVD(self, dt):
+    def RK3TVD(self, dt) -> None:
         pass
 
     # RK4 time stepping
-    def RK4(self, dt):
+    def RK4(self, dt) -> None:
         pass
 
     # Calculate residuals in x and y directions
@@ -187,10 +187,10 @@ class QuadBlock:
         self._finite_volume_method.get_flux(self)
         return -self._finite_volume_method.Flux_X, -self._finite_volume_method.Flux_Y
 
-    def set_BC(self):
+    def set_BC(self) -> None:
         self.update_BC()
 
-    def update_BC(self):
+    def update_BC(self) -> None:
         self.boundary_blocks.E.set(ref_BLK=self)
         self.boundary_blocks.W.set(ref_BLK=self)
         self.boundary_blocks.N.set(ref_BLK=self)
@@ -210,25 +210,25 @@ class Blocks:
     def blocks(self):
         return self._blocks
 
-    def add(self, block):
+    def add(self, block) -> None:
         self._blocks[block.global_nBLK] = block
 
-    def get(self, block_idx):
+    def get(self, block_idx: int):
         return self._blocks[block_idx]
 
-    def update(self, dt):
+    def update(self, dt) -> None:
         for block in self._blocks.values():
             block.update(dt)
 
-    def set_BC(self):
+    def set_BC(self) -> None:
         for block in self._blocks.values():
             block.set_BC()
 
-    def update_BC(self):
+    def update_BC(self) -> None:
         for block in self._blocks.values():
             block.update_BC()
 
-    def build(self):
+    def build(self) -> None:
         mesh_inputs = self._input.mesh_inputs
 
         for BLK_data in mesh_inputs.values():
@@ -247,7 +247,7 @@ class Blocks:
                           NeighborN=self._blocks[Neighbor_N_idx] if Neighbor_N_idx != 0 else None,
                           NeighborS=self._blocks[Neighbor_S_idx] if Neighbor_S_idx != 0 else None)
 
-    def print_connectivity(self):
+    def print_connectivity(self) -> None:
         for _, block in self._blocks.items():
             print('-----------------------------------------')
             print('CONNECTIVITY FOR GLOBAL BLOCK: ', block.global_nBLK, '<{}>'.format(block))

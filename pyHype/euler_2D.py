@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 from .block import Blocks
 import pyHype.input_files.input_file_builder as input_file_builder
 import pyHype.mesh.mesh_builder as mesh_builder
 from pyHype import execution_prints
+import cProfile, pstats
 
 
 class Euler2DSolver:
@@ -20,6 +22,7 @@ class Euler2DSolver:
         self.numTimeStep = 0
         self.CFL = self._input.CFL
         self.t_final = self._input.t_final * self._input.a_inf
+        self.profile = None
 
     @property
     def blocks(self):
@@ -31,6 +34,8 @@ class Euler2DSolver:
         g = self._input.gamma
         ny = self._input.ny
         nx = self._input.nx
+
+        print('    Initial condition type: ', problem_type)
 
         if problem_type == 'shockbox':
 
@@ -94,10 +99,11 @@ class Euler2DSolver:
 
                 for j in range(1, ny + 1):
                     for i in range(1, nx + 1):
+
                         iF = 4 * (i - 1) + 4 * nx * (j - 1)
                         iE = 4 * (i - 0) + 4 * nx * (j - 1)
 
-                        if block.mesh.x[j - 1, i - 1] < 5 and block.mesh.y[j - 1, i - 1] < 5:
+                        if block.mesh.x[j - 1, i - 1] < 3 and block.mesh.y[j - 1, i - 1] < 3:
                             block.state.U[iF:iE] = QR
                         else:
                             block.state.U[iF:iE] = QL
@@ -108,19 +114,31 @@ class Euler2DSolver:
         self._blocks.set_BC()
 
     def dt(self):
-        dt = []
+        dt = 1000000
         for block in self.blocks:
             W = block.state.to_W()
             a = W.a()
-            dt.append(self.CFL * min((block.mesh.dx / (W.u + a)).min(), (block.mesh.dy / (W.v + a)).min()))
-        return min(dt)
+            dt_ = self.CFL * min((block.mesh.dx / (W.u + a)).min(), (block.mesh.dy / (W.v + a)).min())
+
+            if dt_ < dt: dt = dt_
+
+        return dt
 
 
     def solve(self):
 
         print(execution_prints.pyhype)
         print(execution_prints.began_solving + self._input.problem_type)
+        print('Date and time: ', datetime.today())
+
+        print()
+        print('----------------------------------------------------------------------------------------')
+        print('Setting Initial Conditions')
         self.set_IC()
+
+        print()
+        print('----------------------------------------------------------------------------------------')
+        print('Setting Boundary Conditions')
         self.set_BC()
 
         plt.ion()
@@ -131,13 +149,19 @@ class Euler2DSolver:
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
 
+
+        #profiler = cProfile.Profile()
+        #profiler.enable()
+
+        print(self.t_final)
+
         while self.t <= self.t_final:
 
-            print('get dt')
+            #print('get dt')
             dt = self.dt()
             self.numTimeStep += 1
 
-            print('update block')
+            #print('update block')
             self._blocks.update(dt)
 
             if self.numTimeStep % 1 == 0:
@@ -157,3 +181,7 @@ class Euler2DSolver:
                 plt.pause(0.01)
 
             self.t += dt
+            print(self.t)
+
+        #profiler.disable()
+        #self.profile = pstats.Stats(profiler)

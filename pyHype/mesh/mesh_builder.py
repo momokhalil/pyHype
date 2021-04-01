@@ -85,6 +85,8 @@ def build(mesh_name: str, nx: int, ny: int):
         _mesh = meshs.one_mesh(n, nx, ny)
     elif mesh_name == 'simple_mesh':
         _mesh = meshs.simple_mesh(n, nx, ny)
+    elif mesh_name == 'three_mesh':
+        _mesh = meshs.three_mesh(n, nx, ny)
     else:
         raise ValueError('Specified mesh name does not exist')
 
