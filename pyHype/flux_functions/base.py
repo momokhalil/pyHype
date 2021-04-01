@@ -1,11 +1,6 @@
 import numba
-import numpy as np
 from numba import float32
-import scipy as sp
-import scipy.sparse as sparse
 from abc import ABC, abstractmethod
-from pyHype.states import PrimitiveState, RoePrimitiveState, ConservativeState
-from pyHype.utils import harten_correction_xdir, harten_correction_ydir
 
 
 

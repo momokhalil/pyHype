@@ -2,7 +2,7 @@ import numpy as np
 from typing import Union
 from abc import abstractmethod
 from pyHype.states import ConservativeState
-from pyHype.finite_volume_methods import FirstOrderUnlimited, SecondOrderLimited
+from pyHype.fvm.methods import FirstOrderUnlimited, SecondOrderLimited
 
 #-----------------------------------------------------------------------------------------------------------------------
 # General Classes

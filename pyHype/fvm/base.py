@@ -2,7 +2,6 @@ import time
 import numpy as np
 import scipy.sparse as sparse
 from abc import ABC, abstractmethod
-from pyHype.states import ConservativeState
 from pyHype.flux_limiters import van_leer, van_albada
 from pyHype.flux_functions.Roe import ROE_FLUX_X, ROE_FLUX_Y
 from pyHype.flux_functions.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
@@ -96,76 +95,3 @@ class FiniteVolumeMethod(ABC):
             self.Flux_Y[4 * self.ny * (i - 1):4 * self.ny * i] = flux[4:] - flux[:-4]
 
         self.Flux_Y = self._shuffle.dot(self.Flux_Y)
-
-
-class FirstOrderUnlimited(FiniteVolumeMethod):
-    def __init__(self, input_, global_nBLK):
-        super().__init__(input_, global_nBLK)
-
-    def _get_slope(self, U): pass
-
-    def _get_limiter(self, U): pass
-
-    def _reconstruct_state_X(self, U):
-        UL = ConservativeState(self._input, self._input.nx + 1)
-        UL.from_state_vector(U[:-4])
-
-        UR = ConservativeState(self._input, self._input.nx + 1)
-        UR.from_state_vector(U[4:])
-
-        self._flux_function_X.set_left_state(UL)
-        self._flux_function_X.set_right_state(UR)
-
-    def _reconstruct_state_Y(self, U):
-        UL = ConservativeState(self._input, self._input.ny + 1)
-        UL.from_state_vector(U[:-4])
-
-        UR = ConservativeState(self._input, self._input.ny + 1)
-        UR.from_state_vector(U[4:])
-
-        self._flux_function_Y.set_left_state(UL)
-        self._flux_function_Y.set_right_state(UR)
-
-
-class SecondOrderLimited(FiniteVolumeMethod):
-    def __init__(self, input_, global_nBLK):
-        super().__init__(input_, global_nBLK)
-        self._slope = None
-
-    def _get_slope(self, U):
-        slope = (U[8:] - U[4:-4]) / (U[4:-4] - U[:-8] + 1e-8)
-        return slope * (slope > 0)
-
-    def _get_limiter(self, U):
-        slope = self._get_slope(U)
-        return 0.5 * (self._flux_limiter(slope)) / (slope + 1)
-
-    def _reconstruct_state_X(self, U):
-        limited_state = self._get_limiter(U) * (U[8:] - U[:-8])
-        left, right = U[:-4], U[4:]
-        left[4:] += limited_state
-        right[:-4] -= limited_state
-
-        UL = ConservativeState(self._input, self._input.nx + 1)
-        UL.from_state_vector(left)
-
-        UR = ConservativeState(self._input, self._input.nx + 1)
-        UR.from_state_vector(right)
-
-        self._flux_function_X.set_left_state(UL=UL)
-        self._flux_function_X.set_right_state(UR=UR)
-
-    def _reconstruct_state_Y(self, U):
-        limited_state = self._get_limiter(U) * (U[8:] - U[:-8])
-        left, right = U[:-4], U[4:]
-        left[4:] += limited_state
-        right[:-4] -= limited_state
-
-        UL = ConservativeState(self._input, self._input.ny + 1)
-        UL.from_state_vector(left)
-
-        UR = ConservativeState(self._input, self._input.ny + 1)
-        UR.from_state_vector(right)
-
-        self._flux_function_Y.set_left_state(UL=UL)
-        self._flux_function_Y.set_right_state(UR=UR)
