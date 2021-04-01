@@ -55,10 +55,18 @@ class ROE_FLUX_X(FluxFunction):
         data = np.zeros((4 * self.nx + 4))
         self.Lambda = sparse.coo_matrix((data, (self.Li, self.Lj)))
 
-    def _get_eigen_system_from_roe_state(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState):
+    def _get_eigen_system_from_roe_state(self):
 
+        # Create Left and Right PrimitiveStates
+        WL, WR = self._L.to_W(), self._L.to_W()
+
+        # Get Roe state
+        Wroe = RoePrimitiveState(self._input, self.nx + 1, WL=WL, WR=WR)
+
+        # Harten entropy correction
         Lm, Lp = harten_correction_xdir(Wroe, WL, WR)
 
+        # Calculate quantities to construct eigensystem
         a = Wroe.a()
         gu = self.g * Wroe.u
         gbu = self.gb * Wroe.u
@@ -127,9 +135,7 @@ class ROE_FLUX_X(FluxFunction):
 
 
     def get_flux(self):
-        WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.nx + 1, WL=WL, WR=WR)
-        self._get_eigen_system_from_roe_state(Wroe, WL, WR)
+        self._get_eigen_system_from_roe_state()
         return 0.5 * (self.A.dot(self.L_plus_R()) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(self.dULR()))))
 
 
@@ -176,10 +182,18 @@ class ROE_FLUX_Y(FluxFunction):
         self.Lambda = sparse.coo_matrix((data, (self.Li, self.Lj)))
 
 
-    def _get_eigen_system_from_roe_state(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState):
+    def _get_eigen_system_from_roe_state(self):
 
-        Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
+        # Create Left and Right PrimitiveStates
+        WL, WR = self._L.to_W(), self._L.to_W()
 
+        # Get Roe state
+        Wroe = RoePrimitiveState(self._input, self.nx + 1, WL=WL, WR=WR)
+
+        # Harten entropy correction
+        Lm, Lp = harten_correction_xdir(Wroe, WL, WR)
+
+        # Calculate quantities to construct eigensystem
         a = Wroe.a()
         gv = self.g * Wroe.v
         gbv = self.gb * Wroe.v
@@ -248,9 +262,7 @@ class ROE_FLUX_Y(FluxFunction):
 
 
     def get_flux(self):
-        WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.ny + 1, WL=WL, WR=WR)
-        self._get_eigen_system_from_roe_state(Wroe, WL, WR)
+        self._get_eigen_system_from_roe_state()
         return 0.5 * (self.B.dot(self.L_plus_R()) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(self.dULR()))))
 
 def stack(*args):
