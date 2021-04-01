@@ -191,7 +191,7 @@ class ROE_FLUX_Y(FluxFunction):
         Wroe = RoePrimitiveState(self._input, self.nx + 1, WL=WL, WR=WR)
 
         # Harten entropy correction
-        Lm, Lp = harten_correction_xdir(Wroe, WL, WR)
+        Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
 
         # Calculate quantities to construct eigensystem
         a = Wroe.a()

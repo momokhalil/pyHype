@@ -176,7 +176,7 @@ class Euler2DSolver:
                     Q = state[4 * nx * (i - 1):4 * nx * i]
                     V[i - 1, :] = Q[::4].reshape(-1,)
 
-                ax.contourf(x, y, V)
+                ax.contourf(x, y, V, cmap='magma')
                 plt.show()
                 plt.pause(0.01)
 

@@ -2,6 +2,8 @@ import numpy as np
 from typing import Union
 from abc import abstractmethod
 from pyHype.states import ConservativeState
+from pyHype.input_files.input_file_builder import ProblemInput
+from pyHype.mesh.mesh_builder import BlockDescription
 from pyHype.fvm.methods import FirstOrderUnlimited, SecondOrderLimited
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -71,11 +73,12 @@ class Mesh:
 
 # QuadBlock Class Definition
 class QuadBlock:
-    def __init__(self, input_, mesh_data_):
-        self._input             = input_
-        self._mesh              = Mesh(input_, mesh_data_)
-        self._state             = ConservativeState(input_, input_.n)
-        self.global_nBLK        = mesh_data_.nBLK
+    def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
+
+        self._input             = inputs
+        self._mesh              = Mesh(inputs, block_data)
+        self._state             = ConservativeState(inputs, inputs.n)
+        self.global_nBLK        = block_data.nBLK
         self.boundary_blocks    = None
         self.neighbors          = None
 
@@ -89,7 +92,7 @@ class QuadBlock:
         elif fvm == 'SecondOrderLimited':
             self._finite_volume_method = SecondOrderLimited(self._input, self.global_nBLK)
         else:
-            raise ValueError('Specified time marching scheme has not been specialized.')
+            raise ValueError('Specified finite volume method has not been specialized.')
 
         # Set time integrator
         time_integrator = self._input.time_integrator
@@ -106,11 +109,10 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        BC_East     = BoundaryBlockEast(self._input, mesh_data_.BCTypeE)
-        BC_West     = BoundaryBlockWest(self._input, mesh_data_.BCTypeW)
-        BC_North    = BoundaryBlockNorth(self._input, mesh_data_.BCTypeN)
-        BC_South    = BoundaryBlockSouth(self._input, mesh_data_.BCTypeS)
-        self.boundary_blocks = BoundaryBlocks(E=BC_East, W=BC_West, N=BC_North, S=BC_South)
+        self.boundary_blocks = BoundaryBlocks(E=BoundaryBlockEast(self._input, block_data.BCTypeE),
+                                              W=BoundaryBlockWest(self._input, block_data.BCTypeW),
+                                              N=BoundaryBlockNorth(self._input, block_data.BCTypeN),
+                                              S=BoundaryBlockSouth(self._input, block_data.BCTypeS))
 
     @property
     def vertices(self):
@@ -155,23 +157,45 @@ class QuadBlock:
         self._time_integrator(dt)
 
     # Explicit Euler time stepping
-    def explicit_euler(self) -> None:
-        pass
+    def explicit_euler(self, dt) -> None:
+
+        # First stage ##############################################################
+
+        # Get residuals
+        Rx, Ry = self.get_residual()
+        # Update block state vector
+        self._state.U += dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+        # Update block state variables
+        self._state.set_vars_from_state()
+        # Update state BC
+        self.update_BC()
 
     # RK2 time stepping
     def RK2(self, dt) -> None:
-        Rx, Ry = self.get_residual()
+
+        # Save state for final stage
         u = self._state.U
 
-        k1 = dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+        # First stage ##############################################################
 
-        self._state.U += 0.5 * k1
+        # Get residuals
+        Rx, Ry = self.get_residual()
+        # Update block state vector
+        self._state.U += 0.5 * (dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy)
+        # Update block state variables
         self._state.set_vars_from_state()
+        # Update state BC
         self.update_BC()
 
+        # Second stage ##############################################################
+
+        # Get residuals
         Rx, Ry = self.get_residual()
+        # Update block state vector
         self._state.U = u + dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+        # Update block state variables
         self._state.set_vars_from_state()
+        # Update state BC
         self.update_BC()
 
     # RK3 TVD time stepping
@@ -195,7 +219,6 @@ class QuadBlock:
         self.boundary_blocks.W.set(ref_BLK=self)
         self.boundary_blocks.N.set(ref_BLK=self)
         self.boundary_blocks.S.set(ref_BLK=self)
-        pass
 
 class Blocks:
     def __init__(self, input_):
