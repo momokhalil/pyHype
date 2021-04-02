@@ -3,8 +3,8 @@ from typing import Union
 from abc import abstractmethod, ABC
 from pyHype.states import ConservativeState
 from pyHype.mesh.mesh_builder import BlockDescription
-from pyHype.input_files.input_file_builder import ProblemInput
-from pyHype.fvm.methods import FirstOrderUnlimited, SecondOrderLimited
+from pyHype.input.input_file_builder import ProblemInput
+from pyHype.fvm import FirstOrderUnlimited, SecondOrderLimited
 
 
 class Vertices:

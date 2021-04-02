@@ -1,10 +1,8 @@
 import numba
 import numpy as np
 from numba import float32
-import scipy as sp
-import scipy.sparse as sparse
-from pyHype.flux_functions.base import FluxFunction
-from pyHype.states import PrimitiveState, RoePrimitiveState, ConservativeState
+from pyHype.flux.base import FluxFunction
+from pyHype.states import RoePrimitiveState
 from pyHype.utils import harten_correction_xdir, harten_correction_ydir
 
 
@@ -17,7 +15,7 @@ class HLLE_FLUX_X(FluxFunction):
         WL, WR = self._L.to_W(), self._L.to_W()
         Wroe = RoePrimitiveState(self.inputs, self.inputs.nx + 1, WL=WL, WR=WR)
 
-        Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
+        Lm, Lp = harten_correction_xdir(Wroe, WL, WR)
 
         lambda_p = np.maximum(WL.u - WL.a(), Lp)
         lambda_m = np.maximum(WR.u - WR.a(), Lm)

@@ -1,4 +1,4 @@
-from pyHype.input_files.implosion import implosion
+from pyHype.input.implosion import implosion
 from pyHype import euler_2D
 
 

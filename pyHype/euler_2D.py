@@ -1,11 +1,12 @@
+import pstats
+import cProfile
 import numpy as np
-import matplotlib.pyplot as plt
 from datetime import datetime
-from pyHype.blocks.base import Blocks
-import pyHype.input_files.input_file_builder as inputsfile_builder
-import pyHype.mesh.mesh_builder as mesh_builder
+import matplotlib.pyplot as plt
 from pyHype import execution_prints
-import cProfile, pstats
+from pyHype.blocks.base import Blocks
+import pyHype.mesh.mesh_builder as mesh_builder
+import pyHype.input.input_file_builder as inputsfile_builder
 
 
 class Euler2DSolver:

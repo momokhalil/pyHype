@@ -1,14 +1,14 @@
 import numba
-from numba import float32
 import numpy as np
+from numba import float32
 import scipy.sparse as sparse
-from pyHype.flux_functions.base import FluxFunction
-from pyHype.states import PrimitiveState, RoePrimitiveState, ConservativeState
+from pyHype.flux.base import FluxFunction
+from pyHype.states import RoePrimitiveState
 from pyHype.utils import harten_correction_xdir, harten_correction_ydir
-from pyHype.flux_functions.eigen_system import XDIR_EIGENSYSTEM_INDICES, \
-                                               XDIR_EIGENSYSTEM_VECTORS, \
-                                               YDIR_EIGENSYSTEM_INDICES, \
-                                               YDIR_EIGENSYSTEM_VECTORS
+from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, \
+                                     XDIR_EIGENSYSTEM_VECTORS, \
+                                     YDIR_EIGENSYSTEM_INDICES, \
+                                     YDIR_EIGENSYSTEM_VECTORS
 
 class ROE_FLUX_X(FluxFunction):
     def __init__(self, inputs):

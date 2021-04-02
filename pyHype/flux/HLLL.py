@@ -1,9 +1,7 @@
 import numba
 import numpy as np
 from numba import float32
-import scipy as sp
-import scipy.sparse as sparse
-from pyHype.flux_functions.base import FluxFunction
+from pyHype.flux.base import FluxFunction
 from pyHype.states import PrimitiveState, RoePrimitiveState, ConservativeState
 from pyHype.utils import harten_correction_xdir, harten_correction_ydir
 
