@@ -9,9 +9,9 @@ from pyHype.mesh.mesh_builder import BlockDescription
 
 
 _block_description_type = BlockDescription.class_type.instance_type
-_mesh_input_type = numba.types.DictType(int32, _block_description_type)
+_meshinputsstype = numba.types.DictType(int32, _block_description_type)
 
-_PROBLEM_INPUT_SPEC = [('problem_type', nstr),
+_PROBLEMinputssSPEC = [('problem_type', nstr),
                        ('IC_type', nstr),
                        ('realplot', int32),
                        ('time_it', int32),
@@ -29,10 +29,10 @@ _PROBLEM_INPUT_SPEC = [('problem_type', nstr),
                        ('nx', int32),
                        ('ny', int32),
                        ('mesh_name', nstr),
-                       ('mesh_inputs', _mesh_input_type)]
+                       ('meshinputss', _meshinputsstype)]
 
 
-@jitclass(_PROBLEM_INPUT_SPEC)
+@jitclass(_PROBLEMinputssSPEC)
 class ProblemInput:
     def __init__(self, _list, _int, _flt, _str, _mesh):
         """
@@ -64,12 +64,12 @@ class ProblemInput:
         self.nx = _int['nx']
         self.ny = _int['ny']
         self.mesh_name = _str['mesh_name']
-        self.mesh_inputs = _mesh
+        self.meshinputss = _mesh
 
 
-def build(inputs_: dict, mesh_inputs: DictType):
+def build(inputs_: dict, meshinputss: DictType):
     _lst, _int, _flt, _str = dict_to_numbadict(inputs_)
-    return ProblemInput(_lst, _int, _flt, _str, mesh_inputs)
+    return ProblemInput(_lst, _int, _flt, _str, meshinputss)
 
 
 def dict_to_numbadict(dict_: dict):

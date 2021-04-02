@@ -9,13 +9,13 @@ from pyHype.utils import harten_correction_xdir, harten_correction_ydir
 
 
 class HLLE_FLUX_X(FluxFunction):
-    def __init__(self, input_):
-        super().__init__(input_)
+    def __init__(self, inputs):
+        super().__init__(inputs)
 
     def get_flux(self):
-        flux = np.empty((4 * self._input.nx + 4, 1))
+        flux = np.empty((4 * self.inputs.nx + 4, 1))
         WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.nx + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self.inputs, self.inputs.nx + 1, WL=WL, WR=WR)
 
         Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
 
@@ -25,7 +25,7 @@ class HLLE_FLUX_X(FluxFunction):
         Fl = self._L.get_flux_X()
         Fr = self._R.get_flux_X()
 
-        for i in range(1, self._input.nx + 1):
+        for i in range(1, self.inputs.nx + 1):
             l_p = lambda_p[i - 1]
             l_m = lambda_m[i - 1]
 
@@ -42,13 +42,13 @@ class HLLE_FLUX_X(FluxFunction):
 
 
 class HLLE_FLUX_Y(FluxFunction):
-    def __init__(self, input_):
-        super().__init__(input_)
+    def __init__(self, inputs):
+        super().__init__(inputs)
 
     def get_flux(self):
-        flux = np.empty((4 * self._input.ny + 4, 1))
+        flux = np.empty((4 * self.inputs.ny + 4, 1))
         WL, WR = self._L.to_W(), self._L.to_W()
-        Wroe = RoePrimitiveState(self._input, self._input.nx + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self.inputs, self.inputs.nx + 1, WL=WL, WR=WR)
 
         Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
 
@@ -58,7 +58,7 @@ class HLLE_FLUX_Y(FluxFunction):
         Gl = self._L.get_flux_Y()
         Gr = self._R.get_flux_Y()
 
-        for i in range(1, self._input.ny + 1):
+        for i in range(1, self.inputs.ny + 1):
             l_p = lambda_p[i - 1]
             l_m = lambda_m[i - 1]
 

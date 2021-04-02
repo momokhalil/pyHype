@@ -8,15 +8,15 @@ from pyHype.flux_functions.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
 
 
 class FiniteVolumeMethod(ABC):
-    def __init__(self, input_, global_nBLK):
-        self._input = input_
+    def __init__(self, inputs, global_nBLK):
+        self.inputs = inputs
         self._y_index = None
         self._flux_function_X = None
         self._flux_function_Y = None
         self._limiter = None
         self.global_nBLK = global_nBLK
-        self.nx = input_.nx
-        self.ny = input_.ny
+        self.nx = inputs.nx
+        self.ny = inputs.ny
         self.Flux_X = np.empty((4 * self.nx * self.ny, 1))
         self.Flux_Y = np.empty((4 * self.nx * self.ny, 1))
         self._set_flux_function()
@@ -45,32 +45,32 @@ class FiniteVolumeMethod(ABC):
     def _set_flux_function(self):
 
         # Roe flux
-        if self._input.flux_function == 'Roe':
-            self._flux_function_X = ROE_FLUX_X(self._input)
-            self._flux_function_Y = ROE_FLUX_Y(self._input)
+        if self.inputs.flux_function == 'Roe':
+            self._flux_function_X = ROE_FLUX_X(self.inputs)
+            self._flux_function_Y = ROE_FLUX_Y(self.inputs)
 
         # HLLE flux
-        elif self._input.flux_function == 'HLLE':
-            self._flux_function_X = HLLE_FLUX_X(self._input)
-            self._flux_function_Y = HLLE_FLUX_Y(self._input)
+        elif self.inputs.flux_function == 'HLLE':
+            self._flux_function_X = HLLE_FLUX_X(self.inputs)
+            self._flux_function_Y = HLLE_FLUX_Y(self.inputs)
 
         # HLLL flux
-        elif self._input.flux_function == 'HLLL':
-            self._flux_function_X = HLLL_FLUX_X(self._input)
-            self._flux_function_Y = HLLL_FLUX_Y(self._input)
+        elif self.inputs.flux_function == 'HLLL':
+            self._flux_function_X = HLLL_FLUX_X(self.inputs)
+            self._flux_function_Y = HLLL_FLUX_Y(self.inputs)
 
     def _set_limiter(self):
 
         # Van Leer limiter
-        if self._input.flux_limiter == 'van_leer':
+        if self.inputs.flux_limiter == 'van_leer':
             self._flux_limiter = van_leer
 
         # Van Albada limiter
-        elif self._input.flux_limiter == 'van_albada':
+        elif self.inputs.flux_limiter == 'van_albada':
             self._flux_limiter = van_albada
 
         # No limiter
-        elif self._input.flux_limiter == 'none':
+        elif self.inputs.flux_limiter == 'none':
             self._flux_limiter = None
 
     @abstractmethod

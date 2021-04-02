@@ -2,26 +2,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 from .block import Blocks
-import pyHype.input_files.input_file_builder as input_file_builder
+import pyHype.inputsfiles.inputsfile_builder as inputsfile_builder
 import pyHype.mesh.mesh_builder as mesh_builder
 from pyHype import execution_prints
 import cProfile, pstats
 
 
 class Euler2DSolver:
-    def __init__(self, input_dict):
+    def __init__(self, inputsdict):
 
-        mesh_inputs = mesh_builder.build(mesh_name=input_dict['mesh_name'],
-                                         nx=input_dict['nx'],
-                                         ny=input_dict['ny'])
+        meshinputss = mesh_builder.build(mesh_name=inputsdict['mesh_name'],
+                                         nx=inputsdict['nx'],
+                                         ny=inputsdict['ny'])
 
-        self._input = input_file_builder.build(input_dict, mesh_inputs)
-        self._blocks = Blocks(self._input)
+        self.inputs = inputsfile_builder.build(inputsdict, meshinputss)
+        self._blocks = Blocks(self.inputs)
 
         self.t = 0
         self.numTimeStep = 0
-        self.CFL = self._input.CFL
-        self.t_final = self._input.t_final * self._input.a_inf
+        self.CFL = self.inputs.CFL
+        self.t_final = self.inputs.t_final * self.inputs.a_inf
         self.profile = None
 
     @property
@@ -30,10 +30,10 @@ class Euler2DSolver:
 
     def set_IC(self):
 
-        problem_type = self._input.problem_type
-        g = self._input.gamma
-        ny = self._input.ny
-        nx = self._input.nx
+        problem_type = self.inputs.problem_type
+        g = self.inputs.gamma
+        ny = self.inputs.ny
+        nx = self.inputs.nx
 
         print('    Initial condition type: ', problem_type)
 
@@ -128,7 +128,7 @@ class Euler2DSolver:
     def solve(self):
 
         print(execution_prints.pyhype)
-        print(execution_prints.began_solving + self._input.problem_type)
+        print(execution_prints.began_solving + self.inputs.problem_type)
         print('Date and time: ', datetime.today())
 
         print()
@@ -143,8 +143,8 @@ class Euler2DSolver:
 
         plt.ion()
 
-        nx = self._input.nx
-        ny = self._input.ny
+        nx = self.inputs.nx
+        ny = self.inputs.ny
 
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()

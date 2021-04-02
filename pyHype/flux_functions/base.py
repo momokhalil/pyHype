@@ -5,14 +5,14 @@ from abc import ABC, abstractmethod
 
 
 class FluxFunction(ABC):
-    def __init__(self, input_):
-        self._input = input_
+    def __init__(self, inputs):
+        self.inputs = inputs
         self._L = None
         self._R = None
-        self.g = input_.gamma
-        self.nx = input_.nx
-        self.ny = input_.ny
-        self.n = input_.n
+        self.g = inputs.gamma
+        self.nx = inputs.nx
+        self.ny = inputs.ny
+        self.n = inputs.n
 
     def set_left_state(self, UL):
         self._L = UL

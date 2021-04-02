@@ -11,7 +11,7 @@ class State:
     $X = \\begin{bmatrix} x_1 \\ x_2 \\ \\dots \\ x_n \\end{bmatrix}^T$. The state vector represents the solution at
     each physical discretization point.
     """
-    def __init__(self, input_, size_):
+    def __init__(self, inputs, size_):
         """
         ## Attributes
 
@@ -24,11 +24,11 @@ class State:
         """
 
         # Private
-        self._input = input_
+        self.inputs = inputs
         self._size = size_
 
         # Public
-        self.g = input_.gamma
+        self.g = inputs.gamma
 
     @abstractmethod
     def set_state_from_vars(self, **kwargs):
@@ -85,7 +85,7 @@ class PrimitiveState(State):
     utilizes a primitive formulation. Another primary use-case for `PrimitiveState` is converting a `ConservativeState`
     into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
     """
-    def __init__(self, input_, size_: int = None, W: np.ndarray = None):
+    def __init__(self, inputs, size_: int = None, W: np.ndarray = None):
         """
         ## Attributes
 
@@ -104,7 +104,7 @@ class PrimitiveState(State):
             size_ = int(W.shape[0] / 4)
 
         # Call superclass constructor
-        super().__init__(input_, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.W = np.zeros((4 * size_, 1))           # primitive state vector
@@ -189,7 +189,7 @@ class PrimitiveState(State):
         """
         Creates a `ConservativeState` object from itself
         """
-        U = ConservativeState(self._input, self._size)
+        U = ConservativeState(self.inputs, self._size)
         U.from_W(self)
         return U
 
@@ -214,10 +214,10 @@ class PrimitiveState(State):
         """
 
         # Non-dimentionalize each component of W
-        self.W[0::4] /= self._input.rho_inf
-        self.W[1::4] /= self._input.a_inf
-        self.W[2::4] /= self._input.a_inf
-        self.W[3::4] /= self._input.rho_inf * self._input.a_inf ** 2
+        self.W[0::4] /= self.inputs.rho_inf
+        self.W[1::4] /= self.inputs.a_inf
+        self.W[2::4] /= self.inputs.a_inf
+        self.W[3::4] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
 
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
@@ -234,7 +234,7 @@ class ConservativeState(State):
     solver that utilizes a conservative formulation. It can also be used to represent the solution state in
     BoundaryBlocks in a solver that utilizes a conservative formulation.
     """
-    def __init__(self, input_, size_: int = None, U: np.ndarray = None):
+    def __init__(self, inputs, size_: int = None, U: np.ndarray = None):
         """
         ## Attributes
 
@@ -253,7 +253,7 @@ class ConservativeState(State):
             size_ = int(U.shape[0] / 4)
 
         # Call superclass constructor
-        super().__init__(input_, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.U = np.zeros((4 * size_, 1))           # conservative state vector
@@ -342,7 +342,7 @@ class ConservativeState(State):
         """
         Creates a `PrimitiveState` object from itself
         """
-        W = PrimitiveState(self._input, self._size)
+        W = PrimitiveState(self.inputs, self._size)
         W.from_U(self)
         return W
 
@@ -364,15 +364,15 @@ class ConservativeState(State):
         If `ConservativeState` is created from a non-dimentionalized `PrimitiveState`, it will be non-dimentional.
         """
 
-        self.U[0::4] /= self._input.rho_inf
-        self.U[1::4] /= self._input.rho_inf * self._input.a_inf
-        self.U[2::4] /= self._input.rho_inf * self._input.a_inf
-        self.U[3::4] /= self._input.rho_inf * self._input.a_inf ** 2
+        self.U[0::4] /= self.inputs.rho_inf
+        self.U[1::4] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.U[2::4] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.U[3::4] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
 
         self.set_vars_from_state()
 
     def F(self):
-        F = np.zeros((4 * self._input.nx + 4, 1))
+        F = np.zeros((4 * self.inputs.nx + 4, 1))
 
         F[0::4] = self.rhou
         F[1::4] = self._p() + self.rhou ** 2 / self.rho
@@ -382,7 +382,7 @@ class ConservativeState(State):
         return F
 
     def G(self):
-        G = np.zeros((4 * self._input.ny + 4, 1))
+        G = np.zeros((4 * self.inputs.ny + 4, 1))
 
         G[0::4] = self.rhov
         G[1::4] = self.rhou * self.rhov / self.rho
@@ -412,9 +412,9 @@ class RoePrimitiveState(PrimitiveState):
     where $H^\\*$ is the Roe specific enthalpy, evaluated as:                                               \n
     $H^\\* = \\frac{H^R \\sqrt{\\rho^R} + H^L \\sqrt{\\rho^L}}{\\sqrt{\\rho^R} + \\sqrt{\\rho^L}}$.
     """
-    def __init__(self, input_, size_, **kwargs):
+    def __init__(self, inputs, size_, **kwargs):
 
-        super().__init__(input_, size_)
+        super().__init__(inputs, size_)
 
         if 'WL' in kwargs.keys() and isinstance(kwargs.get('WL'), PrimitiveState) and \
            'WR' in kwargs.keys() and isinstance(kwargs.get('WR'), PrimitiveState):
