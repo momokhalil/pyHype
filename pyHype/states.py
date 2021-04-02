@@ -85,7 +85,7 @@ class PrimitiveState(State):
     utilizes a primitive formulation. Another primary use-case for `PrimitiveState` is converting a `ConservativeState`
     into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
     """
-    def __init__(self, input_, size_):
+    def __init__(self, input_, size_: int = None, W: np.ndarray = None):
         """
         ## Attributes
 
@@ -97,6 +97,12 @@ class PrimitiveState(State):
             p       pressure                        \n
         """
 
+        if not size_ and W is None:
+            raise ValueError('PrimitiveState: Size has not been specified')
+
+        if not size_ and W is not None:
+            size_ = int(W.shape[0] / 4)
+
         # Call superclass constructor
         super().__init__(input_, size_)
 
@@ -106,6 +112,10 @@ class PrimitiveState(State):
         self.u = None                               # x-direction velocity
         self.v = None                               # y-direction velocity
         self.p = None                               # pressure
+
+        if W is not None:
+            self.W = W
+            self.set_vars_from_state()
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -224,7 +234,7 @@ class ConservativeState(State):
     solver that utilizes a conservative formulation. It can also be used to represent the solution state in
     BoundaryBlocks in a solver that utilizes a conservative formulation.
     """
-    def __init__(self, input_, size_):
+    def __init__(self, input_, size_: int = None, U: np.ndarray = None):
         """
         ## Attributes
 
@@ -236,6 +246,12 @@ class ConservativeState(State):
             e       energy per unit volume                          \n
         """
 
+        if not size_ and U is None:
+            raise ValueError('ConservativeState: Size has not been specified')
+
+        if not size_ and U is not None:
+            size_ = int(U.shape[0] / 4)
+
         # Call superclass constructor
         super().__init__(input_, size_)
 
@@ -245,6 +261,10 @@ class ConservativeState(State):
         self.rhou = None                            # x-direction momentum per unit volume
         self.rhov = None                            # y-direction momentum per unit volume
         self.e = None                               # energy per unit volume
+
+        if U is not None:
+            self.U = U
+            self.set_vars_from_state()
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 

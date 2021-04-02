@@ -1,4 +1,3 @@
-import time
 import numpy as np
 import scipy.sparse as sparse
 from abc import ABC, abstractmethod
@@ -23,42 +22,55 @@ class FiniteVolumeMethod(ABC):
         self._set_flux_function()
         self._set_limiter()
 
+        # Construct indices to access column-wise elements on the mesh
         self._y_index = np.ones((4 * self.ny), dtype=np.int32)
 
         for i in range(1, self.ny + 1):
             self._y_index[4 * i - 4:4 * i] = np.arange(4 * self.nx * (i - 1) - 4, 4 * self.nx * (i - 1))
 
-        i, j = np.arange(0, 4 * self.nx * self.ny), np.arange(0, 4 * self.nx * self.ny)
-        eye = np.ones((4 * self.nx * self.ny))
-        jj = np.arange(0, 4 * self.ny)
+        # Construct shuffle matrix
+        i = np.arange(0, 4 * self.nx * self.ny)
+        j = np.arange(0, 4 * self.nx * self.ny)
+        m = np.arange(0, 4 * self.ny)
 
         for k in range(0, self.ny):
-            jj[4 * k:4 * (k + 1)] = np.arange(4 * k * self.nx, 4 * (k * self.nx + 1))
+            m[4 * k:4 * (k + 1)] = np.arange(4 * k * self.nx, 4 * (k * self.nx + 1))
 
         for k in range(0, self.nx):
-            j[4 * k * self.ny:4 * (k + 1) * self.ny] = jj + 4 * k
+            j[4 * k * self.ny:4 * (k + 1) * self.ny] = m + 4 * k
 
-        self._shuffle = sparse.csc_matrix((eye, (i, j)))
+        self._shuffle = sparse.coo_matrix((np.ones((4 * self.nx * self.ny)), (i, j)))
+
 
     def _set_flux_function(self):
-        flux_function = self._input.flux_function
-        if flux_function == 'Roe':
+
+        # Roe flux
+        if self._input.flux_function == 'Roe':
             self._flux_function_X = ROE_FLUX_X(self._input)
             self._flux_function_Y = ROE_FLUX_Y(self._input)
-        elif flux_function == 'HLLE':
+
+        # HLLE flux
+        elif self._input.flux_function == 'HLLE':
             self._flux_function_X = HLLE_FLUX_X(self._input)
             self._flux_function_Y = HLLE_FLUX_Y(self._input)
-        elif flux_function == 'HLLL':
+
+        # HLLL flux
+        elif self._input.flux_function == 'HLLL':
             self._flux_function_X = HLLL_FLUX_X(self._input)
             self._flux_function_Y = HLLL_FLUX_Y(self._input)
 
     def _set_limiter(self):
-        flux_limiter = self._input.flux_limiter
-        if flux_limiter == 'van_leer':
+
+        # Van Leer limiter
+        if self._input.flux_limiter == 'van_leer':
             self._flux_limiter = van_leer
-        elif flux_limiter == 'van_albada':
+
+        # Van Albada limiter
+        elif self._input.flux_limiter == 'van_albada':
             self._flux_limiter = van_albada
-        elif flux_limiter == 'none':
+
+        # No limiter
+        elif self._input.flux_limiter == 'none':
             self._flux_limiter = None
 
     @abstractmethod

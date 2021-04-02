@@ -150,8 +150,8 @@ class Euler2DSolver:
         ax = plt.axes()
 
 
-        #profiler = cProfile.Profile()
-        #profiler.enable()
+        profiler = cProfile.Profile()
+        profiler.enable()
 
         print(self.t_final)
 
@@ -164,7 +164,7 @@ class Euler2DSolver:
             #print('update block')
             self._blocks.update(dt)
 
-            if self.numTimeStep % 1 == 0:
+            """if self.numTimeStep % 1 == 0:
 
                 state = self._blocks.blocks[1].state.U
 
@@ -178,10 +178,10 @@ class Euler2DSolver:
 
                 ax.contourf(x, y, V, cmap='magma')
                 plt.show()
-                plt.pause(0.01)
+                plt.pause(0.01)"""
 
             self.t += dt
             print(self.t)
 
-        #profiler.disable()
-        #self.profile = pstats.Stats(profiler)
+        profiler.disable()
+        self.profile = pstats.Stats(profiler)
