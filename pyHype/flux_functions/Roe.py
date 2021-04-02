@@ -1,7 +1,6 @@
 import numba
 from numba import float32
 import numpy as np
-import scipy as sp
 import scipy.sparse as sparse
 from pyHype.flux_functions.base import FluxFunction
 from pyHype.states import PrimitiveState, RoePrimitiveState, ConservativeState
@@ -84,7 +83,7 @@ class ROE_FLUX_X(FluxFunction):
         ghek    = self.gh * ek
         H       = Wroe.H()
 
-        self.A_m3 = Wroe.u * (ghek - H)
+        self.A_m3           = Wroe.u * (ghek - H)
         self.A_m2[0::2]     = -uv
         self.A_m2[1::2]     = H - self.gh * u2
         self.A_m1[0::3]     = ghek - u2
@@ -261,7 +260,6 @@ class ROE_FLUX_Y(FluxFunction):
         self.lam[3::4]      = Wroe.v
 
         self.Lambda.data    = self.lam.reshape(-1, )
-
 
     def get_flux(self):
         self._get_eigen_system_from_roe_state()

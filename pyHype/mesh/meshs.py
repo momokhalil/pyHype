@@ -70,7 +70,7 @@ def simple_mesh(nx, ny, n):
               'BCTypeN': 'None',
               'BCTypeS': 'Reflection'}
 
-    return mesh_builder.make_meshinputss(block1, block2, block3, block4)
+    return mesh_builder.make_mesh_inputs(block1, block2, block3, block4)
 
 def three_mesh(nx, ny, n):
     block1 = {'nBLK': 1,
@@ -124,7 +124,7 @@ def three_mesh(nx, ny, n):
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}
 
-    return mesh_builder.make_meshinputss(block1, block2, block3)
+    return mesh_builder.make_mesh_inputs(block1, block2, block3)
 
 def one_mesh(n, nx, ny):
     block1 = {'nBLK': 1,
@@ -144,4 +144,4 @@ def one_mesh(n, nx, ny):
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}
 
-    return mesh_builder.make_meshinputss(block1)
+    return mesh_builder.make_mesh_inputs(block1)

@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
-from .block import Blocks
-import pyHype.inputsfiles.inputsfile_builder as inputsfile_builder
+from pyHype.blocks.block import Blocks
+import pyHype.input_files.input_file_builder as inputsfile_builder
 import pyHype.mesh.mesh_builder as mesh_builder
 from pyHype import execution_prints
 import cProfile, pstats
@@ -150,8 +150,8 @@ class Euler2DSolver:
         ax = plt.axes()
 
 
-        profiler = cProfile.Profile()
-        profiler.enable()
+        #profiler = cProfile.Profile()
+        #profiler.enable()
 
         print(self.t_final)
 
@@ -164,7 +164,7 @@ class Euler2DSolver:
             #print('update block')
             self._blocks.update(dt)
 
-            """if self.numTimeStep % 1 == 0:
+            if self.numTimeStep % 10 == 0:
 
                 state = self._blocks.blocks[1].state.U
 
@@ -176,12 +176,12 @@ class Euler2DSolver:
                     Q = state[4 * nx * (i - 1):4 * nx * i]
                     V[i - 1, :] = Q[::4].reshape(-1,)
 
-                ax.contourf(x, y, V, cmap='magma')
+                ax.contourf(x, y, V, 200, cmap='magma')
                 plt.show()
-                plt.pause(0.01)"""
+                plt.pause(0.01)
 
             self.t += dt
             print(self.t)
 
-        profiler.disable()
-        self.profile = pstats.Stats(profiler)
+        #profiler.disable()
+        #self.profile = pstats.Stats(profiler)
