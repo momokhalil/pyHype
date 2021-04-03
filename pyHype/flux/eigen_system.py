@@ -1,42 +1,20 @@
 import numpy as np
+from numba.experimental import jitclass
+from pyHype.flux import numba_spec as ns
 
+
+@jitclass(ns.XDIR_EIGENSYSTEM_VECTORS_SPEC)
 class XDIR_EIGENSYSTEM_VECTORS:
     def __init__(self, inputs, nx):
-        self.input = inputs
 
-        self.A_d0 = None
-        self.A_m1 = None
-        self.A_m2 = None
-        self.A_m3 = None
-        self.A_p1 = None
-        self.A_p2 = None
+        self.inputs = inputs
 
-        self.X_d0 = None
-        self.X_m1 = None
-        self.X_m2 = None
-        self.X_m3 = None
-        self.X_p1 = None
-        self.X_p2 = None
-
-        self.Xi_d0 = None
-        self.Xi_m1 = None
-        self.Xi_m2 = None
-        self.Xi_m3 = None
-        self.Xi_p1 = None
-        self.Xi_p2 = None
-        self.Xi_p3 = None
-
-        self.lam = None
-
-        self.get(nx)
-
-    def get(self, nx):
         self.A_d0 = np.ones((3 * (nx + 1), 1))
         self.A_m1 = np.ones((3 * (nx + 1), 1))
         self.A_m2 = np.ones((2 * (nx + 1), 1))
         self.A_m3 = np.ones((1 * (nx + 1), 1))
         self.A_p1 = np.ones((2 * (nx + 1), 1))
-        self.A_p2 = (self.input.gamma - 1) * np.ones((1 * (nx + 1), 1))
+        self.A_p2 = (self.inputs.gamma - 1) * np.ones((1 * (nx + 1), 1))
 
         self.X_d0 = np.ones((4 * (nx + 1), 1))
         self.X_m1 = np.ones((3 * (nx + 1), 1))
@@ -56,20 +34,11 @@ class XDIR_EIGENSYSTEM_VECTORS:
 
         self.lam = np.zeros((4 * (nx + 1), 1))
 
+
+@jitclass(ns.XDIR_EIGENSYSTEM_INDICES_SPEC)
 class XDIR_EIGENSYSTEM_INDICES:
     def __init__(self, nx):
-        self.Ai = None
-        self.Aj = None
-        self.Xi = None
-        self.Xj = None
-        self.Xi_i = None
-        self.Xi_j = None
-        self.Li = None
-        self.Lj = None
 
-        self.get(nx)
-
-    def get(self, nx):
         A_d0_i = np.arange(0, 4 * (nx + 1), 1)
         A_d0_i = np.delete(A_d0_i, slice(0, None, 4))
         A_d0_j = A_d0_i
@@ -128,43 +97,18 @@ class XDIR_EIGENSYSTEM_INDICES:
         self.Lj = L_d_j
 
 
+@jitclass(ns.YDIR_EIGENSYSTEM_VECTORS_SPEC)
 class YDIR_EIGENSYSTEM_VECTORS:
     def __init__(self, inputs, nx):
-        self.input = inputs
 
-        self.B_d0 = None
-        self.B_m1 = None
-        self.B_m2 = None
-        self.B_m3 = None
-        self.B_p1 = None
-        self.B_p2 = None
+        self.inputs = inputs
 
-        self.X_d0 = None
-        self.X_m1 = None
-        self.X_m2 = None
-        self.X_m3 = None
-        self.X_p1 = None
-        self.X_p2 = None
-
-        self.Xi_d0 = None
-        self.Xi_m1 = None
-        self.Xi_m2 = None
-        self.Xi_m3 = None
-        self.Xi_p1 = None
-        self.Xi_p2 = None
-        self.Xi_p3 = None
-
-        self.lam = None
-
-        self.get(nx)
-
-    def get(self, nx):
         self.B_d0 = np.ones((3 * (nx + 1), 1))
         self.B_m1 = np.ones((3 * (nx + 1), 1))
         self.B_m2 = np.ones((2 * (nx + 1), 1))
         self.B_m3 = np.ones((1 * (nx + 1), 1))
         self.B_p1 = np.ones((2 * (nx + 1), 1))
-        self.B_p1[1::2] = (self.input.gamma - 1)
+        self.B_p1[1::2] = (self.inputs.gamma - 1)
         self.B_p2 = np.ones((1 * (nx + 1), 1))
 
         self.X_d0 = np.ones((4 * (nx + 1), 1))
@@ -185,20 +129,10 @@ class YDIR_EIGENSYSTEM_VECTORS:
         self.lam = np.zeros((4 * (nx + 1), 1))
 
 
+@jitclass(ns.YDIR_EIGENSYSTEM_INDICES_SPEC)
 class YDIR_EIGENSYSTEM_INDICES:
     def __init__(self, nx):
-        self.Bi = None
-        self.Bj = None
-        self.Xi = None
-        self.Xj = None
-        self.Xi_i = None
-        self.Xi_j = None
-        self.Li = None
-        self.Lj = None
 
-        self.get(nx)
-
-    def get(self, nx):
         B_d0_i = np.arange(0, 4 * (nx + 1), 1)
         B_d0_i = np.delete(B_d0_i, slice(None, None, 4))
         B_d0_j = B_d0_i

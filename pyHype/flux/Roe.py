@@ -4,7 +4,6 @@ from numba import float32
 import scipy.sparse as sparse
 from pyHype.flux.base import FluxFunction
 from pyHype.states import RoePrimitiveState
-from pyHype.utils import harten_correction_xdir, harten_correction_ydir
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, \
                                      XDIR_EIGENSYSTEM_VECTORS, \
                                      YDIR_EIGENSYSTEM_INDICES, \
@@ -63,7 +62,7 @@ class ROE_FLUX_X(FluxFunction):
         Wroe = RoePrimitiveState(self.inputs, self.nx + 1, WL=WL, WR=WR)
 
         # Harten entropy correction
-        Lm, Lp = harten_correction_xdir(Wroe, WL, WR)
+        Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
 
         # Calculate quantities to construct eigensystem
         a       = Wroe.a()
@@ -192,7 +191,7 @@ class ROE_FLUX_Y(FluxFunction):
         Wroe = RoePrimitiveState(self.inputs, self.nx + 1, WL=WL, WR=WR)
 
         # Harten entropy correction
-        Lm, Lp = harten_correction_ydir(Wroe, WL, WR)
+        Lm, Lp = self.harten_correction_y(Wroe, WL, WR)
 
         # Calculate quantities to construct eigensystem
         a       = Wroe.a()
