@@ -3,7 +3,7 @@ import numpy as np
 from numba import float32
 import scipy.sparse as sparse
 from pyHype.flux.base import FluxFunction
-from pyHype.states import RoePrimitiveState
+from pyHype.states.states import RoePrimitiveState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, \
                                      XDIR_EIGENSYSTEM_VECTORS, \
                                      YDIR_EIGENSYSTEM_INDICES, \
@@ -59,7 +59,7 @@ class ROE_FLUX_X(FluxFunction):
         WL, WR = self._L.to_W(), self._L.to_W()
 
         # Get Roe state
-        Wroe = RoePrimitiveState(self.inputs, self.nx + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self.inputs, WL, WR, self.nx + 1)
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
@@ -134,8 +134,10 @@ class ROE_FLUX_X(FluxFunction):
 
     def get_flux(self):
         self._get_eigen_system_from_roe_state()
-        return 0.5 * (self.A.dot(self.L_plus_R()) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(self.dULR()))))
+        return compute_flux(self.A, self.Lambda, self.X, self.Xi, self._L.U, self._R.U)
 
+def compute_flux(A, Lambda, X, Xi, UL, UR):
+    return 0.5 * (A.dot(UL + UR) + X.dot(np.absolute(Lambda).dot(Xi.dot(UL - UR))))
 
 class ROE_FLUX_Y(FluxFunction):
     def __init__(self, inputs):
@@ -188,7 +190,7 @@ class ROE_FLUX_Y(FluxFunction):
         WL, WR = self._L.to_W(), self._L.to_W()
 
         # Get Roe state
-        Wroe = RoePrimitiveState(self.inputs, self.nx + 1, WL=WL, WR=WR)
+        Wroe = RoePrimitiveState(self.inputs, WL, WR, self.nx + 1)
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_y(Wroe, WL, WR)
@@ -262,7 +264,7 @@ class ROE_FLUX_Y(FluxFunction):
 
     def get_flux(self):
         self._get_eigen_system_from_roe_state()
-        return 0.5 * (self.B.dot(self.L_plus_R()) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(self.dULR()))))
+        return compute_flux(self.B, self.Lambda, self.X, self.Xi, self._L.U, self._R.U)
 
 def stack(*args):
     return np.row_stack(args).reshape(-1, )

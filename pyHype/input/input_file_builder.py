@@ -1,38 +1,13 @@
-import numba
-from numba import int32, float32
+from numba import int32, float64
 from numba.typed import Dict as nDict
 from numba.typed import List as nList
+import pyHype.input.numba_spec as ns
 from numba.experimental import jitclass
 from numba.core.types import string as nstr
 from numba.core.types import ListType, DictType
-from pyHype.mesh.mesh_builder import BlockDescription
 
 
-_block_description_type = BlockDescription.class_type.instance_type
-_meshinputsstype = numba.types.DictType(int32, _block_description_type)
-
-_PROBLEMinputssSPEC = [('problem_type', nstr),
-                       ('IC_type', nstr),
-                       ('realplot', int32),
-                       ('time_it', int32),
-                       ('t_final', float32),
-                       ('time_integrator', nstr),
-                       ('CFL', float32),
-                       ('flux_function', nstr),
-                       ('finite_volume_method', nstr),
-                       ('flux_limiter', nstr),
-                       ('gamma', float32),
-                       ('R', float32),
-                       ('rho_inf', int32),
-                       ('a_inf', int32),
-                       ('n', int32),
-                       ('nx', int32),
-                       ('ny', int32),
-                       ('mesh_name', nstr),
-                       ('meshinputss', _meshinputsstype)]
-
-
-@jitclass(_PROBLEMinputssSPEC)
+@jitclass(ns.PROBLEM_INPUT_SPEC)
 class ProblemInput:
     def __init__(self, _list, _int, _flt, _str, _mesh):
         """
@@ -67,6 +42,9 @@ class ProblemInput:
         self.meshinputss = _mesh
 
 
+propblem_input_type = ProblemInput.class_type.instance_type
+
+
 def build(inputs_: dict, meshinputss: DictType):
     _lst, _int, _flt, _str = dict_to_numbadict(inputs_)
     return ProblemInput(_lst, _int, _flt, _str, meshinputss)
@@ -77,7 +55,7 @@ def dict_to_numbadict(dict_: dict):
     _lst = ListType(int32)
     _list_items = nDict.empty(key_type=nstr, value_type=_lst)
     _int_items = nDict.empty(key_type=nstr, value_type=int32)
-    _flt_items = nDict.empty(key_type=nstr, value_type=float32)
+    _flt_items = nDict.empty(key_type=nstr, value_type=float64)
     _str_items = nDict.empty(key_type=nstr, value_type=nstr)
 
     for key, value in dict_.items():

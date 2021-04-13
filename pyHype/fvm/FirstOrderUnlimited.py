@@ -1,5 +1,5 @@
 from pyHype.fvm.base import FiniteVolumeMethod
-from pyHype.states import ConservativeState
+from pyHype.states.states import ConservativeState
 
 class FirstOrderUnlimited(FiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
@@ -10,15 +10,21 @@ class FirstOrderUnlimited(FiniteVolumeMethod):
     def _get_limiter(self, U): pass
 
     def _reconstruct_state_X(self, U):
-        UL = ConservativeState(self.inputs, U=U[:-4])
-        UR = ConservativeState(self.inputs, U=U[4:])
+        UL = ConservativeState(self.inputs, self.nx + 1)
+        UL.from_state_vector(U[:-4])
+
+        UR = ConservativeState(self.inputs, self.nx + 1)
+        UR.from_state_vector(U[4:])
 
         self._flux_function_X.set_left_state(UL)
         self._flux_function_X.set_right_state(UR)
 
     def _reconstruct_state_Y(self, U):
-        UL = ConservativeState(self.inputs, U=U[:-4])
-        UR = ConservativeState(self.inputs, U=U[4:])
+        UL = ConservativeState(self.inputs, self.ny + 1)
+        UL.from_state_vector(U[:-4])
+
+        UR = ConservativeState(self.inputs, self.ny + 1)
+        UR.from_state_vector(U[4:])
 
         self._flux_function_Y.set_left_state(UL)
         self._flux_function_Y.set_right_state(UR)

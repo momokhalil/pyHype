@@ -1,5 +1,5 @@
 from numba import float32, float64, int32
-from pyHype.states import ConservativeState
+from pyHype.states.states import ConservativeState
 from pyHype.input.input_file_builder import ProblemInput
 
 _problem_input_type = ProblemInput.class_type.instance_type

@@ -150,12 +150,32 @@ class Euler2DSolver:
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
 
-
-        #profiler = cProfile.Profile()
-        #profiler.enable()
-
         print(self.t_final)
 
+        # print('get dt')
+        print('Test time step 1')
+        dt = self.dt()
+        self.numTimeStep += 1
+        self._blocks.update(dt)
+        self.t += dt
+
+        print('Test time step 2')
+        dt = self.dt()
+        self.numTimeStep += 1
+        self._blocks.update(dt)
+        self.t += dt
+
+        print('Test time step 3')
+        dt = self.dt()
+        self.numTimeStep += 1
+        self._blocks.update(dt)
+        self.t += dt
+
+        print('Enable profiler')
+        profiler = cProfile.Profile()
+        profiler.enable()
+
+        print('Start simulation')
         while self.t <= self.t_final:
 
             #print('get dt')
@@ -165,7 +185,7 @@ class Euler2DSolver:
             #print('update block')
             self._blocks.update(dt)
 
-            if self.numTimeStep % 10 == 0:
+            if self.numTimeStep % 1 == 0:
 
                 state = self._blocks.blocks[1].state.U
 
@@ -181,8 +201,22 @@ class Euler2DSolver:
                 plt.show()
                 plt.pause(0.01)
 
+            """if self.numTimeStep % 1 == 0:
+
+                state = self._blocks.blocks[1].state.U
+
+                x = self._blocks.blocks[1].mesh.x
+                y = self._blocks.blocks[1].mesh.y
+
+                Q = state[4 * nx * (1 - 1):4 * nx * 1][::4].reshape(-1,)
+
+                ax.clear()
+                ax.plot(x[0], Q)
+                plt.show()
+                plt.pause(0.01)"""
+
             self.t += dt
             print(self.t)
 
-        #profiler.disable()
-        #self.profile = pstats.Stats(profiler)
+        profiler.disable()
+        self.profile = pstats.Stats(profiler)

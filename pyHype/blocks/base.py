@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Union
 from abc import abstractmethod, ABC
-from pyHype.states import ConservativeState
+from pyHype.states.states import ConservativeState
 from pyHype.mesh.mesh_builder import BlockDescription
 from pyHype.input.input_file_builder import ProblemInput
 from pyHype.fvm import FirstOrderUnlimited, SecondOrderLimited
@@ -172,6 +172,12 @@ class QuadBlock:
                                               N=BoundaryBlockNorth(self.inputs, block_data.BCTypeN),
                                               S=BoundaryBlockSouth(self.inputs, block_data.BCTypeS))
 
+        # Construct indices to access column-wise elements on the mesh
+        self.col_idx = np.ones((4 * self._mesh.ny), dtype=np.int32)
+
+        for i in range(1, self._mesh.ny + 1):
+            self.col_idx[4 * i - 4:4 * i] = np.arange(4 * self._mesh.nx * (i - 1) - 4, 4 * self._mesh.nx * (i - 1))
+
     @property
     def vertices(self):
         return self._mesh.vertices
@@ -206,6 +212,12 @@ class QuadBlock:
 
     def get_south_edge(self) -> np.ndarray:
         return self.boundary_blocks.S.from_ref_U(self)
+
+    def row(self, index: int) -> np.ndarray:
+        return self._state.U[4*self._mesh.nx*(index - 1):4*self._mesh.nx*index]
+
+    def col(self, index: int) -> np.ndarray:
+        return self._state.U[self.col_idx + 4*index]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
@@ -287,6 +299,9 @@ class BoundaryBlock(ABC):
         self._type = type_
         self.nx = inputs.nx
         self.ny = inputs.ny
+
+    def __getitem__(self, index):
+        return self.state.U[4 * index - 4:4 * index]
 
     @property
     def state(self):

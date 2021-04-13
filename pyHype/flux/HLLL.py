@@ -2,8 +2,7 @@ import numba
 import numpy as np
 from numba import float32
 from pyHype.flux.base import FluxFunction
-from pyHype.states import PrimitiveState, RoePrimitiveState, ConservativeState
-from pyHype.utils import harten_correction_xdir, harten_correction_ydir
+from pyHype.states.states import PrimitiveState, RoePrimitiveState, ConservativeState
 
 
 class HLLL_FLUX_X(FluxFunction):

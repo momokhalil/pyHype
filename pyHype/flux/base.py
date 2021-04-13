@@ -2,7 +2,7 @@ import numba
 from numba import float32
 import numpy as np
 from abc import ABC, abstractmethod
-from pyHype.states import PrimitiveState, RoePrimitiveState
+from pyHype.states.states import PrimitiveState, RoePrimitiveState
 
 
 
