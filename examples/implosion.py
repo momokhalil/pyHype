@@ -1,8 +1,8 @@
 from pyHype.input.implosion import implosion
-from pyHype import euler_2D
+from pyHype import solver
 
 
-solver = euler_2D.Euler2DSolver(implosion)
+solver = solver.Euler2DSolver(implosion)
 solver.solve()
 
 stats = solver.profile.sort_stats('tottime')

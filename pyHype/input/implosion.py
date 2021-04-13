@@ -1,7 +1,7 @@
 implosion = {'problem_type':            'implosion',
              'IC_type':                 'from_IC',
              'flux_function':           'Roe',
-             'realplot':                1,
+             'realplot':                0,
              'make_plot':               1,
              'time_it':                 1,
              't_final':                 0.005,
@@ -13,7 +13,7 @@ implosion = {'problem_type':            'implosion',
              'rho_inf':                 1.0,
              'a_inf':                   343.0,
              'R':                       287.0,
-             'nx':                      300,
-             'ny':                      300,
+             'nx':                      100,
+             'ny':                      100,
              'mesh_name':               'one_mesh'}
 

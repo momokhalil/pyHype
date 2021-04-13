@@ -72,18 +72,18 @@ class Blocks:
             block.update_BC()
 
     def build(self) -> None:
-        meshinputss = self.inputs.meshinputss
+        mesh_inputs = self.inputs.mesh_inputs
 
-        for BLK_data in meshinputss.values():
+        for BLK_data in mesh_inputs.values():
             self.add(QuadBlock(self.inputs, BLK_data))
 
         self._number_of_blocks = len(self._blocks)
 
         for global_nBLK, block in self._blocks.items():
-            Neighbor_E_idx = meshinputss.get(block.global_nBLK).NeighborE
-            Neighbor_W_idx = meshinputss.get(block.global_nBLK).NeighborW
-            Neighbor_N_idx = meshinputss.get(block.global_nBLK).NeighborN
-            Neighbor_S_idx = meshinputss.get(block.global_nBLK).NeighborS
+            Neighbor_E_idx = mesh_inputs.get(block.global_nBLK).NeighborE
+            Neighbor_W_idx = mesh_inputs.get(block.global_nBLK).NeighborW
+            Neighbor_N_idx = mesh_inputs.get(block.global_nBLK).NeighborN
+            Neighbor_S_idx = mesh_inputs.get(block.global_nBLK).NeighborS
 
             block.connect(NeighborE=self._blocks[Neighbor_E_idx] if Neighbor_E_idx != 0 else None,
                           NeighborW=self._blocks[Neighbor_W_idx] if Neighbor_W_idx != 0 else None,
@@ -167,10 +167,10 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        self.boundary_blocks = BoundaryBlocks(E=BoundaryBlockEast(self.inputs, block_data.BCTypeE),
-                                              W=BoundaryBlockWest(self.inputs, block_data.BCTypeW),
-                                              N=BoundaryBlockNorth(self.inputs, block_data.BCTypeN),
-                                              S=BoundaryBlockSouth(self.inputs, block_data.BCTypeS))
+        self.boundary_blocks = BoundaryBlocks(E=BoundaryBlockEast(self.inputs, type_=block_data.BCTypeE, ref_BLK=self),
+                                              W=BoundaryBlockWest(self.inputs, type_=block_data.BCTypeW, ref_BLK=self),
+                                              N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
+                                              S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
 
         # Construct indices to access column-wise elements on the mesh
         self.col_idx = np.ones((4 * self._mesh.ny), dtype=np.int32)
@@ -202,16 +202,16 @@ class QuadBlock:
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS)
 
     def get_east_edge(self) -> np.ndarray:
-        return self.boundary_blocks.E.from_ref_U(self)
+        return self.boundary_blocks.E.from_ref_U()
 
     def get_west_edge(self) -> np.ndarray:
-        return self.boundary_blocks.W.from_ref_U(self)
+        return self.boundary_blocks.W.from_ref_U()
 
     def get_north_edge(self) -> np.ndarray:
-        return self.boundary_blocks.N.from_ref_U(self)
+        return self.boundary_blocks.N.from_ref_U()
 
     def get_south_edge(self) -> np.ndarray:
-        return self.boundary_blocks.S.from_ref_U(self)
+        return self.boundary_blocks.S.from_ref_U()
 
     def row(self, index: int) -> np.ndarray:
         return self._state.U[4*self._mesh.nx*(index - 1):4*self._mesh.nx*index]
@@ -285,20 +285,21 @@ class QuadBlock:
         self.update_BC()
 
     def update_BC(self) -> None:
-        self.boundary_blocks.E.set(ref_BLK=self)
-        self.boundary_blocks.W.set(ref_BLK=self)
-        self.boundary_blocks.N.set(ref_BLK=self)
-        self.boundary_blocks.S.set(ref_BLK=self)
+        self.boundary_blocks.E.set()
+        self.boundary_blocks.W.set()
+        self.boundary_blocks.N.set()
+        self.boundary_blocks.S.set()
 
 
 class BoundaryBlock(ABC):
-    def __init__(self, inputs, type_: str):
+    def __init__(self, inputs, type_: str, ref_BLK: 'QuadBlock'):
         self.inputs = inputs
         self._idx_from_U = None
         self._state = None
         self._type = type_
         self.nx = inputs.nx
         self.ny = inputs.ny
+        self.ref_BLK = ref_BLK
 
     def __getitem__(self, index):
         return self.state.U[4 * index - 4:4 * index]
@@ -308,45 +309,45 @@ class BoundaryBlock(ABC):
         return self._state
 
     @abstractmethod
-    def set(self, ref_BLK):
+    def set(self):
         pass
 
-    def from_ref_U(self, ref_BLK):
-        return ref_BLK.state.U[self._idx_from_U]
+    def from_ref_U(self):
+        return self.ref_BLK.state.U[self._idx_from_U]
 
 class BoundaryBlockNorth(BoundaryBlock):
-    def __init__(self, inputs, type_):
-        super().__init__(inputs, type_)
+    def __init__(self, inputs, type_, ref_BLK):
+        super().__init__(inputs, type_, ref_BLK)
         self._idx_from_U = slice(4 * self.nx * (self.ny - 1), 4 * self.nx * self.ny)
         self._state = ConservativeState(inputs, self.nx)
 
-    def set(self, ref_BLK: QuadBlock) -> None:
+    def set(self) -> None:
         if self._type   == 'Outflow':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
         elif self._type == 'None':
-            self._state.U = ref_BLK.neighbors.N.get_south_edge()
+            self._state.U = self.ref_BLK.neighbors.N.get_south_edge()
         elif self._type == 'Reflection':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
             self._state.U[2::4] *= -1
 
 class BoundaryBlockSouth(BoundaryBlock):
-    def __init__(self, inputs, type_):
-        super().__init__(inputs, type_)
+    def __init__(self, inputs, type_, ref_BLK):
+        super().__init__(inputs, type_, ref_BLK)
         self._idx_from_U = slice(0, 4 * self.nx)
         self._state = ConservativeState(inputs, self.nx)
 
-    def set(self, ref_BLK: QuadBlock) -> None:
+    def set(self) -> None:
         if self._type   == 'Outflow':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
         elif self._type == 'None':
-            self._state.U = ref_BLK.neighbors.S.get_north_edge()
+            self._state.U = self.ref_BLK.neighbors.S.get_north_edge()
         elif self._type == 'Reflection':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
             self._state.U[2::4] *= -1
 
 class BoundaryBlockEast(BoundaryBlock):
-    def __init__(self, inputs, type_):
-        super().__init__(inputs, type_)
+    def __init__(self, inputs, type_, ref_BLK):
+        super().__init__(inputs, type_, ref_BLK)
         self._idx_from_U = np.empty((4*self.ny), dtype=np.int32)
         self._state = ConservativeState(inputs, self.ny)
 
@@ -355,18 +356,18 @@ class BoundaryBlockEast(BoundaryBlock):
             iE = 4 * self.nx * j
             self._idx_from_U[4 * j - 4:4 * j] = np.arange(iF, iE, dtype=np.int32)
 
-    def set(self, ref_BLK: QuadBlock) -> None:
+    def set(self) -> None:
         if self._type   == 'Outflow':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
         elif self._type == 'None':
-            self._state.U = ref_BLK.neighbors.E.get_west_edge()
+            self._state.U = self.ref_BLK.neighbors.E.get_west_edge()
         elif self._type == 'Reflection':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
             self._state.U[1::4] *= -1
 
 class BoundaryBlockWest(BoundaryBlock):
-    def __init__(self, inputs, type_):
-        super().__init__(inputs, type_)
+    def __init__(self, inputs, type_, ref_BLK):
+        super().__init__(inputs, type_, ref_BLK)
         self._idx_from_U = np.empty((4*self.ny), dtype=np.int32)
         self._state = ConservativeState(inputs, self.ny)
 
@@ -375,11 +376,11 @@ class BoundaryBlockWest(BoundaryBlock):
             iE = (4 * j - 0) + 4 * (j - 1) * (self.ny - 1)
             self._idx_from_U[4 * j - 4: 4 * j] = np.arange(iF, iE, dtype=np.int32)
 
-    def set(self, ref_BLK: QuadBlock) -> None:
+    def set(self) -> None:
         if self._type == 'Outflow':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
         elif self._type == 'None':
-            self._state.U = ref_BLK.neighbors.W.get_east_edge()
+            self._state.U = self.ref_BLK.neighbors.W.get_east_edge()
         elif self._type == 'Reflection':
-            self._state.U = ref_BLK.state.U[self._idx_from_U]
+            self._state.U = self.ref_BLK.state.U[self._idx_from_U]
             self._state.U[1::4] *= -1

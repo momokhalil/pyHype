@@ -185,35 +185,22 @@ class Euler2DSolver:
             #print('update block')
             self._blocks.update(dt)
 
-            if self.numTimeStep % 1 == 0:
+            if self.inputs.realplot:
+                if self.numTimeStep % 1 == 0:
 
-                state = self._blocks.blocks[1].state.U
+                    state = self._blocks.blocks[1].state.U
 
-                V = np.zeros((ny, nx))
-                x = self._blocks.blocks[1].mesh.x
-                y = self._blocks.blocks[1].mesh.y
+                    V = np.zeros((ny, nx))
+                    x = self._blocks.blocks[1].mesh.x
+                    y = self._blocks.blocks[1].mesh.y
 
-                for i in range(1, ny + 1):
-                    Q = state[4 * nx * (i - 1):4 * nx * i]
-                    V[i - 1, :] = Q[::4].reshape(-1,)
+                    for i in range(1, ny + 1):
+                        Q = state[4 * nx * (i - 1):4 * nx * i]
+                        V[i - 1, :] = Q[::4].reshape(-1,)
 
-                ax.contourf(x, y, V, 200, cmap='magma')
-                plt.show()
-                plt.pause(0.01)
-
-            """if self.numTimeStep % 1 == 0:
-
-                state = self._blocks.blocks[1].state.U
-
-                x = self._blocks.blocks[1].mesh.x
-                y = self._blocks.blocks[1].mesh.y
-
-                Q = state[4 * nx * (1 - 1):4 * nx * 1][::4].reshape(-1,)
-
-                ax.clear()
-                ax.plot(x[0], Q)
-                plt.show()
-                plt.pause(0.01)"""
+                    ax.contourf(x, y, V, 200, cmap='magma')
+                    plt.show()
+                    plt.pause(0.01)
 
             self.t += dt
             print(self.t)
