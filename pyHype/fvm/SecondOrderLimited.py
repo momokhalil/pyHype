@@ -1,4 +1,5 @@
 import numpy as np
+from numba.experimental import jitclass
 from pyHype.fvm.base import FiniteVolumeMethod
 from pyHype.states.states import ConservativeState
 

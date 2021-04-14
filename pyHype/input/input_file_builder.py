@@ -39,15 +39,15 @@ class ProblemInput:
         self.nx = _int['nx']
         self.ny = _int['ny']
         self.mesh_name = _str['mesh_name']
-        self.meshinputss = _mesh
+        self.mesh_inputs = _mesh
 
 
 propblem_input_type = ProblemInput.class_type.instance_type
 
 
-def build(inputs_: dict, meshinputss: DictType):
+def build(inputs_: dict, mesh_inputs: DictType):
     _lst, _int, _flt, _str = dict_to_numbadict(inputs_)
-    return ProblemInput(_lst, _int, _flt, _str, meshinputss)
+    return ProblemInput(_lst, _int, _flt, _str, mesh_inputs)
 
 
 def dict_to_numbadict(dict_: dict):

@@ -8,10 +8,10 @@ from pyHype.fvm import FirstOrderUnlimited, SecondOrderLimited
 
 
 class Vertices:
-    def __init__(self, NE: tuple[Union[float, int], Union[float, int]] = (0, 0),
-                       NW: tuple[Union[float, int], Union[float, int]] = (0, 0),
-                       SE: tuple[Union[float, int], Union[float, int]] = (0, 0),
-                       SW: tuple[Union[float, int], Union[float, int]] = (0, 0)) -> None:
+    def __init__(self, NE: tuple[Union[float, int], Union[float, int]],
+                       NW: tuple[Union[float, int], Union[float, int]],
+                       SE: tuple[Union[float, int], Union[float, int]],
+                       SW: tuple[Union[float, int], Union[float, int]]) -> None:
         self.NW = NW
         self.NE = NE
         self.SW = SW

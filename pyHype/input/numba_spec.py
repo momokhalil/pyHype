@@ -24,4 +24,4 @@ PROBLEM_INPUT_SPEC = [('problem_type', nstr),
                        ('nx', int32),
                        ('ny', int32),
                        ('mesh_name', nstr),
-                       ('meshinputss', mesh_inputs_type)]
+                       ('mesh_inputs', mesh_inputs_type)]

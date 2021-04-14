@@ -41,10 +41,6 @@ class FiniteVolumeMethod(ABC):
         elif self.inputs.flux_limiter == 'van_albada':
             self._flux_limiter = van_albada
 
-        # No limiter
-        elif self.inputs.flux_limiter == 'none':
-            self._flux_limiter = None
-
         # Construct indices to access column-wise elements on the mesh
         self._y_index = np.ones((4 * self.ny), dtype=np.int32)
 

@@ -103,11 +103,11 @@ if __name__ == '__main__':
     _W2 = np.random.random((4 * num, 1))
 
     inputsdict = implosion
-    meshinputss = mesh_builder.build(mesh_name=inputsdict['mesh_name'],
+    mesh_inputs = mesh_builder.build(mesh_name=inputsdict['mesh_name'],
                                              nx=inputsdict['nx'],
                                              ny=inputsdict['ny'])
 
-    inputs = input_file_builder.build(inputsdict, meshinputss)
+    inputs = input_file_builder.build(inputsdict, mesh_inputs)
 
     W1 = PrimitiveState(inputs, num)
     W1.from_state_vector(_W1)

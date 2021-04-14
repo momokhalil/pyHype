@@ -12,18 +12,19 @@ import pyHype.input.input_file_builder as inputsfile_builder
 class Euler2DSolver:
     def __init__(self, inputsdict):
 
-        meshinputss = mesh_builder.build(mesh_name=inputsdict['mesh_name'],
+        mesh_inputs = mesh_builder.build(mesh_name=inputsdict['mesh_name'],
                                          nx=inputsdict['nx'],
                                          ny=inputsdict['ny'])
 
-        self.inputs = inputsfile_builder.build(inputsdict, meshinputss)
+        self.inputs = inputsfile_builder.build(inputsdict, mesh_inputs)
         self._blocks = Blocks(self.inputs)
 
         self.t = 0
         self.numTimeStep = 0
         self.CFL = self.inputs.CFL
         self.t_final = self.inputs.t_final * self.inputs.a_inf
-        self.profile = None
+        self.profile = False
+        self.profile_data = None
 
     @property
     def blocks(self):
@@ -147,7 +148,7 @@ class Euler2DSolver:
         nx = self.inputs.nx
         ny = self.inputs.ny
 
-        fig = plt.figure(figsize=(10, 10))
+        #fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
 
         print(self.t_final)
@@ -171,9 +172,12 @@ class Euler2DSolver:
         self._blocks.update(dt)
         self.t += dt
 
-        print('Enable profiler')
-        profiler = cProfile.Profile()
-        profiler.enable()
+        if self.profile:
+            print('Enable profiler')
+            profiler = cProfile.Profile()
+            profiler.enable()
+        else:
+            profiler = None
 
         print('Start simulation')
         while self.t <= self.t_final:
@@ -205,5 +209,6 @@ class Euler2DSolver:
             self.t += dt
             print(self.t)
 
-        profiler.disable()
-        self.profile = pstats.Stats(profiler)
+        if self.profile:
+            profiler.disable()
+            self.profile_data = pstats.Stats(profiler)
