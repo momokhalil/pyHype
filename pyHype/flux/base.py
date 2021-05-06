@@ -2,34 +2,19 @@ import numba
 from numba import float32
 import numpy as np
 from abc import ABC, abstractmethod
-from pyHype.states.states import PrimitiveState, RoePrimitiveState
+from pyHype.states.states import ConservativeState, PrimitiveState, RoePrimitiveState
 
 
 
-class FluxFunction(ABC):
+class FluxFunction:
     def __init__(self, inputs):
         self.inputs = inputs
-        self._L = None
-        self._R = None
         self.g = inputs.gamma
         self.nx = inputs.nx
         self.ny = inputs.ny
         self.n = inputs.n
 
-    def set_left_state(self, UL):
-        self._L = UL
-
-    def set_right_state(self, UR):
-        self._R = UR
-
-    def dULR(self):
-        return self._L.U - self._R.U
-
-    def L_plus_R(self):
-        return self._L.U + self._R.U
-
-    @abstractmethod
-    def get_flux(self):
+    def get_flux(self, UL, UR):
         pass
 
     @staticmethod
@@ -42,8 +27,8 @@ class FluxFunction(ABC):
         theta_1 = 2 * (lambda_R_1 - lambda_L_1)
         theta_3 = 2 * (lambda_R_3 - lambda_L_3)
 
-        theta_1[theta_1 < 0] = 0
-        theta_3[theta_3 < 0] = 0
+        theta_1 = np.where(theta_1 > 0, theta_1, 0)
+        theta_3 = np.where(theta_3 > 0, theta_3, 0)
 
         L1 = Wroe.u - Wroe.a()
         L3 = Wroe.u + Wroe.a()
@@ -66,8 +51,8 @@ class FluxFunction(ABC):
         theta_1 = 2 * (lambda_R_1 - lambda_L_1)
         theta_3 = 2 * (lambda_R_3 - lambda_L_3)
 
-        theta_1[theta_1 < 0] = 0
-        theta_3[theta_3 < 0] = 0
+        theta_1 = np.where(theta_1 > 0, theta_1, 0)
+        theta_3 = np.where(theta_3 > 0, theta_3, 0)
 
         L1 = Wroe.v - Wroe.a()
         L3 = Wroe.v + Wroe.a()

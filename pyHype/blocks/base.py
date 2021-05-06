@@ -251,7 +251,7 @@ class QuadBlock:
         # Get residuals
         Rx, Ry = self.get_residual()
         # Update block state vector
-        self._state.U += 0.5 * (dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy)
+        self._state.U += 0.5 * dt * (Rx/self._mesh.dx + Ry/self._mesh.dy)
         # Update block state variables
         self._state.set_vars_from_state()
         # Update state BC
@@ -262,7 +262,7 @@ class QuadBlock:
         # Get residuals
         Rx, Ry = self.get_residual()
         # Update block state vector
-        self._state.U = u + dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+        self._state.U = u + dt * (Rx/self._mesh.dx + Ry/self._mesh.dy)
         # Update block state variables
         self._state.set_vars_from_state()
         # Update state BC

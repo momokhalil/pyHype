@@ -118,6 +118,9 @@ class PrimitiveState(State):
 
         self.set_vars_from_state()
 
+    def __getitem__(self, index):
+        return self.W[index]
+
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
     def set_vars_from_state(self):
@@ -216,13 +219,15 @@ class PrimitiveState(State):
 
         # Non-dimentionalize each component of W
         self.W[0::4] /= self.inputs.rho_inf
-        self.W[1::4] /= self.inputs.a_inf
-        self.W[2::4] /= self.inputs.a_inf
+        self.W[1::4] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.W[2::4] /= self.inputs.rho_inf * self.inputs.a_inf
         self.W[3::4] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
 
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
 
+
+primitivestate_type = PrimitiveState.class_type.instance_type
 
 @jitclass(ns.CONSERVATIVESTATE_SPEC)
 class ConservativeState(State):
@@ -264,6 +269,9 @@ class ConservativeState(State):
         self.e = np.zeros((size_, 1))               # energy per unit volume
 
         self.set_vars_from_state()
+
+    def __getitem__(self, index):
+        return self.U[index]
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -392,6 +400,8 @@ class ConservativeState(State):
         return G
 
 
+conservativestate_type = ConservativeState.class_type.instance_type
+
 @jitclass(ns.ROEPRIMITIVESTATE_SPEC)
 class RoePrimitiveState(State):
     """
@@ -442,6 +452,9 @@ class RoePrimitiveState(State):
         self.p = np.zeros((size_, 1))           # pressure
 
         self.roe_state_from_primitive_states(WL, WR)
+
+    def __getitem__(self, index):
+        return self.W[index]
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -541,8 +554,8 @@ class RoePrimitiveState(State):
 
         # Non-dimentionalize each component of W
         self.W[0::4] /= self.inputs.rho_inf
-        self.W[1::4] /= self.inputs.a_inf
-        self.W[2::4] /= self.inputs.a_inf
+        self.W[1::4] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.W[2::4] /= self.inputs.rho_inf * self.inputs.a_inf
         self.W[3::4] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
 
         # Set variables from non-dimensionalized W
@@ -600,3 +613,6 @@ class RoePrimitiveState(State):
         p       = (self.g - 1) / self.g * rho * (H - 0.5 * (u**2 + v**2))
 
         return rho, u, v, p
+
+
+roeprimitivestate_type = RoePrimitiveState.class_type.instance_type

@@ -1,9 +1,5 @@
-import numba
 import numpy as np
-from numba import float32
 import scipy.sparse as sparse
-from numba import jit
-from numba.experimental import jitclass
 from pyHype.flux.base import FluxFunction
 from pyHype.states.states import RoePrimitiveState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, \
@@ -12,8 +8,11 @@ from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, \
                                      YDIR_EIGENSYSTEM_VECTORS
 
 class ROE_FLUX_X(FluxFunction):
+    super_ = FluxFunction.__init__
+
     def __init__(self, inputs):
         super().__init__(inputs)
+        self.super_(inputs)
 
         # Thermodynamic quantities
         self.gh = self.g - 1
@@ -23,8 +22,10 @@ class ROE_FLUX_X(FluxFunction):
         # X-direction eigensystem data vectors
         vec = XDIR_EIGENSYSTEM_VECTORS(self.inputs, self.nx)
 
-        self.A_d0, self.A_m1, self.A_m2, self.A_m3, self.A_p1, self.A_p2 \
-            = vec.A_d0, vec.A_m1, vec.A_m2, vec.A_m3, vec.A_p1, vec.A_p2
+        self.A_d0 = vec.A_d0
+
+        self.A_m1, self.A_m2, self.A_m3, self.A_p1, self.A_p2 \
+            = vec.A_m1, vec.A_m2, vec.A_m3, vec.A_p1, vec.A_p2
 
         self.X_d0, self.X_m1, self.X_m2, self.X_m3, self.X_p1, self.X_p2 \
             = vec.X_d0, vec.X_m1, vec.X_m2, vec.X_m3, vec.X_p1, vec.X_p2
@@ -55,10 +56,10 @@ class ROE_FLUX_X(FluxFunction):
         data = np.zeros((4 * self.nx + 4))
         self.Lambda = sparse.coo_matrix((data, (self.Li, self.Lj)))
 
-    def _get_eigen_system_from_roe_state(self) -> None:
+    def _get_eigen_system_from_roe_state(self, UL, UR):
 
         # Create Left and Right PrimitiveStates
-        WL, WR = self._L.to_W(), self._L.to_W()
+        WL, WR = UL.to_W(), UR.to_W()
 
         # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR, self.nx + 1)
@@ -66,18 +67,19 @@ class ROE_FLUX_X(FluxFunction):
         # Harten entropy correction
         Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
 
-        # Calculate quantities to construct eigensystem
-        a       = Wroe.a()
-        gu      = self.g * Wroe.u
-        gbu     = self.gb * Wroe.u
-        gtu     = self.gt * Wroe.u
-        ghu     = self.gh * Wroe.u
-        ghv     = self.gh * Wroe.v
-        gtv     = self.gt * Wroe.v
-        u2      = Wroe.u ** 2
-        v2      = Wroe.v ** 2
-        uv      = Wroe.u * Wroe.v
-        ek      = 0.5 * (u2 + v2)
+        # Calculate quantities to construct eigensystem. These quantities are in vector for, where each element
+        # corresponds to each point on the local 1D problem being solved.
+        a       = Wroe.a()              # roe average speed of sound
+        gu      = self.g * Wroe.u       # gamma * roe u
+        gbu     = self.gb * Wroe.u      # gamma_bar * roe u
+        gtu     = self.gt * Wroe.u      # gamma_tar * roe u
+        ghu     = self.gh * Wroe.u      # gamma_hat * roe u
+        ghv     = self.gh * Wroe.v      # gamma_hat * roe v
+        gtv     = self.gt * Wroe.v      # gamma_tau * roe v
+        u2      = Wroe.u ** 2           # roe u squared
+        v2      = Wroe.v ** 2           # roe v squared
+        uv      = Wroe.u * Wroe.v       # product of roe velocities
+        ek      = 0.5 * (u2 + v2)       # 0.5 * sum of squared roe velocities
         a2      = a ** 2
         ta2     = a2 * 2
         ua      = Wroe.u * a
@@ -133,17 +135,17 @@ class ROE_FLUX_X(FluxFunction):
 
         self.Lambda.data = self.lam.reshape(-1, )
 
+    def get_flux(self, UL, UR):
+        self._get_eigen_system_from_roe_state(UL, UR)
+        return 0.5 * (self.A.dot(UL.U + UR.U) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(UL.U - UR.U))))
 
-    def get_flux(self):
-        self._get_eigen_system_from_roe_state()
-        return compute_flux(self.A, self.Lambda, self.X, self.Xi, self._L.U, self._R.U)
-
-def compute_flux(A, Lambda, X, Xi, UL, UR):
-    return 0.5 * (A.dot(UL + UR) + X.dot(np.absolute(Lambda).dot(Xi.dot(UL - UR))))
 
 class ROE_FLUX_Y(FluxFunction):
+    super_ = FluxFunction.__init__
+
     def __init__(self, inputs):
         super().__init__(inputs)
+        #self.super_(inputs)
 
         # Thermodynamic quantities
         self.gh = self.g - 1
@@ -186,10 +188,10 @@ class ROE_FLUX_Y(FluxFunction):
         self.Lambda = sparse.coo_matrix((data, (self.Li, self.Lj)))
 
 
-    def _get_eigen_system_from_roe_state(self) -> None:
+    def _get_eigen_system_from_roe_state(self, UL, UR):
 
         # Create Left and Right PrimitiveStates
-        WL, WR = self._L.to_W(), self._L.to_W()
+        WL, WR = UL.to_W(), UR.to_W()
 
         # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR, self.nx + 1)
@@ -264,9 +266,11 @@ class ROE_FLUX_Y(FluxFunction):
 
         self.Lambda.data    = self.lam.reshape(-1, )
 
-    def get_flux(self):
-        self._get_eigen_system_from_roe_state()
-        return compute_flux(self.B, self.Lambda, self.X, self.Xi, self._L.U, self._R.U)
+
+    def get_flux(self, UL, UR):
+        self._get_eigen_system_from_roe_state(UL, UR)
+        return 0.5 * (self.B.dot(UL.U + UR.U) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(UL.U - UR.U))))
+
 
 def stack(*args):
     return np.row_stack(args).reshape(-1, )

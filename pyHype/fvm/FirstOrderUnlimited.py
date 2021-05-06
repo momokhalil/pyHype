@@ -16,8 +16,8 @@ class FirstOrderUnlimited(FiniteVolumeMethod):
         UR = ConservativeState(self.inputs, self.nx + 1)
         UR.from_state_vector(U[4:])
 
-        self._flux_function_X.set_left_state(UL)
-        self._flux_function_X.set_right_state(UR)
+        self.flux_function_X.set_left_state(UL)
+        self.flux_function_X.set_right_state(UR)
 
     def _reconstruct_state_Y(self, U):
         UL = ConservativeState(self.inputs, self.ny + 1)
@@ -26,5 +26,5 @@ class FirstOrderUnlimited(FiniteVolumeMethod):
         UR = ConservativeState(self.inputs, self.ny + 1)
         UR.from_state_vector(U[4:])
 
-        self._flux_function_Y.set_left_state(UL)
-        self._flux_function_Y.set_right_state(UR)
+        self.flux_function_Y.set_left_state(UL)
+        self.flux_function_Y.set_right_state(UR)

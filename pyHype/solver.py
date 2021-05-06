@@ -42,14 +42,14 @@ class Euler2DSolver:
         if problem_type == 'shockbox':
 
             # High pressure zone
-            rhoL = 0.16214
+            rhoL = 4.6968
             pL = 404400
             uL = 0
             vL = 0
             eL = pL / (g - 1)
 
             # Low pressure zone
-            rhoR = 0.04053
+            rhoR = 1.1742
             pR = 101100
             uR = 0
             vR = 0
@@ -67,9 +67,9 @@ class Euler2DSolver:
                         iF = 4 * (i - 1) + 4 * nx * (j - 1)
                         iE = 4 * (i - 0) + 4 * nx * (j - 1)
 
-                        if block.mesh.x[j - 1, i - 1] <= 2 and block.mesh.y[j - 1, i - 1] <= 2:
+                        if block.mesh.x[j - 1, i - 1] <= 5 and block.mesh.y[j - 1, i - 1] <= 5:
                             block.state.U[iF:iE] = QR
-                        elif block.mesh.x[j - 1, i - 1] > 2 and block.mesh.y[j - 1, i - 1] > 2:
+                        elif block.mesh.x[j - 1, i - 1] > 5 and block.mesh.y[j - 1, i - 1] > 5:
                             block.state.U[iF:iE] = QR
                         else:
                             block.state.U[iF:iE] = QL
@@ -79,14 +79,14 @@ class Euler2DSolver:
         elif problem_type == 'implosion':
 
             # High pressure zone
-            rhoL = 0.16214
+            rhoL = 4.6968
             pL = 404400
             uL = 0
             vL = 0
             eL = pL / (g - 1)
 
             # Low pressure zone
-            rhoR = 0.04053
+            rhoR = 1.1742
             pR = 101100
             uR = 0
             vR = 0
@@ -105,7 +105,7 @@ class Euler2DSolver:
                         iF = 4 * (i - 1) + 4 * nx * (j - 1)
                         iE = 4 * (i - 0) + 4 * nx * (j - 1)
 
-                        if block.mesh.x[j - 1, i - 1] < 3 and block.mesh.y[j - 1, i - 1] < 3:
+                        if block.mesh.x[j - 1, i - 1] < 5 and block.mesh.y[j - 1, i - 1] < 5:
                             block.state.U[iF:iE] = QR
                         else:
                             block.state.U[iF:iE] = QL
@@ -120,7 +120,11 @@ class Euler2DSolver:
         for block in self.blocks:
             W = block.state.to_W()
             a = W.a()
-            dt_ = self.CFL * min((block.mesh.dx / (W.u + a)).min(), (block.mesh.dy / (W.v + a)).min())
+
+            t1 = block.mesh.dx / (np.absolute(W.u) + a)
+            t2 = block.mesh.dx / (np.absolute(W.v) + a)
+
+            dt_ = self.CFL * min(t1.min(), t2.min())
 
             if dt_ < dt: dt = dt_
 
@@ -151,33 +155,17 @@ class Euler2DSolver:
         #fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
 
-        print(self.t_final)
-
-        # print('get dt')
-        print('Test time step 1')
-        dt = self.dt()
-        self.numTimeStep += 1
-        self._blocks.update(dt)
-        self.t += dt
-
-        print('Test time step 2')
-        dt = self.dt()
-        self.numTimeStep += 1
-        self._blocks.update(dt)
-        self.t += dt
-
-        print('Test time step 3')
-        dt = self.dt()
-        self.numTimeStep += 1
-        self._blocks.update(dt)
-        self.t += dt
-
         if self.profile:
             print('Enable profiler')
             profiler = cProfile.Profile()
             profiler.enable()
         else:
             profiler = None
+
+        if self.inputs.realplot:
+            V = np.zeros((ny, nx))
+            x = self._blocks.blocks[1].mesh.x
+            y = self._blocks.blocks[1].mesh.y
 
         print('Start simulation')
         while self.t <= self.t_final:
@@ -189,25 +177,25 @@ class Euler2DSolver:
             #print('update block')
             self._blocks.update(dt)
 
+            state = self._blocks.blocks[1].state
+            print(np.mean(state.rhou/state.rho))
+
             if self.inputs.realplot:
                 if self.numTimeStep % 1 == 0:
 
                     state = self._blocks.blocks[1].state.U
 
-                    V = np.zeros((ny, nx))
-                    x = self._blocks.blocks[1].mesh.x
-                    y = self._blocks.blocks[1].mesh.y
-
                     for i in range(1, ny + 1):
                         Q = state[4 * nx * (i - 1):4 * nx * i]
                         V[i - 1, :] = Q[::4].reshape(-1,)
 
-                    ax.contourf(x, y, V, 200, cmap='magma')
+                    ax.contourf(x, y, V, cmap='magma')
                     plt.show()
                     plt.pause(0.01)
 
             self.t += dt
-            print(self.t)
+
+        print(self.numTimeStep)
 
         if self.profile:
             profiler.disable()

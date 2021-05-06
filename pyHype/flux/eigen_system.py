@@ -14,7 +14,7 @@ class XDIR_EIGENSYSTEM_VECTORS:
         self.A_m2 = np.ones((2 * (nx + 1), 1))
         self.A_m3 = np.ones((1 * (nx + 1), 1))
         self.A_p1 = np.ones((2 * (nx + 1), 1))
-        self.A_p2 = (self.inputs.gamma - 1) * np.ones((1 * (nx + 1), 1))
+        self.A_p2 = np.full((1 * (nx + 1), 1), self.inputs.gamma - 1)
 
         self.X_d0 = np.ones((4 * (nx + 1), 1))
         self.X_m1 = np.ones((3 * (nx + 1), 1))
