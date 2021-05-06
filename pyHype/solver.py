@@ -10,13 +10,13 @@ import pyHype.input.input_file_builder as inputsfile_builder
 
 
 class Euler2DSolver:
-    def __init__(self, inputsdict):
+    def __init__(self, input_dict):
 
-        mesh_inputs = mesh_builder.build(mesh_name=inputsdict['mesh_name'],
-                                         nx=inputsdict['nx'],
-                                         ny=inputsdict['ny'])
+        mesh_inputs = mesh_builder.build(mesh_name=input_dict['mesh_name'],
+                                         nx=input_dict['nx'],
+                                         ny=input_dict['ny'])
 
-        self.inputs = inputsfile_builder.build(inputsdict, mesh_inputs)
+        self.inputs = inputsfile_builder.build(input_dict, mesh_inputs)
         self._blocks = Blocks(self.inputs)
 
         self.t = 0
