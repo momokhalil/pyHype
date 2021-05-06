@@ -1,26 +1,34 @@
 import pyHype.mesh.meshes as meshes
 
 class BlockDescription:
-    def __init__(self, mesh_input):
+    def __init__(self, blk_input):
 
         # Set parameter attributes from input dict
-        self.nBLK = mesh_input['nBLK']
-        self.n = mesh_input['n']
-        self.nx = mesh_input['nx']
-        self.ny = mesh_input['ny']
-        self.NeighborE = mesh_input['NeighborE']
-        self.NeighborW = mesh_input['NeighborW']
-        self.NeighborN = mesh_input['NeighborN']
-        self.NeighborS = mesh_input['NeighborS']
-        self.NE = mesh_input['NE']
-        self.NW = mesh_input['NW']
-        self.SE = mesh_input['SE']
-        self.SW = mesh_input['SW']
-        self.BCTypeE = mesh_input['BCTypeE']
-        self.BCTypeW = mesh_input['BCTypeW']
-        self.BCTypeN = mesh_input['BCTypeN']
-        self.BCTypeS = mesh_input['BCTypeS']
+        self.nBLK = blk_input['nBLK']
+        self.n = blk_input['n']
+        self.nx = blk_input['nx']
+        self.ny = blk_input['ny']
+        self.NeighborE = blk_input['NeighborE']
+        self.NeighborW = blk_input['NeighborW']
+        self.NeighborN = blk_input['NeighborN']
+        self.NeighborS = blk_input['NeighborS']
+        self.NE = blk_input['NE']
+        self.NW = blk_input['NW']
+        self.SE = blk_input['SE']
+        self.SW = blk_input['SW']
+        self.BCTypeE = blk_input['BCTypeE']
+        self.BCTypeW = blk_input['BCTypeW']
+        self.BCTypeN = blk_input['BCTypeN']
+        self.BCTypeS = blk_input['BCTypeS']
 
-def build(mesh_name):
-    mesh_dict = meshes.DEFINED_MESHES[mesh_name]
-    return BlockDescription
+
+def build(mesh_name, nx, ny):
+
+    mesh_func = meshes.DEFINED_MESHES[mesh_name]
+    mesh_dict = mesh_func(nx=nx, ny=ny)
+    mesh = {}
+
+    for blk, blkData in mesh_dict.items():
+        mesh[blk] = BlockDescription(blkData)
+
+    return mesh

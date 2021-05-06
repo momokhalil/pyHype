@@ -1,6 +1,6 @@
 
 # Meshes
-def simple_mesh(nx, ny, n):
+def simple_mesh(nx, ny):
     block1 = {'nBLK': 1,
               'NE': [5, 5],
               'NW': [0, 5],
@@ -8,7 +8,7 @@ def simple_mesh(nx, ny, n):
               'SW': [0, 0],
               'nx': nx,
               'ny': ny,
-              'n': n,
+              'n': nx * ny,
               'NeighborE': 4,
               'NeighborW': 0,
               'NeighborN': 2,
@@ -25,7 +25,7 @@ def simple_mesh(nx, ny, n):
               'SW': [0, 5],
               'nx': nx,
               'ny': ny,
-              'n': n,
+              'n': nx * ny,
               'NeighborE': 3,
               'NeighborW': 0,
               'NeighborN': 0,
@@ -42,7 +42,7 @@ def simple_mesh(nx, ny, n):
               'SW': [5, 5],
               'nx': nx,
               'ny': ny,
-              'n': n,
+              'n': nx * ny,
               'NeighborE': 0,
               'NeighborW': 2,
               'NeighborN': 0,
@@ -59,7 +59,7 @@ def simple_mesh(nx, ny, n):
               'SW': [5, 0],
               'nx': nx,
               'ny': ny,
-              'n': n,
+              'n': nx * ny,
               'NeighborE': 0,
               'NeighborW': 1,
               'NeighborN': 3,
@@ -75,7 +75,7 @@ def simple_mesh(nx, ny, n):
             4: block4}
 
 
-def one_mesh(n, nx, ny):
+def one_mesh(nx, ny):
     block1 = {'nBLK': 1,
               'NE': [10, 10],
               'NW': [0, 10],
@@ -83,7 +83,7 @@ def one_mesh(n, nx, ny):
               'SW': [0, 0],
               'nx': nx,
               'ny': ny,
-              'n': n,
+              'n': nx * ny,
               'NeighborE': 0,
               'NeighborW': 0,
               'NeighborN': 0,

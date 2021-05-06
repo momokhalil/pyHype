@@ -5,18 +5,19 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from pyHype import execution_prints
 from pyHype.blocks.base import Blocks
-import pyHype.mesh.mesh_builder as mesh_builder
-import pyHype.input.input_file_builder as inputsfile_builder
+import pyHype.mesh.mesh_inputs as mesh_inputs
+import pyHype.input.input_file_builder as input_file_builder
 
 
 class Euler2DSolver:
     def __init__(self, input_dict):
 
-        mesh_inputs = mesh_builder.build(mesh_name=input_dict['mesh_name'],
-                                         nx=input_dict['nx'],
-                                         ny=input_dict['ny'])
+        mesh = mesh_inputs.build(mesh_name=input_dict['mesh_name'],
+                                 nx=input_dict['nx'],
+                                 ny=input_dict['ny'])
 
-        self.inputs = inputsfile_builder.build(input_dict, mesh_inputs)
+        self.inputs = input_file_builder.ProblemInput(input_dict, mesh)
+
         self._blocks = Blocks(self.inputs)
 
         self.t = 0
@@ -176,9 +177,6 @@ class Euler2DSolver:
 
             #print('update block')
             self._blocks.update(dt)
-
-            state = self._blocks.blocks[1].state
-            print(np.mean(state.rhou/state.rho))
 
             if self.inputs.realplot:
                 if self.numTimeStep % 1 == 0:

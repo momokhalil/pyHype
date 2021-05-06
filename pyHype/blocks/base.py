@@ -2,7 +2,7 @@ import numpy as np
 from typing import Union
 from abc import abstractmethod, ABC
 from pyHype.states.states import ConservativeState
-from pyHype.mesh.mesh_builder import BlockDescription
+from pyHype.mesh.mesh_inputs import BlockDescription
 from pyHype.input.input_file_builder import ProblemInput
 from pyHype.fvm import FirstOrderUnlimited, SecondOrderLimited
 

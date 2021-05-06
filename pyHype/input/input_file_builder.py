@@ -13,7 +13,7 @@ class ProblemInput:
         self.t_final = input_dict['t_final']
 
         # Numerical method parameters
-        self.timeinput_dictegrator = input_dict['timeinput_dictegrator']
+        self.time_integrator = input_dict['time_integrator']
         self.CFL = input_dict['CFL']
         self.flux_function = input_dict['flux_function']
         self.finite_volume_method = input_dict['finite_volume_method']

@@ -1,7 +1,7 @@
 implosion = {'problem_type':            'implosion',
              'IC_type':                 'from_IC',
              'flux_function':           'Roe',
-             'realplot':                0,
+             'realplot':                1,
              'make_plot':               1,
              'time_it':                 1,
              't_final':                 0.0047,

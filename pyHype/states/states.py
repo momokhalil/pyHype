@@ -1,6 +1,5 @@
 import numpy as np
 from abc import abstractmethod
-import pyHype.states.numba_spec as ns
 from numba.experimental import jitclass
 
 
@@ -76,7 +75,6 @@ class State:
         pass
 
 
-@jitclass(ns.PRIMITIVESTATE_SPEC)
 class PrimitiveState(State):
     """
     #Primitive Solution State#
@@ -227,9 +225,6 @@ class PrimitiveState(State):
         self.set_vars_from_state()
 
 
-primitivestate_type = PrimitiveState.class_type.instance_type
-
-@jitclass(ns.CONSERVATIVESTATE_SPEC)
 class ConservativeState(State):
     """
     #Conservative Solution State#
@@ -400,9 +395,6 @@ class ConservativeState(State):
         return G
 
 
-conservativestate_type = ConservativeState.class_type.instance_type
-
-@jitclass(ns.ROEPRIMITIVESTATE_SPEC)
 class RoePrimitiveState(State):
     """
     #*$Roe$* Primitive State
@@ -613,6 +605,3 @@ class RoePrimitiveState(State):
         p       = (self.g - 1) / self.g * rho * (H - 0.5 * (u**2 + v**2))
 
         return rho, u, v, p
-
-
-roeprimitivestate_type = RoePrimitiveState.class_type.instance_type
