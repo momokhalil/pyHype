@@ -84,9 +84,10 @@ class FiniteVolumeMethod:
         """
 
         self.inputs = inputs
-        self.global_nBLK = global_nBLK
         self.nx = inputs.nx
         self.ny = inputs.ny
+        self.global_nBLK = global_nBLK
+
         self.Flux_X = np.empty((4 * self.nx * self.ny, 1))
         self.Flux_Y = np.empty((4 * self.nx * self.ny, 1))
         self.UL = ConservativeState(self.inputs, self.nx + 1)
@@ -124,8 +125,8 @@ class FiniteVolumeMethod:
             self._y_index[4 * i - 4:4 * i] = np.arange(4 * self.nx * (i - 1) - 4, 4 * self.nx * (i - 1))
 
         # Construct shuffle matrix
-        i = np.arange(0, 4 * self.nx * self.ny)
-        j = np.arange(0, 4 * self.nx * self.ny)
+        i = np.arange(0, 4 * self.ny * self.nx)
+        j = np.arange(0, 4 * self.ny * self.nx)
         m = np.arange(0, 4 * self.ny)
 
         for k in range(0, self.ny):
@@ -136,8 +137,18 @@ class FiniteVolumeMethod:
 
         self._shuffle = sparse.coo_matrix((np.ones((4 * self.nx * self.ny)), (i, j)))
 
-    def reconstruct_state_X(self, U):
-        pass
 
-    def reconstruct_state_Y(self, U):
+    @staticmethod
+    def get_row(ref_BLK, index: int) -> np.ndarray:
+        return np.vstack((ref_BLK.boundary_blocks.W[index],
+                          ref_BLK.row(index),
+                          ref_BLK.boundary_blocks.E[index]))
+
+    @staticmethod
+    def get_col(ref_BLK, index: int) -> np.ndarray:
+        return np.vstack((ref_BLK.boundary_blocks.S[index],
+                          ref_BLK.col(index),
+                          ref_BLK.boundary_blocks.N[index]))
+
+    def reconstruct_state(self, U):
         pass
