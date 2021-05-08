@@ -1,6 +1,5 @@
 import numpy as np
 from abc import abstractmethod
-import pyHype.states.numba_spec as ns
 from numba.experimental import jitclass
 
 
@@ -76,7 +75,6 @@ class State:
         pass
 
 
-@jitclass(ns.PRIMITIVESTATE_SPEC)
 class PrimitiveState(State):
     """
     #Primitive Solution State#
@@ -89,7 +87,6 @@ class PrimitiveState(State):
     utilizes a primitive formulation. Another primary use-case for `PrimitiveState` is converting a `ConservativeState`
     into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
     """
-    __super__ = State.__init__
 
     def __init__(self, inputs, size_: int):
         """
@@ -104,10 +101,7 @@ class PrimitiveState(State):
         """
 
         # Call superclass constructor
-        # super().__init__(inputs, size_)
-
-        # Has to be done this way because numba doesnt understand super() yet
-        self.__super__(inputs, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.W = np.zeros((4 * size_, 1))       # conservative state vector
@@ -117,6 +111,18 @@ class PrimitiveState(State):
         self.p = np.zeros((size_, 1))           # pressure
 
         self.set_vars_from_state()
+
+    # Overload __getitem__ method to return slice from W based on index slice object/indices
+    def __getitem__(self, index):
+        return self.W[index]
+
+    # Overload __add__ method to return the sum of self and other's state vectors
+    def __add__(self, other):
+        return self.W + other.W
+
+    # Overload __sub__ method to return the difference between self and other's state vectors
+    def __sub__(self, other):
+        return self.W - other.W
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -216,15 +222,14 @@ class PrimitiveState(State):
 
         # Non-dimentionalize each component of W
         self.W[0::4] /= self.inputs.rho_inf
-        self.W[1::4] /= self.inputs.a_inf
-        self.W[2::4] /= self.inputs.a_inf
+        self.W[1::4] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.W[2::4] /= self.inputs.rho_inf * self.inputs.a_inf
         self.W[3::4] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
 
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
 
 
-@jitclass(ns.CONSERVATIVESTATE_SPEC)
 class ConservativeState(State):
     """
     #Conservative Solution State#
@@ -236,7 +241,6 @@ class ConservativeState(State):
     solver that utilizes a conservative formulation. It can also be used to represent the solution state in
     BoundaryBlocks in a solver that utilizes a conservative formulation.
     """
-    super_ = State.__init__
 
     def __init__(self, inputs, size_: int):
         """
@@ -251,10 +255,7 @@ class ConservativeState(State):
         """
 
         # Call superclass constructor
-        # super().__init__(inputs, size_)
-
-        # Has to be done this way because numba doesnt understand super() yet
-        self.super_(inputs, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.U = np.zeros((4 * size_, 1))           # conservative state vector
@@ -264,6 +265,15 @@ class ConservativeState(State):
         self.e = np.zeros((size_, 1))               # energy per unit volume
 
         self.set_vars_from_state()
+
+    def __getitem__(self, index):
+        return self.U[index]
+
+    def __add__(self, other):
+        return self.U + other.U
+
+    def __sub__(self, other):
+        return self.U - other.U
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -392,7 +402,6 @@ class ConservativeState(State):
         return G
 
 
-@jitclass(ns.ROEPRIMITIVESTATE_SPEC)
 class RoePrimitiveState(State):
     """
     #*$Roe$* Primitive State
@@ -414,7 +423,6 @@ class RoePrimitiveState(State):
     where $H^\\*$ is the Roe specific enthalpy, evaluated as:                                               \n
     $H^\\* = \\frac{H^R \\sqrt{\\rho^R} + H^L \\sqrt{\\rho^L}}{\\sqrt{\\rho^R} + \\sqrt{\\rho^L}}$.
     """
-    super_ = State.__init__
 
     def __init__(self, inputs, WL, WR, size_: int = None):
         """
@@ -429,10 +437,7 @@ class RoePrimitiveState(State):
         """
 
         # Call superclass constructor
-        # super().__init__(inputs, size_)
-
-        # Has to be done this way because numba doesnt understand super() yet
-        self.super_(inputs, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.W = np.zeros((4 * size_, 1))           # primitive state vector
@@ -442,6 +447,9 @@ class RoePrimitiveState(State):
         self.p = np.zeros((size_, 1))           # pressure
 
         self.roe_state_from_primitive_states(WL, WR)
+
+    def __getitem__(self, index):
+        return self.W[index]
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -541,8 +549,8 @@ class RoePrimitiveState(State):
 
         # Non-dimentionalize each component of W
         self.W[0::4] /= self.inputs.rho_inf
-        self.W[1::4] /= self.inputs.a_inf
-        self.W[2::4] /= self.inputs.a_inf
+        self.W[1::4] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.W[2::4] /= self.inputs.rho_inf * self.inputs.a_inf
         self.W[3::4] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
 
         # Set variables from non-dimensionalized W

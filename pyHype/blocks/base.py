@@ -1,8 +1,9 @@
+import time
 import numpy as np
 from typing import Union
 from abc import abstractmethod, ABC
 from pyHype.states.states import ConservativeState
-from pyHype.mesh.mesh_builder import BlockDescription
+from pyHype.mesh.mesh_inputs import BlockDescription
 from pyHype.input.input_file_builder import ProblemInput
 from pyHype.fvm import FirstOrderUnlimited, SecondOrderLimited
 
@@ -234,7 +235,7 @@ class QuadBlock:
         # Get residuals
         Rx, Ry = self.get_residual()
         # Update block state vector
-        self._state.U += dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+        self._state.U += dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state variables
         self._state.set_vars_from_state()
         # Update state BC
@@ -244,14 +245,16 @@ class QuadBlock:
     def RK2(self, dt) -> None:
 
         # Save state for final stage
-        u = self._state.U
+        U_initial = self._state.U
 
         # First stage ##############################################################
 
         # Get residuals
         Rx, Ry = self.get_residual()
+        # First update vector
+        K1 = dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
-        self._state.U += 0.5 * (dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy)
+        self._state.U = self._state.U + 0.5 * K1
         # Update block state variables
         self._state.set_vars_from_state()
         # Update state BC
@@ -261,8 +264,10 @@ class QuadBlock:
 
         # Get residuals
         Rx, Ry = self.get_residual()
+        # First update vector
+        K2 = dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
-        self._state.U = u + dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
+        self._state.U = U_initial + K2
         # Update block state variables
         self._state.set_vars_from_state()
         # Update state BC
@@ -270,6 +275,53 @@ class QuadBlock:
 
     # RK3 TVD time stepping
     def RK3TVD(self, dt) -> None:
+
+        # Save state for final stage
+        U_initial = self._state.U
+
+        # First stage ##############################################################
+
+        # Get residuals
+        Rx, Ry = self.get_residual()
+        # First update vector
+        K1 = U_initial + \
+             dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        # Update block state vector
+        self._state.U = K1
+        # Update block state variables
+        self._state.set_vars_from_state()
+        # Update state BC
+        self.update_BC()
+
+        # Second stage ##############################################################
+
+        # Get residuals
+        Rx, Ry = self.get_residual()
+        # First update vector
+        K2 = 0.75 * U_initial +     \
+             0.25 * K1 +            \
+             0.25 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+
+        # Update block state vector
+        self._state.U = K2
+        # Update block state variables
+        self._state.set_vars_from_state()
+        # Update state BC
+        self.update_BC()
+
+        # Third stage ##############################################################
+
+        # Get residuals
+        Rx, Ry = self.get_residual()
+        # Update block state vector
+        self._state.U = (1/3) * U_initial + \
+                        (2/3) * K2 +        \
+                        (2/3) * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        # Update block state variables
+        self._state.set_vars_from_state()
+        # Update state BC
+        self.update_BC()
+
         pass
 
     # RK4 time stepping
