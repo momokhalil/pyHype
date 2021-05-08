@@ -29,6 +29,7 @@ class Euler2DSolver:
         self.t_final = self.inputs.t_final * self.inputs.a_inf
         self.profile = False
         self.profile_data = None
+        self.realplot = None
 
     @property
     def blocks(self):
@@ -151,13 +152,10 @@ class Euler2DSolver:
         print('Setting Boundary Conditions')
         self.set_BC()
 
-        plt.ion()
-
-        nx = self.inputs.nx
-        ny = self.inputs.ny
-
-        ax = plt.axes()
-        ax.figure.set_size_inches(8, 8)
+        if self.inputs.realplot:
+            plt.ion()
+            self.realplot = plt.axes()
+            self.realplot.figure.set_size_inches(8, 8)
 
         if self.profile:
             print('Enable profiler')
@@ -165,13 +163,6 @@ class Euler2DSolver:
             profiler.enable()
         else:
             profiler = None
-
-        if self.inputs.realplot:
-            V = np.zeros((ny, nx))
-            x = self._blocks.blocks[1].mesh.x
-            y = self._blocks.blocks[1].mesh.y
-        else:
-            V, x, y = None, None, None
 
         print('Start simulation')
         while self.t < self.t_final:
@@ -183,32 +174,35 @@ class Euler2DSolver:
             self._blocks.update(dt)
 
             if self.inputs.realplot:
+                V = np.zeros((self.inputs.ny, self.inputs.nx))
                 if self.numTimeStep % 1 == 0:
 
                     state = self._blocks.blocks[1].state
 
-                    for i in range(1, ny + 1):
-                        Q = state.U[4 * nx * (i - 1):4 * nx * i]
+                    for i in range(1, self.inputs.ny + 1):
+                        Q = state.U[4 * self.inputs.nx * (i - 1):4 * self.inputs.nx * i]
                         V[i - 1, :] = Q[::4].reshape(-1,)
 
-                    ax.contourf(x, y, V, 20, cmap='magma')
+                    self.realplot.contourf(self._blocks.blocks[1].mesh.x,
+                                           self._blocks.blocks[1].mesh.y,
+                                           V, 20, cmap='magma')
                     plt.show()
-                    plt.pause(0.01)
+                    plt.pause(0.001)
 
             self.t += dt
 
         if self.inputs.makeplot:
             state = self._blocks.blocks[1].state.U
 
-            V = np.zeros((ny, nx))
-            x = self._blocks.blocks[1].mesh.x
-            y = self._blocks.blocks[1].mesh.y
+            V = np.zeros((self.inputs.ny, self.inputs.nx))
 
-            for i in range(1, ny + 1):
-                Q = state[4 * nx * (i - 1):4 * nx * i]
+            for i in range(1, self.inputs.ny + 1):
+                Q = state[4 * self.inputs.nx * (i - 1):4 * self.inputs.nx * i]
                 V[i - 1, :] = Q[::4].reshape(-1, )
 
-            ax.contourf(x, y, V, 100, cmap='magma')
+            self.realplot.contourf(self._blocks.blocks[1].mesh.x,
+                                   self._blocks.blocks[1].mesh.y,
+                                   V, 100, cmap='magma')
             plt.show(block=True)
 
         if self.profile:
