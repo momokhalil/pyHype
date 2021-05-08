@@ -9,6 +9,7 @@ class ProblemInput:
         self.problem_type = input_dict['problem_type']
         self.IC_type = input_dict['IC_type']
         self.realplot = input_dict['realplot']
+        self.makeplot = input_dict['makeplot']
         self.time_it = input_dict['time_it']
         self.t_final = input_dict['t_final']
 

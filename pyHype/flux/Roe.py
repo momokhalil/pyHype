@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import scipy.sparse as sparse
 from pyHype.flux.base import FluxFunction
@@ -137,7 +138,7 @@ class ROE_FLUX_X(FluxFunction):
 
     def get_flux(self, UL, UR):
         self._get_eigen_system_from_roe_state(UL, UR)
-        return 0.5 * (self.A.dot(UL.U + UR.U) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(UL.U - UR.U))))
+        return 0.5 * (self.A.dot(UL + UR) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(UL - UR))))
 
 
 class ROE_FLUX_Y(FluxFunction):
@@ -269,7 +270,7 @@ class ROE_FLUX_Y(FluxFunction):
 
     def get_flux(self, UL, UR):
         self._get_eigen_system_from_roe_state(UL, UR)
-        return 0.5 * (self.B.dot(UL.U + UR.U) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(UL.U - UR.U))))
+        return 0.5 * (self.B.dot(UL + UR) + self.X.dot(np.absolute(self.Lambda).dot(self.Xi.dot(UL - UR))))
 
 
 def stack(*args):

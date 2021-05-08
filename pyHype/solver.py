@@ -1,3 +1,4 @@
+import sys
 import pstats
 import cProfile
 import numpy as np
@@ -7,6 +8,8 @@ from pyHype import execution_prints
 from pyHype.blocks.base import Blocks
 import pyHype.mesh.mesh_inputs as mesh_inputs
 import pyHype.input.input_file_builder as input_file_builder
+
+np.set_printoptions(threshold=sys.maxsize)
 
 
 class Euler2DSolver:
@@ -106,7 +109,7 @@ class Euler2DSolver:
                         iF = 4 * (i - 1) + 4 * nx * (j - 1)
                         iE = 4 * (i - 0) + 4 * nx * (j - 1)
 
-                        if block.mesh.x[j - 1, i - 1] < 5 and block.mesh.y[j - 1, i - 1] < 5:
+                        if block.mesh.x[j - 1, i - 1] <= 5 and block.mesh.y[j - 1, i - 1] <= 5:
                             block.state.U[iF:iE] = QR
                         else:
                             block.state.U[iF:iE] = QL
@@ -153,8 +156,8 @@ class Euler2DSolver:
         nx = self.inputs.nx
         ny = self.inputs.ny
 
-        #fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
+        ax.figure.set_size_inches(8, 8)
 
         if self.profile:
             print('Enable profiler')
@@ -167,33 +170,46 @@ class Euler2DSolver:
             V = np.zeros((ny, nx))
             x = self._blocks.blocks[1].mesh.x
             y = self._blocks.blocks[1].mesh.y
+        else:
+            V, x, y = None, None, None
 
         print('Start simulation')
-        while self.t <= self.t_final:
+        while self.t < self.t_final:
 
-            #print('get dt')
             dt = self.dt()
             self.numTimeStep += 1
 
-            #print('update block')
+            print('update block')
             self._blocks.update(dt)
 
             if self.inputs.realplot:
                 if self.numTimeStep % 1 == 0:
 
-                    state = self._blocks.blocks[1].state.U
+                    state = self._blocks.blocks[1].state
 
                     for i in range(1, ny + 1):
-                        Q = state[4 * nx * (i - 1):4 * nx * i]
+                        Q = state.U[4 * nx * (i - 1):4 * nx * i]
                         V[i - 1, :] = Q[::4].reshape(-1,)
 
-                    ax.contourf(x, y, V, cmap='magma')
+                    ax.contourf(x, y, V, 20, cmap='magma')
                     plt.show()
                     plt.pause(0.01)
 
             self.t += dt
 
-        print(self.numTimeStep)
+        if self.inputs.makeplot:
+            state = self._blocks.blocks[1].state.U
+
+            V = np.zeros((ny, nx))
+            x = self._blocks.blocks[1].mesh.x
+            y = self._blocks.blocks[1].mesh.y
+
+            for i in range(1, ny + 1):
+                Q = state[4 * nx * (i - 1):4 * nx * i]
+                V[i - 1, :] = Q[::4].reshape(-1, )
+
+            ax.contourf(x, y, V, 100, cmap='magma')
+            plt.show(block=True)
 
         if self.profile:
             profiler.disable()

@@ -87,7 +87,6 @@ class PrimitiveState(State):
     utilizes a primitive formulation. Another primary use-case for `PrimitiveState` is converting a `ConservativeState`
     into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
     """
-    __super__ = State.__init__
 
     def __init__(self, inputs, size_: int):
         """
@@ -102,10 +101,7 @@ class PrimitiveState(State):
         """
 
         # Call superclass constructor
-        # super().__init__(inputs, size_)
-
-        # Has to be done this way because numba doesnt understand super() yet
-        self.__super__(inputs, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.W = np.zeros((4 * size_, 1))       # conservative state vector
@@ -116,8 +112,17 @@ class PrimitiveState(State):
 
         self.set_vars_from_state()
 
+    # Overload __getitem__ method to return slice from W based on index slice object/indices
     def __getitem__(self, index):
         return self.W[index]
+
+    # Overload __add__ method to return the sum of self and other's state vectors
+    def __add__(self, other):
+        return self.W + other.W
+
+    # Overload __sub__ method to return the difference between self and other's state vectors
+    def __sub__(self, other):
+        return self.W - other.W
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -236,7 +241,6 @@ class ConservativeState(State):
     solver that utilizes a conservative formulation. It can also be used to represent the solution state in
     BoundaryBlocks in a solver that utilizes a conservative formulation.
     """
-    super_ = State.__init__
 
     def __init__(self, inputs, size_: int):
         """
@@ -251,10 +255,7 @@ class ConservativeState(State):
         """
 
         # Call superclass constructor
-        # super().__init__(inputs, size_)
-
-        # Has to be done this way because numba doesnt understand super() yet
-        self.super_(inputs, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.U = np.zeros((4 * size_, 1))           # conservative state vector
@@ -267,6 +268,12 @@ class ConservativeState(State):
 
     def __getitem__(self, index):
         return self.U[index]
+
+    def __add__(self, other):
+        return self.U + other.U
+
+    def __sub__(self, other):
+        return self.U - other.U
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -416,7 +423,6 @@ class RoePrimitiveState(State):
     where $H^\\*$ is the Roe specific enthalpy, evaluated as:                                               \n
     $H^\\* = \\frac{H^R \\sqrt{\\rho^R} + H^L \\sqrt{\\rho^L}}{\\sqrt{\\rho^R} + \\sqrt{\\rho^L}}$.
     """
-    super_ = State.__init__
 
     def __init__(self, inputs, WL, WR, size_: int = None):
         """
@@ -431,10 +437,7 @@ class RoePrimitiveState(State):
         """
 
         # Call superclass constructor
-        # super().__init__(inputs, size_)
-
-        # Has to be done this way because numba doesnt understand super() yet
-        self.super_(inputs, size_)
+        super().__init__(inputs, size_)
 
         # Public
         self.W = np.zeros((4 * size_, 1))           # primitive state vector

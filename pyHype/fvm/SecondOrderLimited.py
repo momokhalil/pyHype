@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from numba.experimental import jitclass
 from pyHype.fvm.base import FiniteVolumeMethod
@@ -9,22 +10,24 @@ class SecondOrderLimited(FiniteVolumeMethod):
         super().__init__(inputs, global_nBLK)
 
     def reconstruct_state_X(self, U):
-        limited_state   = self.flux_limiter.limit(U) * (U[8:] - U[:-8])
-        left, right     = U[:-4], U[4:]
-        left[4:]        += limited_state / 4
-        right[:-4]      -= limited_state / 4
+
+        limited_state   = self.flux_limiter.limit(U) * (U[8:] - U[:-8]) / 4
+        left            = U[:-4] + np.vstack((np.zeros((4, 1)), limited_state))
+        right           = U[4:] - np.vstack((limited_state, np.zeros((4, 1))))
 
         self.UL.from_state_vector(left)
         self.UR.from_state_vector(right)
+
 
     def reconstruct_state_Y(self, U):
-        limited_state   = self.flux_limiter.limit(U) * (U[8:] - U[:-8])
-        left, right     = U[:-4], U[4:]
-        left[4:]        += limited_state
-        right[:-4]      -= limited_state
 
+        limited_state   = self.flux_limiter.limit(U) * (U[8:] - U[:-8]) / 4
+        left = U[:-4] + np.vstack((np.zeros((4, 1)), limited_state))
+        right = U[4:] - np.vstack((limited_state, np.zeros((4, 1))))
+        
         self.UL.from_state_vector(left)
         self.UR.from_state_vector(right)
+
 
     @staticmethod
     def get_row(ref_BLK, index: int) -> np.ndarray:
