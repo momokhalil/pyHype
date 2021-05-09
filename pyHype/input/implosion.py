@@ -1,6 +1,7 @@
 implosion = {'problem_type':            'implosion',
              'IC_type':                 'from_IC',
              'flux_function':           'Roe',
+             'reconstruction_type':     'Conservative',
              'realplot':                1,
              'makeplot':                1,
              'time_it':                 1,

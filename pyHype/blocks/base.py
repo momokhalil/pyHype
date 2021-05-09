@@ -217,8 +217,18 @@ class QuadBlock:
     def row(self, index: int) -> np.ndarray:
         return self._state.U[4*self._mesh.nx*(index - 1):4*self._mesh.nx*index]
 
+    def fullrow(self, index: int) -> np.ndarray:
+        return np.vstack((self.boundary_blocks.W[index],
+                          self.row(index),
+                          self.boundary_blocks.E[index]))
+
     def col(self, index: int) -> np.ndarray:
         return self._state.U[self.col_idx + 4*index]
+
+    def fullcol(self, index: int) -> np.ndarray:
+        return np.vstack((self.boundary_blocks.S[index],
+                          self.col(index),
+                          self.boundary_blocks.N[index]))
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods

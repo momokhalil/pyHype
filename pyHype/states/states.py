@@ -329,7 +329,7 @@ class ConservativeState(State):
         # Set state vector from state variables
         self.set_state_from_vars()
 
-    def from_state_vector(self, U: 'ConservativeState') -> None:
+    def from_state_vector(self, U: np.ndarray) -> None:
         self.U = U
         self.set_vars_from_state()
 
