@@ -230,21 +230,24 @@ class QuadBlock:
     # Explicit Euler time stepping
     def explicit_euler(self, dt) -> None:
 
+        # Save inial state
+        U_initial = self._state.U
+
         # First stage ##############################################################
 
         # Get residuals
         Rx, Ry = self.get_residual()
+        # First update vector
+        K1 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
-        self._state.U += dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state variables
-        self._state.set_vars_from_state()
+        self._state.update(K1)
         # Update state BC
         self.update_BC()
 
     # RK2 time stepping
     def RK2(self, dt) -> None:
 
-        # Save state for final stage
+        # Save inial state
         U_initial = self._state.U
 
         # First stage ##############################################################
@@ -252,11 +255,9 @@ class QuadBlock:
         # Get residuals
         Rx, Ry = self.get_residual()
         # First update vector
-        K1 = dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        K1 = U_initial + 0.5 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
-        self._state.U = self._state.U + 0.5 * K1
-        # Update block state variables
-        self._state.set_vars_from_state()
+        self._state.update(K1)
         # Update state BC
         self.update_BC()
 
@@ -265,18 +266,16 @@ class QuadBlock:
         # Get residuals
         Rx, Ry = self.get_residual()
         # First update vector
-        K2 = dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        K2 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
-        self._state.U = U_initial + K2
-        # Update block state variables
-        self._state.set_vars_from_state()
+        self._state.update(K2)
         # Update state BC
         self.update_BC()
 
     # RK3 TVD time stepping
     def RK3TVD(self, dt) -> None:
 
-        # Save state for final stage
+        # Save inial state
         U_initial = self._state.U
 
         # First stage ##############################################################
@@ -284,12 +283,9 @@ class QuadBlock:
         # Get residuals
         Rx, Ry = self.get_residual()
         # First update vector
-        K1 = U_initial + \
-             dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        K1 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
-        self._state.U = K1
-        # Update block state variables
-        self._state.set_vars_from_state()
+        self._state.update(K1)
         # Update state BC
         self.update_BC()
 
@@ -297,15 +293,12 @@ class QuadBlock:
 
         # Get residuals
         Rx, Ry = self.get_residual()
-        # First update vector
+        # Second update vector
         K2 = 0.75 * U_initial +     \
              0.25 * K1 +            \
              0.25 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-
         # Update block state vector
-        self._state.U = K2
-        # Update block state variables
-        self._state.set_vars_from_state()
+        self._state.update(K2)
         # Update state BC
         self.update_BC()
 
@@ -313,12 +306,12 @@ class QuadBlock:
 
         # Get residuals
         Rx, Ry = self.get_residual()
+        # Third update vector
+        K3 = (1/3) * U_initial + \
+             (2/3) * K2 +        \
+             (2/3) * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
-        self._state.U = (1/3) * U_initial + \
-                        (2/3) * K2 +        \
-                        (2/3) * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state variables
-        self._state.set_vars_from_state()
+        self._state.update(K3)
         # Update state BC
         self.update_BC()
 

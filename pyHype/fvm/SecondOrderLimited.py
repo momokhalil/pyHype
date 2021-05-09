@@ -18,6 +18,9 @@ class SecondOrderLimited(FiniteVolumeMethod):
         self.Flux_Y = self._shuffle.dot(self.Flux_Y)
 
     def get_flux(self, ref_BLK):
+        """
+        
+        """
 
         for r in range(1, self.ny + 1):
             row = self.get_row(ref_BLK=ref_BLK, index=r)

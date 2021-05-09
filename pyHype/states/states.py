@@ -1,6 +1,5 @@
 import numpy as np
 from abc import abstractmethod
-from numba.experimental import jitclass
 
 
 class State:
@@ -31,6 +30,7 @@ class State:
 
         # Public
         self.g = inputs.gamma
+
 
     @abstractmethod
     def set_state_from_vars(self, **kwargs):
@@ -113,16 +113,20 @@ class PrimitiveState(State):
         self.set_vars_from_state()
 
     # Overload __getitem__ method to return slice from W based on index slice object/indices
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> np.ndarray:
         return self.W[index]
 
     # Overload __add__ method to return the sum of self and other's state vectors
-    def __add__(self, other):
+    def __add__(self, other: 'PrimitiveState') -> np.ndarray:
         return self.W + other.W
 
     # Overload __sub__ method to return the difference between self and other's state vectors
-    def __sub__(self, other):
+    def __sub__(self, other: 'PrimitiveState') -> np.ndarray:
         return self.W - other.W
+
+    def update(self, value: np.ndarray) -> None:
+        self.W = value
+        self.set_vars_from_state()
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
@@ -274,6 +278,10 @@ class ConservativeState(State):
 
     def __sub__(self, other):
         return self.U - other.U
+
+    def update(self, value: np.ndarray) -> None:
+        self.U = value
+        self.set_vars_from_state()
 
     # PRIVATE METHODS --------------------------------------------------------------------------------------------------
 
