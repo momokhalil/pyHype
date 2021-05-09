@@ -5,7 +5,7 @@ from abc import abstractmethod, ABC
 from pyHype.states.states import ConservativeState
 from pyHype.mesh.mesh_inputs import BlockDescription
 from pyHype.input.input_file_builder import ProblemInput
-from pyHype.fvm import FirstOrderUnlimited, SecondOrderLimited
+from pyHype.fvm import FirstOrderUnlimited, SecondOrderGreenGauss
 
 
 class Vertices:
@@ -148,8 +148,8 @@ class QuadBlock:
             self._finite_volume_method = FirstOrderUnlimited(self.inputs, self.global_nBLK)
         elif fvm == 'FirstOrderLimited':
             self._finite_volume_method = FirstOrderUnlimited(self.inputs, self.global_nBLK)
-        elif fvm == 'SecondOrderLimited':
-            self._finite_volume_method = SecondOrderLimited(self.inputs, self.global_nBLK)
+        elif fvm == 'SecondOrderGreenGauss':
+            self._finite_volume_method = SecondOrderGreenGauss(self.inputs, self.global_nBLK)
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
 

@@ -1,11 +1,11 @@
 import numpy as np
 from pyHype.fvm.base import FiniteVolumeMethod
-from pyHype.states import ConservativeState, PrimitiveState, State
+from pyHype.states import ConservativeState, PrimitiveState
 
 
 _ZERO_VEC = np.zeros((4, 1))
 
-class SecondOrderLimited(FiniteVolumeMethod):
+class SecondOrderGreenGauss(FiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
         super().__init__(inputs, global_nBLK)
 
