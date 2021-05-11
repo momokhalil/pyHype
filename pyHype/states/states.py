@@ -1,5 +1,6 @@
 import numpy as np
 from abc import abstractmethod
+from pyHype.input.input_file_builder import ProblemInput
 
 
 class State:
@@ -12,7 +13,7 @@ class State:
     $X = \\begin{bmatrix} x_1 \\ x_2 \\ \\dots \\ x_n \\end{bmatrix}^T$. The state vector represents the solution at
     each physical discretization point.
     """
-    def __init__(self, inputs, size_):
+    def __init__(self, inputs, size):
         """
         ## Attributes
 
@@ -26,7 +27,7 @@ class State:
 
         # Private
         self.inputs = inputs
-        self._size = size_
+        self.size = size
 
         # Public
         self.g = inputs.gamma
@@ -47,9 +48,44 @@ class State:
         pass
 
     @abstractmethod
-    def from_vars(self, **kwargs):
+    def from_conservative_state(self, U: 'ConservativeState') -> None:
         """
-        Sets the state variable attributes and state vector from input state variables (passed as kwargs)
+
+        """
+        pass
+
+    @abstractmethod
+    def from_conservative_state_vector(self, U_vector: np.ndarray):
+        """
+
+        """
+        pass
+
+    @abstractmethod
+    def from_conservative_state_vars(self, rho: np.ndarray, rhou: np.ndarray, rhov: np.ndarray, e: np.ndarray) -> None:
+        """
+
+        """
+        pass
+
+    @abstractmethod
+    def from_primitive_state(self, W: 'PrimitiveState') -> None:
+        """
+
+        """
+        pass
+
+    @abstractmethod
+    def from_primitive_state_vector(self, W_vector: np.ndarray) -> None:
+        """
+
+        """
+        pass
+
+    @abstractmethod
+    def from_primitive_state_vars(self, rho: np.ndarray, u: np.ndarray, v: np.ndarray, p: np.ndarray) -> None:
+        """
+
         """
         pass
 
@@ -88,7 +124,12 @@ class PrimitiveState(State):
     into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
     """
 
-    def __init__(self, inputs, size_: int):
+    def __init__(self,
+                 inputs: ProblemInput,
+                 size: int = None,
+                 state: ['ConservativeState', 'PrimitiveState'] = None,
+                 U_vector: np.ndarray = None,
+                 W_vector: np.ndarray = None):
         """
         ## Attributes
 
@@ -100,17 +141,52 @@ class PrimitiveState(State):
             p       pressure                        \n
         """
 
-        # Call superclass constructor
-        super().__init__(inputs, size_)
+        # Initialize attributes for storing solution data
 
-        # Public
-        self.W = np.zeros((4 * size_, 1))       # conservative state vector
-        self.rho = np.zeros((size_, 1))         # density
-        self.u = np.zeros((size_, 1))           # x-direction velocity
-        self.v = np.zeros((size_, 1))           # y-direction velocity
-        self.p = np.zeros((size_, 1))           # pressure
+        # Check if an input vector is given
+        if state or (U_vector is not None) or (W_vector is not None):
+            _vec_given = True
+        else:
+            _vec_given = False
 
-        self.set_vars_from_state()
+        # Check if more than one input vector is given
+        if _vec_given and sum(map(bool, [state, U_vector is not None, W_vector is not None])) > 1:
+            raise ValueError('Please provide only one type of input state or vector')
+
+        # Get vector size
+        _vec_size = 0
+
+        if size and not _vec_given:
+            _vec_size = int(size)
+        elif _vec_given:
+            if state:
+                _vec_size = state.size
+            elif U_vector is not None:
+                _vec_size = int(U_vector.shape[0] / 4)
+            elif W_vector is not None:
+                _vec_size = int(W_vector.shape[0] / 4)
+        else:
+            ValueError('Please either provide the size of the vector or a state class or a state vector')
+
+        super().__init__(inputs, _vec_size)
+
+        self.W = np.zeros((4 * _vec_size, 1))  # conservative state vector
+        self.rho = np.zeros((_vec_size, 1))
+        self.u = np.zeros((_vec_size, 1))
+        self.v = np.zeros((_vec_size, 1))
+        self.p = np.zeros((_vec_size, 1))
+
+        if state:
+            if isinstance(state, PrimitiveState):
+                self.from_primitive_state(state)
+            elif isinstance(state, ConservativeState):
+                self.from_conservative_state(state)
+
+        elif U_vector is not None:
+            self.from_conservative_state_vector(U_vector)
+
+        elif W_vector is not None:
+            self.from_conservative_state_vector(W_vector)
 
     # Overload __getitem__ method to return slice from W based on index slice object/indices
     def __getitem__(self, index: int) -> np.ndarray:
@@ -128,7 +204,8 @@ class PrimitiveState(State):
         self.W = value
         self.set_vars_from_state()
 
-    # PRIVATE METHODS --------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    # METHODS FOR UPDATING INTERNAL STATE BASED ON INTERNAL ATTRIBUTES
 
     def set_vars_from_state(self):
         """
@@ -148,11 +225,81 @@ class PrimitiveState(State):
         self.W[2::4] = self.v
         self.W[3::4] = self.p
 
-    # PUBLIC METHODS ---------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    # METHODS FOR UPDATING INTERNAL STATE BASED ON EXTERNAL INPUTS
 
-    def from_vars(self, rho: np.ndarray, u: np.ndarray, v: np.ndarray, p: np.ndarray) -> None:
+    def from_conservative_state(self, U: 'ConservativeState') -> None:
         """
-        Populates the primitive state vector and variables W with their appropriate components
+        Creates a `PrimitiveState` object from a `ConservativeState` object. Given that `PrimitiveState` state
+        vector is $W = \\begin{bmatrix} \\rho \\ u \\ v \\ p \\end{bmatrix}^T$ and `ConservativeState` state vector is
+        $U = \\begin{bmatrix} \\rho \\ \\rho u \\ \\rho v \\ e \\end{bmatrix}^T$, and labelling the components of $W$ as
+        $\\begin{bmatrix} w_1 \\ w_2 \\ w_3 \\ w_4 \\end{bmatrix}^T$ and the components of $U$ as
+        $\\begin{bmatrix} u_1 \\ u_2 \\ u_3 \\ u_4 \\end{bmatrix}^T$, then, the transformation from $U$ to $W$ is: \n
+        $\\begin{bmatrix} w_1 \\\\\ w_2 \\\\\ w_3 \\\\\ w_4 \\end{bmatrix} =
+        \\begin{bmatrix} u_1 \\\\\ u_2 / u_1 \\\\\ u_3 / u_1 \\\\\ (\\gamma - 1)[u_4 - \\frac{1}{2 \\rho}(u_2^2 + u_3^2)] \\\\\ \\end{bmatrix} =
+        \\begin{bmatrix} \\rho \\\\\ \\rho u / \\rho \\\\\ \\rho v / \\rho \\\\\ (\\gamma - 1)[e - \\frac{1}{2 \\rho}((\\rho u)^2 + (\\rho v)^2)] \\\\\ \\end{bmatrix} =
+        \\begin{bmatrix} \\rho \\\\\ u \\\\\ v \\\\\ p \\end{bmatrix}$
+
+        **Parameters**                              \n
+            U       ConservativeState object        \n
+        """
+        self.rho = U.rho.copy()
+        self.u = U.rhou / self.rho
+        self.v = U.rhov / self.rho
+        self.p = (self.g - 1) * (U.e.copy() - 0.5 * (U.rhou**2 + U.rhov**2) / self.rho)
+
+        self.set_state_from_vars()
+
+    def from_conservative_state_vector(self, U_vector: np.ndarray):
+        """
+
+        """
+        self.rho = U_vector[0::4].copy()
+        self.u = U_vector[1::4] / self.rho
+        self.v = U_vector[2::4] / self.rho
+        self.p = (self.g - 1) * (U_vector[3::4].copy() - 0.5 * (U_vector[1::4] ** 2 + U_vector[2::4] ** 2) / self.rho)
+
+        self.set_state_from_vars()
+
+    def from_conservative_state_vars(self, rho: np.ndarray, rhou: np.ndarray, rhov: np.ndarray, e: np.ndarray) -> None:
+        """
+        Populates the primitive state vector and variables W with their appropriate components based on conservative
+        state variables
+
+        **Parameters**                              \n
+            rho     density                         \n
+            u       x-direction velocity            \n
+            v       y-direction velocity            \n
+            p       pressure                        \n
+        """
+
+        # Set density, u, v and pressure
+        self.rho = rho.copy()
+        self.u = rhou / rho
+        self.v = rhov / rho
+        self.p = (self.g - 1) * (e.copy() - rho * (rhou ** 2 + rhov ** 2) / 2)
+
+        # Set W components appropriately
+        self.set_state_from_vars()
+
+    def from_primitive_state(self, W: 'PrimitiveState') -> None:
+        """
+
+        """
+        self.W = W.W.copy()
+        self.set_vars_from_state()
+
+    def from_primitive_state_vector(self, W_vector: np.ndarray) -> None:
+        """
+
+        """
+        self.W = W_vector.copy()
+        self.set_vars_from_state()
+
+    def from_primitive_state_vars(self, rho: np.ndarray, u: np.ndarray, v: np.ndarray, p: np.ndarray) -> None:
+        """
+        Populates the primitive state vector and variables W with their appropriate components based on primitive state
+        variables
 
         **Parameters**                              \n
             rho     density                         \n
@@ -170,46 +317,16 @@ class PrimitiveState(State):
         # Set W components appropriately
         self.set_state_from_vars()
 
-    def from_state_vector(self, W: 'PrimitiveState') -> None:
-        self.W = W
-        self.set_vars_from_state()
-
-    def from_U(self, U: 'ConservativeState') -> None:
-        """
-        Creates a `PrimitiveState` object from a `ConservativeState` object. Given that `PrimitiveState` state
-        vector is $W = \\begin{bmatrix} \\rho \\ u \\ v \\ p \\end{bmatrix}^T$ and `ConservativeState` state vector is
-        $U = \\begin{bmatrix} \\rho \\ \\rho u \\ \\rho v \\ e \\end{bmatrix}^T$, and labelling the components of $W$ as
-        $\\begin{bmatrix} w_1 \\ w_2 \\ w_3 \\ w_4 \\end{bmatrix}^T$ and the components of $U$ as
-        $\\begin{bmatrix} u_1 \\ u_2 \\ u_3 \\ u_4 \\end{bmatrix}^T$, then, the transformation from $U$ to $W$ is: \n
-        $\\begin{bmatrix} w_1 \\\\\ w_2 \\\\\ w_3 \\\\\ w_4 \\end{bmatrix} =
-        \\begin{bmatrix} u_1 \\\\\ u_2 / u_1 \\\\\ u_3 / u_1 \\\\\ (\\gamma - 1)[u_4 - \\frac{1}{2 \\rho}(u_2^2 + u_3^2)] \\\\\ \\end{bmatrix} =
-        \\begin{bmatrix} \\rho \\\\\ \\rho u / \\rho \\\\\ \\rho v / \\rho \\\\\ (\\gamma - 1)[e - \\frac{1}{2 \\rho}((\\rho u)^2 + (\\rho v)^2)] \\\\\ \\end{bmatrix} =
-        \\begin{bmatrix} \\rho \\\\\ u \\\\\ v \\\\\ p \\end{bmatrix}$
-
-        **Parameters**                              \n
-            U       ConservativeState object        \n
-        """
-        self.rho = U.rho
-        self.u = U.rhou / U.rho
-        self.v = U.rhov / U.rho
-        self.p = (self.g - 1) * (U.e - 0.5 * (U.rhou**2 + U.rhov**2) / U.rho)
-
-        self.set_state_from_vars()
-
-    def to_U(self) -> 'ConservativeState':
+    def to_conservative_state(self) -> 'ConservativeState':
         """
         Creates a `ConservativeState` object from itself
         """
-        U = ConservativeState(self.inputs, self._size)
-        U.from_W(self)
-        return U
+        return ConservativeState(self.inputs, W_vector=self.W)
 
     def H(self) -> np.ndarray:
         return (self.g / (self.g - 1)) * (self.p / self.rho) + np.mean(self.u**2 + self.v**2)
 
     def a(self) -> np.ndarray:
-        #print(self.p)
-        #print(self.rho)
         return np.sqrt(self.g * self.p / self.rho)
 
     def non_dim(self) -> None:
@@ -246,7 +363,12 @@ class ConservativeState(State):
     BoundaryBlocks in a solver that utilizes a conservative formulation.
     """
 
-    def __init__(self, inputs, size_: int):
+    def __init__(self,
+                 inputs: ProblemInput,
+                 size: int = None,
+                 state: ['ConservativeState', 'PrimitiveState'] = None,
+                 U_vector: np.ndarray = None,
+                 W_vector: np.ndarray = None):
         """
         ## Attributes
 
@@ -258,17 +380,50 @@ class ConservativeState(State):
             e       energy per unit volume                          \n
         """
 
-        # Call superclass constructor
-        super().__init__(inputs, size_)
+        # Check if an input vector is given
+        if state or (U_vector is not None) or (W_vector is not None):
+            _vec_given = True
+        else:
+            _vec_given = False
 
-        # Public
-        self.U = np.zeros((4 * size_, 1))           # conservative state vector
-        self.rho = np.zeros((size_, 1))             # density
-        self.rhou = np.zeros((size_, 1))            # x-direction momentum per unit volume
-        self.rhov = np.zeros((size_, 1))            # y-direction momentum per unit volume
-        self.e = np.zeros((size_, 1))               # energy per unit volume
+        # Check if more than one input vector is given
+        if _vec_given and sum(map(bool, [state, U_vector is not None, W_vector is not None])) > 1:
+            raise ValueError('Please provide only one type of input state or vector')
 
-        self.set_vars_from_state()
+        # Get vector size
+        _vec_size = 0
+
+        if size and not _vec_given:
+            _vec_size = int(size)
+        elif _vec_given:
+            if state:
+                _vec_size = state.size
+            elif U_vector is not None:
+                _vec_size = int(U_vector.shape[0] / 4)
+            elif W_vector is not None:
+                _vec_size = int(W_vector.shape[0] / 4)
+        else:
+            ValueError('Please either provide the size of the vector or a state class or a state vector')
+
+        super().__init__(inputs, _vec_size)
+
+        self.U = np.zeros((4 * _vec_size, 1))  # conservative state vector
+        self.rho = np.zeros((_vec_size, 1))
+        self.rhou = np.zeros((_vec_size, 1))
+        self.rhov = np.zeros((_vec_size, 1))
+        self.e = np.zeros((_vec_size, 1))
+
+        if state:
+            if isinstance(state, PrimitiveState):
+                self.from_primitive_state(state)
+            elif isinstance(state, ConservativeState):
+                self.from_conservative_state(state)
+
+        elif U_vector is not None:
+            self.from_conservative_state_vector(U_vector)
+
+        elif W_vector is not None:
+            self.from_conservative_state_vector(W_vector)
 
     def __getitem__(self, index):
         return self.U[index]
@@ -303,13 +458,21 @@ class ConservativeState(State):
         self.U[2::4] = self.rhov
         self.U[3::4] = self.e
 
-    # Compute pressure
-    def _p(self):
-        return (self.g - 1) * (self.e - 0.5 * (self.rhou**2 + self.rhou**2) / self.rho)
-
     # PUBLIC METHODS ---------------------------------------------------------------------------------------------------
 
-    def from_vars(self, rho=None, rhou=None, rhov=None, e=None):
+    def from_conservative_state(self, U: 'ConservativeState') -> None:
+        self.U = U.U.copy()
+        self.set_vars_from_state()
+
+    def from_conservative_state_vector(self, U_vector: np.ndarray) -> None:
+        self.U = U_vector.copy()
+        self.set_vars_from_state()
+
+    def from_conservative_state_vars(self,
+                                     rho: np.ndarray,
+                                     rhou: np.ndarray,
+                                     rhov: np.ndarray,
+                                     e: np.ndarray) -> None:
         """
         Populates the primitive state vector and variables W with their appropriate components
 
@@ -321,19 +484,15 @@ class ConservativeState(State):
         """
 
         # Set density, u, v and pressure
-        self.rho = rho
-        self.rhou = rhou
-        self.rhov = rhov
-        self.e = e
+        self.rho = rho.copy()
+        self.rhou = rhou.copy()
+        self.rhov = rhov.copy()
+        self.e = e.copy()
 
         # Set state vector from state variables
         self.set_state_from_vars()
 
-    def from_state_vector(self, U: np.ndarray) -> None:
-        self.U = U
-        self.set_vars_from_state()
-
-    def from_W(self, W: [PrimitiveState, 'RoePrimitiveState']):
+    def from_primitive_state(self, W: PrimitiveState) -> None:
         """
         Creates a `COnservativeState` object from a `PrimitiveState` object. Given that `PrimitiveState` state
         vector is $W = \\begin{bmatrix} \\rho \\ u \\ v \\ p \\end{bmatrix}^T$ and `ConservativeState` state vector is
@@ -348,27 +507,63 @@ class ConservativeState(State):
         **Parameters**                              \n
             W       PrimitiveState object           \n
         """
-        self.rho    = W.rho
+        self.rho    = W.rho.copy()
         self.rhou   = W.rho * W.u
         self.rhov   = W.rho * W.v
         self.e      = W.p / (self.g - 1) + 0.5 * W.rho * (W.u**2 + W.v**2)
 
         self.set_state_from_vars()
 
-    def to_W(self) -> PrimitiveState:
+    def from_primitive_state_vector(self, W_vector: np.ndarray) -> None:
+        """
+
+        """
+        self.rho    = W_vector[0::4].copy()
+        self.rhou   = self.rho * W_vector[1::4]
+        self.rhov   = self.rho * W_vector[2::4]
+        self.e      = W_vector[3::4] / (self.g - 1) + 0.5 * self.rho * (W_vector[1::4] ** 2 + W_vector[2::4] ** 2)
+
+        self.set_state_from_vars()
+
+    def from_primitive_state_vars(self,
+                                     rho: np.ndarray,
+                                     u: np.ndarray,
+                                     v: np.ndarray,
+                                     p: np.ndarray) -> None:
+        """
+        Populates the primitive state vector and variables W with their appropriate components
+
+        **Parameters**                                              \n
+            rho     density                                         \n
+            rhou    x-direction momentum per unit volume            \n
+            rhov    y-direction momentum per unit volume            \n
+            e       energy per unit volume                          \n
+        """
+
+        # Set density, u, v and pressure
+        self.rho = rho.copy()
+        self.rhou = rho * u
+        self.rhov = rho * v
+        self.e = p / (self.g - 1) + 0.5 * (u ** 2 + v ** 2) / rho
+
+        # Set state vector from state variables
+        self.set_state_from_vars()
+
+    def to_primitive_state(self) -> PrimitiveState:
         """
         Creates a `PrimitiveState` object from itself
         """
-        W = PrimitiveState(self.inputs, self._size)
-        W.from_U(self)
-
-        return W
+        return PrimitiveState(self.inputs, U_vector=self.U)
 
     def H(self):
-        return self.g / (self.g - 1) * self._p() / self.rho + 0.5 * (self.rhou**2 + self.rhov**2) / self.rho
+        return self.g / (self.g - 1) * self.p() / self.rho + 0.5 * (self.rhou**2 + self.rhov**2) / self.rho
 
     def a(self):
-        return np.sqrt(self.g * self._p() / self.rho)
+        return np.sqrt(self.g * self.p() / self.rho)
+
+    # Compute pressure
+    def p(self):
+        return (self.g - 1) * (self.e - 0.5 * (self.rhou ** 2 + self.rhov ** 2) / self.rho)
 
     def non_dim(self):
         """
@@ -389,28 +584,8 @@ class ConservativeState(State):
 
         self.set_vars_from_state()
 
-    def F(self):
-        F = np.zeros((4 * self.inputs.nx + 4, 1))
 
-        F[0::4] = self.rhou
-        F[1::4] = self._p() + self.rhou ** 2 / self.rho
-        F[2::4] = self.rhou * self.rhov / self.rho
-        F[3::4] = (self.rhou / self.rho) * (self.e + self._p())
-
-        return F
-
-    def G(self):
-        G = np.zeros((4 * self.inputs.ny + 4, 1))
-
-        G[0::4] = self.rhov
-        G[1::4] = self.rhou * self.rhov / self.rho
-        G[2::4] = self._p() + self.rhov ** 2 / self.rho
-        G[3::4] = (self.rhov / self.rho) * (self.e + self._p())
-
-        return G
-
-
-class RoePrimitiveState(State):
+class RoePrimitiveState(PrimitiveState):
     """
     #*$Roe$* Primitive State
     A class the represents the *Roe* average state in primitive form. This class extends `PrimitiveState`, and is used to
@@ -432,7 +607,7 @@ class RoePrimitiveState(State):
     $H^\\* = \\frac{H^R \\sqrt{\\rho^R} + H^L \\sqrt{\\rho^L}}{\\sqrt{\\rho^R} + \\sqrt{\\rho^L}}$.
     """
 
-    def __init__(self, inputs, WL, WR, size_: int = None):
+    def __init__(self, inputs, WL, WR):
         """
         ## Attributes
 
@@ -445,124 +620,9 @@ class RoePrimitiveState(State):
         """
 
         # Call superclass constructor
-        super().__init__(inputs, size_)
-
-        # Public
-        self.W = np.zeros((4 * size_, 1))           # primitive state vector
-        self.rho = np.zeros((size_, 1))         # density
-        self.u = np.zeros((size_, 1))           # x-direction velocity
-        self.v = np.zeros((size_, 1))           # y-direction velocity
-        self.p = np.zeros((size_, 1))           # pressure
-
+        super().__init__(inputs, size=WL.W.shape[0] / 4)
         self.roe_state_from_primitive_states(WL, WR)
 
-    def __getitem__(self, index):
-        return self.W[index]
-
-    # PRIVATE METHODS --------------------------------------------------------------------------------------------------
-
-    def set_vars_from_state(self):
-        """
-        Sets primitive variables from primitive state vector
-        """
-        self.rho    = self.W[0::4]
-        self.u      = self.W[1::4]
-        self.v      = self.W[2::4]
-        self.p      = self.W[3::4]
-
-    def set_state_from_vars(self):
-        """
-        Sets primitive variables from primitive state vector
-        """
-        self.W[0::4] = self.rho
-        self.W[1::4] = self.u
-        self.W[2::4] = self.v
-        self.W[3::4] = self.p
-
-    # PUBLIC METHODS ---------------------------------------------------------------------------------------------------
-
-    def from_vars(self, rho: np.ndarray, u: np.ndarray, v: np.ndarray, p: np.ndarray) -> None:
-        """
-        Populates the primitive state vector and variables W with their appropriate components
-
-        **Parameters**                              \n
-            rho     density                         \n
-            u       x-direction velocity            \n
-            v       y-direction velocity            \n
-            p       pressure                        \n
-        """
-
-        # Set density, u, v and pressure
-        self.rho = rho
-        self.u = u
-        self.v = v
-        self.p = p
-
-        # Set W components appropriately
-        self.set_state_from_vars()
-
-    def from_state_vector(self, W: 'PrimitiveState') -> None:
-        self.W = W
-        self.set_vars_from_state()
-
-    def from_U(self, U: 'ConservativeState') -> None:
-        """
-        Creates a `PrimitiveState` object from a `ConservativeState` object. Given that `PrimitiveState` state
-        vector is $W = \\begin{bmatrix} \\rho \\ u \\ v \\ p \\end{bmatrix}^T$ and `ConservativeState` state vector is
-        $U = \\begin{bmatrix} \\rho \\ \\rho u \\ \\rho v \\ e \\end{bmatrix}^T$, and labelling the components of $W$ as
-        $\\begin{bmatrix} w_1 \\ w_2 \\ w_3 \\ w_4 \\end{bmatrix}^T$ and the components of $U$ as
-        $\\begin{bmatrix} u_1 \\ u_2 \\ u_3 \\ u_4 \\end{bmatrix}^T$, then, the transformation from $U$ to $W$ is: \n
-        $\\begin{bmatrix} w_1 \\\\\ w_2 \\\\\ w_3 \\\\\ w_4 \\end{bmatrix} =
-        \\begin{bmatrix} u_1 \\\\\ u_2 / u_1 \\\\\ u_3 / u_1 \\\\\ (\\gamma - 1)[u_4 - \\frac{1}{2 \\rho}(u_2^2 + u_3^2)] \\\\\ \\end{bmatrix} =
-        \\begin{bmatrix} \\rho \\\\\ \\rho u / \\rho \\\\\ \\rho v / \\rho \\\\\ (\\gamma - 1)[e - \\frac{1}{2 \\rho}((\\rho u)^2 + (\\rho v)^2)] \\\\\ \\end{bmatrix} =
-        \\begin{bmatrix} \\rho \\\\\ u \\\\\ v \\\\\ p \\end{bmatrix}$
-
-        **Parameters**                              \n
-            U       ConservativeState object        \n
-        """
-        self.rho = U.rho
-        self.u = U.rhou / U.rho
-        self.v = U.rhov / U.rho
-        self.p = (self.g - 1) * (U.e - 0.5 * (U.rhou**2 + U.rhov**2) / U.rho)
-
-        self.set_state_from_vars()
-
-    def to_U(self) -> 'ConservativeState':
-        """
-        Creates a `ConservativeState` object from itself
-        """
-        U = ConservativeState(self.inputs, self._size)
-        U.from_W(self)
-        return U
-
-    def H(self) -> np.ndarray:
-        return (self.g / (self.g - 1)) * (self.p / self.rho) + np.mean(self.u**2 + self.v**2)
-
-    def a(self) -> np.ndarray:
-        #print(self.p)
-        #print(self.rho)
-        return np.sqrt(self.g * self.p / self.rho)
-
-    def non_dim(self) -> None:
-        """
-        Non-dimentionalizes the primitive state vector W. Let the non-dimentionalized primitive state vector be
-        $W^* = \\begin{bmatrix} \\rho^* \\ u^* \\ v^* \\ p^* \\end{bmatrix}^T$, where $^*$ indicates a
-        non-dimentionalized quantity. The non-dimentionalized primitive variables are:  \n
-        $\\rho^* = \\rho/\\rho_\\infty$                                                 \n
-        $u^* = u/a_\\infty$                                                             \n
-        $u^* = v/a_\\infty$                                                             \n
-        $p^* = p/\\rho_\\infty a_\\infty^2$                                             \n
-        If `PrimitiveState` is created from a non-dimentionalized `ConservativeState`, it will be non-dimentional.
-        """
-
-        # Non-dimentionalize each component of W
-        self.W[0::4] /= self.inputs.rho_inf
-        self.W[1::4] /= self.inputs.rho_inf * self.inputs.a_inf
-        self.W[2::4] /= self.inputs.rho_inf * self.inputs.a_inf
-        self.W[3::4] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
-
-        # Set variables from non-dimensionalized W
-        self.set_vars_from_state()
 
     def roe_state_from_primitive_states(self, WL: PrimitiveState, WR: PrimitiveState) -> None:
         """
@@ -577,7 +637,7 @@ class RoePrimitiveState(State):
         rho, u, v, p = self.get_roe_state(WL, WR)
 
         # Set state vector and variables from *Roe* averages
-        self.from_vars(rho, u, v, p)
+        self.from_primitive_state_vars(rho, u, v, p)
 
     def roe_state_from_conservative_states(self, UL: ConservativeState, UR: ConservativeState) -> None:
         """
@@ -589,10 +649,10 @@ class RoePrimitiveState(State):
          """
 
         # Get average *Roe* quantities
-        rho, u, v, p = self.get_roe_state(UL.to_W(), UR.to_W())
+        rho, u, v, p = self.get_roe_state(UL.to_primitive_state(), UR.to_primitive_state())
 
         # Set state vector and variables from *Roe* averages
-        self.from_vars(rho, u, v, p)
+        self.from_primitive_state_vars(rho, u, v, p)
 
     def get_roe_state(self, WL: PrimitiveState, WR: PrimitiveState) -> [np.ndarray]:
         """

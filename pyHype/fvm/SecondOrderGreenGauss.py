@@ -9,23 +9,29 @@ class SecondOrderGreenGauss(FiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
         super().__init__(inputs, global_nBLK)
 
-    def get_flux(self, ref_BLK):
+        self.Ux = ConservativeState(inputs=self.inputs, size=self.nx + 2)
+        self.Uy = ConservativeState(inputs=self.inputs, size=self.ny + 2)
 
-        Ux = ConservativeState(inputs=self.inputs, size_=self.nx + 2)
-        Uy = ConservativeState(inputs=self.inputs, size_=self.ny + 2)
+    def get_flux(self, ref_BLK):
+        """
+        Compute the flux at each cell center using the Green Gauss reconstruction method and the approximate Riemann
+        solver and slope limiter of choice.
+        """
 
         for row in range(1, self.ny + 1):
-            Ux.from_state_vector(ref_BLK.fullrow(index=row))
+            row = ref_BLK.fullrow(index=row)
+            self.Ux.from_conservative_state_vector(row)
 
-            self.reconstruct(Ux)
+            self.reconstruct(self.Ux)
 
             flux = self.flux_function_X.get_flux(self.UL, self.UR)
             self.Flux_X[4 * self.nx * (row - 1):4 * self.nx * row] = flux[4:] - flux[:-4]
 
         for col in range(1, self.nx + 1):
-            Uy.from_state_vector(ref_BLK.fullcol(index=col))
+            col = ref_BLK.fullcol(index=col)
+            self.Uy.from_conservative_state_vector(col)
 
-            self.reconstruct(Uy)
+            self.reconstruct(self.Uy)
 
             flux = self.flux_function_Y.get_flux(self.UL, self.UR)
             self.Flux_Y[4 * self.ny * (col - 1):4 * self.ny * col] = flux[4:] - flux[:-4]
@@ -44,28 +50,21 @@ class SecondOrderGreenGauss(FiniteVolumeMethod):
         self.postprocessing(stateL, stateR)
 
     def preprocessing(self, instate: ConservativeState):
-
         if self.inputs.reconstruction_type == 'Primitive':
-            return instate.to_W()
+            return instate.to_primitive_state()
         elif self.inputs.reconstruction_type == 'Conservative':
             return instate
         else:
             print('WTF')
 
     def postprocessing(self, stateL, stateR):
-
         if self.inputs.reconstruction_type == 'Primitive':
-            W = PrimitiveState(inputs=self.inputs, size_=int(stateL.shape[0]/4))
-
-            W.update(stateL)
-            self.UL = W.to_U()
-
-            W.update(stateR)
-            self.UR = W.to_U()
+            self.UL.from_primitive_state_vector(stateL)
+            self.UR.from_primitive_state_vector(stateR)
 
         elif self.inputs.reconstruction_type == 'Conservative':
-            self.UL.from_state_vector(stateL)
-            self.UR.from_state_vector(stateR)
+            self.UL.from_conservative_state_vector(stateL)
+            self.UR.from_conservative_state_vector(stateR)
 
         else:
             print('WTF')

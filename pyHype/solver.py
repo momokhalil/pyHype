@@ -123,7 +123,7 @@ class Euler2DSolver:
     def dt(self):
         dt = 1000000
         for block in self.blocks:
-            W = block.state.to_W()
+            W = block.state.to_primitive_state()
             a = W.a()
 
             t1 = block.mesh.dx / (np.absolute(W.u) + a)
