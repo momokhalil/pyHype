@@ -60,10 +60,10 @@ class ROE_FLUX_X(FluxFunction):
     def _get_eigen_system_from_roe_state(self, UL, UR):
 
         # Create Left and Right PrimitiveStates
-        WL, WR = UL.to_W(), UR.to_W()
+        WL, WR = UL.to_primitive_state(), UR.to_primitive_state()
 
         # Get Roe state
-        Wroe = RoePrimitiveState(self.inputs, WL, WR, self.nx + 1)
+        Wroe = RoePrimitiveState(self.inputs, WL, WR)
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
@@ -192,10 +192,10 @@ class ROE_FLUX_Y(FluxFunction):
     def _get_eigen_system_from_roe_state(self, UL, UR):
 
         # Create Left and Right PrimitiveStates
-        WL, WR = UL.to_W(), UR.to_W()
+        WL, WR = UL.to_primitive_state(), UR.to_primitive_state()
 
         # Get Roe state
-        Wroe = RoePrimitiveState(self.inputs, WL, WR, self.nx + 1)
+        Wroe = RoePrimitiveState(self.inputs, WL, WR)
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_y(Wroe, WL, WR)

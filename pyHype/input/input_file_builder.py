@@ -17,6 +17,7 @@ class ProblemInput:
         self.time_integrator = input_dict['time_integrator']
         self.CFL = input_dict['CFL']
         self.flux_function = input_dict['flux_function']
+        self.reconstruction_type = input_dict['reconstruction_type']
         self.finite_volume_method = input_dict['finite_volume_method']
         self.flux_limiter = input_dict['flux_limiter']
 
