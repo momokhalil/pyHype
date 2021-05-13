@@ -48,73 +48,62 @@ class Euler2DSolver:
 
             # High pressure zone
             rhoL = 4.6968
-            pL = 404400
-            uL = 0
-            vL = 0
+            pL = 404400.0
+            uL = 0.0
+            vL = 0.0
             eL = pL / (g - 1)
 
             # Low pressure zone
             rhoR = 1.1742
-            pR = 101100
-            uR = 0
-            vR = 0
+            pR = 101100.0
+            uR = 0.0
+            vR = 0.0
             eR = pR / (g - 1)
 
             # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((4, 1))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((4, 1))
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
 
             # Fill state vector in each block
             for block in self._blocks.blocks.values():
-
-                for j in range(1, ny + 1):
-                    for i in range(1, nx + 1):
-                        iF = 4 * (i - 1) + 4 * nx * (j - 1)
-                        iE = 4 * (i - 0) + 4 * nx * (j - 1)
-
-                        if block.mesh.x[j - 1, i - 1] <= 5 and block.mesh.y[j - 1, i - 1] <= 5:
-                            block.state.U[iF:iE] = QR
-                        elif block.mesh.x[j - 1, i - 1] > 5 and block.mesh.y[j - 1, i - 1] > 5:
-                            block.state.U[iF:iE] = QR
+                for i in range(ny):
+                    for j in range(nx):
+                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
+                            block.state.U[i, j, :] = QR
+                        elif block.mesh.x[i, j] > 5 and block.mesh.y[i, j] > 5:
+                            block.state.U[i, j, :] = QR
                         else:
-                            block.state.U[iF:iE] = QL
-
+                            block.state.U[i, j, :] = QL
                 block.state.non_dim()
 
         elif problem_type == 'implosion':
 
             # High pressure zone
             rhoL = 4.6968
-            pL = 404400
-            uL = 0
-            vL = 0
+            pL = 404400.0
+            uL = 0.0
+            vL = 0.0
             eL = pL / (g - 1)
 
             # Low pressure zone
             rhoR = 1.1742
-            pR = 101100
-            uR = 0
-            vR = 0
+            pR = 101100.0
+            uR = 0.0
+            vR = 0.0
             eR = pR / (g - 1)
 
             # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((4, 1))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((4, 1))
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
 
             # Fill state vector in each block
             for block in self.blocks:
-
-                for j in range(1, ny + 1):
-                    for i in range(1, nx + 1):
-
-                        iF = 4 * (i - 1) + 4 * nx * (j - 1)
-                        iE = 4 * (i - 0) + 4 * nx * (j - 1)
-
-                        if block.mesh.x[j - 1, i - 1] <= 5 and block.mesh.y[j - 1, i - 1] <= 5:
-                            block.state.U[iF:iE] = QR
+                for i in range(ny):
+                    for j in range(nx):
+                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
+                            block.state.U[i, j, :] = QR
                         else:
-                            block.state.U[iF:iE] = QL
-
+                            block.state.U[i, j, :] = QL
                 block.state.non_dim()
 
     def set_BC(self):

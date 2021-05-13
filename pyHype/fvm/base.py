@@ -27,6 +27,34 @@ class FiniteVolumeMethod:
         |         |        |         |
         O ------- 0 ------ 0 ------- 0
 
+        The matrix structure used for storing solution data in various State classes is a (ny * nx * 4) numpy ndarray
+        which has planar dimentions equal to the number of cells in the y and x direction, and a depth of 4. The
+        structure looks as follows:
+
+            ______________nx______________
+            v                            v
+
+        |>  O ------- 0 ------ 0 ------- 0....................... q0 (zeroth state variable)
+        |   |         |        |         |\
+        |   |         |        |         | 0..................... q1 (first state variable)
+        |   |         |        |         | |\
+        |   O ------- 0 ------ 0 ------- 0 | 0................... q2 (second state variable)
+        |   |         |        |         |\| |\
+        ny  |         |        |         | 0 | 0................. q3 (third state variable)
+        |   |         |        |         | |\| |
+        |   O ------- 0 ------ 0 ------- 0 | 0 |
+        |   |         |        |         |\| |\|
+        |   |         |        |         | 0 | 0
+        |   |         |        |         | |\| |
+        |>  O ------- 0 ------ 0 ------- 0 | 0 |
+             \         \        \         \| |\|
+              0 ------- 0 ------ 0 ------- 0 | 0
+               \         \        \         \| |
+                0 ------- 0 ------ 0 ------- 0 |
+                 \         \        \         \|
+                  0 ------- 0 ------ 0 ------- 0
+
+
         then, cells are constructed as follows:
 
         O ------- 0 ------- 0 ------- 0

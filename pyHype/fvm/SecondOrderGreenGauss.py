@@ -1,6 +1,6 @@
 import numpy as np
 from pyHype.fvm.base import FiniteVolumeMethod
-from pyHype.states import ConservativeState, PrimitiveState
+from pyHype.states import ConservativeState
 
 
 _ZERO_VEC = np.zeros((4, 1))
@@ -9,8 +9,8 @@ class SecondOrderGreenGauss(FiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
         super().__init__(inputs, global_nBLK)
 
-        self.Ux = ConservativeState(inputs=self.inputs, size=self.nx + 2)
-        self.Uy = ConservativeState(inputs=self.inputs, size=self.ny + 2)
+        self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
+        self.Uy = ConservativeState(inputs=self.inputs, nx=1, ny=self.ny + 2)
 
     def get_flux(self, ref_BLK):
         """
@@ -18,7 +18,7 @@ class SecondOrderGreenGauss(FiniteVolumeMethod):
         solver and slope limiter of choice.
         """
 
-        for row in range(1, self.ny + 1):
+        for row in range(self.ny):
             r = ref_BLK.fullrow(index=row)
             self.Ux.from_conservative_state_vector(r)
 
@@ -27,7 +27,7 @@ class SecondOrderGreenGauss(FiniteVolumeMethod):
             flux = self.flux_function_X.get_flux(self.UL, self.UR)
             self.Flux_X[4 * self.nx * (row - 1):4 * self.nx * row] = flux[4:] - flux[:-4]
 
-        for col in range(1, self.nx + 1):
+        for col in range(self.nx):
             c = ref_BLK.fullcol(index=col)
             self.Uy.from_conservative_state_vector(c)
 
