@@ -13,7 +13,7 @@ class VanAlbada(SlopeLimiter):
         super().__init__(inputs)
 
     def get_slope(self, U: np.ndarray) -> np.ndarray:
-        slope = (U[8:] - U[4:-4]) / (U[4:-4] - U[:-8] + 1e-8)
+        slope = (U[:, 2:, :] - U[:, 1:-1, :]) / (U[:, 1:-1, :] - U[:, :-2, :] + 1e-8)
         return slope * (slope > 0)
 
     def limit(self, U: np.ndarray) -> np.ndarray:

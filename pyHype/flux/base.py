@@ -1,8 +1,6 @@
-import numba
-from numba import float32
+import time
 import numpy as np
-from abc import ABC, abstractmethod
-from pyHype.states.states import ConservativeState, PrimitiveState, RoePrimitiveState
+from pyHype.states.states import PrimitiveState, RoePrimitiveState
 
 
 
@@ -27,8 +25,8 @@ class FluxFunction:
         theta_1 = 2 * (lambda_R_1 - lambda_L_1)
         theta_3 = 2 * (lambda_R_3 - lambda_L_3)
 
-        theta_1 = np.where(theta_1 > 0, theta_1, 0)
-        theta_3 = np.where(theta_3 > 0, theta_3, 0)
+        theta_1 = theta_1 * (theta_1 > 0)
+        theta_3 = theta_3 * (theta_3 > 0)
 
         L1 = Wroe.u - Wroe.a()
         L3 = Wroe.u + Wroe.a()

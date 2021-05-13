@@ -284,7 +284,7 @@ class PrimitiveState(State):
         self.rho = U_vector[:, :, 0].copy()
         self.u = U_vector[:, :, 1] / self.rho
         self.v = U_vector[:, :, 2] / self.rho
-        self.p = (self.g - 1) * (U_vector[:, :, 3] - 0.5 * (U_vector[:, :, 1] ** 2 + U_vector[:, :, 2] ** 2) / self.rho)
+        self.p = (self.g - 1) * (U_vector[:, :, 3] - 0.5 * self.rho * (self.u ** 2 + self.v ** 2))
 
         self.set_state_from_vars()
 
@@ -304,7 +304,7 @@ class PrimitiveState(State):
         self.rho = rho.copy()
         self.u = rhou / rho
         self.v = rhov / rho
-        self.p = (self.g - 1) * (e - rho * (rhou ** 2 + rhov ** 2) / 2)
+        self.p = (self.g - 1) * (e - 0.5 * (rhou ** 2 + rhov ** 2) / rho)
 
         # Set W components appropriately
         self.set_state_from_vars()
@@ -484,7 +484,7 @@ class ConservativeState(State):
 
     @e.setter
     def e(self, e: np.ndarray) -> None:
-        self.q2 = e
+        self.q3 = e
 
     # W property (refers to q3 in Q)
     @property
@@ -575,10 +575,12 @@ class ConservativeState(State):
         self.rho    = W_vector[:, :, 0].copy()
         self.rhou   = self.rho * W_vector[:, :, 1]
         self.rhov   = self.rho * W_vector[:, :, 2]
-        self.e      = W_vector[:, :, 3] / (self.g - 1) \
-                      + 0.5 * self.rho * (W_vector[:, :, 1] ** 2 + W_vector[:, :, 2] ** 2)
+        self.e      = 0.5 * (self.rhou ** 2 + self.rhov ** 2) / self.rho + W_vector[:, :, 3] / (self.g - 1)
+
 
         self.set_state_from_vars()
+
+
 
     def from_primitive_state_vars(self,
                                      rho: np.ndarray,
@@ -617,10 +619,10 @@ class ConservativeState(State):
         return np.sqrt(self.g * self.p() / self.rho)
 
     def u(self):
-        return self.Q[:, :, 1] / self.Q[:, :, 0]
+        return self.rhou / self.rho
 
     def v(self):
-        return self.Q[:, :, 3] / self.Q[:, :, 0]
+        return self.rhov / self.rho
 
     def p(self):
         return (self.g - 1) * (self.e - 0.5 * (self.rhou ** 2 + self.rhov ** 2) / self.rho)

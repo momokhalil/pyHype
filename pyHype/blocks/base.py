@@ -221,15 +221,16 @@ class QuadBlock:
         return np.concatenate((self.boundary_blocks.W[index, None, :],
                                self.row(index),
                                self.boundary_blocks.E[index, None, :]),
-                              axis=0)
+                               axis=1)
 
     def col(self, index: int) -> np.ndarray:
-        return self._state.U[None, index, :]
+        return self._state.U[None, :, index, :]
 
     def fullcol(self, index: int) -> np.ndarray:
-        return np.vstack((self.boundary_blocks.S[None, index, :],
-                          self.col(index),
-                          self.boundary_blocks.N[None, index, :]))
+        return np.concatenate((self.boundary_blocks.S[None, 0, index, None, :],
+                               self.col(index),
+                               self.boundary_blocks.N[None, 0, index, None, :]),
+                               axis=1)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
@@ -245,11 +246,12 @@ class QuadBlock:
         U_initial = self._state.U
 
         # First stage ##############################################################
-
+        print(dt)
         # Get residuals
         Rx, Ry = self.get_residual()
         # First update vector
         K1 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+
         # Update block state vector
         self._state.update(K1)
         # Update state BC
@@ -359,10 +361,8 @@ class BoundaryBlock(ABC):
         self._state = None
 
     def __getitem__(self, index):
-        x, y, var = index
-        print(x, y, var)
-        print(self.state.U)
-        return self.state.U[y, x, var]
+        #x, y, var = index
+        return self.state.U[index]
 
     @property
     def state(self):
@@ -399,7 +399,7 @@ class BoundaryBlockNorth(BoundaryBlock):
         self._state = ConservativeState(inputs, nx=self.nx, ny=1)
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[-1, None, :]
+        return self.ref_BLK.state.U[-1, :, :].reshape(1, self.inputs.nx, 4)
 
     def set_BC_none(self):
         self._state.U = self.ref_BLK.neighbors.N.get_south_edge()
@@ -418,7 +418,7 @@ class BoundaryBlockSouth(BoundaryBlock):
         self._state = ConservativeState(inputs, nx=self.nx, ny=1)
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[0, None, :]
+        return self.ref_BLK.state.U[0, :, :].reshape(1, self.inputs.nx, 4)
 
     def set_BC_none(self):
         self._state.U = self.ref_BLK.neighbors.S.get_north_edge()
@@ -437,7 +437,7 @@ class BoundaryBlockEast(BoundaryBlock):
         self._state = ConservativeState(inputs, nx=1, ny=self.ny)
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[None, -1, :]
+        return self.ref_BLK.state.U[:, -1, :].reshape(-1, 1, 4)
 
     def set_BC_none(self):
         self._state.U = self.ref_BLK.neighbors.S.get_west_edge()
@@ -456,7 +456,7 @@ class BoundaryBlockWest(BoundaryBlock):
         self._state = ConservativeState(inputs, nx=1, ny=self.ny)
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[None, 0, :]
+        return self.ref_BLK.state.U[:, 0, :].reshape(-1, 1, 4)
 
     def set_BC_none(self):
         self._state.U = self.ref_BLK.neighbors.S.get_east_edge()

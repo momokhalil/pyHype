@@ -116,10 +116,11 @@ class FiniteVolumeMethod:
         self.ny = inputs.ny
         self.global_nBLK = global_nBLK
 
-        self.Flux_X = np.empty((4 * self.nx * self.ny, 1))
-        self.Flux_Y = np.empty((4 * self.nx * self.ny, 1))
-        self.UL = ConservativeState(self.inputs, self.nx + 1)
-        self.UR = ConservativeState(self.inputs, self.nx + 1)
+        self.Flux_X = np.empty((self.ny, self.nx, 4))
+        self.Flux_Y = np.empty((self.ny, self.nx, 4))
+
+        self.UL = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
+        self.UR = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
 
         # Set Flux Function
         if self.inputs.flux_function == 'Roe':
