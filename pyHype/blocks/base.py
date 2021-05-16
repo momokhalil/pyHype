@@ -167,6 +167,33 @@ class QuadBlock:
                                               N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
                                               S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
 
+    def __getitem__(self, index):
+        y, x, var = index
+
+        if self._index_in_west_boundary_block(x, y):
+            return self.boundary_blocks.W.state[y, 0, var]
+        elif self._index_in_east_boundary_block(x, y):
+            return self.boundary_blocks.E.state[y, 0, var]
+        elif self._index_in_north_boundary_block(x, y):
+            return self.boundary_blocks.N.state[0, x, var]
+        elif self._index_in_south_boundary_block(x, y):
+            return self.boundary_blocks.N.state[0, x, var]
+        else:
+            raise ValueError('Incorrect indexing')
+
+
+    def _index_in_west_boundary_block(self, x, y):
+        return x < 0 and 0 <= y <= self._mesh.ny
+
+    def _index_in_east_boundary_block(self, x, y):
+        return x > self._mesh.nx and 0 <= y <= self._mesh.ny
+
+    def _index_in_south_boundary_block(self, x, y):
+        return y < 0 and 0 <= x <= self._mesh.nx
+
+    def _index_in_north_boundary_block(self, x, y):
+        return y > self._mesh.ny and 0 <= x <= self._mesh.nx
+
     @property
     def vertices(self):
         return self._mesh.vertices
