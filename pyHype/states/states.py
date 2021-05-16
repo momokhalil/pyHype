@@ -61,6 +61,26 @@ class State:
         self.Q[:, :, 2] = self.q2
         self.Q[:, :, 3] = self.q3
 
+    # ------------------------------------------------------------------------------------------------------------------
+    # Overload magic functions
+
+    # Overload __getitem__ method to return slice from W based on index slice object/indices
+    def __getitem__(self, index: int) -> np.ndarray:
+        return self.Q[index]
+
+    # Overload __add__ method to return the sum of self and other's state vectors
+    def __add__(self, other: 'State') -> np.ndarray:
+        return self.Q + other.Q
+
+    # Overload __sub__ method to return the difference between self and other's state vectors
+    def __sub__(self, other: 'State') -> np.ndarray:
+        return self.Q - other.Q
+
+
+    def update(self, value: np.ndarray) -> None:
+        self.Q = value
+        self.set_vars_from_state()
+
 
     @abstractmethod
     def non_dim(self):
@@ -233,24 +253,6 @@ class PrimitiveState(State):
     def W(self, W: np.ndarray) -> None:
         self.Q = W
 
-    # ------------------------------------------------------------------------------------------------------------------
-    # Overload magic functions
-
-    # Overload __getitem__ method to return slice from W based on index slice object/indices
-    def __getitem__(self, index: int) -> np.ndarray:
-        return self.W[index]
-
-    # Overload __add__ method to return the sum of self and other's state vectors
-    def __add__(self, other: 'PrimitiveState') -> np.ndarray:
-        return self.W + other.W
-
-    # Overload __sub__ method to return the difference between self and other's state vectors
-    def __sub__(self, other: 'PrimitiveState') -> np.ndarray:
-        return self.W - other.W
-
-    def update(self, value: np.ndarray) -> None:
-        self.W = value
-        self.set_vars_from_state()
 
     # ------------------------------------------------------------------------------------------------------------------
     # METHODS FOR UPDATING INTERNAL STATE BASED ON EXTERNAL INPUTS
@@ -495,22 +497,6 @@ class ConservativeState(State):
     @U.setter
     def U(self, U: np.ndarray):
         self.Q = U
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Overload magic functions
-
-    def __getitem__(self, index):
-        return self.U[index]
-
-    def __add__(self, other):
-        return self.U + other.U
-
-    def __sub__(self, other):
-        return self.U - other.U
-
-    def update(self, value: np.ndarray) -> None:
-        self.U = value
-        self.set_vars_from_state()
 
     # PUBLIC METHODS ---------------------------------------------------------------------------------------------------
 

@@ -1,10 +1,10 @@
 import numpy as np
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from pyHype.limiters import limiters
+from pyHype.states.states import ConservativeState
 from pyHype.flux.Roe import ROE_FLUX_X, ROE_FLUX_Y
 from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
-from pyHype.limiters import limiters
-from pyHype.states.states import ConservativeState
 
 
 class FiniteVolumeMethod:

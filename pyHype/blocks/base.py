@@ -167,12 +167,6 @@ class QuadBlock:
                                               N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
                                               S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
 
-        # Construct indices to access column-wise elements on the mesh
-        self.col_idx = np.ones((4 * self._mesh.ny), dtype=np.int32)
-
-        for i in range(1, self._mesh.ny + 1):
-            self.col_idx[4 * i - 4:4 * i] = np.arange(4 * self._mesh.nx * (i - 1) - 4, 4 * self._mesh.nx * (i - 1))
-
     @property
     def vertices(self):
         return self._mesh.vertices
