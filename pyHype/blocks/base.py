@@ -109,6 +109,11 @@ class Mesh:
                                  SW=mesh_data.SW,
                                  SE=mesh_data.SE)
 
+        X, Y = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
+                           np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
+        self.x = X
+        self.y = Y
+
         self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
         self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
         self.nx     = inputs.nx
@@ -116,18 +121,7 @@ class Mesh:
         self.dx     = self.Lx / (self.nx + 1)
         self.dy     = self.Lx / (self.nx + 1)
 
-        X, Y        = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
-                                  np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
-        self._x     = X
-        self._y     = Y
 
-    @property
-    def x(self):
-        return self._x
-
-    @property
-    def y(self):
-        return self._y
 
 
 # QuadBlock Class Definition

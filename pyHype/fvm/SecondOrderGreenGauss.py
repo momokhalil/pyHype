@@ -20,8 +20,8 @@ class SecondOrderGreenGauss(FiniteVolumeMethod):
         """
 
         for row in range(self.ny):
-            r = ref_BLK.fullrow(index=row)
-            self.Ux.from_conservative_state_vector(r)
+            row_state = ref_BLK.fullrow(row)
+            self.Ux.from_conservative_state_vector(row_state)
 
             self.reconstruct(self.Ux)
 
@@ -29,8 +29,8 @@ class SecondOrderGreenGauss(FiniteVolumeMethod):
             self.Flux_X[row, :, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
 
         for col in range(self.nx):
-            c = ref_BLK.fullcol(index=col)
-            self.Uy.from_conservative_state_vector(c)
+            col_state = ref_BLK.fullcol(col)
+            self.Uy.from_conservative_state_vector(col_state)
 
             self.reconstruct(self.Uy)
 
