@@ -12,19 +12,19 @@ class FiniteVolumeMethod:
         """
         Solves the euler equations using the finite volume method. Consider a simple 4x4 grid as such
 
-        O ------- 0 ------ 0 ------- 0
+        O---------O--------O---------O
         |         |        |         |
         |         |        |         |
         |         |        |         |
-        O ------- 0 ------ 0 ------- 0
+        O---------O--------O---------O
         |         |        |         |
         |         |        |         |
         |         |        |         |
-        O ------- 0 ------ 0 ------- 0
+        O---------O--------O---------O
         |         |        |         |
         |         |        |         |
         |         |        |         |
-        O ------- 0 ------ 0 ------- 0
+        O---------O--------O---------O
 
         The matrix structure used for storing solution data in various State classes is a (ny * nx * 4) numpy ndarray
         which has planar dimentions equal to the number of cells in the y and x direction, and a depth of 4. The
@@ -33,42 +33,46 @@ class FiniteVolumeMethod:
             ______________nx______________
             v                            v
 
-        |>  O ------- O ------ O ------- O ........................ q0 (zeroth state variable)
-        |   |         |        |         | \
-        |   |         |        |         |- O ..................... q1 (first state variable)
-        |   |         |        |         |  | \
-        |   O ------- O ------ O ------- O  |- O .................. q2 (second state variable)
-        |   |         |        |         | \|  | \
-        ny  |         |        |         |- O  |- O ............... q3 (third state variable)
-        |   |         |        |         |  | \|  |
-        |   O ------- O ------ O ------- O  |- O  |
-        |   |         |        |         | \|  | \|
-        |   |         |        |         |- O  |- O
-        |   |         |        |         |  | \|  |
-        |>  O ------- O ------ O ------- O  |- O  |
-             \         \        \         \ |  | \|
-               O ------- O ------ O ------- O  |- O
-                \         \        \         \ |  |
-                  O ------- O ------ O ------- O  |
-                   \         \        \         \ |
-                     O ------- O ------ O ------- O
+        |>  O---------O---------O---------O---------O ........................ q0 (zeroth state variable)
+        |   |         |         |         |         |\
+        |   |         |         |         |         |-O ..................... q1 (first state variable)
+        |   |         |         |         |         | |\
+        |   O---------O---------O---------O---------O |-O .................. q2 (second state variable)
+        |   |         |         |         |         |\| |\
+        ny  |         |         |         |         |-O |-O ............... q3 (third state variable)
+        |   |         |         |         |         | |\| |
+        |   O---------O---------O---------O---------O |-O |
+        |   |         |         |         |         |\| |\|
+        |   |         |         |         |         |-O |-O
+        |   |         |         |         |         | |\| |
+        |>  O---------O---------O---------O---------O |-O |
+            |         |         |         |         |\| |\|
+            |         |         |         |         |-O | O
+            |         |         |         |         | |\| |
+            O---------O---------O---------O---------O |-O |
+             \         \         \         \         \| |\|
+              O---------O---------O---------O---------O |-O
+               \         \         \         \         \| |
+                O---------O---------O---------O---------O |
+                 \         \         \         \         \|
+                  O---------O---------O---------O---------O
 
 
         then, cells are constructed as follows:
 
-        O ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
         |         |         |         |
         |         |         |         |
         |         |         |         |
-        0 ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
         |         |         |         |
         |         |    .....x.....    | -- Y+1/2
         |         |    .    |    .    |
-        0 ------- 0 ---x--- C ---x--- 0 -- Y
+        O---------O----x--- C ---x----O--- Y
         |         |    .    |    .    |
         |         |    .....x.....    | -- Y-1/2
         |         |         |         |
-        0 ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
                        |    |    |
                    X-1/2    X    X+1/2
 
@@ -76,36 +80,36 @@ class FiniteVolumeMethod:
 
         x - direction:
 
-        O ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
         |         |         |         |
         |         |         |         |
         |         |         |         |
-        0 ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
         |         |         |         |
         |         |         |         |
       ..|.........|.........|.........|..
-      . 0 ---x--- 0 ---x--- C ---x--- 0 .
+      . O----x----O----x--- C ---x----O .
       ..|.........|.........|.........|..
         |         |         |         |
         |         |         |         |
-        0 ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
 
         y - direction:
 
                           . . .
-        O ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
         |         |       . | .       |
         |         |       . x .       |
         |         |       . | .       |
-        0 ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
         |         |       . | .       |
         |         |       . x .       |
         |         |       . | .       |
-        0 ------- 0 ------- C ------- 0
+        O---------O-------- C --------O
         |         |       . | .       |
         |         |       . x .       |
         |         |       . | .       |
-        0 ------- 0 ------- 0 ------- 0
+        O---------O---------O---------O
                           . . .
 
         """
@@ -134,9 +138,7 @@ class FiniteVolumeMethod:
             self.flux_function_X = HLLL_FLUX_X(self.inputs)
             self.flux_function_Y = HLLL_FLUX_Y(self.inputs)
         else:
-            print('FiniteVolumeMethod: Flux function type not specified. Defaulting to Roe.')
-            self.flux_function_X = ROE_FLUX_X(self.inputs)
-            self.flux_function_Y = ROE_FLUX_Y(self.inputs)
+            raise ValueError('FiniteVolumeMethod: Flux function type not specified.')
 
         # Van Leer limiter
         if self.inputs.flux_limiter == 'van_leer':
