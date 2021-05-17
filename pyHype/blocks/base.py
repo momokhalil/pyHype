@@ -104,6 +104,8 @@ class Blocks:
 class Mesh:
     def __init__(self, inputs, mesh_data):
         self.inputs = inputs
+        self.nx = inputs.nx
+        self.ny = inputs.ny
         self.vertices = Vertices(NW=mesh_data.NW,
                                  NE=mesh_data.NE,
                                  SW=mesh_data.SW,
@@ -116,13 +118,15 @@ class Mesh:
 
         self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
         self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
-        self.nx     = inputs.nx
-        self.ny     = inputs.ny
+
         self.dx     = self.Lx / (self.nx + 1)
         self.dy     = self.Lx / (self.nx + 1)
 
 
-
+class NormalVector:
+    def __init__(self, theta):
+        self.x = np.cos(theta)
+        self.y = np.sin(theta)
 
 # QuadBlock Class Definition
 class QuadBlock:
@@ -134,6 +138,27 @@ class QuadBlock:
         self.global_nBLK        = block_data.nBLK
         self.boundary_blocks    = None
         self.neighbors          = None
+
+        vert = self._mesh.vertices
+
+        # Side lengths
+        self.LE                 = self._get_side_length(vert.SE, vert.NE)
+        self.LW                 = self._get_side_length(vert.SW, vert.NW)
+        self.LS                 = self._get_side_length(vert.SE, vert.SW)
+        self.LS                 = self._get_side_length(vert.NW, vert.NE)
+
+        # Side angles
+        self.thetaE             = self._get_side_angle(vert.SE, vert.NE)
+        self.thetaW             = self._get_side_angle(vert.SW, vert.NW)
+        self.thetaS             = self._get_side_angle(vert.SE, vert.SW) + np.pi / 2
+        self.thetaN             = self._get_side_angle(vert.NE, vert.NW) + np.pi / 2
+
+        # Self normal vectors
+        self.nE                 = NormalVector(self.thetaE)
+        self.nW                 = NormalVector(self.thetaW)
+        self.nS                 = NormalVector(self.thetaS)
+        self.nN                 = NormalVector(self.thetaN)
+
 
         # Set finite volume method
         fvm = self.inputs.finite_volume_method
@@ -167,6 +192,14 @@ class QuadBlock:
                                               N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
                                               S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
 
+    @staticmethod
+    def _get_side_length(pt1, pt2):
+        return np.sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
+
+    @staticmethod
+    def _get_side_angle(pt1, pt2):
+        return np.arctan((pt1[0] - pt2[0]) / (pt1[1] - pt2[1]))
+
     def __getitem__(self, index):
         y, x, var = index
 
@@ -196,7 +229,7 @@ class QuadBlock:
 
     @property
     def vertices(self):
-        return self._mesh.vertices
+        return vert
 
     @property
     def state(self):

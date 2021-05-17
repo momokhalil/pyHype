@@ -1,8 +1,8 @@
-from pyHype.fvm.base import FiniteVolumeMethod
+from pyHype.fvm.base import MUSCLFiniteVolumeMethod
 from pyHype.states.states import ConservativeState
 import numpy as np
 
-class FirstOrderUnlimited(FiniteVolumeMethod):
+class FirstOrderUnlimited(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
         super().__init__(inputs, global_nBLK)
 

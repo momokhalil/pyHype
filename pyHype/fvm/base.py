@@ -7,7 +7,7 @@ from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
 
 
-class FiniteVolumeMethod:
+class MUSCLFiniteVolumeMethod:
     def __init__(self, inputs, global_nBLK):
         """
         Solves the euler equations using the finite volume method. Consider a simple 4x4 grid as such
@@ -162,4 +162,20 @@ class FiniteVolumeMethod:
 
     @abstractmethod
     def reconstruct_state(self, U):
+        pass
+
+    @abstractmethod
+    def get_dWdx(self):
+        pass
+
+    @abstractmethod
+    def get_dWdy(self):
+        pass
+
+    @abstractmethod
+    def get_dUdx(self):
+        pass
+
+    @abstractmethod
+    def get_dUdy(self):
         pass

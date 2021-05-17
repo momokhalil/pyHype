@@ -6,10 +6,9 @@ from pyHype.states import ConservativeState
 
 _ZERO_VEC = np.zeros((1, 1, 4))
 
-class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
+class LeastSquaresSecondOrder(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
 
-        print('AAAAAAAAAAAAAAAAAAAAAAA')
         super().__init__(inputs, global_nBLK)
 
         self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
@@ -52,9 +51,27 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
             self.UL.from_conservative_state_vector(stateL)
             self.UR.from_conservative_state_vector(stateR)
 
+    def reconstruct_primitive(self, U: ConservativeState):
+        pass
+
+    def reconstruct_conservative(self, U: ConservativeState):
+        pass
+
     def reconstruct_state(self, state):
         limited_state   = self.flux_limiter.limit(state) * (state[:, 2:, :] - state[:, :-2, :]) / 4
 
         stateL = state[:, :-1, :] + np.concatenate((_ZERO_VEC, limited_state), axis=1)
         stateR = state[:, 1:, :] - np.concatenate((limited_state, _ZERO_VEC), axis=1)
         return stateL, stateR
+
+    def get_dWdx(self):
+        pass
+
+    def get_dWdy(self):
+        pass
+
+    def get_dUdx(self):
+        pass
+
+    def get_dUdy(self):
+        pass
