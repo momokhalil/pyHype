@@ -30,26 +30,25 @@ class FiniteVolumeMethod:
         which has planar dimentions equal to the number of cells in the y and x direction, and a depth of 4. The
         structure looks as follows:
 
-            ______________nx______________
-            v                            v
-
+            ___________________nx____________________
+            v                                       v
         |>  O---------O---------O---------O---------O ........................ q0 (zeroth state variable)
         |   |         |         |         |         |\
-        |   |         |         |         |         |-O ..................... q1 (first state variable)
+        |   |         |         |         |         |-O ...................... q1 (first state variable)
         |   |         |         |         |         | |\
-        |   O---------O---------O---------O---------O |-O .................. q2 (second state variable)
+        |   O---------O---------O---------O---------O |-O .................... q2 (second state variable)
         |   |         |         |         |         |\| |\
-        ny  |         |         |         |         |-O |-O ............... q3 (third state variable)
+        |   |         |         |         |         |-O |-O .................. q3 (third state variable)
         |   |         |         |         |         | |\| |
-        |   O---------O---------O---------O---------O |-O |
+        ny  O---------O---------O---------O---------O |-O |
         |   |         |         |         |         |\| |\|
         |   |         |         |         |         |-O |-O
         |   |         |         |         |         | |\| |
+        |   O---------O---------O---------O---------O |-O |
+        |   |         |         |         |         |\| |\|
+        |   |         |         |         |         |-O | O
+        |   |         |         |         |         | |\| |
         |>  O---------O---------O---------O---------O |-O |
-            |         |         |         |         |\| |\|
-            |         |         |         |         |-O | O
-            |         |         |         |         | |\| |
-            O---------O---------O---------O---------O |-O |
              \         \         \         \         \| |\|
               O---------O---------O---------O---------O |-O
                \         \         \         \         \| |
