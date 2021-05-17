@@ -125,8 +125,22 @@ class Mesh:
 
 class NormalVector:
     def __init__(self, theta):
-        self.x = np.cos(theta)
-        self.y = np.sin(theta)
+        if theta == 0:
+            self.x, self.y = 1, 0
+        elif theta == np.pi / 2:
+            self.x, self.y = 0, 1
+        elif theta == np.pi:
+            self.x, self.y = -1, 0
+        elif theta == 3 * np.pi / 2:
+            self.x, self.y = 0, -1
+        elif theta == 2 * np.pi:
+            self.x, self.y = 1, 0
+        else:
+            self.x = np.cos(theta)
+            self.y = np.sin(theta)
+
+    def __str__(self):
+        return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
 
 # QuadBlock Class Definition
 class QuadBlock:
@@ -148,10 +162,12 @@ class QuadBlock:
         self.LS                 = self._get_side_length(vert.NW, vert.NE)
 
         # Side angles
+        print('Gt east:')
+        print('pts: ', vert.SE, vert.NE)
         self.thetaE             = self._get_side_angle(vert.SE, vert.NE)
-        self.thetaW             = self._get_side_angle(vert.SW, vert.NW)
-        self.thetaS             = self._get_side_angle(vert.SE, vert.SW) + np.pi / 2
-        self.thetaN             = self._get_side_angle(vert.NE, vert.NW) + np.pi / 2
+        self.thetaW             = self._get_side_angle(vert.SW, vert.NW) + np.pi
+        self.thetaS             = self._get_side_angle(vert.SW, vert.SE) + np.pi
+        self.thetaN             = self._get_side_angle(vert.NE, vert.NW)
 
         # Self normal vectors
         self.nE                 = NormalVector(self.thetaE)
@@ -198,7 +214,15 @@ class QuadBlock:
 
     @staticmethod
     def _get_side_angle(pt1, pt2):
-        return np.arctan((pt1[0] - pt2[0]) / (pt1[1] - pt2[1]))
+        if pt1[1] == pt2[1]:
+            print('y same')
+            return np.pi / 2
+        elif pt1[0] == pt2[0]:
+            print('x same')
+            return 0
+        else:
+            print('general')
+            return np.arctan((pt1[0] - pt2[0]) / (pt2[1] - pt1[1]))
 
     def __getitem__(self, index):
         y, x, var = index
