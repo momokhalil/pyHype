@@ -27,8 +27,12 @@ def _get_average_value_at_corner(Q1: np.ndarray,
 def _get_spatial_terms_at_corner(x1: np.ndarray,
                                  x2: np.ndarray,
                                  x: np.ndarray,
+                                 y1: np.ndarray,
+                                 y2: np.ndarray,
+                                 y: np.ndarray,
                                  xc: np.float,
-                                 stencil: list) -> np.ndarray:
+                                 yc: np.float,
+                                 stencil: list) -> [np.ndarray]:
 
     xx = ((x1[stencil[0]] - xc) ** 2 +
           (x1[stencil[1]] - xc) ** 2 +
@@ -38,18 +42,13 @@ def _get_spatial_terms_at_corner(x1: np.ndarray,
           (x[stencil[5]]  - xc) ** 2 +
           (x[stencil[6]]  - xc) ** 2) / 7
 
-    return xx
-
-
-def _get_cross_spatial_terms_at_corner(x1: np.ndarray,
-                                       x2: np.ndarray,
-                                       x: np.ndarray,
-                                       y1: np.ndarray,
-                                       y2: np.ndarray,
-                                       y: np.ndarray,
-                                       xc: np.float,
-                                       yc: np.float,
-                                       stencil: list) -> np.ndarray:
+    yy = ((y1[stencil[0]] - yc) ** 2 +
+          (y1[stencil[1]] - yc) ** 2 +
+          (y2[stencil[2]] - yc) ** 2 +
+          (y2[stencil[3]] - yc) ** 2 +
+          (y[stencil[4]] - yc) ** 2 +
+          (y[stencil[5]] - yc) ** 2 +
+          (y[stencil[6]] - yc) ** 2) / 7
 
     xy = ((x1[stencil[0]] - xc) * (y1[stencil[0]] - yc) +
           (x1[stencil[1]] - xc) * (y1[stencil[1]] - yc) +
@@ -59,7 +58,7 @@ def _get_cross_spatial_terms_at_corner(x1: np.ndarray,
           (x[stencil[5]] - xc) * (y[stencil[5]] - yc) +
           (x[stencil[6]] - xc) * (y[stencil[6]] - yc)) / 7
 
-    return xy
+    return xx, yy, xy
 
 
 def _corner_cell(Q: np.ndarray,
@@ -115,28 +114,28 @@ def _corner_cell(Q: np.ndarray,
 
     """
 
-
     # Get averaged solution values in each coordinate direction
     ux = _get_average_value_at_corner(Q1, Q2, Q, x1, x2, x, xc, stencil)
     uy = _get_average_value_at_corner(Q1, Q2, Q, y1, y2, y, yc, stencil)
 
     # Get spatial terms
-    x2 = _get_spatial_terms_at_corner(x1, x2, x, xc, stencil)
-    y2 = _get_spatial_terms_at_corner(y1, y2, y, yc, stencil)
-    xy = _get_cross_spatial_terms_at_corner(x1, x2, x, y1, y2, y, xc, yc, stencil)
+    xx, yy, xy = _get_spatial_terms_at_corner(x1, x2, x, y1, y2, y, xc, yc, stencil)
 
-    return ux, uy, x2, y2, xy
+    return ux, uy, xx, yy, xy
 
 
 def least_squares_nearest_neighbor(Q, QE, QW, QN, QS,
                                    x, y, Ex, Ey, Wx, Wy, Nx, Ny, Sx, Sy,
                                    nx, ny):
 
+    # Initialize gradient arrays
     dQdx = np.zeros((ny, nx, 4))
     dQdy = np.zeros((ny, nx, 4))
 
+    # ---------------------------------------------------------------------------------------
     # Corner cells
 
+    # -------------------------------
     # South West
     xc, yc = x[0, 0], y[0, 0]
     stencil = [[0, 0], [0, 1], [0, 0], [1, 0], [0, 1], [1, 0], [1, 1]]
@@ -147,6 +146,7 @@ def least_squares_nearest_neighbor(Q, QE, QW, QN, QS,
     dQdx[0, 0, :] = (ux * y2 - xy * uy) / den
     dQdy[0, 0, :] = (uy * x2 - xy * ux) / den
 
+    # -------------------------------
     # North West
     xc, yc = x[-1, 0], y[-1, 0]
     stencil = [[0, 0], [0, 1], [-2, 0], [-1, 0], [-2, 0], [-2, 1], [-1, 1]]
@@ -157,6 +157,7 @@ def least_squares_nearest_neighbor(Q, QE, QW, QN, QS,
     dQdx[-1, 0, :] = (ux * y2 - xy * uy) / den
     dQdy[-1, 0, :] = (uy * x2 - xy * ux) / den
 
+    # -------------------------------
     # South East
     xc, yc = x[0, -1], y[0, -1]
     stencil = [[0, -1], [0, -2], [0, 0], [1, 0], [0, -1], [1, -1], [1, -2]]
@@ -167,6 +168,7 @@ def least_squares_nearest_neighbor(Q, QE, QW, QN, QS,
     dQdx[0, -1, :] = (ux * y2 - xy * uy) / den
     dQdy[0, -1, :] = (uy * x2 - xy * ux) / den
 
+    # -------------------------------
     # North East
     xc, yc = x[-1, -1], y[-1, -1]
     stencil = [[0, -1], [0, -2], [-1, 0], [-2, 0], [-1, -2], [1, -1], [1, -2]]
@@ -174,7 +176,7 @@ def least_squares_nearest_neighbor(Q, QE, QW, QN, QS,
 
     den = y2 * x2 - xy ** 2
 
-    dQdx[-1, 0, :] = (ux * y2 - xy * uy) / den
-    dQdy[-1, 0, :] = (uy * x2 - xy * ux) / den
+    dQdx[-1, -1, :] = (ux * y2 - xy * uy) / den
+    dQdy[-1, -1, :] = (uy * x2 - xy * ux) / den
 
     return dQdx, dQdy
