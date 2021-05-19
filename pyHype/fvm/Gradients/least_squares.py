@@ -149,7 +149,7 @@ def least_squares_nearest_neighbor(Q, QE, QW, QN, QS,
     # -------------------------------
     # North West
     xc, yc = x[-1, 0], y[-1, 0]
-    stencil = [[0, 0], [0, 1], [-2, 0], [-1, 0], [-2, 0], [-2, 1], [-1, 1]]
+    stencil = [[-2, 0], [-1, 0], [0, 0], [0, 1], [-2, 0], [-2, 1], [-1, 1]]
     ux, uy, x2, y2, xy = _corner_cell(Q, QW, QN, Wx, Wy, Nx, Ny, x, y, xc, yc, stencil)
 
     den = y2 * x2 - xy ** 2
