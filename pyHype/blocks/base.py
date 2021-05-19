@@ -162,8 +162,6 @@ class QuadBlock:
         self.LS                 = self._get_side_length(vert.NW, vert.NE)
 
         # Side angles
-        print('Gt east:')
-        print('pts: ', vert.SE, vert.NE)
         self.thetaE             = self._get_side_angle(vert.SE, vert.NE)
         self.thetaW             = self._get_side_angle(vert.SW, vert.NW) + np.pi
         self.thetaS             = self._get_side_angle(vert.SW, vert.SE) + np.pi
