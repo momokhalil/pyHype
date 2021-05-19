@@ -12,19 +12,19 @@ class MUSCLFiniteVolumeMethod:
         """
         Solves the euler equations using the finite volume method. Consider a simple 4x4 grid as such
 
-        O---------O--------O---------O
-        |         |        |         |
-        |         |        |         |
-        |         |        |         |
-        O---------O--------O---------O
-        |         |        |         |
-        |         |        |         |
-        |         |        |         |
-        O---------O--------O---------O
-        |         |        |         |
-        |         |        |         |
-        |         |        |         |
-        O---------O--------O---------O
+        O----------O----------O----------O
+        |          |          |          |
+        |          |          |          |
+        |          |          |          |
+        O----------O----------O----------O
+        |          |          |          |
+        |          |          |          |
+        |          |          |          |
+        O----------O----------O----------O
+        |          |          |          |
+        |          |          |          |
+        |          |          |          |
+        O----------O----------O----------O
 
         The matrix structure used for storing solution data in various State classes is a (ny * nx * 4) numpy ndarray
         which has planar dimentions equal to the number of cells in the y and x direction, and a depth of 4. The
