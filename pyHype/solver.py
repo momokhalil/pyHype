@@ -183,6 +183,7 @@ class Euler2DSolver:
         else:
             profiler = None
 
+
         print('Start simulation')
         while self.t < self.t_final:
 
@@ -194,23 +195,20 @@ class Euler2DSolver:
 
             if self.inputs.realplot:
                 if self.numTimeStep % 1 == 0:
-
-                    state = self._blocks.blocks[1].state
-
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
-                                           state.rho, cmap='magma')
+                                           self._blocks.blocks[1].state.rho,
+                                           20, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
 
             self.t += dt
 
         if self.inputs.makeplot:
-            state = self._blocks.blocks[1].state
-
             self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                    self._blocks.blocks[1].mesh.y,
-                                   state.U[:, :, 0], 100, cmap='magma')
+                                   self._blocks.blocks[1].state.U[:, :, 0],
+                                   100, cmap='magma')
             plt.show(block=True)
 
         if self.profile:

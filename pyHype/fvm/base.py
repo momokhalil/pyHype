@@ -166,16 +166,20 @@ class MUSCLFiniteVolumeMethod:
 
     @abstractmethod
     def get_dWdx(self):
+        dWdx = np.zeros((self.ny, self.nx, 4))
         pass
 
     @abstractmethod
     def get_dWdy(self):
+        dWdy = np.zeros((self.ny, self.nx, 4))
         pass
 
     @abstractmethod
     def get_dUdx(self):
+        dUdx = np.zeros((self.ny, self.nx, 4))
         pass
 
     @abstractmethod
     def get_dUdy(self):
+        dUdy = np.zeros((self.ny, self.nx, 4))
         pass
