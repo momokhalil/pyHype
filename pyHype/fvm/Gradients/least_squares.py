@@ -1,8 +1,20 @@
 import numpy as np
 
 ########################################################################################################################
+# IMPORTANT !!!!!!!!!!!!!!!!
+
+# This is an experimental development version, these functions will not be used as is in the final version. They are for
+# development and debugging purposes. They will be compiled using numba once they are complete, in order to speed up the
+# gradient calculation.
+
+# A more general least squares method will be developed and implemented eventually.
+
+########################################################################################################################
+
+########################################################################################################################
 # FUNCTIONS FOR 9-POINT STENCIL LEAST SQUARES METHOD FOR CALCULATING SOLUTION GRADIENTS
 # DO NOT USE FOR ANY OTHER PURPOSE
+
 
 def _get_average_value_at_corner(Q1: np.ndarray,
                                  Q2: np.ndarray,
