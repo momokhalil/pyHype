@@ -1,11 +1,18 @@
-import time
 import numpy as np
 from typing import Union
-from abc import abstractmethod, ABC
 from pyHype.states.states import ConservativeState
 from pyHype.mesh.mesh_inputs import BlockDescription
 from pyHype.input.input_file_builder import ProblemInput
-from pyHype.fvm import FirstOrderUnlimited, SecondOrderGreenGauss
+from pyHype.solvers.time_integration import RK4, RK2
+
+from pyHype.fvm import FirstOrderUnlimited, \
+                       SecondOrderGreenGauss
+
+from pyHype.blocks.boundary import BoundaryBlockEast, \
+                          BoundaryBlockWest, \
+                          BoundaryBlockSouth,\
+                          BoundaryBlockNorth,\
+                          BoundaryBlock
 
 
 class Vertices:
@@ -30,7 +37,7 @@ class Neighbors:
         self.S = S
 
 
-class BoundaryBlocks:
+class BoundaryBlockContainer:
     def __init__(self, E: 'BoundaryBlock' = None,
                        W: 'BoundaryBlock' = None,
                        N: 'BoundaryBlock' = None,
@@ -39,6 +46,48 @@ class BoundaryBlocks:
         self.W = W
         self.N = N
         self.S = S
+
+
+class NormalVector:
+    def __init__(self, theta):
+        if theta == 0:
+            self.x, self.y = 1, 0
+        elif theta == np.pi / 2:
+            self.x, self.y = 0, 1
+        elif theta == np.pi:
+            self.x, self.y = -1, 0
+        elif theta == 3 * np.pi / 2:
+            self.x, self.y = 0, -1
+        elif theta == 2 * np.pi:
+            self.x, self.y = 1, 0
+        else:
+            self.x = np.cos(theta)
+            self.y = np.sin(theta)
+
+    def __str__(self):
+        return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
+
+
+class Mesh:
+    def __init__(self, inputs, mesh_data):
+        self.inputs = inputs
+        self.nx = inputs.nx
+        self.ny = inputs.ny
+        self.vertices = Vertices(NW=mesh_data.NW,
+                                 NE=mesh_data.NE,
+                                 SW=mesh_data.SW,
+                                 SE=mesh_data.SE)
+
+        X, Y = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
+                           np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
+        self.x = X
+        self.y = Y
+
+        self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
+        self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
+
+        self.dx     = self.Lx / (self.nx + 1)
+        self.dy     = self.Lx / (self.nx + 1)
 
 
 class Blocks:
@@ -101,47 +150,6 @@ class Blocks:
             print('West:  ', block.neighbors.W)
 
 
-class Mesh:
-    def __init__(self, inputs, mesh_data):
-        self.inputs = inputs
-        self.nx = inputs.nx
-        self.ny = inputs.ny
-        self.vertices = Vertices(NW=mesh_data.NW,
-                                 NE=mesh_data.NE,
-                                 SW=mesh_data.SW,
-                                 SE=mesh_data.SE)
-
-        X, Y = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
-                           np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
-        self.x = X
-        self.y = Y
-
-        self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
-        self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
-
-        self.dx     = self.Lx / (self.nx + 1)
-        self.dy     = self.Lx / (self.nx + 1)
-
-
-class NormalVector:
-    def __init__(self, theta):
-        if theta == 0:
-            self.x, self.y = 1, 0
-        elif theta == np.pi / 2:
-            self.x, self.y = 0, 1
-        elif theta == np.pi:
-            self.x, self.y = -1, 0
-        elif theta == 3 * np.pi / 2:
-            self.x, self.y = 0, -1
-        elif theta == 2 * np.pi:
-            self.x, self.y = 1, 0
-        else:
-            self.x = np.cos(theta)
-            self.y = np.sin(theta)
-
-    def __str__(self):
-        return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
-
 # QuadBlock Class Definition
 class QuadBlock:
     def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
@@ -150,7 +158,7 @@ class QuadBlock:
         self._mesh              = Mesh(inputs, block_data)
         self._state             = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
         self.global_nBLK        = block_data.nBLK
-        self.boundary_blocks    = None
+        self.boundaryBLK        = None
         self.neighbors          = None
 
         vert = self._mesh.vertices
@@ -192,19 +200,27 @@ class QuadBlock:
         if time_integrator      == 'ExplicitEuler':
             self._time_integrator = self.explicit_euler
         elif time_integrator    == 'RK2':
-            self._time_integrator = self.RK2
+            self._time_integrator = RK2(self.inputs, self)
         elif time_integrator    == 'RK3TVD':
             self._time_integrator = self.RK3TVD
         elif time_integrator    == 'RK4':
-            self._time_integrator = self.RK4
+            self._time_integrator = RK4(self.inputs, self)
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        self.boundary_blocks = BoundaryBlocks(E=BoundaryBlockEast(self.inputs, type_=block_data.BCTypeE, ref_BLK=self),
-                                              W=BoundaryBlockWest(self.inputs, type_=block_data.BCTypeW, ref_BLK=self),
-                                              N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
-                                              S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
+        self.boundaryBLK = BoundaryBlockContainer(E=BoundaryBlockEast(self.inputs, type_=block_data.BCTypeE, ref_BLK=self),
+                                                  W=BoundaryBlockWest(self.inputs, type_=block_data.BCTypeW, ref_BLK=self),
+                                                  N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
+                                                  S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
+
+    @property
+    def Flux_X(self):
+        return self._finite_volume_method.Flux_X
+
+    @property
+    def Flux_Y(self):
+        return self._finite_volume_method.Flux_Y
 
     @staticmethod
     def _get_side_length(pt1, pt2):
@@ -226,13 +242,13 @@ class QuadBlock:
         y, x, var = index
 
         if self._index_in_west_boundary_block(x, y):
-            return self.boundary_blocks.W.state[y, 0, var]
+            return self.boundaryBLK.W.state[y, 0, var]
         elif self._index_in_east_boundary_block(x, y):
-            return self.boundary_blocks.E.state[y, 0, var]
+            return self.boundaryBLK.E.state[y, 0, var]
         elif self._index_in_north_boundary_block(x, y):
-            return self.boundary_blocks.N.state[0, x, var]
+            return self.boundaryBLK.N.state[0, x, var]
         elif self._index_in_south_boundary_block(x, y):
-            return self.boundary_blocks.N.state[0, x, var]
+            return self.boundaryBLK.N.state[0, x, var]
         else:
             raise ValueError('Incorrect indexing')
 
@@ -288,18 +304,18 @@ class QuadBlock:
         return self._state.U[index, None, :]
 
     def fullrow(self, index: int) -> np.ndarray:
-        return np.concatenate((self.boundary_blocks.W[index, None, :],
+        return np.concatenate((self.boundaryBLK.W[index, None, :],
                                self.row(index),
-                               self.boundary_blocks.E[index, None, :]),
+                               self.boundaryBLK.E[index, None, :]),
                                axis=1)
 
     def col(self, index: int) -> np.ndarray:
         return self._state.U[None, :, index, :]
 
     def fullcol(self, index: int) -> np.ndarray:
-        return np.concatenate((self.boundary_blocks.S[None, 0, index, None, :],
+        return np.concatenate((self.boundaryBLK.S[None, 0, index, None, :],
                                self.col(index),
-                               self.boundary_blocks.N[None, 0, index, None, :]),
+                               self.boundaryBLK.N[None, 0, index, None, :]),
                                axis=1)
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -313,17 +329,12 @@ class QuadBlock:
     def explicit_euler(self, dt) -> None:
 
         # Save inial state
-        U_initial = self._state.U
+        U = self._state.U.copy()
 
-        # First stage ##############################################################
-        print(dt)
-        # Get residuals
-        Rx, Ry = self.get_residual()
         # First update vector
-        K1 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-
+        K1 = self.get_residual()
         # Update block state vector
-        self._state.update(K1)
+        self._state.update(U + dt * 1.0 * K1)
         # Update state BC
         self.update_BC()
 
@@ -331,27 +342,19 @@ class QuadBlock:
     def RK2(self, dt) -> None:
 
         # Save inial state
-        U_initial = self._state.U
+        U = self._state.U.copy()
 
-        # First stage ##############################################################
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
         # First update vector
-        K1 = U_initial + 0.5 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        K1 = self.get_residual()
         # Update block state vector
-        self._state.update(K1)
+        self._state.update(U + dt * 0.5 * K1)
         # Update state BC
         self.update_BC()
 
-        # Second stage ##############################################################
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # First update vector
-        K2 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        # Second update vector
+        K2 = self.get_residual()
         # Update block state vector
-        self._state.update(K2)
+        self._state.update(U + dt * 1.0 * K2)
         # Update state BC
         self.update_BC()
 
@@ -359,25 +362,21 @@ class QuadBlock:
     def RK3TVD(self, dt) -> None:
 
         # Save inial state
-        U_initial = self._state.U
-
-        # First stage ##############################################################
+        U = self._state.U.copy()
 
         # Get residuals
         Rx, Ry = self.get_residual()
         # First update vector
-        K1 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
+        K1 = U + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
         self._state.update(K1)
         # Update state BC
         self.update_BC()
 
-        # Second stage ##############################################################
-
         # Get residuals
         Rx, Ry = self.get_residual()
         # Second update vector
-        K2 = 0.75 * U_initial +     \
+        K2 = 0.75 * U +     \
              0.25 * K1 +            \
              0.25 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
@@ -385,12 +384,10 @@ class QuadBlock:
         # Update state BC
         self.update_BC()
 
-        # Third stage ##############################################################
-
         # Get residuals
         Rx, Ry = self.get_residual()
         # Third update vector
-        K3 = (1/3) * U_initial + \
+        K3 = (1/3) * U + \
              (2/3) * K2 +        \
              (2/3) * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
         # Update block state vector
@@ -402,199 +399,48 @@ class QuadBlock:
 
     # RK4 time stepping
     def RK4(self, dt) -> None:
+
+        # Save inial state
+        U = self._state.U.copy()
+
+        # First update vector
+        K1 = self.get_residual()
+        # Update block state vector
+        self._state.update(U + dt * 0.5 * K1)
+        # Update state BC
+        self.update_BC()
+
+        # First update vector
+        K2 = self.get_residual()
+        # Update block state vector
+        self._state.update(U + dt * 0.5 * K2)
+        # Update state BC
+        self.update_BC()
+
+        # First update vector
+        K3 = self.get_residual()
+        # Update block state vector
+        self._state.update(U + dt * 1.0 * K3)
+        # Update state BC
+        self.update_BC()
+
+        # First update vector
+        K4 = self.get_residual()
+        # Update block state vector
+        self._state.update(U + dt * (K1/6 + K2/3 + K3/3 + K4/6))
+        # Update state BC
+        self.update_BC()
+
         pass
 
-    # Calculate residuals in x and y directions
-    def get_residual(self):
+    def get_flux(self):
         self._finite_volume_method.get_flux(self)
-        return -self._finite_volume_method.Flux_X, -self._finite_volume_method.Flux_Y
 
     def set_BC(self) -> None:
         self.update_BC()
 
     def update_BC(self) -> None:
-        self.boundary_blocks.E.set()
-        self.boundary_blocks.W.set()
-        self.boundary_blocks.N.set()
-        self.boundary_blocks.S.set()
-
-
-class BoundaryBlock(ABC):
-    def __init__(self, inputs, type_: str, ref_BLK: 'QuadBlock'):
-
-        self._type = type_
-        self.inputs = inputs
-        self.nx = inputs.nx
-        self.ny = inputs.ny
-        self.ref_BLK = ref_BLK
-
-        self._state = None
-        self.theta = None
-        self.x = None
-        self.y = None
-
-    def __getitem__(self, index):
-        #x, y, var = index
-        return self.state.U[index]
-
-    @property
-    def state(self):
-        return self._state
-
-    def set(self) -> None:
-        if self._type == 'None':
-            self.set_BC_none()
-        elif self._type == 'Outflow':
-            self.set_BC_outflow()
-        elif self._type == 'Reflection':
-            self.set_BC_reflection()
-
-    @abstractmethod
-    def from_ref_U(self):
-        pass
-
-    @abstractmethod
-    def set_BC_none(self):
-        pass
-
-    @abstractmethod
-    def set_BC_outflow(self):
-        pass
-
-    @abstractmethod
-    def set_BC_reflection(self):
-        pass
-
-
-class BoundaryBlockNorth(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=self.nx, ny=1)
-
-        self.x = np.zeros((1, self.inputs.nx))
-        self.y = np.zeros((1, self.inputs.nx))
-
-        self.theta = ref_BLK.thetaN
-
-        x = self.ref_BLK.mesh.x[-1, :]
-        y = self.ref_BLK.mesh.y[-1, :]
-
-        dx = np.absolute(x - self.ref_BLK.mesh.x[-2, :])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[-2, :])
-
-        self.x[0, :] = x + dx * np.cos(self.theta)
-        self.y[0, :] = y + dy * np.sin(self.theta)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[-1, :, :].reshape(1, self.inputs.nx, 4)
-
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.N.get_south_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 2] *= -1
-
-
-class BoundaryBlockSouth(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=self.nx, ny=1)
-
-        self.x = np.zeros((1, self.inputs.nx))
-        self.y = np.zeros((1, self.inputs.nx))
-
-        self.theta = ref_BLK.thetaS
-
-        x = self.ref_BLK.mesh.x[0, :]
-        y = self.ref_BLK.mesh.y[0, :]
-
-        dx = np.absolute(x - self.ref_BLK.mesh.x[1, :])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[1, :])
-
-        self.x[0, :] = x + dx * np.cos(self.theta)
-        self.y[0, :] = y + dy * np.sin(self.theta)
-
-
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[0, :, :].reshape(1, self.inputs.nx, 4)
-
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_north_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 2] *= -1
-
-
-class BoundaryBlockEast(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=1, ny=self.ny)
-
-        self.x = np.zeros((self.inputs.ny, 1))
-        self.y = np.zeros((self.inputs.ny, 1))
-
-        self.theta = ref_BLK.thetaE
-
-        x = self.ref_BLK.mesh.x[:, -1]
-        y = self.ref_BLK.mesh.y[:, -1]
-
-        dx = np.absolute(x - self.ref_BLK.mesh.x[:, -2])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[:, -2])
-
-        self.x[:, 0] = x + dx * np.cos(self.theta)
-        self.y[:, 0] = y + dy * np.sin(self.theta)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[:, -1, :].reshape(-1, 1, 4)
-
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_west_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 1] *= -1
-
-
-class BoundaryBlockWest(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=1, ny=self.ny)
-
-        self.x = np.zeros((self.inputs.ny, 1))
-        self.y = np.zeros((self.inputs.ny, 1))
-
-        self.theta = ref_BLK.thetaW
-
-        x = self.ref_BLK.mesh.x[:, 0]
-        y = self.ref_BLK.mesh.y[:, 0]
-
-        dx = np.absolute(x - self.ref_BLK.mesh.x[:, 1])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[:, 1])
-
-        self.x[:, 0] = x + dx * np.cos(self.theta)
-        self.y[:, 0] = y + dy * np.sin(self.theta)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[:, 0, :].reshape(-1, 1, 4)
-
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_east_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 1] *= -1
+        self.boundaryBLK.E.set()
+        self.boundaryBLK.W.set()
+        self.boundaryBLK.N.set()
+        self.boundaryBLK.S.set()

@@ -8,7 +8,6 @@ from pyHype import execution_prints
 from pyHype.blocks.base import Blocks
 import pyHype.mesh.mesh_inputs as mesh_inputs
 import pyHype.input.input_file_builder as input_file_builder
-from matplotlib.collections import LineCollection
 
 np.set_printoptions(threshold=sys.maxsize)
 

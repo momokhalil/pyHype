@@ -1,11 +1,5 @@
-import numba
-import time
 import numpy as np
-from numba import float32
-import scipy.sparse as sparse
-from numba import jit
-from numba.experimental import jitclass
-from pyHype.limiters.base import SlopeLimiter
+from pyHype.limiters import SlopeLimiter
 
 
 class VanAlbada(SlopeLimiter):
