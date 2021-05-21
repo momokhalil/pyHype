@@ -282,7 +282,7 @@ def least_squares_9_point(Q, QE, QW, QN, QS,
         dQdy[i, 0, :] = (uy * xx - xy * ux) / den
 
     # --------------------------------------------------
-    # North edge
+    # East edge
     for i in range(1, ny - 1):
 
         ux = Q[i - 1, -1, :] * (x[i - 1, -1] - xc) + Q[i + 1, -1, :] * (x[i + 1, -1] - xc)
