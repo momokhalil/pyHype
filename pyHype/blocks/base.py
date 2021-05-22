@@ -21,9 +21,7 @@ from pyHype.mesh.mesh_inputs import BlockDescription
 from pyHype.input.input_file_builder import ProblemInput
 import pyHype.solvers.time_integration.explicit_runge_kutta as erk
 
-
-from pyHype.fvm import FirstOrderUnlimited, \
-                       SecondOrderGreenGauss
+from pyHype.fvm import SecondOrderGreenGauss
 
 from pyHype.blocks.boundary import BoundaryBlockEast, \
                           BoundaryBlockWest, \
