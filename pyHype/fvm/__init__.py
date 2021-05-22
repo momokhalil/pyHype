@@ -14,6 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from pyHype.fvm.FirstOrderUnlimited import FirstOrderUnlimited
 from pyHype.fvm.SecondOrderGreenGauss import SecondOrderGreenGauss
 
