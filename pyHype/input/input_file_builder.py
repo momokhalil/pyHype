@@ -1,9 +1,20 @@
 
+__REQUIRED__ = ['problem_type', 'IC_type', 'realplot', 'makeplot', 'time_it', 't_final', 'time_integrator',
+                'flux_function', 'CFL', 'flux_function', 'reconstruction_type', 'finite_volume_method', 'flux_limiter',
+                'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'mesh_name']
+
+__OPTIONAL__ = ['alpha']
+
 class ProblemInput:
-    def __init__(self, input_dict, mesh_dict):
+    def __init__(self, input_dict: dict, mesh_dict: dict):
         """
         Sets required input parametes from input parameter dict. Initialized values to default, with the correct type
         """
+
+        # Check input dictionary to check if all required fields are present
+        self._check_input_dict(input_dict)
+
+        # REQUIRED
 
         # General parameters
         self.problem_type = input_dict['problem_type']
@@ -33,3 +44,14 @@ class ProblemInput:
         self.ny = input_dict['ny']
         self.mesh_name = input_dict['mesh_name']
         self.mesh_inputs = mesh_dict
+
+
+        # OPTIONAL
+        if 'alpha' in input_dict.keys():
+            self.alpha = input_dict['alpha']
+
+    @staticmethod
+    def _check_input_dict(input_dict):
+        for key in __REQUIRED__:
+            if key not in input_dict.keys():
+                raise KeyError(key + ' not found in inputs.')
