@@ -3,7 +3,8 @@ from typing import Union
 from pyHype.states.states import ConservativeState
 from pyHype.mesh.mesh_inputs import BlockDescription
 from pyHype.input.input_file_builder import ProblemInput
-from pyHype.solvers.time_integration import RK4, RK2
+import pyHype.solvers.time_integration.explicit_runge_kutta as erk
+
 
 from pyHype.fvm import FirstOrderUnlimited, \
                        SecondOrderGreenGauss
@@ -197,14 +198,28 @@ class QuadBlock:
         # Set time integrator
         time_integrator = self.inputs.time_integrator
 
-        if time_integrator      == 'ExplicitEuler':
-            self._time_integrator = self.explicit_euler
+        if time_integrator      == 'ExplicitEuler1':
+            self._time_integrator = erk.ExplicitEuler1(self.inputs, self)
         elif time_integrator    == 'RK2':
-            self._time_integrator = RK2(self.inputs, self)
-        elif time_integrator    == 'RK3TVD':
-            self._time_integrator = self.RK3TVD
+            self._time_integrator = erk.RK2(self.inputs, self)
+        elif time_integrator    == 'Generic2':
+            self._time_integrator = erk.Generic2(self.inputs, self)
+        elif time_integrator    == 'Ralston2':
+            self._time_integrator = erk.Ralston2(self.inputs, self)
+        elif time_integrator    == 'Generic3':
+            self._time_integrator = erk.Generic3(self.inputs, self)
+        elif time_integrator    == 'RK3':
+            self._time_integrator = erk.RK3(self.inputs, self)
+        elif time_integrator    == 'RK3SSP':
+            self._time_integrator = erk.RK3SSP(self.inputs, self)
+        elif time_integrator    == 'Ralston3':
+            self._time_integrator = erk.Ralston3(self.inputs, self)
         elif time_integrator    == 'RK4':
-            self._time_integrator = RK4(self.inputs, self)
+            self._time_integrator = erk.RK4(self.inputs, self)
+        elif time_integrator    == 'Ralston4':
+            self._time_integrator = erk.Ralston4(self.inputs, self)
+        elif time_integrator    == 'DormandPrince5':
+            self._time_integrator = erk.DormandPrince5(self.inputs, self)
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
@@ -229,13 +244,10 @@ class QuadBlock:
     @staticmethod
     def _get_side_angle(pt1, pt2):
         if pt1[1] == pt2[1]:
-            print('y same')
             return np.pi / 2
         elif pt1[0] == pt2[0]:
-            print('x same')
             return 0
         else:
-            print('general')
             return np.arctan((pt1[0] - pt2[0]) / (pt2[1] - pt1[1]))
 
     def __getitem__(self, index):
@@ -324,114 +336,6 @@ class QuadBlock:
     # Update solution state
     def update(self, dt) -> None:
         self._time_integrator(dt)
-
-    # Explicit Euler time stepping
-    def explicit_euler(self, dt) -> None:
-
-        # Save inial state
-        U = self._state.U.copy()
-
-        # First update vector
-        K1 = self.get_residual()
-        # Update block state vector
-        self._state.update(U + dt * 1.0 * K1)
-        # Update state BC
-        self.update_BC()
-
-    # RK2 time stepping
-    def RK2(self, dt) -> None:
-
-        # Save inial state
-        U = self._state.U.copy()
-
-        # First update vector
-        K1 = self.get_residual()
-        # Update block state vector
-        self._state.update(U + dt * 0.5 * K1)
-        # Update state BC
-        self.update_BC()
-
-        # Second update vector
-        K2 = self.get_residual()
-        # Update block state vector
-        self._state.update(U + dt * 1.0 * K2)
-        # Update state BC
-        self.update_BC()
-
-    # RK3 TVD time stepping
-    def RK3TVD(self, dt) -> None:
-
-        # Save inial state
-        U = self._state.U.copy()
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # First update vector
-        K1 = U + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K1)
-        # Update state BC
-        self.update_BC()
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # Second update vector
-        K2 = 0.75 * U +     \
-             0.25 * K1 +            \
-             0.25 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K2)
-        # Update state BC
-        self.update_BC()
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # Third update vector
-        K3 = (1/3) * U + \
-             (2/3) * K2 +        \
-             (2/3) * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K3)
-        # Update state BC
-        self.update_BC()
-
-        pass
-
-    # RK4 time stepping
-    def RK4(self, dt) -> None:
-
-        # Save inial state
-        U = self._state.U.copy()
-
-        # First update vector
-        K1 = self.get_residual()
-        # Update block state vector
-        self._state.update(U + dt * 0.5 * K1)
-        # Update state BC
-        self.update_BC()
-
-        # First update vector
-        K2 = self.get_residual()
-        # Update block state vector
-        self._state.update(U + dt * 0.5 * K2)
-        # Update state BC
-        self.update_BC()
-
-        # First update vector
-        K3 = self.get_residual()
-        # Update block state vector
-        self._state.update(U + dt * 1.0 * K3)
-        # Update state BC
-        self.update_BC()
-
-        # First update vector
-        K4 = self.get_residual()
-        # Update block state vector
-        self._state.update(U + dt * (K1/6 + K2/3 + K3/3 + K4/6))
-        # Update state BC
-        self.update_BC()
-
-        pass
 
     def get_flux(self):
         self._finite_volume_method.get_flux(self)

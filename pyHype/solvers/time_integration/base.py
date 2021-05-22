@@ -15,10 +15,12 @@ class TimeIntegrator:
         self.refBLK.get_flux()
         return -self.refBLK.Flux_X / self.refBLK.mesh.dx - self.refBLK.Flux_Y / self.refBLK.mesh.dy
 
+    # Update state and boundary conditions
     def update_state(self, U):
         self.refBLK.state.update(U)
         self.refBLK.update_BC()
 
+    # Abstract methodo to define integration scheme
     @abstractmethod
     def integrate(self, dt):
         pass
@@ -27,8 +29,8 @@ class TimeIntegrator:
 class ExplicitRungeKutta(TimeIntegrator):
     def __init__(self, inputs, refBLK):
 
+        # Call superclass constructor
         super().__init__(inputs, refBLK)
-
         # Butcher tableau representation
         self.a = None
         # Number of stages
