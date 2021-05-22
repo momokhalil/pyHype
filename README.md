@@ -1,6 +1,6 @@
 ![Alt Text](/logo.png)
 
-[pyHype](https://github.com/momokhalil/pyHype): Computational Fluid Dynamics in Python
+#[pyHype](https://github.com/momokhalil/pyHype): Computational Fluid Dynamics in Python
 
 pyHype is a Python framework for developing computational fluid dynamics software to solve the HYPErbolic 2D Euler equations on distributed, multi-block grids. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! pyHype is in early stages of development! I will be updating it regularly, along with its documentation.
 
