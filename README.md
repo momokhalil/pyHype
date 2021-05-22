@@ -2,19 +2,17 @@
 
 # pyHype
 
-pyHype is a python software package for solving the HYPErbolic 2D Euler equations on distributed, multi-block grids.
+pyHype is a framework for developing computational fluid dynamics software to solve the HYPErbolic 2D Euler equations on distributed, multi-block grids. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! pyHype is in early stages of development! I will be updating it regularly, along with its documentation.
 
-pyHype is an educational project in Computational Fluid Dynamics. It brings together over two years of learning during my graduate studies at the University of Toronto. It provides the capability to numerically solve the 2D Euler equations on multi-block grids. This paves the way for the addition of Adaptive Mesh Refinement, which is planned for the future. pyHype uses the finite volume method to solve the Euler equations. First and second order reconstructions schemes will be available, along with a multitude of time marching schemes, approximate riemann solvers (Roe, HLLE, HLLL) and flux limiters.
-
-pyHype is in early stages of development! I will be updating it regularly, along with its documentation. The docs will be done using pdoc (https://github.com/mitmproxy/pdoc), and so docstrings will be tailored towards its capabilities. If you see Latex math in docstrings (for example in pyHype/states.py, dont worry, you will see beautiful equations once all the docs are compiled with pdoc!).
-
-Here is an example of an implosion simulation, performed with a rudimentary prototype version of pyHype on one block. This was run with a 650x650 mesh, Roe approximate riemann solver, van-Albada flux limiter, second-order reconstruction and RK4 time stepping. The solver perfectly resolves the interaction of all shocks, contacts, and expansion waves.
+Here is an example of an implosion simulation, performed with a rudimentary prototype version of pyHype on one block. This was run with a 650x650 mesh, Roe approximate riemann solver, van-Albada flux limiter, second-order Green-Gauss reconstruction and RK4 time stepping.
 
 ![Alt Text](/examples/implosion.gif)
 
 Current work:
-1. Integrate numba for JIT compilation
-2. Create a fully documented simple example to explain usage
+1. Allow geometry that is not alligned with the cartesian axes.
+2. Compile gradient and reconstruction calculations with numba
+3. Create a fully documented simple example to explain usage
+4. Documentation!!
 
 Major future work:
 1. Use MPI to distrubute computation to multiple processors
