@@ -113,11 +113,14 @@ class Blocks:
 
         self.build()
 
+    def __call__(self, block: int):
+        return self.blocks[block]
+
     def add(self, block) -> None:
         self.blocks[block.global_nBLK] = block
 
-    def get(self, block_idx: int):
-        return self.blocks[block_idx]
+    def get(self, block: int):
+        return self.blocks[block]
 
     def update(self, dt) -> None:
         for block in self.blocks.values():
@@ -338,10 +341,7 @@ class QuadBlock:
         self._finite_volume_method.get_flux(self)
 
     def set_BC(self) -> None:
-        self.update_BC()
-
-    def update_BC(self) -> None:
-        self.boundaryBLK.E.set()
-        self.boundaryBLK.W.set()
-        self.boundaryBLK.N.set()
-        self.boundaryBLK.S.set()
+        self.boundaryBLK.E.set_BC()
+        self.boundaryBLK.W.set_BC()
+        self.boundaryBLK.N.set_BC()
+        self.boundaryBLK.S.set_BC()

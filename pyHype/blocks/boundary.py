@@ -20,9 +20,9 @@ from pyHype.states import ConservativeState
 
 
 class BoundaryBlock:
-    def __init__(self, inputs, type_: str, ref_BLK):
+    def __init__(self, inputs, BCtype: str, ref_BLK):
 
-        self._type = type_
+        self.BCtype = BCtype
         self.inputs = inputs
         self.nx = inputs.nx
         self.ny = inputs.ny
@@ -33,20 +33,20 @@ class BoundaryBlock:
         self.x = None
         self.y = None
 
+        # Assign the BCset method to avoid checking type everytime
+        if self.BCtype == 'None':
+            self.set_BC = self.set_BC_none
+        elif self.BCtype == 'Outflow':
+            self.set_BC = self.set_BC_outflow
+        elif self.BCtype == 'Reflection':
+            self.set_BC = self.set_BC_reflection
+
     def __getitem__(self, index):
         return self.state.U[index]
 
     @property
     def state(self):
         return self._state
-
-    def set(self) -> None:
-        if self._type == 'None':
-            self.set_BC_none()
-        elif self._type == 'Outflow':
-            self.set_BC_outflow()
-        elif self._type == 'Reflection':
-            self.set_BC_reflection()
 
     @abstractmethod
     def from_ref_U(self):
@@ -156,14 +156,14 @@ class BoundaryBlockEast(BoundaryBlock):
         return self.ref_BLK.state.U[:, -1, :].reshape(-1, 1, 4)
 
     def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_west_edge()
+        self.state.U = self.ref_BLK.neighbors.S.get_west_edge()
 
     def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
+        self.state.U = self.from_ref_U()
 
     def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 1] *= -1
+        self.state.U = self.from_ref_U()
+        self.state.U[:, :, 1] *= -1
 
 
 class BoundaryBlockWest(BoundaryBlock):

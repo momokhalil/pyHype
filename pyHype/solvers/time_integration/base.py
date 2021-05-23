@@ -34,7 +34,7 @@ class TimeIntegrator:
     # Update state and boundary conditions
     def update_state(self, U):
         self.refBLK.state.update(U)
-        self.refBLK.update_BC()
+        self.refBLK.set_BC()
 
     # Abstract methodo to define integration scheme
     @abstractmethod
