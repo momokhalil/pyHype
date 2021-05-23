@@ -64,7 +64,7 @@ class BoundaryBlockContainer:
 
 
 class NormalVector:
-    def __init__(self, theta):
+    def __init__(self, theta: float):
         if theta == 0:
             self.x, self.y = 1, 0
         elif theta == np.pi / 2:
@@ -108,32 +108,27 @@ class Mesh:
 class Blocks:
     def __init__(self, inputs):
         self.inputs = inputs
-        self._number_of_blocks = None
-        self._blocks = {}
-        self._connectivity = {}
+        self.number_of_blocks = None
+        self.blocks = {}
 
         self.build()
 
-    @property
-    def blocks(self):
-        return self._blocks
-
     def add(self, block) -> None:
-        self._blocks[block.global_nBLK] = block
+        self.blocks[block.global_nBLK] = block
 
     def get(self, block_idx: int):
-        return self._blocks[block_idx]
+        return self.blocks[block_idx]
 
     def update(self, dt) -> None:
-        for block in self._blocks.values():
+        for block in self.blocks.values():
             block.update(dt)
 
     def set_BC(self) -> None:
-        for block in self._blocks.values():
+        for block in self.blocks.values():
             block.set_BC()
 
     def update_BC(self) -> None:
-        for block in self._blocks.values():
+        for block in self.blocks.values():
             block.update_BC()
 
     def build(self) -> None:
@@ -142,21 +137,21 @@ class Blocks:
         for BLK_data in mesh_inputs.values():
             self.add(QuadBlock(self.inputs, BLK_data))
 
-        self._number_of_blocks = len(self._blocks)
+        self.number_of_blocks = len(self.blocks)
 
-        for global_nBLK, block in self._blocks.items():
+        for global_nBLK, block in self.blocks.items():
             Neighbor_E_idx = mesh_inputs.get(block.global_nBLK).NeighborE
             Neighbor_W_idx = mesh_inputs.get(block.global_nBLK).NeighborW
             Neighbor_N_idx = mesh_inputs.get(block.global_nBLK).NeighborN
             Neighbor_S_idx = mesh_inputs.get(block.global_nBLK).NeighborS
 
-            block.connect(NeighborE=self._blocks[Neighbor_E_idx] if Neighbor_E_idx != 0 else None,
-                          NeighborW=self._blocks[Neighbor_W_idx] if Neighbor_W_idx != 0 else None,
-                          NeighborN=self._blocks[Neighbor_N_idx] if Neighbor_N_idx != 0 else None,
-                          NeighborS=self._blocks[Neighbor_S_idx] if Neighbor_S_idx != 0 else None)
+            block.connect(NeighborE=self.blocks[Neighbor_E_idx] if Neighbor_E_idx != 0 else None,
+                          NeighborW=self.blocks[Neighbor_W_idx] if Neighbor_W_idx != 0 else None,
+                          NeighborN=self.blocks[Neighbor_N_idx] if Neighbor_N_idx != 0 else None,
+                          NeighborS=self.blocks[Neighbor_S_idx] if Neighbor_S_idx != 0 else None)
 
     def print_connectivity(self) -> None:
-        for _, block in self._blocks.items():
+        for _, block in self.blocks.items():
             print('-----------------------------------------')
             print('CONNECTIVITY FOR GLOBAL BLOCK: ', block.global_nBLK, '<{}>'.format(block))
             print('North: ', block.neighbors.N)
@@ -170,13 +165,13 @@ class QuadBlock:
     def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
 
         self.inputs             = inputs
-        self._mesh              = Mesh(inputs, block_data)
-        self._state             = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
+        self.mesh              = Mesh(inputs, block_data)
+        self.state             = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
         self.global_nBLK        = block_data.nBLK
         self.boundaryBLK        = None
         self.neighbors          = None
 
-        vert = self._mesh.vertices
+        vert = self.mesh.vertices
 
         # Side lengths
         self.LE                 = self._get_side_length(vert.SE, vert.NE)
@@ -200,11 +195,7 @@ class QuadBlock:
         # Set finite volume method
         fvm = self.inputs.finite_volume_method
 
-        if fvm == 'FirstOrderUnlimited':
-            self._finite_volume_method = FirstOrderUnlimited(self.inputs, self.global_nBLK)
-        elif fvm == 'FirstOrderLimited':
-            self._finite_volume_method = FirstOrderUnlimited(self.inputs, self.global_nBLK)
-        elif fvm == 'SecondOrderGreenGauss':
+        if fvm == 'SecondOrderGreenGauss':
             self._finite_volume_method = SecondOrderGreenGauss(self.inputs, self.global_nBLK)
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
@@ -280,28 +271,20 @@ class QuadBlock:
 
 
     def _index_in_west_boundary_block(self, x, y):
-        return x < 0 and 0 <= y <= self._mesh.ny
+        return x < 0 and 0 <= y <= self.mesh.ny
 
     def _index_in_east_boundary_block(self, x, y):
-        return x > self._mesh.nx and 0 <= y <= self._mesh.ny
+        return x > self.mesh.nx and 0 <= y <= self.mesh.ny
 
     def _index_in_south_boundary_block(self, x, y):
-        return y < 0 and 0 <= x <= self._mesh.nx
+        return y < 0 and 0 <= x <= self.mesh.nx
 
     def _index_in_north_boundary_block(self, x, y):
-        return y > self._mesh.ny and 0 <= x <= self._mesh.nx
+        return y > self.mesh.ny and 0 <= x <= self.mesh.nx
 
     @property
     def vertices(self):
         return self.vertices
-
-    @property
-    def state(self):
-        return self._state
-
-    @property
-    def mesh(self):
-        return self._mesh
 
     # ------------------------------------------------------------------------------------------------------------------
     # Grid methods
@@ -327,7 +310,7 @@ class QuadBlock:
         return self.state.U[0, None, :]
 
     def row(self, index: int) -> np.ndarray:
-        return self._state.U[index, None, :]
+        return self.state.U[index, None, :]
 
     def fullrow(self, index: int) -> np.ndarray:
         return np.concatenate((self.boundaryBLK.W[index, None, :],
@@ -336,7 +319,7 @@ class QuadBlock:
                                axis=1)
 
     def col(self, index: int) -> np.ndarray:
-        return self._state.U[None, :, index, :]
+        return self.state.U[None, :, index, :]
 
     def fullcol(self, index: int) -> np.ndarray:
         return np.concatenate((self.boundaryBLK.S[None, 0, index, None, :],
