@@ -1,3 +1,19 @@
+"""
+Copyright 2021 Mohamed Khalil
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 import sys
 import pstats
 import cProfile
@@ -38,6 +54,7 @@ class Euler2DSolver:
     def set_IC(self):
 
         problem_type = self.inputs.problem_type
+        print(problem_type)
         g = self.inputs.gamma
         ny = self.inputs.ny
         nx = self.inputs.nx
@@ -81,6 +98,66 @@ class Euler2DSolver:
             # High pressure zone
             rhoL = 4.6968
             pL = 404400.0
+            uL = 0.00
+            vL = 0.0
+            eL = pL / (g - 1)
+
+            # Low pressure zone
+            rhoR = 1.1742
+            pR = 101100.0
+            uR = 0.00
+            vR = 0.0
+            eR = pR / (g - 1)
+
+            # Create state vectors
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
+
+            # Fill state vector in each block
+            for block in self.blocks:
+                for i in range(ny):
+                    for j in range(nx):
+                        if block.mesh.x[i, j] <= 3 and block.mesh.y[i, j] <= 3:
+                            block.state.U[i, j, :] = QR
+                        else:
+                            block.state.U[i, j, :] = QL
+                block.state.non_dim()
+
+        elif problem_type == 'chamber':
+            print('CHAMBER')
+            # High pressure zone
+            rhoL = 4.6968
+            pL = 404400.0
+            uL = 0.00
+            vL = 0.0
+            eL = pL / (g - 1)
+
+            # Low pressure zone
+            rhoR = 1.1742
+            pR = 101100.0
+            uR = 0.00
+            vR = 0.0
+            eR = pR / (g - 1)
+
+            # Create state vectors
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
+
+            # Fill state vector in each block
+            for block in self.blocks:
+                for i in range(ny):
+                    for j in range(nx):
+                        if 3 <= block.mesh.x[i, j] <= 7 and 3 <= block.mesh.y[i, j] <= 7:
+                            block.state.U[i, j, :] = QL
+                        else:
+                            block.state.U[i, j, :] = QR
+                block.state.non_dim()
+
+        elif problem_type == 'shocktube':
+
+            # High pressure zone
+            rhoL = 4.6968
+            pL = 404400.0
             uL = 0.0
             vL = 0.0
             eL = pL / (g - 1)
@@ -100,7 +177,7 @@ class Euler2DSolver:
             for block in self.blocks:
                 for i in range(ny):
                     for j in range(nx):
-                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
+                        if block.mesh.x[i, j] <= 5:
                             block.state.U[i, j, :] = QR
                         else:
                             block.state.U[i, j, :] = QL
@@ -112,11 +189,10 @@ class Euler2DSolver:
     def dt(self):
         dt = 1000000
         for block in self.blocks:
-            W = block.state.to_primitive_state()
-            a = W.a()
+            a = block.state.a()
 
-            t1 = block.mesh.dx / (np.absolute(W.u) + a)
-            t2 = block.mesh.dx / (np.absolute(W.v) + a)
+            t1 = block.mesh.dx / (np.absolute(block.state.u()) + a)
+            t2 = block.mesh.dy / (np.absolute(block.state.v()) + a)
 
             dt_ = self.CFL * min(t1.min(), t2.min())
 
@@ -153,45 +229,32 @@ class Euler2DSolver:
         else:
             profiler = None
 
+
         print('Start simulation')
         while self.t < self.t_final:
 
             dt = self.dt()
             self.numTimeStep += 1
 
-            print('update block')
+            #print('update block')
             self._blocks.update(dt)
 
             if self.inputs.realplot:
-                V = np.zeros((self.inputs.ny, self.inputs.nx))
                 if self.numTimeStep % 1 == 0:
-
-                    state = self._blocks.blocks[1].state
-
-                    for i in range(1, self.inputs.ny + 1):
-                        Q = state.U[4 * self.inputs.nx * (i - 1):4 * self.inputs.nx * i]
-                        V[i - 1, :] = Q[::4].reshape(-1,)
-
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
-                                           V, 20, cmap='magma')
+                                           self._blocks.blocks[1].state.rho,
+                                           40, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
 
             self.t += dt
 
         if self.inputs.makeplot:
-            state = self._blocks.blocks[1].state.U
-
-            V = np.zeros((self.inputs.ny, self.inputs.nx))
-
-            for i in range(1, self.inputs.ny + 1):
-                Q = state[4 * self.inputs.nx * (i - 1):4 * self.inputs.nx * i]
-                V[i - 1, :] = Q[::4].reshape(-1, )
-
             self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                    self._blocks.blocks[1].mesh.y,
-                                   V, 100, cmap='magma')
+                                   self._blocks.blocks[1].state.U[:, :, 0],
+                                   100, cmap='magma')
             plt.show(block=True)
 
         if self.profile:
