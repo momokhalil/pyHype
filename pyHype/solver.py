@@ -29,7 +29,6 @@ class Euler2DSolver:
         self.t_final = self.inputs.t_final * self.inputs.a_inf
         self.profile = False
         self.profile_data = None
-        self.realplot = None
 
     @property
     def blocks(self):
@@ -48,62 +47,73 @@ class Euler2DSolver:
 
             # High pressure zone
             rhoL = 4.6968
-            pL = 404400.0
-            uL = 0.0
-            vL = 0.0
+            pL = 404400
+            uL = 0
+            vL = 0
             eL = pL / (g - 1)
 
             # Low pressure zone
             rhoR = 1.1742
-            pR = 101100.0
-            uR = 0.0
-            vR = 0.0
+            pR = 101100
+            uR = 0
+            vR = 0
             eR = pR / (g - 1)
 
             # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((4, 1))
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((4, 1))
 
             # Fill state vector in each block
             for block in self._blocks.blocks.values():
-                for i in range(ny):
-                    for j in range(nx):
-                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
-                            block.state.U[i, j, :] = QR
-                        elif block.mesh.x[i, j] > 5 and block.mesh.y[i, j] > 5:
-                            block.state.U[i, j, :] = QR
+
+                for j in range(1, ny + 1):
+                    for i in range(1, nx + 1):
+                        iF = 4 * (i - 1) + 4 * nx * (j - 1)
+                        iE = 4 * (i - 0) + 4 * nx * (j - 1)
+
+                        if block.mesh.x[j - 1, i - 1] <= 5 and block.mesh.y[j - 1, i - 1] <= 5:
+                            block.state.U[iF:iE] = QR
+                        elif block.mesh.x[j - 1, i - 1] > 5 and block.mesh.y[j - 1, i - 1] > 5:
+                            block.state.U[iF:iE] = QR
                         else:
-                            block.state.U[i, j, :] = QL
+                            block.state.U[iF:iE] = QL
+
                 block.state.non_dim()
 
         elif problem_type == 'implosion':
 
             # High pressure zone
             rhoL = 4.6968
-            pL = 404400.0
-            uL = 0.0
-            vL = 0.0
+            pL = 404400
+            uL = 0
+            vL = 0
             eL = pL / (g - 1)
 
             # Low pressure zone
             rhoR = 1.1742
-            pR = 101100.0
-            uR = 0.0
-            vR = 0.0
+            pR = 101100
+            uR = 0
+            vR = 0
             eR = pR / (g - 1)
 
             # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((4, 1))
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((4, 1))
 
             # Fill state vector in each block
             for block in self.blocks:
-                for i in range(ny):
-                    for j in range(nx):
-                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
-                            block.state.U[i, j, :] = QR
+
+                for j in range(1, ny + 1):
+                    for i in range(1, nx + 1):
+
+                        iF = 4 * (i - 1) + 4 * nx * (j - 1)
+                        iE = 4 * (i - 0) + 4 * nx * (j - 1)
+
+                        if block.mesh.x[j - 1, i - 1] <= 5 and block.mesh.y[j - 1, i - 1] <= 5:
+                            block.state.U[iF:iE] = QR
                         else:
-                            block.state.U[i, j, :] = QL
+                            block.state.U[iF:iE] = QL
+
                 block.state.non_dim()
 
     def set_BC(self):
@@ -112,7 +122,7 @@ class Euler2DSolver:
     def dt(self):
         dt = 1000000
         for block in self.blocks:
-            W = block.state.to_primitive_state()
+            W = block.state.to_W()
             a = W.a()
 
             t1 = block.mesh.dx / (np.absolute(W.u) + a)
@@ -141,10 +151,13 @@ class Euler2DSolver:
         print('Setting Boundary Conditions')
         self.set_BC()
 
-        if self.inputs.realplot:
-            plt.ion()
-            self.realplot = plt.axes()
-            self.realplot.figure.set_size_inches(8, 8)
+        plt.ion()
+
+        nx = self.inputs.nx
+        ny = self.inputs.ny
+
+        ax = plt.axes()
+        ax.figure.set_size_inches(8, 8)
 
         if self.profile:
             print('Enable profiler')
@@ -152,6 +165,13 @@ class Euler2DSolver:
             profiler.enable()
         else:
             profiler = None
+
+        if self.inputs.realplot:
+            V = np.zeros((ny, nx))
+            x = self._blocks.blocks[1].mesh.x
+            y = self._blocks.blocks[1].mesh.y
+        else:
+            V, x, y = None, None, None
 
         print('Start simulation')
         while self.t < self.t_final:
@@ -163,35 +183,32 @@ class Euler2DSolver:
             self._blocks.update(dt)
 
             if self.inputs.realplot:
-                V = np.zeros((self.inputs.ny, self.inputs.nx))
                 if self.numTimeStep % 1 == 0:
 
                     state = self._blocks.blocks[1].state
 
-                    for i in range(1, self.inputs.ny + 1):
-                        Q = state.U[4 * self.inputs.nx * (i - 1):4 * self.inputs.nx * i]
+                    for i in range(1, ny + 1):
+                        Q = state.U[4 * nx * (i - 1):4 * nx * i]
                         V[i - 1, :] = Q[::4].reshape(-1,)
 
-                    self.realplot.contourf(self._blocks.blocks[1].mesh.x,
-                                           self._blocks.blocks[1].mesh.y,
-                                           V, 20, cmap='magma')
+                    ax.contourf(x, y, V, 20, cmap='magma')
                     plt.show()
-                    plt.pause(0.001)
+                    plt.pause(0.01)
 
             self.t += dt
 
         if self.inputs.makeplot:
             state = self._blocks.blocks[1].state.U
 
-            V = np.zeros((self.inputs.ny, self.inputs.nx))
+            V = np.zeros((ny, nx))
+            x = self._blocks.blocks[1].mesh.x
+            y = self._blocks.blocks[1].mesh.y
 
-            for i in range(1, self.inputs.ny + 1):
-                Q = state[4 * self.inputs.nx * (i - 1):4 * self.inputs.nx * i]
+            for i in range(1, ny + 1):
+                Q = state[4 * nx * (i - 1):4 * nx * i]
                 V[i - 1, :] = Q[::4].reshape(-1, )
 
-            self.realplot.contourf(self._blocks.blocks[1].mesh.x,
-                                   self._blocks.blocks[1].mesh.y,
-                                   V, 100, cmap='magma')
+            ax.contourf(x, y, V, 100, cmap='magma')
             plt.show(block=True)
 
         if self.profile:
