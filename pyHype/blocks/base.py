@@ -209,7 +209,7 @@ class QuadBlock:
         if time_integrator      == 'ExplicitEuler1':
             self._time_integrator = erk.ExplicitEuler1(self.inputs, self)
         elif time_integrator    == 'RK2':
-            self._time_integrator = erk.RK2(self.inputs, self)
+            self._time_integrator = self.RK2
         elif time_integrator    == 'Generic2':
             self._time_integrator = erk.Generic2(self.inputs, self)
         elif time_integrator    == 'Ralston2':
@@ -332,6 +332,25 @@ class QuadBlock:
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
+
+    def RK2(self, dt):
+
+        U = self.state.U.copy()
+
+        self.get_flux()
+        Rx, Ry = -self._finite_volume_method.Flux_X / self.mesh.dx, -self._finite_volume_method.Flux_Y / self.mesh.dy
+
+        K1 = dt * (Rx + Ry)
+        self.state.update(U + K1/2)
+        self.set_BC()
+
+        self.get_flux()
+        Rx, Ry = -self._finite_volume_method.Flux_X / self.mesh.dx, -self._finite_volume_method.Flux_Y / self.mesh.dy
+
+        K2 = dt * (Rx + Ry)
+        self.state.update(U + K2)
+        self.set_BC()
+
 
     # Update solution state
     def update(self, dt) -> None:

@@ -54,6 +54,7 @@ class Euler2DSolver:
     def set_IC(self):
 
         problem_type = self.inputs.problem_type
+        print(problem_type)
         g = self.inputs.gamma
         ny = self.inputs.ny
         nx = self.inputs.nx
@@ -116,14 +117,14 @@ class Euler2DSolver:
             for block in self.blocks:
                 for i in range(ny):
                     for j in range(nx):
-                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
+                        if block.mesh.x[i, j] <= 3 and block.mesh.y[i, j] <= 3:
                             block.state.U[i, j, :] = QR
                         else:
                             block.state.U[i, j, :] = QL
                 block.state.non_dim()
 
         elif problem_type == 'chamber':
-
+            print('CHAMBER')
             # High pressure zone
             rhoL = 4.6968
             pL = 404400.0
@@ -146,10 +147,10 @@ class Euler2DSolver:
             for block in self.blocks:
                 for i in range(ny):
                     for j in range(nx):
-                        if 3 >= block.mesh.x[i, j] <= 7 and 3 >= block.mesh.y[i, j] <= 7:
-                            block.state.U[i, j, :] = QR
-                        else:
+                        if 3 <= block.mesh.x[i, j] <= 7 and 3 <= block.mesh.y[i, j] <= 7:
                             block.state.U[i, j, :] = QL
+                        else:
+                            block.state.U[i, j, :] = QR
                 block.state.non_dim()
 
         elif problem_type == 'shocktube':
@@ -243,7 +244,7 @@ class Euler2DSolver:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,
-                                           20, cmap='magma')
+                                           40, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
 
