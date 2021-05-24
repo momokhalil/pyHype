@@ -1,93 +1,75 @@
-"""
-Copyright 2021 Mohamed Khalil
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-
 import numpy as np
-from abc import abstractmethod
-from pyHype.limiters import limiters
-from pyHype.states.states import ConservativeState
+import scipy.sparse as sparse
+from abc import ABC, abstractmethod
 from pyHype.flux.Roe import ROE_FLUX_X, ROE_FLUX_Y
 from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
+from pyHype.limiters import limiters
+from pyHype.states.states import ConservativeState
 
 
-class MUSCLFiniteVolumeMethod:
+class FiniteVolumeMethod:
     def __init__(self, inputs, global_nBLK):
         """
         Solves the euler equations using the finite volume method. Consider a simple 4x4 grid as such
 
-        O----------O----------O----------O
-        |          |          |          |
-        |          |          |          |
-        |          |          |          |
-        O----------O----------O----------O
-        |          |          |          |
-        |          |          |          |
-        |          |          |          |
-        O----------O----------O----------O
-        |          |          |          |
-        |          |          |          |
-        |          |          |          |
-        O----------O----------O----------O
+        O ------- 0 ------ 0 ------- 0
+        |         |        |         |
+        |         |        |         |
+        |         |        |         |
+        O ------- 0 ------ 0 ------- 0
+        |         |        |         |
+        |         |        |         |
+        |         |        |         |
+        O ------- 0 ------ 0 ------- 0
+        |         |        |         |
+        |         |        |         |
+        |         |        |         |
+        O ------- 0 ------ 0 ------- 0
 
         The matrix structure used for storing solution data in various State classes is a (ny * nx * 4) numpy ndarray
         which has planar dimentions equal to the number of cells in the y and x direction, and a depth of 4. The
         structure looks as follows:
 
-            ___________________nx____________________
-            v                                       v
-        |>  O----------O----------O----------O----------O ........................ q0 (zeroth state variable)
-        |   |          |          |          |          |\
-        |   |          |          |          |          |-O ...................... q1 (first state variable)
-        |   |          |          |          |          | |\
-        |   O----------O----------O----------O----------O |-O .................... q2 (second state variable)
-        |   |          |          |          |          |\| |\
-        |   |          |          |          |          |-O |-O .................. q3 (third state variable)
-        |   |          |          |          |          | |\| |
-        ny  O----------O----------O----------O----------O |-O |
-        |   |          |          |          |          |\| |\|
-        |   |          |          |          |          |-O |-O
-        |   |          |          |          |          | |\| |
-        |   O----------O----------O----------O----------O |-O |
-        |   |          |          |          |          |\| |\|
-        |   |          |          |          |          |-O | O
-        |   |          |          |          |          | |\| |
-        |>  O----------O----------O----------O----------O |-O |
-             \|         \|         \|         \|         \| |\|
-              O----------O----------O----------O----------O |-O
-               \|         \|         \|         \|         \| |
-                O----------O----------O----------O----------O |
-                 \|         \|         \|         \|         \|
-                  O----------O----------O----------O----------O
+            ______________nx______________
+            v                            v
+
+        |>  O ------- 0 ------ 0 ------- 0....................... q0 (zeroth state variable)
+        |   |         |        |         |\
+        |   |         |        |         | 0..................... q1 (first state variable)
+        |   |         |        |         | |\
+        |   O ------- 0 ------ 0 ------- 0 | 0................... q2 (second state variable)
+        |   |         |        |         |\| |\
+        ny  |         |        |         | 0 | 0................. q3 (third state variable)
+        |   |         |        |         | |\| |
+        |   O ------- 0 ------ 0 ------- 0 | 0 |
+        |   |         |        |         |\| |\|
+        |   |         |        |         | 0 | 0
+        |   |         |        |         | |\| |
+        |>  O ------- 0 ------ 0 ------- 0 | 0 |
+             \         \        \         \| |\|
+              0 ------- 0 ------ 0 ------- 0 | 0
+               \         \        \         \| |
+                0 ------- 0 ------ 0 ------- 0 |
+                 \         \        \         \|
+                  0 ------- 0 ------ 0 ------- 0
 
 
         then, cells are constructed as follows:
 
-        O---------O---------O---------O
+        O ------- 0 ------- 0 ------- 0
         |         |         |         |
         |         |         |         |
         |         |         |         |
-        O---------O---------O---------O
+        0 ------- 0 ------- 0 ------- 0
         |         |         |         |
         |         |    .....x.....    | -- Y+1/2
         |         |    .    |    .    |
-        O---------O----x--- C ---x----O--- Y
+        0 ------- 0 ---x--- C ---x--- 0 -- Y
         |         |    .    |    .    |
         |         |    .....x.....    | -- Y-1/2
         |         |         |         |
-        O---------O---------O---------O
+        0 ------- 0 ------- 0 ------- 0
                        |    |    |
                    X-1/2    X    X+1/2
 
@@ -95,36 +77,36 @@ class MUSCLFiniteVolumeMethod:
 
         x - direction:
 
-        O---------O---------O---------O
+        O ------- 0 ------- 0 ------- 0
         |         |         |         |
         |         |         |         |
         |         |         |         |
-        O---------O---------O---------O
+        0 ------- 0 ------- 0 ------- 0
         |         |         |         |
         |         |         |         |
       ..|.........|.........|.........|..
-      . O----x----O----x--- C ---x----O .
+      . 0 ---x--- 0 ---x--- C ---x--- 0 .
       ..|.........|.........|.........|..
         |         |         |         |
         |         |         |         |
-        O---------O---------O---------O
+        0 ------- 0 ------- 0 ------- 0
 
         y - direction:
 
                           . . .
-        O---------O---------O---------O
+        O ------- 0 ------- 0 ------- 0
         |         |       . | .       |
         |         |       . x .       |
         |         |       . | .       |
-        O---------O---------O---------O
+        0 ------- 0 ------- 0 ------- 0
         |         |       . | .       |
         |         |       . x .       |
         |         |       . | .       |
-        O---------O-------- C --------O
+        0 ------- 0 ------- C ------- 0
         |         |       . | .       |
         |         |       . x .       |
         |         |       . | .       |
-        O---------O---------O---------O
+        0 ------- 0 ------- 0 ------- 0
                           . . .
 
         """
@@ -134,11 +116,10 @@ class MUSCLFiniteVolumeMethod:
         self.ny = inputs.ny
         self.global_nBLK = global_nBLK
 
-        self.Flux_X = np.empty((self.ny, self.nx, 4))
-        self.Flux_Y = np.empty((self.ny, self.nx, 4))
-
-        self.UL = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
-        self.UR = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
+        self.Flux_X = np.empty((4 * self.nx * self.ny, 1))
+        self.Flux_Y = np.empty((4 * self.nx * self.ny, 1))
+        self.UL = ConservativeState(self.inputs, self.nx + 1)
+        self.UR = ConservativeState(self.inputs, self.nx + 1)
 
         # Set Flux Function
         if self.inputs.flux_function == 'Roe':
@@ -153,7 +134,9 @@ class MUSCLFiniteVolumeMethod:
             self.flux_function_X = HLLL_FLUX_X(self.inputs)
             self.flux_function_Y = HLLL_FLUX_Y(self.inputs)
         else:
-            raise ValueError('FiniteVolumeMethod: Flux function type not specified.')
+            print('FiniteVolumeMethod: Flux function type not specified. Defaulting to Roe.')
+            self.flux_function_X = ROE_FLUX_X(self.inputs)
+            self.flux_function_Y = ROE_FLUX_Y(self.inputs)
 
         # Van Leer limiter
         if self.inputs.flux_limiter == 'van_leer':
@@ -162,6 +145,25 @@ class MUSCLFiniteVolumeMethod:
         # Van Albada limiter
         elif self.inputs.flux_limiter == 'van_albada':
             self.flux_limiter = limiters.VanAlbada(self.inputs)
+
+        # Construct indices to access column-wise elements on the mesh
+        self._y_index = np.ones((4 * self.ny), dtype=np.int32)
+
+        for i in range(1, self.ny + 1):
+            self._y_index[4 * i - 4:4 * i] = np.arange(4 * self.nx * (i - 1) - 4, 4 * self.nx * (i - 1))
+
+        # Construct shuffle matrix
+        i = np.arange(0, 4 * self.ny * self.nx)
+        j = np.arange(0, 4 * self.ny * self.nx)
+        m = np.arange(0, 4 * self.ny)
+
+        for k in range(0, self.ny):
+            m[4 * k:4 * (k + 1)] = np.arange(4 * k * self.nx, 4 * (k * self.nx + 1))
+
+        for k in range(0, self.nx):
+            j[4 * k * self.ny:4 * (k + 1) * self.ny] = m + 4 * k
+
+        self._shuffle = sparse.coo_matrix((np.ones((4 * self.nx * self.ny)), (i, j)))
 
 
     @staticmethod
@@ -176,26 +178,5 @@ class MUSCLFiniteVolumeMethod:
                           ref_BLK.col(index),
                           ref_BLK.boundary_blocks.N[index]))
 
-    @abstractmethod
     def reconstruct_state(self, U):
-        pass
-
-    @abstractmethod
-    def get_dWdx(self):
-        dWdx = np.zeros((self.ny, self.nx, 4))
-        pass
-
-    @abstractmethod
-    def get_dWdy(self):
-        dWdy = np.zeros((self.ny, self.nx, 4))
-        pass
-
-    @abstractmethod
-    def get_dUdx(self):
-        dUdx = np.zeros((self.ny, self.nx, 4))
-        pass
-
-    @abstractmethod
-    def get_dUdy(self):
-        dUdy = np.zeros((self.ny, self.nx, 4))
         pass

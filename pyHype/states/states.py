@@ -1,22 +1,115 @@
-"""
-Copyright 2021 Mohamed Khalil
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-
 import numpy as np
-from pyHype.states.base import State
+from abc import abstractmethod
 from pyHype.input.input_file_builder import ProblemInput
+
+
+class State:
+    """
+    # State
+    Defines an abstract class for implementing primitive and conservative state classes. The core components of a state
+    are the state vector and the state variables. The state vector is composed of the state variables in a specific
+    order. For example, for a state X with state variables $x_1, x_2, ..., x_n$ and state vector $X$, the state vector
+    is represented as:
+    $X = \\begin{bmatrix} x_1 \\ x_2 \\ \\dots \\ x_n \\end{bmatrix}^T$. The state vector represents the solution at
+    each physical discretization point.
+    """
+    def __init__(self, inputs: ProblemInput, nx: int, ny: int):
+        """
+        ## Attributes
+
+        **Private**                                 \n
+            input       input dictionary            \n
+            size        size of grid in block       \n
+
+        **Public**                                  \n
+            g           (gamma) specific heat ratio \n
+        """
+
+        # Private
+        self.inputs = inputs
+        self.nx = nx
+        self.ny = ny
+
+        # Public
+        self.g = inputs.gamma
+
+        # State matrix
+        self.Q = np.zeros((ny, nx, 4))
+
+        # State variables
+        self.q0 = np.zeros((ny, nx, 1))
+        self.q1 = np.zeros((ny, nx, 1))
+        self.q2 = np.zeros((ny, nx, 1))
+        self.q3 = np.zeros((ny, nx, 1))
+
+
+    def set_vars_from_state(self):
+        """
+        Sets primitive variables from primitive state vector
+        """
+        self.q0     = self.Q[:, :, 0]
+        self.q1     = self.Q[:, :, 1]
+        self.q2     = self.Q[:, :, 2]
+        self.q3     = self.Q[:, :, 3]
+
+    def set_state_from_vars(self):
+        """
+        Sets primitive variables from primitive state vector
+        """
+        self.Q[:, :, 0] = self.q0
+        self.Q[:, :, 1] = self.q1
+        self.Q[:, :, 2] = self.q2
+        self.Q[:, :, 3] = self.q3
+
+
+    @abstractmethod
+    def non_dim(self):
+        """
+        Makes state vector and state variables non-dimensional
+        """
+        pass
+
+    @abstractmethod
+    def a(self):
+        """
+        Returns speed of sound over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def H(self):
+        """
+        Returns total entalpy over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def rho(self):
+        """
+        Returns density over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def u(self):
+        """
+        Returns x-direction velocity over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def v(self):
+        """
+        Returns y-direction velocity over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def p(self):
+        """
+        Returns pressure velocity over entire grid
+        """
+        pass
 
 
 class PrimitiveState(State):
@@ -141,6 +234,25 @@ class PrimitiveState(State):
         self.Q = W
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Overload magic functions
+
+    # Overload __getitem__ method to return slice from W based on index slice object/indices
+    def __getitem__(self, index: int) -> np.ndarray:
+        return self.W[index]
+
+    # Overload __add__ method to return the sum of self and other's state vectors
+    def __add__(self, other: 'PrimitiveState') -> np.ndarray:
+        return self.W + other.W
+
+    # Overload __sub__ method to return the difference between self and other's state vectors
+    def __sub__(self, other: 'PrimitiveState') -> np.ndarray:
+        return self.W - other.W
+
+    def update(self, value: np.ndarray) -> None:
+        self.W = value
+        self.set_vars_from_state()
+
+    # ------------------------------------------------------------------------------------------------------------------
     # METHODS FOR UPDATING INTERNAL STATE BASED ON EXTERNAL INPUTS
 
     def from_conservative_state(self, U: 'ConservativeState') -> None:
@@ -172,7 +284,7 @@ class PrimitiveState(State):
         self.rho = U_vector[:, :, 0].copy()
         self.u = U_vector[:, :, 1] / self.rho
         self.v = U_vector[:, :, 2] / self.rho
-        self.p = (self.g - 1) * (U_vector[:, :, 3] - 0.5 * self.rho * (self.u ** 2 + self.v ** 2))
+        self.p = (self.g - 1) * (U_vector[:, :, 3] - 0.5 * (U_vector[:, :, 1] ** 2 + U_vector[:, :, 2] ** 2) / self.rho)
 
         self.set_state_from_vars()
 
@@ -192,7 +304,7 @@ class PrimitiveState(State):
         self.rho = rho.copy()
         self.u = rhou / rho
         self.v = rhov / rho
-        self.p = (self.g - 1) * (e - 0.5 * (rhou ** 2 + rhov ** 2) / rho)
+        self.p = (self.g - 1) * (e - rho * (rhou ** 2 + rhov ** 2) / 2)
 
         # Set W components appropriately
         self.set_state_from_vars()
@@ -372,7 +484,7 @@ class ConservativeState(State):
 
     @e.setter
     def e(self, e: np.ndarray) -> None:
-        self.q3 = e
+        self.q2 = e
 
     # W property (refers to q3 in Q)
     @property
@@ -383,6 +495,22 @@ class ConservativeState(State):
     @U.setter
     def U(self, U: np.ndarray):
         self.Q = U
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Overload magic functions
+
+    def __getitem__(self, index):
+        return self.U[index]
+
+    def __add__(self, other):
+        return self.U + other.U
+
+    def __sub__(self, other):
+        return self.U - other.U
+
+    def update(self, value: np.ndarray) -> None:
+        self.U = value
+        self.set_vars_from_state()
 
     # PUBLIC METHODS ---------------------------------------------------------------------------------------------------
 
@@ -447,12 +575,10 @@ class ConservativeState(State):
         self.rho    = W_vector[:, :, 0].copy()
         self.rhou   = self.rho * W_vector[:, :, 1]
         self.rhov   = self.rho * W_vector[:, :, 2]
-        self.e      = 0.5 * (self.rhou ** 2 + self.rhov ** 2) / self.rho + W_vector[:, :, 3] / (self.g - 1)
-
+        self.e      = W_vector[:, :, 3] / (self.g - 1) \
+                      + 0.5 * self.rho * (W_vector[:, :, 1] ** 2 + W_vector[:, :, 2] ** 2)
 
         self.set_state_from_vars()
-
-
 
     def from_primitive_state_vars(self,
                                      rho: np.ndarray,
@@ -491,10 +617,10 @@ class ConservativeState(State):
         return np.sqrt(self.g * self.p() / self.rho)
 
     def u(self):
-        return self.rhou / self.rho
+        return self.Q[:, :, 1] / self.Q[:, :, 0]
 
     def v(self):
-        return self.rhov / self.rho
+        return self.Q[:, :, 3] / self.Q[:, :, 0]
 
     def p(self):
         return (self.g - 1) * (self.e - 0.5 * (self.rhou ** 2 + self.rhov ** 2) / self.rho)
