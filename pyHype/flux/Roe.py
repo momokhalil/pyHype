@@ -204,7 +204,7 @@ class ROE_FLUX_Y(FluxFunction):
         data = stack(self.Xi_m3, self.Xi_m2, self.Xi_m1, self.Xi_d0, self.Xi_p1, self.Xi_p2, self.Xi_p3)
         self.Xi = sparse.coo_matrix((data, (self.Xi_i, self.Xi_j)))
 
-        data = np.zeros((4 * self.nx + 4))
+        data = np.zeros((4 * self.ny + 4))
         self.Lambda = sparse.coo_matrix((data, (self.Li, self.Lj)))
 
 

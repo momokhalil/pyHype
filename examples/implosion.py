@@ -1,4 +1,5 @@
 from pyHype.input.implosion import implosion
+from pyHype.input.chamber import chamber
 from pyHype.solvers import solver
 import os
 

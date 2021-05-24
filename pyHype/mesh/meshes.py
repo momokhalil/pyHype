@@ -111,7 +111,29 @@ def one_mesh(nx, ny):
     return {1: block1}
 
 
+def chamber(nx, ny):
+    block1 = {'nBLK': 1,
+              'NE': [10, 20],
+              'NW': [0, 20],
+              'SE': [10, 0],
+              'SW': [0, 0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'NeighborE': 0,
+              'NeighborW': 0,
+              'NeighborN': 0,
+              'NeighborS': 0,
+              'BCTypeE': 'Reflection',
+              'BCTypeW': 'Reflection',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    return {1: block1}
+
+
 DEFINED_MESHES = {'simple_mesh': simple_mesh,
-                  'one_mesh': one_mesh}
+                  'one_mesh': one_mesh,
+                  'chamber': chamber}
 
 

@@ -25,7 +25,6 @@ _ZERO_VEC = np.zeros((1, 1, 4))
 class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
 
-        print('AAAAAAAAAAAAAAAAAAAAAAA')
         super().__init__(inputs, global_nBLK)
 
         self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
@@ -37,6 +36,9 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         solver and slope limiter of choice.
         """
 
+        self.UL.reset(shape=(1, self.nx + 1, 4))
+        self.UR.reset(shape=(1, self.nx + 1, 4))
+
         for row in range(self.ny):
             row_state = ref_BLK.fullrow(row)
             self.Ux.from_conservative_state_vector(row_state)
@@ -45,6 +47,9 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
 
             flux = self.flux_function_X.get_flux(self.UL, self.UR)
             self.Flux_X[row, :, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
+
+        self.UL.reset(shape=(1, self.ny + 1, 4))
+        self.UR.reset(shape=(1, self.ny + 1, 4))
 
         for col in range(self.nx):
             col_state = ref_BLK.fullcol(col)

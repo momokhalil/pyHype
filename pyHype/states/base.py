@@ -92,11 +92,18 @@ class State:
     def __sub__(self, other: 'State') -> np.ndarray:
         return self.Q - other.Q
 
+    def reset(self, shape: tuple[int] = None):
+
+        if shape:
+            self.Q = np.zeros(shape=shape)
+        else:
+            self.Q = np.zeros((self.ny, self.nx, 4))
+
+        self.set_vars_from_state()
 
     def update(self, value: np.ndarray) -> None:
         self.Q = value
         self.set_vars_from_state()
-
 
     @abstractmethod
     def non_dim(self):

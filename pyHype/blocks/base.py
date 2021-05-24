@@ -102,7 +102,7 @@ class Mesh:
         self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
 
         self.dx     = self.Lx / (self.nx + 1)
-        self.dy     = self.Lx / (self.nx + 1)
+        self.dy     = self.Ly / (self.ny + 1)
 
 
 class Blocks:

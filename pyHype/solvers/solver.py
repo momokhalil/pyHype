@@ -122,6 +122,36 @@ class Euler2DSolver:
                             block.state.U[i, j, :] = QL
                 block.state.non_dim()
 
+        elif problem_type == 'chamber':
+
+            # High pressure zone
+            rhoL = 4.6968
+            pL = 404400.0
+            uL = 0.00
+            vL = 0.0
+            eL = pL / (g - 1)
+
+            # Low pressure zone
+            rhoR = 1.1742
+            pR = 101100.0
+            uR = 0.00
+            vR = 0.0
+            eR = pR / (g - 1)
+
+            # Create state vectors
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
+
+            # Fill state vector in each block
+            for block in self.blocks:
+                for i in range(ny):
+                    for j in range(nx):
+                        if 3 >= block.mesh.x[i, j] <= 7 and 3 >= block.mesh.y[i, j] <= 7:
+                            block.state.U[i, j, :] = QR
+                        else:
+                            block.state.U[i, j, :] = QL
+                block.state.non_dim()
+
         elif problem_type == 'shocktube':
 
             # High pressure zone

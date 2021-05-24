@@ -1,4 +1,4 @@
-implosion = {'problem_type':            'implosion',
+chamber = {'problem_type':            'chamber',
              'IC_type':                 'from_IC',
              'flux_function':           'Roe',
              'reconstruction_type':     'Primitive',
@@ -15,7 +15,6 @@ implosion = {'problem_type':            'implosion',
              'rho_inf':                 1.0,
              'a_inf':                   343.0,
              'R':                       287.0,
-             'nx':                      10,
-             'ny':                      200,
-             'mesh_name':               'one_mesh'}
-
+             'nx':                      70,
+             'ny':                      140,
+             'mesh_name':               'chamber'}
