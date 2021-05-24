@@ -1,3 +1,3 @@
 from pyHype.fvm.FirstOrderUnlimited import FirstOrderUnlimited
-from pyHype.fvm.SecondOrderLimited import SecondOrderLimited
+from pyHype.fvm.SecondOrderGreenGauss import SecondOrderGreenGauss
 
