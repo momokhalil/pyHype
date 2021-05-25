@@ -209,7 +209,7 @@ class QuadBlock:
         if time_integrator      == 'ExplicitEuler1':
             self._time_integrator = erk.ExplicitEuler1(self.inputs, self)
         elif time_integrator    == 'RK2':
-            self._time_integrator = self.RK2
+            self._time_integrator = erk.RK2(self.inputs, self)
         elif time_integrator    == 'Generic2':
             self._time_integrator = erk.Generic2(self.inputs, self)
         elif time_integrator    == 'Ralston2':
@@ -301,16 +301,16 @@ class QuadBlock:
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS)
 
     def get_east_edge(self) -> np.ndarray:
-        return self.state.U[None, -1, :]
+        return self.state.U[None, -1, :].copy()
 
     def get_west_edge(self) -> np.ndarray:
-        return self.state.U[None, 0, :]
+        return self.state.U[None, 0, :].copy()
 
     def get_north_edge(self) -> np.ndarray:
-        return self.state.U[-1, None, :]
+        return self.state.U[-1, None, :].copy()
 
     def get_south_edge(self) -> np.ndarray:
-        return self.state.U[0, None, :]
+        return self.state.U[0, None, :].copy()
 
     def row(self, index: int) -> np.ndarray:
         return self.state.U[index, None, :]
@@ -332,25 +332,6 @@ class QuadBlock:
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
-
-    def RK2(self, dt):
-
-        U = self.state.U.copy()
-
-        self.get_flux()
-        Rx, Ry = -self._finite_volume_method.Flux_X / self.mesh.dx, -self._finite_volume_method.Flux_Y / self.mesh.dy
-
-        K1 = dt * (Rx + Ry)
-        self.state.update(U + K1/2)
-        self.set_BC()
-
-        self.get_flux()
-        Rx, Ry = -self._finite_volume_method.Flux_X / self.mesh.dx, -self._finite_volume_method.Flux_Y / self.mesh.dy
-
-        K2 = dt * (Rx + Ry)
-        self.state.update(U + K2)
-        self.set_BC()
-
 
     # Update solution state
     def update(self, dt) -> None:
