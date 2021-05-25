@@ -1,16 +1,8 @@
 import numpy as np
 from typing import Union
-<<<<<<< HEAD:pyHype/block.py
 from abc import abstractmethod
 from pyHype.states import ConservativeState
 from pyHype.finite_volume_methods import FirstOrderUnlimited, SecondOrderLimited
-=======
-from abc import abstractmethod, ABC
-from pyHype.states.states import ConservativeState
-from pyHype.mesh.mesh_inputs import BlockDescription
-from pyHype.input.input_file_builder import ProblemInput
-from pyHype.fvm import FirstOrderUnlimited, SecondOrderGreenGauss
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
 
 #-----------------------------------------------------------------------------------------------------------------------
 # General Classes
@@ -79,20 +71,11 @@ class Mesh:
 
 # QuadBlock Class Definition
 class QuadBlock:
-<<<<<<< HEAD:pyHype/block.py
     def __init__(self, input_, mesh_data_):
         self._input             = input_
         self._mesh              = Mesh(input_, mesh_data_)
         self._state             = ConservativeState(input_, input_.n)
         self.global_nBLK        = mesh_data_.nBLK
-=======
-    def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
-
-        self.inputs             = inputs
-        self._mesh              = Mesh(inputs, block_data)
-        self._state             = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
-        self.global_nBLK        = block_data.nBLK
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
         self.boundary_blocks    = None
         self.neighbors          = None
 
@@ -102,15 +85,9 @@ class QuadBlock:
         if fvm == 'FirstOrderUnlimited':
             self._finite_volume_method = FirstOrderUnlimited(self._input, self.global_nBLK)
         elif fvm == 'FirstOrderLimited':
-<<<<<<< HEAD:pyHype/block.py
             self._finite_volume_method = FirstOrderUnlimited(self._input, self.global_nBLK)
         elif fvm == 'SecondOrderLimited':
             self._finite_volume_method = SecondOrderLimited(self._input, self.global_nBLK)
-=======
-            self._finite_volume_method = FirstOrderUnlimited(self.inputs, self.global_nBLK)
-        elif fvm == 'SecondOrderGreenGauss':
-            self._finite_volume_method = SecondOrderGreenGauss(self.inputs, self.global_nBLK)
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
@@ -159,7 +136,6 @@ class QuadBlock:
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS)
 
     def get_east_edge(self) -> np.ndarray:
-<<<<<<< HEAD:pyHype/block.py
         return self.boundary_blocks.E.from_ref_U(self)
 
     def get_west_edge(self) -> np.ndarray:
@@ -170,35 +146,6 @@ class QuadBlock:
 
     def get_south_edge(self) -> np.ndarray:
         return self.boundary_blocks.S.from_ref_U(self)
-=======
-        return self.state.U[None, -1, :]
-
-    def get_west_edge(self) -> np.ndarray:
-        return self.state.U[None, 0, :]
-
-    def get_north_edge(self) -> np.ndarray:
-        return self.state.U[-1, None, :]
-
-    def get_south_edge(self) -> np.ndarray:
-        return self.state.U[0, None, :]
-
-    def row(self, index: int) -> np.ndarray:
-        return self._state.U[index, None, :]
-
-    def fullrow(self, index: int) -> np.ndarray:
-        return np.concatenate((self.boundary_blocks.W[index, None, :],
-                               self.row(index),
-                               self.boundary_blocks.E[index, None, :]),
-                              axis=0)
-
-    def col(self, index: int) -> np.ndarray:
-        return self._state.U[None, index, :]
-
-    def fullcol(self, index: int) -> np.ndarray:
-        return np.vstack((self.boundary_blocks.S[None, index, :],
-                          self.col(index),
-                          self.boundary_blocks.N[None, index, :]))
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
@@ -208,112 +155,27 @@ class QuadBlock:
         self._time_integrator(dt)
 
     # Explicit Euler time stepping
-<<<<<<< HEAD:pyHype/block.py
     def explicit_euler(self) -> None:
         pass
-=======
-    def explicit_euler(self, dt) -> None:
-
-        # Save inial state
-        U_initial = self._state.U
-
-        # First stage ##############################################################
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # First update vector
-        K1 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K1)
-        # Update state BC
-        self.update_BC()
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
 
     # RK2 time stepping
     def RK2(self, dt) -> None:
         Rx, Ry = self.get_residual()
         u = self._state.U
 
-<<<<<<< HEAD:pyHype/block.py
         k1 = dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
 
         self._state.U += 0.5 * k1
         self._state.set_vars_from_state()
-=======
-        # Save inial state
-        U_initial = self._state.U
-
-        # First stage ##############################################################
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # First update vector
-        K1 = U_initial + 0.5 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K1)
-        # Update state BC
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
         self.update_BC()
 
         Rx, Ry = self.get_residual()
-<<<<<<< HEAD:pyHype/block.py
         self._state.U = u + dt * Rx / self._mesh.dx + dt * Ry / self._mesh.dy
         self._state.set_vars_from_state()
-=======
-        # First update vector
-        K2 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K2)
-        # Update state BC
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
         self.update_BC()
 
     # RK3 TVD time stepping
     def RK3TVD(self, dt) -> None:
-<<<<<<< HEAD:pyHype/block.py
-=======
-
-        # Save inial state
-        U_initial = self._state.U
-
-        # First stage ##############################################################
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # First update vector
-        K1 = U_initial + dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K1)
-        # Update state BC
-        self.update_BC()
-
-        # Second stage ##############################################################
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # Second update vector
-        K2 = 0.75 * U_initial +     \
-             0.25 * K1 +            \
-             0.25 * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K2)
-        # Update state BC
-        self.update_BC()
-
-        # Third stage ##############################################################
-
-        # Get residuals
-        Rx, Ry = self.get_residual()
-        # Third update vector
-        K3 = (1/3) * U_initial + \
-             (2/3) * K2 +        \
-             (2/3) * dt * (Rx / self._mesh.dx + Ry / self._mesh.dy)
-        # Update block state vector
-        self._state.update(K3)
-        # Update state BC
-        self.update_BC()
-
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
         pass
 
     # RK4 time stepping
@@ -358,7 +220,6 @@ class Blocks:
         for block in self._blocks.values():
             block.update(dt)
 
-<<<<<<< HEAD:pyHype/block.py
     def set_BC(self) -> None:
         for block in self._blocks.values():
             block.set_BC()
@@ -407,39 +268,12 @@ class BoundaryBlock:
         self._type = type_
         self.nx = input_.nx
         self.ny = input_.ny
-=======
-class BoundaryBlock(ABC):
-    def __init__(self, inputs, type_: str, ref_BLK: 'QuadBlock'):
-
-        self._type = type_
-        self.inputs = inputs
-        self.nx = inputs.nx
-        self.ny = inputs.ny
-        self.ref_BLK = ref_BLK
-
-        self._state = None
-
-    def __getitem__(self, index):
-        x, y, var = index
-        print(x, y, var)
-        print(self.state.U)
-        return self.state.U[y, x, var]
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
 
     @property
     def state(self):
         return self._state
 
-    def set(self) -> None:
-        if self._type == 'None':
-            self.set_BC_none()
-        elif self._type == 'Outflow':
-            self.set_BC_outflow()
-        elif self._type == 'Reflection':
-            self.set_BC_reflection()
-
     @abstractmethod
-<<<<<<< HEAD:pyHype/block.py
     def set(self, ref_BLK):
         pass
 
@@ -481,81 +315,12 @@ class BoundaryBlockEast(BoundaryBlock):
         super().__init__(input_, type_)
         self._idx_from_U = np.empty((4*self.ny), dtype=np.int32)
         self._state = ConservativeState(input_, self.ny)
-=======
-    def from_ref_U(self):
-        pass
 
-    @abstractmethod
-    def set_BC_none(self):
-        pass
+        for j in range(1, self.ny + 1):
+            iF = 4 * self.nx * j - 4
+            iE = 4 * self.nx * j
+            self._idx_from_U[4 * j - 4:4 * j] = np.arange(iF, iE, dtype=np.int32)
 
-    @abstractmethod
-    def set_BC_outflow(self):
-        pass
-
-    @abstractmethod
-    def set_BC_reflection(self):
-        pass
-
-
-class BoundaryBlockNorth(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=self.nx, ny=1)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[-1, None, :]
-
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.N.get_south_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 2] *= -1
-
-
-class BoundaryBlockSouth(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=self.nx, ny=1)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[0, None, :]
-
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_north_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 2] *= -1
-
-
-class BoundaryBlockEast(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=1, ny=self.ny)
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[None, -1, :]
-
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_west_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 1] *= -1
-
-<<<<<<< HEAD:pyHype/block.py
     def set(self, ref_BLK: QuadBlock) -> None:
         if self._type   == 'Outflow':
             self._state.U = ref_BLK.state.U[self._idx_from_U]
@@ -570,18 +335,12 @@ class BoundaryBlockWest(BoundaryBlock):
         super().__init__(input_, type_)
         self._idx_from_U = np.empty((4*self.ny), dtype=np.int32)
         self._state = ConservativeState(input_, self.ny)
-=======
 
-class BoundaryBlockWest(BoundaryBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=1, ny=self.ny)
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
+        for j in range(1, self.ny + 1):
+            iF = (4 * j - 4) + 4 * (j - 1) * (self.nx - 1)
+            iE = (4 * j - 0) + 4 * (j - 1) * (self.ny - 1)
+            self._idx_from_U[4 * j - 4: 4 * j] = np.arange(iF, iE, dtype=np.int32)
 
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[None, 0, :]
-
-<<<<<<< HEAD:pyHype/block.py
     def set(self, ref_BLK: QuadBlock) -> None:
         if self._type == 'Outflow':
             self._state.U = ref_BLK.state.U[self._idx_from_U]
@@ -590,14 +349,3 @@ class BoundaryBlockWest(BoundaryBlock):
         elif self._type == 'Reflection':
             self._state.U = ref_BLK.state.U[self._idx_from_U]
             self._state.U[1::4] *= -1
-=======
-    def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_east_edge()
-
-    def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
-
-    def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 1] *= -1
->>>>>>> parent of e659274 (Revert "revert"):pyHype/blocks/base.py
