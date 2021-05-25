@@ -13,3 +13,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
+import numba
+import numpy as np
+from numba import float32
+from pyHype.flux.base import FluxFunction
+from pyHype.states.states import PrimitiveState, RoePrimitiveState, ConservativeState
+
+
+class HLLL_FLUX_X(FluxFunction):
+    def __init__(self, inputs):
+        super().__init__(inputs)
+
+    def get_flux(self, UL, UR):
+        pass
+
+
+class HLLL_FLUX_Y(FluxFunction):
+    def __init__(self, inputs):
+        super().__init__(inputs)
+
+    def get_flux(self, UL, UR):
+        pass
