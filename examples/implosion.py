@@ -1,9 +1,10 @@
-from pyHype.input.implosion import implosion
-from pyHype.input.chamber import chamber
-from pyHype.solvers import solver
-import os
+from pyHype.input_files import E4
+from pyHype import euler_2D
 
-os.environ["NUMBA_DISABLE_JIT"] = str(0)
+problem_inputs = E4.E4
 
-solver = solver.Euler2DSolver(implosion)
+solver = euler_2D.Euler2DSolver(problem_inputs)
 solver.solve()
+
+stats = solver.profile.sort_stats('cumtime')
+stats.print_stats()

@@ -1,22 +1,127 @@
-"""
-Copyright 2021 Mohamed Khalil
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-
 import numpy as np
-from pyHype.states.base import State
+from abc import abstractmethod
+<<<<<<< HEAD:pyHype/states.py
+=======
 from pyHype.input.input_file_builder import ProblemInput
+
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
+
+class State:
+    """
+    # State
+    Defines an abstract class for implementing primitive and conservative state classes. The core components of a state
+    are the state vector and the state variables. The state vector is composed of the state variables in a specific
+    order. For example, for a state X with state variables $x_1, x_2, ..., x_n$ and state vector $X$, the state vector
+    is represented as:
+    $X = \\begin{bmatrix} x_1 \\ x_2 \\ \\dots \\ x_n \\end{bmatrix}^T$. The state vector represents the solution at
+    each physical discretization point.
+    """
+<<<<<<< HEAD:pyHype/states.py
+    def __init__(self, input_, size_):
+=======
+    def __init__(self, inputs: ProblemInput, nx: int, ny: int):
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
+        """
+        ## Attributes
+
+        **Private**                                 \n
+            input       input dictionary            \n
+            size        size of grid in block       \n
+
+        **Public**                                  \n
+            g           (gamma) specific heat ratio \n
+        """
+
+        # Private
+<<<<<<< HEAD:pyHype/states.py
+        self._input = input_
+        self._size = size_
+=======
+        self.inputs = inputs
+        self.nx = nx
+        self.ny = ny
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
+
+        # Public
+        self.g = input_.gamma
+
+        # State matrix
+        self.Q = np.zeros((ny, nx, 4))
+
+        # State variables
+        self.q0 = np.zeros((ny, nx, 1))
+        self.q1 = np.zeros((ny, nx, 1))
+        self.q2 = np.zeros((ny, nx, 1))
+        self.q3 = np.zeros((ny, nx, 1))
+
+
+    def set_vars_from_state(self):
+        """
+        Sets primitive variables from primitive state vector
+        """
+        self.q0     = self.Q[:, :, 0]
+        self.q1     = self.Q[:, :, 1]
+        self.q2     = self.Q[:, :, 2]
+        self.q3     = self.Q[:, :, 3]
+
+    def set_state_from_vars(self):
+        """
+        Sets primitive variables from primitive state vector
+        """
+        self.Q[:, :, 0] = self.q0
+        self.Q[:, :, 1] = self.q1
+        self.Q[:, :, 2] = self.q2
+        self.Q[:, :, 3] = self.q3
+
+
+    @abstractmethod
+    def non_dim(self):
+        """
+        Makes state vector and state variables non-dimensional
+        """
+        pass
+
+    @abstractmethod
+    def a(self):
+        """
+        Returns speed of sound over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def H(self):
+        """
+        Returns total entalpy over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def rho(self):
+        """
+        Returns density over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def u(self):
+        """
+        Returns x-direction velocity over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def v(self):
+        """
+        Returns y-direction velocity over entire grid
+        """
+        pass
+
+    @abstractmethod
+    def p(self):
+        """
+        Returns pressure velocity over entire grid
+        """
+        pass
 
 
 class PrimitiveState(State):
@@ -31,6 +136,9 @@ class PrimitiveState(State):
     utilizes a primitive formulation. Another primary use-case for `PrimitiveState` is converting a `ConservativeState`
     into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
     """
+<<<<<<< HEAD:pyHype/states.py
+    def __init__(self, input_, size_):
+=======
 
     def __init__(self,
                  inputs: ProblemInput,
@@ -39,6 +147,7 @@ class PrimitiveState(State):
                  state: State = None,
                  U_vector: np.ndarray = None,
                  W_vector: np.ndarray = None):
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
         """
         ## Attributes
 
@@ -50,6 +159,17 @@ class PrimitiveState(State):
             p       pressure                        \n
         """
 
+<<<<<<< HEAD:pyHype/states.py
+        # Call superclass constructor
+        super().__init__(input_, size_)
+
+        # Public
+        self.W = np.zeros((4 * size_, 1))           # primitive state vector
+        self.rho = None                             # density
+        self.u = None                               # x-direction velocity
+        self.v = None                               # y-direction velocity
+        self.p = None                               # pressure
+=======
         # Initialize attributes for storing solution data
 
         # Check if an input vector is given
@@ -141,6 +261,26 @@ class PrimitiveState(State):
         self.Q = W
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Overload magic functions
+
+    # Overload __getitem__ method to return slice from W based on index slice object/indices
+    def __getitem__(self, index: int) -> np.ndarray:
+        return self.W[index]
+
+    # Overload __add__ method to return the sum of self and other's state vectors
+    def __add__(self, other: 'PrimitiveState') -> np.ndarray:
+        return self.W + other.W
+
+    # Overload __sub__ method to return the difference between self and other's state vectors
+    def __sub__(self, other: 'PrimitiveState') -> np.ndarray:
+        return self.W - other.W
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
+
+    def update(self, value: np.ndarray) -> None:
+        self.W = value
+        self.set_vars_from_state()
+
+    # ------------------------------------------------------------------------------------------------------------------
     # METHODS FOR UPDATING INTERNAL STATE BASED ON EXTERNAL INPUTS
 
     def from_conservative_state(self, U: 'ConservativeState') -> None:
@@ -172,7 +312,7 @@ class PrimitiveState(State):
         self.rho = U_vector[:, :, 0].copy()
         self.u = U_vector[:, :, 1] / self.rho
         self.v = U_vector[:, :, 2] / self.rho
-        self.p = (self.g - 1) * (U_vector[:, :, 3] - 0.5 * self.rho * (self.u ** 2 + self.v ** 2))
+        self.p = (self.g - 1) * (U_vector[:, :, 3] - 0.5 * (U_vector[:, :, 1] ** 2 + U_vector[:, :, 2] ** 2) / self.rho)
 
         self.set_state_from_vars()
 
@@ -192,7 +332,7 @@ class PrimitiveState(State):
         self.rho = rho.copy()
         self.u = rhou / rho
         self.v = rhov / rho
-        self.p = (self.g - 1) * (e - 0.5 * (rhou ** 2 + rhov ** 2) / rho)
+        self.p = (self.g - 1) * (e - rho * (rhou ** 2 + rhov ** 2) / 2)
 
         # Set W components appropriately
         self.set_state_from_vars()
@@ -236,7 +376,13 @@ class PrimitiveState(State):
         """
         Creates a `ConservativeState` object from itself
         """
+<<<<<<< HEAD:pyHype/states.py
+        U = ConservativeState(self._input, self._size)
+        U.from_W(self)
+        return U
+=======
         return ConservativeState(self.inputs, W_vector=self.W)
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
 
     def H(self) -> np.ndarray:
         return (self.g / (self.g - 1)) * (self.p / self.rho) + np.mean(self.u**2 + self.v**2)
@@ -257,10 +403,17 @@ class PrimitiveState(State):
         """
 
         # Non-dimentionalize each component of W
+<<<<<<< HEAD:pyHype/states.py
+        self.W[0::4] /= self._input.rho_inf
+        self.W[1::4] /= self._input.a_inf
+        self.W[2::4] /= self._input.a_inf
+        self.W[3::4] /= self._input.rho_inf * self._input.a_inf ** 2
+=======
         self.W[:, :, 0] /= self.inputs.rho_inf
         self.W[:, :, 1] /= self.inputs.rho_inf * self.inputs.a_inf
         self.W[:, :, 2] /= self.inputs.rho_inf * self.inputs.a_inf
         self.W[:, :, 3] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
 
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
@@ -277,6 +430,9 @@ class ConservativeState(State):
     solver that utilizes a conservative formulation. It can also be used to represent the solution state in
     BoundaryBlocks in a solver that utilizes a conservative formulation.
     """
+<<<<<<< HEAD:pyHype/states.py
+    def __init__(self, input_, size_):
+=======
 
     def __init__(self,
                  inputs: ProblemInput,
@@ -285,6 +441,7 @@ class ConservativeState(State):
                  state: State = None,
                  U_vector: np.ndarray = None,
                  W_vector: np.ndarray = None):
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
         """
         ## Attributes
 
@@ -296,6 +453,17 @@ class ConservativeState(State):
             e       energy per unit volume                          \n
         """
 
+<<<<<<< HEAD:pyHype/states.py
+        # Call superclass constructor
+        super().__init__(input_, size_)
+
+        # Public
+        self.U = np.zeros((4 * size_, 1))           # conservative state vector
+        self.rho = None                             # density
+        self.rhou = None                            # x-direction momentum per unit volume
+        self.rhov = None                            # y-direction momentum per unit volume
+        self.e = None                               # energy per unit volume
+=======
         # Check if an input vector is given
         if state or (U_vector is not None) or (W_vector is not None):
             _vec_given = True
@@ -372,7 +540,7 @@ class ConservativeState(State):
 
     @e.setter
     def e(self, e: np.ndarray) -> None:
-        self.q3 = e
+        self.q2 = e
 
     # W property (refers to q3 in Q)
     @property
@@ -383,6 +551,23 @@ class ConservativeState(State):
     @U.setter
     def U(self, U: np.ndarray):
         self.Q = U
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Overload magic functions
+
+    def __getitem__(self, index):
+        return self.U[index]
+
+    def __add__(self, other):
+        return self.U + other.U
+
+    def __sub__(self, other):
+        return self.U - other.U
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
+
+    def update(self, value: np.ndarray) -> None:
+        self.U = value
+        self.set_vars_from_state()
 
     # PUBLIC METHODS ---------------------------------------------------------------------------------------------------
 
@@ -418,7 +603,15 @@ class ConservativeState(State):
         # Set state vector from state variables
         self.set_state_from_vars()
 
+<<<<<<< HEAD:pyHype/states.py
+    def from_state_vector(self, U: 'ConservativeState') -> None:
+        self.U = U
+        self.set_vars_from_state()
+
+    def from_W(self, W: PrimitiveState):
+=======
     def from_primitive_state(self, W: PrimitiveState) -> None:
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
         """
         Creates a `COnservativeState` object from a `PrimitiveState` object. Given that `PrimitiveState` state
         vector is $W = \\begin{bmatrix} \\rho \\ u \\ v \\ p \\end{bmatrix}^T$ and `ConservativeState` state vector is
@@ -444,15 +637,18 @@ class ConservativeState(State):
         """
 
         """
+<<<<<<< HEAD:pyHype/states.py
+        W = PrimitiveState(self._input, self._size)
+        W.from_U(self)
+        return W
+=======
         self.rho    = W_vector[:, :, 0].copy()
         self.rhou   = self.rho * W_vector[:, :, 1]
         self.rhov   = self.rho * W_vector[:, :, 2]
-        self.e      = 0.5 * (self.rhou ** 2 + self.rhov ** 2) / self.rho + W_vector[:, :, 3] / (self.g - 1)
-
+        self.e      = W_vector[:, :, 3] / (self.g - 1) \
+                      + 0.5 * self.rho * (W_vector[:, :, 1] ** 2 + W_vector[:, :, 2] ** 2)
 
         self.set_state_from_vars()
-
-
 
     def from_primitive_state_vars(self,
                                      rho: np.ndarray,
@@ -483,6 +679,7 @@ class ConservativeState(State):
         Creates a `PrimitiveState` object from itself
         """
         return PrimitiveState(self.inputs, U_vector=self.U)
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
 
     def H(self):
         return self.g / (self.g - 1) * self.p() / self.rho + 0.5 * (self.rhou**2 + self.rhov**2) / self.rho
@@ -491,10 +688,10 @@ class ConservativeState(State):
         return np.sqrt(self.g * self.p() / self.rho)
 
     def u(self):
-        return self.rhou / self.rho
+        return self.Q[:, :, 1] / self.Q[:, :, 0]
 
     def v(self):
-        return self.rhov / self.rho
+        return self.Q[:, :, 3] / self.Q[:, :, 0]
 
     def p(self):
         return (self.g - 1) * (self.e - 0.5 * (self.rhou ** 2 + self.rhov ** 2) / self.rho)
@@ -511,6 +708,35 @@ class ConservativeState(State):
         If `ConservativeState` is created from a non-dimentionalized `PrimitiveState`, it will be non-dimentional.
         """
 
+<<<<<<< HEAD:pyHype/states.py
+        self.U[0::4] /= self._input.rho_inf
+        self.U[1::4] /= self._input.rho_inf * self._input.a_inf
+        self.U[2::4] /= self._input.rho_inf * self._input.a_inf
+        self.U[3::4] /= self._input.rho_inf * self._input.a_inf ** 2
+
+        self.set_vars_from_state()
+
+    def F(self):
+        F = np.zeros((4 * self._input.nx + 4, 1))
+
+        F[0::4] = self.rhou
+        F[1::4] = self._p() + self.rhou ** 2 / self.rho
+        F[2::4] = self.rhou * self.rhov / self.rho
+        F[3::4] = (self.rhou / self.rho) * (self.e + self._p())
+
+        return F
+
+    def G(self):
+        G = np.zeros((4 * self._input.ny + 4, 1))
+
+        G[0::4] = self.rhov
+        G[1::4] = self.rhou * self.rhov / self.rho
+        G[2::4] = self._p() + self.rhov ** 2 / self.rho
+        G[3::4] = (self.rhov / self.rho) * (self.e + self._p())
+
+        return G
+
+=======
         self.U[:, :, 0] /= self.inputs.rho_inf
         self.U[:, :, 1] /= self.inputs.rho_inf * self.inputs.a_inf
         self.U[:, :, 2] /= self.inputs.rho_inf * self.inputs.a_inf
@@ -519,6 +745,7 @@ class ConservativeState(State):
         self.set_vars_from_state()
 
 
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
 class RoePrimitiveState(PrimitiveState):
     """
     #*$Roe$* Primitive State
@@ -540,7 +767,19 @@ class RoePrimitiveState(PrimitiveState):
     where $H^\\*$ is the Roe specific enthalpy, evaluated as:                                               \n
     $H^\\* = \\frac{H^R \\sqrt{\\rho^R} + H^L \\sqrt{\\rho^L}}{\\sqrt{\\rho^R} + \\sqrt{\\rho^L}}$.
     """
+    def __init__(self, input_, size_, **kwargs):
 
+<<<<<<< HEAD:pyHype/states.py
+        super().__init__(input_, size_)
+
+        if 'WL' in kwargs.keys() and isinstance(kwargs.get('WL'), PrimitiveState) and \
+           'WR' in kwargs.keys() and isinstance(kwargs.get('WR'), PrimitiveState):
+            self.roe_state_from_primitive_states(kwargs.get('WL'), kwargs.get('WR'))
+
+        elif 'UL' in kwargs.keys() and isinstance(kwargs.get('WL'), ConservativeState) and \
+             'UR' in kwargs.keys() and isinstance(kwargs.get('UR'), ConservativeState):
+            self.roe_state_from_conservative_states(kwargs.get('UL'), kwargs.get('UR'))
+=======
     def __init__(self, inputs, WL, WR):
         """
         ## Attributes
@@ -557,6 +796,7 @@ class RoePrimitiveState(PrimitiveState):
         super().__init__(inputs, nx=WL.W.shape[1], ny=WL.W.shape[0])
         self.roe_state_from_primitive_states(WL, WR)
 
+>>>>>>> parent of e659274 (Revert "revert"):pyHype/states/states.py
 
     def roe_state_from_primitive_states(self, WL: PrimitiveState, WR: PrimitiveState) -> None:
         """
