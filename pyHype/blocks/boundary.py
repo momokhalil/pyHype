@@ -85,7 +85,7 @@ class BoundaryBlockNorth(BoundaryBlock):
         self.y[0, :] = y + dy * np.sin(self.theta)
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[-1, :, :].reshape(1, self.inputs.nx, 4)
+        return self.ref_BLK.state.U[-1, :, :].copy().reshape(1, self.inputs.nx, 4)
 
     def set_BC_none(self):
         self._state.U = self.ref_BLK.neighbors.N.get_south_edge()
@@ -120,7 +120,7 @@ class BoundaryBlockSouth(BoundaryBlock):
 
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[0, :, :].reshape(1, self.inputs.nx, 4)
+        return self.ref_BLK.state.U[0, :, :].copy().reshape(1, self.inputs.nx, 4)
 
     def set_BC_none(self):
         self._state.U = self.ref_BLK.neighbors.S.get_north_edge()
@@ -153,7 +153,7 @@ class BoundaryBlockEast(BoundaryBlock):
         self.y[:, 0] = y + dy * np.sin(self.theta)
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[:, -1, :].reshape(-1, 1, 4)
+        return self.ref_BLK.state.U[:, -1, :].copy().reshape(-1, 1, 4)
 
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.S.get_west_edge()
@@ -186,7 +186,7 @@ class BoundaryBlockWest(BoundaryBlock):
         self.y[:, 0] = y + dy * np.sin(self.theta)
 
     def from_ref_U(self):
-        return self.ref_BLK.state.U[:, 0, :].reshape(-1, 1, 4)
+        return self.ref_BLK.state.U[:, 0, :].copy().reshape(-1, 1, 4)
 
     def set_BC_none(self):
         self._state.U = self.ref_BLK.neighbors.S.get_east_edge()

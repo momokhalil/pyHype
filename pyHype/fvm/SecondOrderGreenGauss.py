@@ -36,8 +36,8 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         solver and slope limiter of choice.
         """
 
-        #self.UL.reset(shape=(1, self.nx + 1, 4))
-        #self.UR.reset(shape=(1, self.nx + 1, 4))
+        self.UL.reset(shape=(1, self.nx + 1, 4))
+        self.UR.reset(shape=(1, self.nx + 1, 4))
 
         for row in range(self.ny):
             row_state = ref_BLK.fullrow(row)
@@ -48,8 +48,8 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
             flux = self.flux_function_X.get_flux(self.UL, self.UR)
             self.Flux_X[row, :, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
 
-        #self.UL.reset(shape=(1, self.ny + 1, 4))
-        #self.UR.reset(shape=(1, self.ny + 1, 4))
+        self.UL.reset(shape=(1, self.ny + 1, 4))
+        self.UR.reset(shape=(1, self.ny + 1, 4))
 
         for col in range(self.nx):
             col_state = ref_BLK.fullcol(col)

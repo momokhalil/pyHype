@@ -5,5 +5,5 @@ import os
 
 os.environ["NUMBA_DISABLE_JIT"] = str(0)
 
-solver = solver.Euler2DSolver(implosion)
+solver = solver.Euler2DSolver(chamber)
 solver.solve()
