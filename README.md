@@ -6,7 +6,7 @@ pyHype is a Python framework for developing computational fluid dynamics softwar
 
 Here is an example of an explosion simulation performed on one block. The mesh consisted of 600 x 1200 cells, and the Roe approximate riemann solver, van-Albada flux limiter, second-order Green-Gauss reconstruction, and RK4 time stepping were used.
 
-![Alt Text](/examples/explosion.gif)
+![Alt Text](/explosion.gif)
 
 Current work:
 1. Allow geometry that is not alligned with the cartesian axes.
