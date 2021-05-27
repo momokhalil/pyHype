@@ -2,7 +2,7 @@
 
 # [pyHype](https://github.com/momokhalil/pyHype): Computational Fluid Dynamics in Python
 
-pyHype is a Python framework for developing computational fluid dynamics software to solve the HYPErbolic 2D Euler equations on distributed, multi-block grids. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! pyHype is in early stages of development! I will be updating it regularly, along with its documentation.
+pyHype is a Python framework for developing parallelized Computational Fluid Dynamics software to solve the hyperbolic 2D Euler equations on distributed, multi-block structured grids. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! pyHype is in early stages of development, I will be updating it regularly, along with its documentation.
 
 ## Explosion Simulation
 Here is an example of an explosion simulation performed on one block. The simulation was performed with the following: 
