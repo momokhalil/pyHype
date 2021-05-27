@@ -1,5 +1,4 @@
 from pyHype.solvers import solver
-import os
 
 explosion = {'problem_type': 'explosion',
              'IC_type': 'from_IC',
@@ -21,8 +20,6 @@ explosion = {'problem_type': 'explosion',
              'ny': 1200,
              'mesh_name': 'chamber',
              'profile': False}
-
-os.environ["NUMBA_DISABLE_JIT"] = str(0)
 
 exp = solver.Euler2DSolver(explosion)
 exp.solve()
