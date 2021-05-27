@@ -11,6 +11,7 @@ Here is an example of an explosion simulation performed on one block. The simula
 - Van-Albada flux limiter
 - Second-order Green-Gauss reconstruction
 - RK4 time stepping with CFL=0.8
+- Reflection boundary conditions
 
 ![Alt Text](/explosion.gif)
 
