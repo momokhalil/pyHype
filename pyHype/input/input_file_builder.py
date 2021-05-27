@@ -16,9 +16,9 @@ limitations under the License.
 
 __REQUIRED__ = ['problem_type', 'IC_type', 'realplot', 'makeplot', 'time_it', 't_final', 'time_integrator',
                 'flux_function', 'CFL', 'flux_function', 'reconstruction_type', 'finite_volume_method', 'flux_limiter',
-                'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'mesh_name']
+                'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'mesh_name', 'profile']
 
-__OPTIONAL__ = ['alpha']
+__OPTIONAL__ = ['alpha', 'write_time']
 
 
 class ProblemInput:
@@ -33,38 +33,16 @@ class ProblemInput:
         # REQUIRED
 
         # General parameters
-        self.problem_type = input_dict['problem_type']
-        self.IC_type = input_dict['IC_type']
-        self.realplot = input_dict['realplot']
-        self.makeplot = input_dict['makeplot']
-        self.time_it = input_dict['time_it']
-        self.t_final = input_dict['t_final']
+        for req_name in __REQUIRED__:
+            self.__setattr__(req_name, input_dict[req_name])
 
-        # Numerical method parameters
-        self.time_integrator = input_dict['time_integrator']
-        self.CFL = input_dict['CFL']
-        self.flux_function = input_dict['flux_function']
-        self.reconstruction_type = input_dict['reconstruction_type']
-        self.finite_volume_method = input_dict['finite_volume_method']
-        self.flux_limiter = input_dict['flux_limiter']
-
-        # Thermodynamic parameters
-        self.gamma = input_dict['gamma']
-        self.R = input_dict['R']
-        self.rho_inf = input_dict['rho_inf']
-        self.a_inf = input_dict['a_inf']
-
-        # Mesh parameters
         self.n = input_dict['nx'] * input_dict['ny']
-        self.nx = input_dict['nx']
-        self.ny = input_dict['ny']
-        self.mesh_name = input_dict['mesh_name']
         self.mesh_inputs = mesh_dict
 
-
         # OPTIONAL
-        if 'alpha' in input_dict.keys():
-            self.alpha = input_dict['alpha']
+        for opt_name in __OPTIONAL__:
+            if opt_name in input_dict.keys():
+                self.__setattr__(opt_name, input_dict[opt_name])
 
     @staticmethod
     def _check_input_dict(input_dict):

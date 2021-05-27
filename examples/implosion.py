@@ -7,3 +7,6 @@ os.environ["NUMBA_DISABLE_JIT"] = str(0)
 
 solver = solver.Euler2DSolver(chamber)
 solver.solve()
+
+#solver.profile_data.sort_stats('tottime')
+#solver.profile_data.print_stats()

@@ -30,34 +30,46 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
         self.Uy = ConservativeState(inputs=self.inputs, nx=self.ny + 2, ny=1)
 
-    def get_flux(self, ref_BLK):
+    def get_flux(self, refBLK):
         """
         Compute the flux at each cell center using the Green Gauss reconstruction method and the approximate Riemann
         solver and slope limiter of choice.
         """
 
+        #----------------------------------------------------
+        # Calculate x-direction Flux
+
+        # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
         self.UL.reset(shape=(1, self.nx + 1, 4))
         self.UR.reset(shape=(1, self.nx + 1, 4))
 
+        # Iterate over all rows in block
         for row in range(self.ny):
-            row_state = ref_BLK.fullrow(row)
-            self.Ux.from_conservative_state_vector(row_state)
-
+            # Set x-direction U state vector holder to the rowth full-row of the block
+            self.Ux.from_conservative_state_vector(refBLK.fullrow(row))
+            # Reconstruct full-row
             self.reconstruct(self.Ux)
-
+            # Calculate flux at each cell interface
             flux = self.flux_function_X.get_flux(self.UL, self.UR)
+            # Calculate flux difference between cell interfaces
             self.Flux_X[row, :, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
 
+        # ----------------------------------------------------
+        # Calculate x-direction Flux
+
+        # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
         self.UL.reset(shape=(1, self.ny + 1, 4))
         self.UR.reset(shape=(1, self.ny + 1, 4))
 
+        # Iterate over all columns in block
         for col in range(self.nx):
-            col_state = ref_BLK.fullcol(col)
-            self.Uy.from_conservative_state_vector(col_state)
-
+            # Set y-direction U state vector holder to the rowth full-row of the block
+            self.Uy.from_conservative_state_vector(refBLK.fullcol(col))
+            # Reconstruct full-column
             self.reconstruct(self.Uy)
-
+            # Calculate flux at each cell interface
             flux = self.flux_function_Y.get_flux(self.UL, self.UR)
+            # Calculate flux difference between cell interfaces
             self.Flux_Y[:, col, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
 
 

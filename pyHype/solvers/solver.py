@@ -43,9 +43,9 @@ class Euler2DSolver:
         self.numTimeStep = 0
         self.CFL = self.inputs.CFL
         self.t_final = self.inputs.t_final * self.inputs.a_inf
-        self.profile = False
         self.profile_data = None
         self.realplot = None
+        self.plot = None
 
     @property
     def blocks(self):
@@ -220,9 +220,9 @@ class Euler2DSolver:
         if self.inputs.realplot:
             plt.ion()
             self.realplot = plt.axes()
-            self.realplot.figure.set_size_inches(8, 8)
+            self.realplot.figure.set_size_inches(5, 10)
 
-        if self.profile:
+        if self.inputs.profile:
             print('Enable profiler')
             profiler = cProfile.Profile()
             profiler.enable()
@@ -239,24 +239,32 @@ class Euler2DSolver:
             #print('update block')
             self._blocks.update(dt)
 
+            self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
+
             if self.inputs.realplot:
-                if self.numTimeStep % 1 == 0:
+                if self.numTimeStep % 20 == 0:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,
-                                           40, cmap='magma')
+                                           100, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
 
             self.t += dt
 
         if self.inputs.makeplot:
-            self.realplot.contourf(self._blocks.blocks[1].mesh.x,
+            self.plot = plt.axes()
+            self.plot.figure.set_size_inches(8, 8)
+            self.plot.contourf(self._blocks.blocks[1].mesh.x,
                                    self._blocks.blocks[1].mesh.y,
                                    self._blocks.blocks[1].state.U[:, :, 0],
                                    100, cmap='magma')
             plt.show(block=True)
 
-        if self.profile:
+        if self.inputs.profile:
             profiler.disable()
             self.profile_data = pstats.Stats(profiler)
+
+    @staticmethod
+    def write_output_nodes(filename: str, array: np.ndarray):
+        np.save(file=filename, arr=array)
