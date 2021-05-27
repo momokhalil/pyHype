@@ -20,8 +20,9 @@ Here is an example of an explosion simulation performed on one block. The simula
 ## Current work
 1. Allow geometry that is not alligned with the cartesian axes.
 2. Compile gradient and reconstruction calculations with numba
-3. Create a fully documented simple example to explain usage
-4. Documentation!!
+3. Implement riemann-invariant boundary conditions
+4. Create a fully documented simple example to explain usage
+5. Documentation!!
 
 ## Major future work
 1. Use MPI to distrubute computation to multiple processors
