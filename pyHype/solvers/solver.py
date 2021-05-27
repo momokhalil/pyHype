@@ -29,7 +29,7 @@ np.set_printoptions(threshold=sys.maxsize)
 
 
 class Euler2DSolver:
-    def __init__(self, input_dict):
+    def __init__(self, input_dict: dict):
 
         mesh = mesh_inputs.build(mesh_name=input_dict['mesh_name'],
                                  nx=input_dict['nx'],
@@ -82,7 +82,7 @@ class Euler2DSolver:
             QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
 
             # Fill state vector in each block
-            for block in self._blocks.blocks.values():
+            for block in self.blocks:
                 for i in range(ny):
                     for j in range(nx):
                         if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
@@ -123,8 +123,8 @@ class Euler2DSolver:
                             block.state.U[i, j, :] = QL
                 block.state.non_dim()
 
-        elif problem_type == 'chamber':
-            print('CHAMBER')
+        elif problem_type == 'explosion':
+
             # High pressure zone
             rhoL = 4.6968
             pL = 404400.0
@@ -200,7 +200,6 @@ class Euler2DSolver:
 
         return dt
 
-
     def solve(self):
 
         print(execution_prints.pyhype)
@@ -229,14 +228,13 @@ class Euler2DSolver:
         else:
             profiler = None
 
-
         print('Start simulation')
         while self.t < self.t_final:
 
             dt = self.dt()
             self.numTimeStep += 1
 
-            #print('update block')
+            # print('update block')
             self._blocks.update(dt)
 
             self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
@@ -256,9 +254,9 @@ class Euler2DSolver:
             self.plot = plt.axes()
             self.plot.figure.set_size_inches(8, 8)
             self.plot.contourf(self._blocks.blocks[1].mesh.x,
-                                   self._blocks.blocks[1].mesh.y,
-                                   self._blocks.blocks[1].state.U[:, :, 0],
-                                   100, cmap='magma')
+                               self._blocks.blocks[1].mesh.y,
+                               self._blocks.blocks[1].state.U[:, :, 0],
+                               100, cmap='magma')
             plt.show(block=True)
 
         if self.inputs.profile:
