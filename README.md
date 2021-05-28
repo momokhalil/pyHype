@@ -45,8 +45,6 @@ exp = solver.Euler2DSolver(explosion)
 exp.solve()
 ```
 
-![Alt Text](/explosion.gif)
-
 ## Current work
 1. Allow geometry that is not alligned with the cartesian axes.
 2. Compile gradient and reconstruction calculations with numba
