@@ -44,6 +44,7 @@ explosion = {'problem_type':          'explosion',
 exp = solver.Euler2DSolver(explosion)
 exp.solve()
 ```
+![alt text](/explosion.gif)
 
 ## Current work
 1. Allow geometry that is not alligned with the cartesian axes.
