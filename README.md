@@ -24,12 +24,12 @@ explosion = {'problem_type':          'explosion',
              'IC_type':               'from_IC',
              'flux_function':         'Roe',
              'reconstruction_type':   'Primitive',
-             'realplot':              0,
-             'makeplot':              0,
-             'time_it':               0,
+             'realplot':              False,
+             'makeplot':              False,
+             'time_it':               False,
              't_final':               0.06,
-             'time_integrator':       'RK4',
              'CFL':                   0.8,
+             'time_integrator':       'RK4',
              'finite_volume_method':  'SecondOrderGreenGauss',
              'flux_limiter':          'van_albada',
              'gamma':                 1.4,
@@ -44,8 +44,6 @@ explosion = {'problem_type':          'explosion',
 exp = solver.Euler2DSolver(explosion)
 exp.solve()
 ```
-
-![Alt Text](/explosion.gif)
 
 ## Current work
 1. Allow geometry that is not alligned with the cartesian axes.
