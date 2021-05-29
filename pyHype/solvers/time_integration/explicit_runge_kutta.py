@@ -23,7 +23,6 @@ class ExplicitRungeKutta(TimeIntegrator):
                  inputs,
                  refBLK,
                  a: list[list] = None,
-                 num_stages: int = None,
                  ):
 
         # Call superclass constructor
@@ -31,7 +30,8 @@ class ExplicitRungeKutta(TimeIntegrator):
         # Butcher tableau representation
         self.a = a
         # Number of stages
-        self.num_stages = num_stages
+        if isinstance(a, list):
+            self.num_stages = len(a)
 
     def integrate(self, dt):
 
@@ -66,8 +66,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         """
         return cls(inputs,
                    refBLK,
-                   a=[[1]],
-                   num_stages=1)
+                   a=[[1]])
 
     @classmethod
     def Generic2(cls, inputs, refBLK):
@@ -84,8 +83,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         return cls(inputs,
                    refBLK,
                    a=[[a],
-                      [1 - 1 / (2 * a), 1 / (2 * a)]],
-                   num_stages=2)
+                      [1 - 1 / (2 * a), 1 / (2 * a)]])
 
     @classmethod
     def RK2(cls, inputs, refBLK):
@@ -101,8 +99,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         return cls(inputs,
                    refBLK,
                    a=[[0.5],
-                      [0, 1]],
-                   num_stages=2)
+                      [0, 1]])
 
 
     @classmethod
@@ -119,8 +116,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         return cls(inputs,
                    refBLK,
                    a=[[2 / 3],
-                      [1 / 4, 3 / 4]],
-                   num_stages=2)
+                      [1 / 4, 3 / 4]])
 
 
     @classmethod
@@ -145,8 +141,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                        refBLK,
                        a=[[a],
                           [1 + k, -k],
-                          [0.5 - 1 / (6 * a), 1 / (6 * a * (1 - a)), (2 - 3 * a) / (6 * (1 - a))]],
-                       num_stages=3)
+                          [0.5 - 1 / (6 * a), 1 / (6 * a * (1 - a)), (2 - 3 * a) / (6 * (1 - a))]])
 
 
     @classmethod
@@ -165,8 +160,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                    refBLK,
                    a=[[0.5],
                       [-1, 2],
-                      [1 / 6, 2 / 3, 1 / 6]],
-                   num_stages=3)
+                      [1 / 6, 2 / 3, 1 / 6]])
 
 
     @classmethod
@@ -185,8 +179,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                    refBLK,
                    a=[[1],
                       [1 / 4, 1 / 4],
-                      [1 / 6, 1 / 6, 2 / 3]],
-                   num_stages=3)
+                      [1 / 6, 1 / 6, 2 / 3]])
 
 
     @classmethod
@@ -205,8 +198,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                    refBLK,
                    a=[[1 / 2],
                       [0, 3 / 4],
-                      [2 / 9, 1 / 3, 4 / 9]],
-                   num_stages=3)
+                      [2 / 9, 1 / 3, 4 / 9]])
 
     @classmethod
     def RK4(cls, inputs, refBLK):
@@ -225,8 +217,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                    a=[[0.5],
                       [0, 0.5],
                       [0, 0, 1],
-                      [1 / 6, 1 / 3, 1 / 3, 1 / 6]],
-                   num_stages=4)
+                      [1 / 6, 1 / 3, 1 / 3, 1 / 6]])
 
 
     @classmethod
@@ -247,8 +238,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                    a=[[0.4],
                       [0.29697761, 0.15875964],
                       [0.21810040, -3.05096516, 3.83286476],
-                      [0.17476028, -.55148066, 1.20553560, 0.17118478]],
-                   num_stages=4)
+                      [0.17476028, -.55148066, 1.20553560, 0.17118478]])
 
 
     @classmethod
@@ -273,5 +263,4 @@ class ExplicitRungeKutta(TimeIntegrator):
                       [44 / 45, -56 / 15, 32 / 9],
                       [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729],
                       [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656],
-                      [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]],
-                   num_stages=6)
+                      [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]])
