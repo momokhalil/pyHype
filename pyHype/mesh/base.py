@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import numpy as np
+from typing import Union
 import pyHype.mesh.meshes as meshes
+
 
 class BlockDescription:
     def __init__(self, blk_input):
@@ -38,13 +41,34 @@ class BlockDescription:
         self.BCTypeS = blk_input['BCTypeS']
 
 
-def build(mesh_name, nx, ny):
+class Mesh:
+    def __init__(self, inputs, mesh_data):
+        self.inputs = inputs
+        self.nx = inputs.nx
+        self.ny = inputs.ny
+        self.vertices = Vertices(NW=mesh_data.NW,
+                                 NE=mesh_data.NE,
+                                 SW=mesh_data.SW,
+                                 SE=mesh_data.SE)
 
-    mesh_func = meshes.DEFINED_MESHES[mesh_name]
-    mesh_dict = mesh_func(nx=nx, ny=ny)
-    mesh = {}
+        X, Y = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
+                           np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
+        self.x = X
+        self.y = Y
 
-    for blk, blkData in mesh_dict.items():
-        mesh[blk] = BlockDescription(blkData)
+        self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
+        self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
 
-    return mesh
+        self.dx     = self.Lx / (self.nx + 1)
+        self.dy     = self.Ly / (self.ny + 1)
+
+
+class Vertices:
+    def __init__(self, NE: tuple[Union[float, int], Union[float, int]],
+                       NW: tuple[Union[float, int], Union[float, int]],
+                       SE: tuple[Union[float, int], Union[float, int]],
+                       SW: tuple[Union[float, int], Union[float, int]]) -> None:
+        self.NW = NW
+        self.NE = NE
+        self.SW = SW
+        self.SE = SE

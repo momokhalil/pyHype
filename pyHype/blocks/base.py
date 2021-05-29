@@ -15,11 +15,10 @@ limitations under the License.
 """
 
 import numpy as np
-from typing import Union
 from pyHype.states.states import ConservativeState
-from pyHype.mesh.mesh_inputs import BlockDescription
+from pyHype.mesh.base import BlockDescription, Mesh
 from pyHype.input.input_file_builder import ProblemInput
-import pyHype.solvers.time_integration.explicit_runge_kutta as erk
+from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as erk
 
 from pyHype.fvm import SecondOrderGreenGauss
 
@@ -28,17 +27,6 @@ from pyHype.blocks.boundary import BoundaryBlockEast, \
                           BoundaryBlockSouth,\
                           BoundaryBlockNorth,\
                           BoundaryBlock
-
-
-class Vertices:
-    def __init__(self, NE: tuple[Union[float, int], Union[float, int]],
-                       NW: tuple[Union[float, int], Union[float, int]],
-                       SE: tuple[Union[float, int], Union[float, int]],
-                       SW: tuple[Union[float, int], Union[float, int]]) -> None:
-        self.NW = NW
-        self.NE = NE
-        self.SW = SW
-        self.SE = SE
 
 
 class Neighbors:
@@ -83,26 +71,7 @@ class NormalVector:
         return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
 
 
-class Mesh:
-    def __init__(self, inputs, mesh_data):
-        self.inputs = inputs
-        self.nx = inputs.nx
-        self.ny = inputs.ny
-        self.vertices = Vertices(NW=mesh_data.NW,
-                                 NE=mesh_data.NE,
-                                 SW=mesh_data.SW,
-                                 SE=mesh_data.SE)
 
-        X, Y = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
-                           np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
-        self.x = X
-        self.y = Y
-
-        self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
-        self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
-
-        self.dx     = self.Lx / (self.nx + 1)
-        self.dy     = self.Ly / (self.ny + 1)
 
 
 class Blocks:

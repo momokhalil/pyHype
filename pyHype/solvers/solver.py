@@ -22,29 +22,96 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from pyHype import execution_prints
 from pyHype.blocks.base import Blocks
-import pyHype.mesh.mesh_inputs as mesh_inputs
-import pyHype.input.input_file_builder as input_file_builder
+from pyHype.mesh import meshes
+from pyHype.mesh.base import BlockDescription
 
 np.set_printoptions(threshold=sys.maxsize)
+
+
+__REQUIRED__ = ['problem_type', 'IC_type', 'realplot', 'makeplot', 'time_it', 't_final', 'time_integrator',
+                'flux_function', 'CFL', 'flux_function', 'reconstruction_type', 'finite_volume_method', 'flux_limiter',
+                'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'mesh_name', 'profile']
+
+__OPTIONAL__ = ['alpha', 'write_time']
+
+
+class ProblemInput:
+    def __init__(self, input_dict: dict, mesh_dict: dict):
+        """
+        Sets required input parametes from input parameter dict. Initialized values to default, with the correct type
+        """
+
+        # Check input dictionary to check if all required fields are present
+        self._check_input_dict(input_dict)
+
+        # REQUIRED
+
+        # General parameters
+        for req_name in __REQUIRED__:
+            self.__setattr__(req_name, input_dict[req_name])
+
+        self.n = input_dict['nx'] * input_dict['ny']
+        self.mesh_inputs = mesh_dict
+
+        # OPTIONAL
+        for opt_name in __OPTIONAL__:
+            if opt_name in input_dict.keys():
+                self.__setattr__(opt_name, input_dict[opt_name])
+
+    @staticmethod
+    def _check_input_dict(input_dict):
+        for key in __REQUIRED__:
+            if key not in input_dict.keys():
+                raise KeyError(key + ' not found in inputs.')
 
 
 class Euler2DSolver:
     def __init__(self, input_dict: dict):
 
-        mesh = mesh_inputs.build(mesh_name=input_dict['mesh_name'],
-                                 nx=input_dict['nx'],
-                                 ny=input_dict['ny'])
+        # --------------------------------------------------------------------------------------------------------------
+        # Store mesh features required to create block descriptions
 
-        self.inputs = input_file_builder.ProblemInput(input_dict, mesh)
+        # Mesh name
+        mesh_name = input_dict['mesh_name']
+        # Number of nodes in x-direction per block
+        nx = input_dict['nx']
+        # Number of nodes in y-direction per block
+        ny = input_dict['ny']
 
+        # --------------------------------------------------------------------------------------------------------------
+        # Create dictionary that describes each block in mesh
+
+        # Get function that creates the dictionary of block description dictionaries.
+        mesh_func = meshes.DEFINED_MESHES[mesh_name]
+        # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
+        mesh_dict = mesh_func(nx=nx, ny=ny)
+        # Initialise dictionary to store a BlockDescription for each block in the mesh
+        mesh_desc = {}
+        # Create BlockDescription for each block in the mesh
+        for blk, blkData in mesh_dict.items():
+            mesh_desc[blk] = BlockDescription(blkData)
+        # Create ProblemInput to store inputs and mesh description
+        self.inputs = ProblemInput(input_dict, mesh_desc)
+
+        # Create Blocks
         self._blocks = Blocks(self.inputs)
 
+        # --------------------------------------------------------------------------------------------------------------
+        # Initialise attributes
+
+        # Simulation time
         self.t = 0
+        # Number of time steps
         self.numTimeStep = 0
+        # CFL number
         self.CFL = self.inputs.CFL
+        # Normalized target simulation time
         self.t_final = self.inputs.t_final * self.inputs.a_inf
+        # Profiler results
         self.profile_data = None
+        # Real-time plot
         self.realplot = None
+        # Plot
         self.plot = None
 
     @property
@@ -237,10 +304,10 @@ class Euler2DSolver:
             # print('update block')
             self._blocks.update(dt)
 
-            self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
+            #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
 
             if self.inputs.realplot:
-                if self.numTimeStep % 20 == 0:
+                if self.numTimeStep % 1 == 0:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,
