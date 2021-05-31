@@ -26,9 +26,10 @@ class BoundaryBlock:
         self.inputs = inputs
         self.nx = inputs.nx
         self.ny = inputs.ny
+        self.nghost = inputs.nghost
         self.ref_BLK = ref_BLK
 
-        self._state = None
+        self.state = None
         self.theta = None
         self.x = None
         self.y = None
@@ -44,13 +45,22 @@ class BoundaryBlock:
     def __getitem__(self, index):
         return self.state.U[index]
 
-    @property
-    def state(self):
-        return self._state
 
-    @abstractmethod
-    def from_ref_U(self):
-        pass
+    """
+    MODIFY
+    
+    def get_mesh_from_east(self):
+        self.x = self.ref_BLK.boundaryBLK.E.x[:, 1]
+
+    def get_mesh_from_west(self):
+        self.x = self.ref_BLK.boundaryBLK.W.x[:, -2]
+
+    def get_mesh_from_north(self):
+        self.x = self.ref_BLK.boundaryBLK.N.x[1, :]
+
+    def get_mesh_from_south(self):
+        self.x = self.ref_BLK.boundaryBLK.S.x[-2, :]
+    """
 
     @abstractmethod
     def set_BC_none(self):
@@ -68,7 +78,7 @@ class BoundaryBlock:
 class BoundaryBlockNorth(BoundaryBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=self.nx, ny=1)
+        self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
 
         self.x = np.zeros((1, self.inputs.nx))
         self.y = np.zeros((1, self.inputs.nx))
@@ -78,30 +88,27 @@ class BoundaryBlockNorth(BoundaryBlock):
         x = self.ref_BLK.mesh.x[-1, :]
         y = self.ref_BLK.mesh.y[-1, :]
 
-        dx = np.absolute(x - self.ref_BLK.mesh.x[-2, :])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[-2, :])
+        dx = x - self.ref_BLK.mesh.x[-2, :]
+        dy = y - self.ref_BLK.mesh.y[-2, :]
 
-        self.x[0, :] = x + dx * np.cos(self.theta)
-        self.y[0, :] = y + dy * np.sin(self.theta)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[-1, :, :].copy().reshape(1, -1, 4)
+        self.x[0, :] = x + dx
+        self.y[0, :] = y + dy
 
     def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.N.get_south_edge()
+        self.state.U = self.ref_BLK.neighbors.N.get_south_ghost()
 
     def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
+        self.state.U[:, :, :] = self.ref_BLK.get_north_edge()
 
     def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 2] *= -1
+        self.state.U = self.ref_BLK.get_north_ghost()
+        self.state.U[:, :, 2] *= -1
 
 
 class BoundaryBlockSouth(BoundaryBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=self.nx, ny=1)
+        self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
 
         self.x = np.zeros((1, self.inputs.nx))
         self.y = np.zeros((1, self.inputs.nx))
@@ -111,32 +118,27 @@ class BoundaryBlockSouth(BoundaryBlock):
         x = self.ref_BLK.mesh.x[0, :]
         y = self.ref_BLK.mesh.y[0, :]
 
-        dx = np.absolute(x - self.ref_BLK.mesh.x[1, :])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[1, :])
+        dx = x - self.ref_BLK.mesh.x[1, :]
+        dy = y - self.ref_BLK.mesh.y[1, :]
 
-        self.x[0, :] = x + dx * np.cos(self.theta)
-        self.y[0, :] = y + dy * np.sin(self.theta)
-
-
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[0, :, :].copy().reshape(1, -1, 4)
+        self.x[0, :] = x + dx
+        self.y[0, :] = y + dy
 
     def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_north_edge()
+        self.state.U = self.ref_BLK.neighbors.S.get_north_ghost()
 
     def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
+        self.state.U[:, :, :] = self.ref_BLK.get_south_edge()
 
     def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 2] *= -1
+        self.state.U = self.ref_BLK.get_south_ghost()
+        self.state.U[:, :, 2] *= -1
 
 
 class BoundaryBlockEast(BoundaryBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=1, ny=self.ny)
+        self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
 
         self.x = np.zeros((self.inputs.ny, 1))
         self.y = np.zeros((self.inputs.ny, 1))
@@ -146,30 +148,27 @@ class BoundaryBlockEast(BoundaryBlock):
         x = self.ref_BLK.mesh.x[:, -1]
         y = self.ref_BLK.mesh.y[:, -1]
 
-        dx = np.absolute(x - self.ref_BLK.mesh.x[:, -2])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[:, -2])
+        dx = x - self.ref_BLK.mesh.x[:, -2]
+        dy = y - self.ref_BLK.mesh.y[:, -2]
 
-        self.x[:, 0] = x + dx * np.cos(self.theta)
-        self.y[:, 0] = y + dy * np.sin(self.theta)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[:, -1, :].copy().reshape(-1, 1, 4)
+        self.x[:, 0] = x + dx
+        self.y[:, 0] = y + dy
 
     def set_BC_none(self):
-        self.state.U = self.ref_BLK.neighbors.S.get_west_edge()
+        self.state.U = self.ref_BLK.neighbors.E.get_west_ghost()
 
     def set_BC_outflow(self):
-        self.state.U = self.from_ref_U()
+        self.state.U[:, :, :] = self.ref_BLK.get_east_edge()
 
     def set_BC_reflection(self):
-        self.state.U = self.from_ref_U()
+        self.state.U = self.ref_BLK.get_east_ghost()
         self.state.U[:, :, 1] *= -1
 
 
 class BoundaryBlockWest(BoundaryBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
-        self._state = ConservativeState(inputs, nx=1, ny=self.ny)
+        self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
 
         self.x = np.zeros((self.inputs.ny, 1))
         self.y = np.zeros((self.inputs.ny, 1))
@@ -179,21 +178,18 @@ class BoundaryBlockWest(BoundaryBlock):
         x = self.ref_BLK.mesh.x[:, 0]
         y = self.ref_BLK.mesh.y[:, 0]
 
-        dx = np.absolute(x - self.ref_BLK.mesh.x[:, 1])
-        dy = np.absolute(y - self.ref_BLK.mesh.y[:, 1])
+        dx = x - self.ref_BLK.mesh.x[:, 1]
+        dy = y - self.ref_BLK.mesh.y[:, 1]
 
-        self.x[:, 0] = x + dx * np.cos(self.theta)
-        self.y[:, 0] = y + dy * np.sin(self.theta)
-
-    def from_ref_U(self):
-        return self.ref_BLK.state.U[:, 0, :].copy().reshape(-1, 1, 4)
+        self.x[:, 0] = x + dx
+        self.y[:, 0] = y + dy
 
     def set_BC_none(self):
-        self._state.U = self.ref_BLK.neighbors.S.get_east_edge()
+        self.state.U = self.ref_BLK.neighbors.W.get_east_ghost()
 
     def set_BC_outflow(self):
-        self._state.U = self.from_ref_U()
+        self.state.U[:, :, :] = self.ref_BLK.get_west_edge()
 
     def set_BC_reflection(self):
-        self._state.U = self.from_ref_U()
-        self._state.U[:, :, 1] *= -1
+        self.state.U = self.ref_BLK.get_west_ghost()
+        self.state.U[:, :, 1] *= -1

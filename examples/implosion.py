@@ -19,6 +19,7 @@ implosion = {'problem_type':            'implosion',
              'R':                       287.0,
              'nx':                      100,
              'ny':                      100,
+             'nghost':                  1,
              'mesh_name':               'one_mesh'}
 
 os.environ["NUMBA_DISABLE_JIT"] = str(0)

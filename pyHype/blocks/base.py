@@ -30,10 +30,22 @@ from pyHype.blocks.boundary import BoundaryBlockEast, \
 
 
 class Neighbors:
-    def __init__(self, E: 'QuadBlock' = None,
-                       W: 'QuadBlock' = None,
-                       N: 'QuadBlock' = None,
-                       S: 'QuadBlock' = None) -> None:
+    def __init__(self,
+                 E: 'QuadBlock' = None,
+                 W: 'QuadBlock' = None,
+                 N: 'QuadBlock' = None,
+                 S: 'QuadBlock' = None
+                 ) -> None:
+        """
+        A class designed to hold references to each Block's neighbors.
+
+        Parameters:
+            - E: Reference to the east neighbor
+            - W: Reference to the west neighbor
+            - N: Reference to the north neighbor
+            - S: Reference to the south neighbor
+        """
+
         self.E = E
         self.W = W
         self.N = N
@@ -41,10 +53,22 @@ class Neighbors:
 
 
 class BoundaryBlockContainer:
-    def __init__(self, E: 'BoundaryBlock' = None,
-                       W: 'BoundaryBlock' = None,
-                       N: 'BoundaryBlock' = None,
-                       S: 'BoundaryBlock' = None) -> None:
+    def __init__(self,
+                 E: 'BoundaryBlock' = None,
+                 W: 'BoundaryBlock' = None,
+                 N: 'BoundaryBlock' = None,
+                 S: 'BoundaryBlock' = None
+                 ) -> None:
+        """
+        A class designed to hold references to each Block's ghost blocks.
+
+        Parameters:
+            - E: Reference to the east ghost block
+            - W: Reference to the west nghost block
+            - N: Reference to the north ghost block
+            - S: Reference to the south ghost block
+        """
+
         self.E = E
         self.W = W
         self.N = N
@@ -52,7 +76,8 @@ class BoundaryBlockContainer:
 
 
 class NormalVector:
-    def __init__(self, theta: float):
+    def __init__(self,
+                 theta: float):
         if theta == 0:
             self.x, self.y = 1, 0
         elif theta == np.pi / 2:
@@ -69,9 +94,6 @@ class NormalVector:
 
     def __str__(self):
         return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
-
-
-
 
 
 class Blocks:
@@ -137,8 +159,8 @@ class QuadBlock:
     def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
 
         self.inputs             = inputs
-        self.mesh              = Mesh(inputs, block_data)
-        self.state             = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
+        self.mesh               = Mesh(inputs, block_data)
+        self.state              = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
         self.global_nBLK        = block_data.nBLK
         self.boundaryBLK        = None
         self.neighbors          = None
@@ -261,7 +283,7 @@ class QuadBlock:
     # ------------------------------------------------------------------------------------------------------------------
     # Grid methods
 
-    # Build connectivity with neigbor blocks
+    # Build connectivity with neighbor blocks
     def connect(self, NeighborE: 'QuadBlock',
                       NeighborW: 'QuadBlock',
                       NeighborN: 'QuadBlock',
@@ -269,22 +291,353 @@ class QuadBlock:
 
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS)
 
+    def get_east_ghost(self) -> np.ndarray:
+        """
+        Return the solution data used to build the WEST boundary condition for this block's EAST neighbor. The shape of
+        the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example: 
+        
+            - if nghost = 1, the second last column on the block's state will be returned. 
+            - if nghost = 2, the second and third last column on the block's state will be returned.
+            - general case, return -(nghost + 1):-1 columns
+            
+        This is illustrated in the figure below:
+
+            nghost = 1: return second last column (-2)
+
+                       ...        -3         -2         -1
+                                       .............
+            O----------O----------O----.-----O-----.----O
+            |          |          |    .     |     .    |\
+            |          |          |    .     |     .    |-O
+            |          |          |    .     |     .    | |\
+            O----------O----------O----.-----O-----.----O |-O
+            |          |          |    .     |     .    |\| |\
+            |          |          |    .     |     .    |-O |-O
+            |          |          |    .     |     .    | |\| |
+            O----------O----------O----.-----O-----.----O |-O |
+            |          |          |    .     |     .    |\| |\|
+            |          |          |    .     |     .    |-O |-O
+            |          |          |    .     |     .    | |\| |
+            O----------O----------O----.-----O-----.----O |-O |
+            |          |          |    .     |     .    |\| |\|
+            |          |          |    .     |     .    |-O | O
+            |          |          |    .     |     .    | |\| |
+            O----------O----------O----.-----O-----.----O |-O |
+             \|         \|         \|   .     \|    .    \| |\|
+              O----------O----------O----.-----O-----.----O |-O
+               \|         \|         \|   .     \|    .    \| |
+                O----------O----------O----.-----O-----.----O |
+                 \|         \|         \|   .     \|    .    \|
+                  O----------O----------O----.-----O-----.----O
+                                              .............
+
+            nghost = 2: return third and second last colums (-3, -2)
+
+                       ...        -3         -2         -1
+                            ........................
+            O----------O----.-----O----------O-----.----O
+            |          |    .     |          |     .    |\
+            |          |    .     |          |     .    |-O
+            |          |    .     |          |     .    | |\
+            O----------O----.-----O----------O-----.----O |-O
+            |          |    .     |          |     .    |\| |\
+            |          |    .     |          |     .    |-O |-O
+            |          |    .     |          |     .    | |\| |
+            O----------O----.-----O----------O-----.----O |-O |
+            |          |    .     |          |     .    |\| |\|
+            |          |    .     |          |     .    |-O |-O
+            |          |    .     |          |     .    | |\| |
+            O----------O----.-----O----------O-----.----O |-O |
+            |          |    .     |          |     .    |\| |\|
+            |          |    .     |          |     .    |-O | O
+            |          |    .     |          |     .    | |\| |
+            O----------O----.-----O----------O-----.----O |-O |
+             \|         \|   .     \|         \|    .    \| |\|
+              O----------O----.-----O----------O-----.----O |-O
+               \|         \|   .     \|         \|    .    \| |
+                O----------O----.-----O----------O-----.----O |
+                 \|         \|   .     \|         \|    .    \|
+                  O----------O----.-----O----------O-----.----O
+                                   ........................
+        """
+
+        return self.state.U[:, -(self.mesh.nghost + 1):-1, :].copy()
+
+    def get_west_ghost(self) -> np.ndarray:
+        """
+        Return the solution data used to build the EAST boundary condition for this block's WEST neighbor. The shape of
+        the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
+
+            - if nghost = 1, the second column on the block's state will be returned.
+            - if nghost = 2, the second and third column on the block's state will be returned.
+            - general case, return 1:(nghost + 1) columns
+
+        This is illustrated in the figure below:
+
+            nghost = 1: return second column (1)
+
+            0          1          2          3          4
+                 ............
+            O----.-----O----.-----O----------O----------O
+            |    .     |    .     |          |          |\
+            |    .     |    .     |          |          |-O
+            |    .     |    .     |          |          | |\
+            O----.-----O----.-----O----------O----------O |-O
+            |    .     |    .     |          |          |\| |\
+            |    .     |    .     |          |          |-O |-O
+            |    .     |    .     |          |          | |\| |
+            O----.-----O----.-----O----------O----------O |-O |
+            |    .     |    .     |          |          |\| |\|
+            |    .     |    .     |          |          |-O |-O
+            |    .     |    .     |          |          | |\| |
+            O----.-----O----.-----O----------O----------O |-O |
+            |    .     |    .     |          |          |\| |\|
+            |    .     |    .     |          |          |-O | O
+            |    .     |    .     |          |          | |\| |
+            O----.-----O----------O----------O----------O |-O |
+             \|   .     \|   .     \|         \|         \| |\|
+              O----.-----O----------O----------O----------O |-O
+               \|   .     \|   .     \|         \|         \| |
+                O----.-----O----------O----------O----------O |
+                 \|   .     \|   .     \|         \|         \|
+                  O----.-----O----.-----O----------O----------O
+                        ............
+
+            nghost = 2: return second and third colums (1, 2)
+
+            0          1          2          3          4
+                 .......................
+            O----.-----O----------O----.-----O----------O
+            |    .     |          |    .     |          |\
+            |    .     |          |    .     |          |-O
+            |    .     |          |    .     |          | |\
+            O----.-----O----------O----.-----O----------O |-O
+            |    .     |          |    .     |          |\| |\
+            |    .     |          |    .     |          |-O |-O
+            |    .     |          |    .     |          | |\| |
+            O----.-----O----------O----.-----O----------O |-O |
+            |    .     |          |    .     |          |\| |\|
+            |    .     |          |    .     |          |-O |-O
+            |    .     |          |    .     |          | |\| |
+            O----.-----O----------O----.-----O----------O |-O |
+            |    .     |          |    .     |          |\| |\|
+            |    .     |          |    .     |          |-O | O
+            |    .     |          |    .     |          | |\| |
+            O----.-----O----------O----.-----O----------O |-O |
+             \|   .     \|         \|   .     \|         \| |\|
+              O----.-----O----------O----.-----O----------O |-O
+               \|   .     \|         \|   .     \|         \| |
+                O----.-----O----------O----.-----O----------O |
+                 \|   .     \|         \|   .     \|         \|
+                  O----.-----O----------O----.-----O----------O
+                        .......................
+        """
+
+        return self.state.U[:, 1:(self.mesh.nghost + 1), :].copy()
+
+    def get_north_ghost(self) -> np.ndarray:
+        """
+        Return the solution data used to build the SOUTH boundary condition for this block's NORTH neighbor. The shape of
+        the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
+
+            - if nghost = 1, the second last row on the block's state will be returned.
+            - if nghost = 2, the second and third last rows on the block's state will be returned.
+            - general case, return -(nghost + 1):-1 rows
+
+        This is illustrated in the figure below:
+
+            nghost = 1: return second last row (-2)
+
+            0          1          2          3          4
+
+            O----------O----------O----------O----------O
+            |          |          |          |          |\
+          ............................................... O
+          . |          |          |          |          |.|\
+          . O----------O----------O----------O----------O . O
+          . |          |          |          |          | |.|\
+          ............................................... O . O
+            |          |          |          |          |.|\|.|
+            O----------O----------O----------O----------O . O .
+            |          |          |          |          |\|.|\|.
+            |          |          |          |          |-O . O.
+            |          |          |          |          | |\|.|.
+            O----------O----------O----------O----------O |-O ..
+            |          |          |          |          |\| |\|.
+            |          |          |          |          |-O | O
+            |          |          |          |          | |\| |
+            O----------O----------O----------O----------O |-O |
+             \|         \|         \|         \|         \| |\|
+              O----------O----------O----------O----------O |-O
+               \|         \|         \|         \|         \| |
+                O----------O----------O----------O----------O |
+                 \|         \|         \|         \|         \|
+                  O----------O----------O----------O----------O
+
+
+            nghost = 2: return second and third last rows (-3, -2)
+
+            0          1          2          3          4
+
+            O----------O----------O----------O----------O
+            |          |          |          |          |\
+          ...............................................-O
+          . |          |          |          |          |.|\
+          . O----------O----------O----------O----------O . O
+          . |          |          |          |          |\|.|\
+          . |          |          |          |          |-O . O
+          . |          |          |          |          | |\|.|
+          . O----------O----------O----------O----------O | O .
+          . |          |          |          |          |\| |\|.
+          ...............................................-O | O.
+            |          |          |          |          |.|\|.|.
+            O----------O----------O----------O----------O .-O |.
+            |          |          |          |          |\|.|\|.
+            |          |          |          |          |-O . O.
+            |          |          |          |          | |\|.|.
+            O----------O----------O----------O----------O |-O ..
+             \|         \|         \|         \|         \| |\|.
+              O----------O----------O----------O----------O |-O
+               \|         \|         \|         \|         \| |
+                O----------O----------O----------O----------O |
+                 \|         \|         \|         \|         \|
+                  O----------O----------O----------O----------O
+        """
+
+        return self.state.U[-(self.mesh.nghost + 1):-1, :, :].copy()
+
+    def get_south_ghost(self) -> np.ndarray:
+        """
+        Return the solution data used to build the NORTH boundary condition for this block's SOUTH neighbor. The shape of
+        the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
+
+            - if nghost = 1, the second row on the block's state will be returned.
+            - if nghost = 2, the second and third rows on the block's state will be returned.
+            - general case, return 1:(nghost + 1) rows
+
+        This is illustrated in the figure below:
+
+            nghost = 1: return second last row (-2)
+
+            0          1          2          3          4
+
+            O----------O----------O----------O----------O
+            |          |          |          |          |\
+            |          |          |          |          |-O
+            |          |          |          |          | |\
+            O----------O----------O----------O----------O |-O
+            |          |          |          |          |\| |\
+            |          |          |          |          |-O |-O
+            |          |          |          |          | |\| |
+            O----------O----------O----------O----------O |-O |
+            |          |          |          |          |\| |\|
+          ...............................................-O |-O
+          . |          |          |          |          |.|\| |
+          . O----------O----------O----------O----------O .-O |
+          . |          |          |          |          |\|.|\|
+          ...............................................-O .-O
+            |          |          |          |          |.|\|.|
+            O----------O----------O----------O----------O .-O .
+             \|         \|         \|         \|         \|.|\|.
+              O----------O----------O----------O----------O .-O.
+               \|         \|         \|         \|         \|.|.
+                O----------O----------O----------O----------O ..
+                 \|         \|         \|         \|         \|.
+                  O----------O----------O----------O----------O
+
+
+            nghost = 2: return second and third last rows (-3, -2)
+
+            0          1          2          3          4
+
+            O----------O----------O----------O----------O
+            |          |          |          |          |\
+            |          |          |          |          |-O
+            |          |          |          |          | |\
+            O----------O----------O----------O----------O |-O
+            |          |          |          |          | | |\
+          ...............................................-O |-O
+          . |          |          |          |          |.|\| |
+          . O----------O----------O----------O----------O .-O |
+          . |          |          |          |          |\|.|\|
+          . |          |          |          |          |-O .-O
+          . |          |          |          |          | |\|.|
+          . O----------O----------O----------O----------O |-O .
+          . |          |          |          |          |\| |\|.
+          ...............................................-O |-O.
+            |          |          |          |          |.|\| |.
+            O----------O----------O----------O----------O .-O |.
+             \|         \|         \|         \|         \|.|\|.
+              O----------O----------O----------O----------O .-O.
+               \|         \|         \|         \|         \|.|.
+                O----------O----------O----------O----------O ..
+                 \|         \|         \|         \|         \|.
+                  O----------O----------O----------O----------O
+        """
+
+        return self.state.U[1:(self.mesh.nghost + 1), :, :].copy()
+
     def get_east_edge(self) -> np.ndarray:
-        return self.state.U[None, -1, :].copy()
+        """
+        Returns data from the Block's state along the east edge of the mesh.
+
+        Parameters:
+            N.A
+
+        Return:
+            - np.ndarray: ny * 1 * 4 numpy ndarray with the east edge data
+
+        """
+
+        return self.state.U[:, -1:, :].copy()
 
     def get_west_edge(self) -> np.ndarray:
-        return self.state.U[None, 0, :].copy()
+        """
+        Returns data from the Block's state along the west edge of the mesh.
+
+        Parameters:
+            N.A
+
+        Return:
+            - np.ndarray: ny * 1 * 4 numpy ndarray with the west edge data
+
+        """
+
+        return self.state.U[:, 0:1, :].copy()
 
     def get_north_edge(self) -> np.ndarray:
-        return self.state.U[-1, None, :].copy()
+        """
+        Returns data from the Block's state along the north edge of the mesh.
+
+        Parameters:
+            N.A
+
+        Return:
+            - np.ndarray: 1 * nx * 4 numpy ndarray with the north edge data
+
+        """
+
+        return self.state.U[-1:, :, :].copy()
 
     def get_south_edge(self) -> np.ndarray:
-        return self.state.U[0, None, :].copy()
+        """
+        Returns data from the Block's state along the south edge of the mesh.
+
+        Parameters:
+            N.A
+
+        Return:
+            - np.ndarray: 1 * nx * 4 numpy ndarray with the south edge data
+
+        """
+
+        return self.state.U[0:1, :, :].copy()
 
     def row(self, index: int) -> np.ndarray:
         return self.state.U[index, None, :]
 
     def fullrow(self, index: int) -> np.ndarray:
+
         return np.concatenate((self.boundaryBLK.W[index, None, :],
                                self.row(index),
                                self.boundaryBLK.E[index, None, :]),

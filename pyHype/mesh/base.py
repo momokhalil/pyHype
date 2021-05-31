@@ -16,7 +16,7 @@ limitations under the License.
 
 import numpy as np
 from typing import Union
-import pyHype.mesh.meshes as meshes
+import matplotlib.pyplot as plt
 
 
 class BlockDescription:
@@ -43,24 +43,42 @@ class BlockDescription:
 
 class Mesh:
     def __init__(self, inputs, mesh_data):
-        self.inputs = inputs
+
         self.nx = inputs.nx
         self.ny = inputs.ny
+        self.nghost = inputs.nghost
+
+        self.inputs = inputs
+
         self.vertices = Vertices(NW=mesh_data.NW,
                                  NE=mesh_data.NE,
                                  SW=mesh_data.SW,
                                  SE=mesh_data.SE)
 
-        X, Y = np.meshgrid(np.linspace(self.vertices.NW[0], self.vertices.NE[0], self.nx),
-                           np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny))
-        self.x = X
-        self.y = Y
+        self.x = np.zeros((self.ny, self.nx))
+        self.y = np.zeros((self.ny, self.nx))
+
+        self.create_mesh()
 
         self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
         self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
 
         self.dx     = self.Lx / (self.nx + 1)
         self.dy     = self.Ly / (self.ny + 1)
+
+    def create_mesh(self):
+
+        # East edge x and y node locations
+        Ex = np.linspace(self.vertices.SE[0], self.vertices.NE[0], self.ny)
+        Ey = np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny)
+        # West edge x and y node locations
+        Wx = np.linspace(self.vertices.SW[0], self.vertices.NW[0], self.ny)
+        Wy = np.linspace(self.vertices.SW[1], self.vertices.NW[1], self.ny)
+
+        # Set x and y location for all nodes
+        for i in range(self.ny):
+            self.x[i, :] = np.linspace(Wx[i], Ex[i], self.nx)
+            self.y[i, :] = np.linspace(Wy[i], Ey[i], self.nx)
 
 
 class Vertices:

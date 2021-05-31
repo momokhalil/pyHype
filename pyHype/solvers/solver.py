@@ -30,7 +30,7 @@ np.set_printoptions(threshold=sys.maxsize)
 
 __REQUIRED__ = ['problem_type', 'IC_type', 'realplot', 'makeplot', 'time_it', 't_final', 'time_integrator',
                 'flux_function', 'CFL', 'flux_function', 'reconstruction_type', 'finite_volume_method', 'flux_limiter',
-                'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'mesh_name', 'profile']
+                'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'nghost', 'mesh_name', 'profile']
 
 __OPTIONAL__ = ['alpha', 'write_time']
 
@@ -303,6 +303,16 @@ class Euler2DSolver:
 
             # print('update block')
             self._blocks.update(dt)
+
+            """fig, ax = plt.subplots()
+            ax.scatter(self._blocks.blocks[1].mesh.x, self._blocks.blocks[1].mesh.y)
+            ax.scatter(self._blocks.blocks[1].boundaryBLK.W.x, self._blocks.blocks[1].boundaryBLK.W.y)
+            ax.scatter(self._blocks.blocks[1].boundaryBLK.E.x, self._blocks.blocks[1].boundaryBLK.E.y)
+            ax.scatter(self._blocks.blocks[1].boundaryBLK.S.x, self._blocks.blocks[1].boundaryBLK.S.y)
+            ax.scatter(self._blocks.blocks[1].boundaryBLK.N.x, self._blocks.blocks[1].boundaryBLK.N.y)
+
+            fig.set_size_inches(5, 10)
+            plt.show()"""
 
             #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
 
