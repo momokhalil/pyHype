@@ -517,7 +517,7 @@ class QuadBlock:
 
         This is illustrated in the figure below:
 
-            nghost = 1: return second last row (-2)
+            nghost = 1: return second row (1)
 
             0          1          2          3          4
 
@@ -546,7 +546,7 @@ class QuadBlock:
                   O----------O----------O----------O----------O
 
 
-            nghost = 2: return second and third last rows (-3, -2)
+            nghost = 2: return second and third rows (1, 2)
 
             0          1          2          3          4
 
