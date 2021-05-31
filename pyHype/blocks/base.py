@@ -634,17 +634,16 @@ class QuadBlock:
         return self.state.U[0:1, :, :].copy()
 
     def row(self, index: int) -> np.ndarray:
-        return self.state.U[index, None, :]
+        return self.state.U[index:(index + 1), :, :]
+
+    def col(self, index: int) -> np.ndarray:
+        return self.state.U[None, :, index, :]
 
     def fullrow(self, index: int) -> np.ndarray:
-
         return np.concatenate((self.boundaryBLK.W[index, None, :],
                                self.row(index),
                                self.boundaryBLK.E[index, None, :]),
                                axis=1)
-
-    def col(self, index: int) -> np.ndarray:
-        return self.state.U[None, :, index, :]
 
     def fullcol(self, index: int) -> np.ndarray:
         return np.concatenate((self.boundaryBLK.S[None, 0, index, None, :],

@@ -141,17 +141,20 @@ class MUSCLFiniteVolumeMethod:
         self.UR = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
 
         # Set Flux Function
+
+        # ROE Flux
         if self.inputs.flux_function == 'Roe':
             self.flux_function_X = ROE_FLUX_X(self.inputs)
             self.flux_function_Y = ROE_FLUX_Y(self.inputs)
-
+        # HLLE Flux
         elif self.inputs.flux_function == 'HLLE':
             self.flux_function_X = HLLE_FLUX_X(self.inputs)
             self.flux_function_Y = HLLE_FLUX_Y(self.inputs)
-
+        # HLLL Flux
         elif self.inputs.flux_function == 'HLLL':
             self.flux_function_X = HLLL_FLUX_X(self.inputs)
             self.flux_function_Y = HLLL_FLUX_Y(self.inputs)
+        # None
         else:
             raise ValueError('FiniteVolumeMethod: Flux function type not specified.')
 
@@ -163,21 +166,74 @@ class MUSCLFiniteVolumeMethod:
         elif self.inputs.flux_limiter == 'van_albada':
             self.flux_limiter = limiters.VanAlbada(self.inputs)
 
+    def reconstruct(self, U: ConservativeState):
+        """
+        This method routes the state required for reconstruction to the correct implementation of the reconstruction.
+        Current reconstruction methods are Primitive and Conservative.
 
-    @staticmethod
-    def get_row(ref_BLK, index: int) -> np.ndarray:
-        return np.vstack((ref_BLK.boundary_blocks.W[index],
-                          ref_BLK.row(index),
-                          ref_BLK.boundary_blocks.E[index]))
+        Parameters:
+            - U: Input ConservativeState that needs reconstruction.
 
-    @staticmethod
-    def get_col(ref_BLK, index: int) -> np.ndarray:
-        return np.vstack((ref_BLK.boundary_blocks.S[index],
-                          ref_BLK.col(index),
-                          ref_BLK.boundary_blocks.N[index]))
+        Return:
+            N.A
+        """
+
+        # Select correct reconstruction type and return left and right reconstructed conservative states
+
+        # Primitive reconstruction
+        if self.inputs.reconstruction_type == 'Primitive':
+            stateL, stateR = self.reconstruct_primitive(U)
+        # Conservative reconstruction
+        elif self.inputs.reconstruction_type == 'Conservative':
+            stateL, stateR = self.reconstruct_conservative(U)
+        # Default to Conservative
+        else:
+            stateL, stateR = self.reconstruct_conservative(U)
+
+        # Set left and right conservative states
+        self.UL.from_conservative_state_vector(stateL)
+        self.UR.from_conservative_state_vector(stateR)
+
+    def reconstruct_primitive(self, U: ConservativeState):
+        """
+        Primitive reconstruction implementation. Simply convert the input ConservativeState into PrimitiveState and
+        call the reconstruct_state implementation.
+
+        Parameters:
+            - U: Input ConservativeState for reconstruction.
+
+        Return:
+            - stateL: Left reconstructed conservative state
+            - stateR: Right reconstructed conservative state
+        """
+
+        _to_construct = U.to_primitive_state()
+        stateL, stateR = self.reconstruct_state(_to_construct)
+
+        return stateL, stateR
+
+    def reconstruct_conservative(self, U: ConservativeState):
+        """
+        Conservative reconstruction implementation. Simply pass the input ConservativeState into the
+        reconstruct_state implementation.
+
+        Parameters:
+            - U: Input ConservativeState for reconstruction.
+
+        Return:
+            - stateL: Left reconstructed conservative state
+            - stateR: Right reconstructed conservative state
+        """
+
+        stateL, stateR = self.reconstruct_state(U)
+
+        return stateL, stateR
 
     @abstractmethod
-    def reconstruct_state(self, U):
+    def reconstruct_state(self, U) -> [np.ndarray]:
+        """
+        Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
+        """
         pass
 
     @abstractmethod

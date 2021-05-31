@@ -36,7 +36,7 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         solver and slope limiter of choice.
         """
 
-        #----------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
 
         # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
@@ -54,7 +54,7 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
             # Calculate flux difference between cell interfaces
             self.Flux_X[row, :, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
 
-        # ----------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
 
         # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
@@ -73,21 +73,10 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
             self.Flux_Y[:, col, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
 
 
-    def reconstruct(self, U: ConservativeState):
-
-        if self.inputs.reconstruction_type == 'Primitive':
-            stateL, stateR = self.reconstruct_state(U.to_primitive_state())
-            self.UL.from_primitive_state_vector(stateL)
-            self.UR.from_primitive_state_vector(stateR)
-
-        elif self.inputs.reconstruction_type == 'Conservative':
-            stateL, stateR = self.reconstruct_state(U)
-            self.UL.from_conservative_state_vector(stateL)
-            self.UR.from_conservative_state_vector(stateR)
-
-    def reconstruct_state(self, state):
+    def reconstruct_state(self, state) -> [np.ndarray]:
         limited_state   = self.flux_limiter.limit(state) * (state[:, 2:, :] - state[:, :-2, :]) / 4
 
         stateL = state[:, :-1, :] + np.concatenate((_ZERO_VEC, limited_state), axis=1)
         stateR = state[:, 1:, :] - np.concatenate((limited_state, _ZERO_VEC), axis=1)
+
         return stateL, stateR
