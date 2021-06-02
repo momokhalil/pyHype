@@ -263,7 +263,7 @@ class QuadBlock:
         self.mesh.yc[-1, 0] = yc
 
         # Cell Area
-        self.get_cell_area()
+        self.compute_cell_area()
 
 
         # --------------------------------------------------------------------------------------------------------------
@@ -327,27 +327,94 @@ class QuadBlock:
         else:
             raise ValueError('Incorrect indexing')
 
-    def get_centroid_corners(self, s1, s1idx1, s1idx2, s2, s2idx1, s2idx2, idxcorner):
+    def get_centroid_corners(self,
+                             s1: GhostBlock,
+                             s1idx1: [int],
+                             s1idx2: [int],
+                             s2: GhostBlock,
+                             s2idx1: [int],
+                             s2idx2: [int],
+                             idxcorner: [int]):
+        """
+        Calculates the coordinates of any of the four corner cells. It does this by calculating the linear equation
+        of the line that passes through the nodes closest to the domain in either ghost block, then calculates the
+        intersection of those lines. This intersection point is the most outwards corner of that cell (Refer to
+        pyHype/fvm/base.py for a further description of the mesh anatomy). Once the intersetion is calculated, it is
+        used to compute the cenroid of that particular cell.
 
+        For example, considering the north-east corner of the mesh (labeled X):
+
+        (North Ghost block nodes)
+            .....o.........o
+
+
+
+        ... -----O---------X            o     (East Ghost block nodes)
+                 |         |            .
+                 |         |            .
+                 |         |            .
+        ... -----O---------O            o
+                 |         |            .
+                 |         |            .
+                 .         .
+                 .         .
+
+        The intersection that is computed is labelled I, and the resulting centroid is labelled c:
+
+            .....o.........o------------I
+                                        |
+                                 c      |
+                                        |
+        ... -----O---------X            o
+                 |         |            .
+                 |         |            .
+                 |         |            .
+        ... -----O---------O            o
+                 |         |            .
+                 |         |            .
+                 .         .
+                 .         .
+
+        The centroid allows the construction of the cell around node X.
+
+
+        Parameters:
+            - s1: Reference to the side 1 ghost block
+            - s1idx1: Indices of the first point used for the construction of the linear equation of side 1
+            - s1idx2: Indices of the second point used for the construction of the linear equation of side 1
+            - s2: Reference to the side 2 ghost block
+            - s1idx1: Indices of the first point used for the construction of the linear equation of side 2
+            - s1idx2: Indices of the second point used for the construction of the linear equation of side 2
+            - idxcorner: Indices of the mesh corner
+
+        Returns:
+            - xc: centroid x coordinate
+            - yc: centroid y coordinate
+        """
+
+
+        # Get parameters for side 1 linear equation
         m1 = (s1.y[s1idx1] - s1.y[s1idx2]) / (s1.x[s1idx1] - s1.x[s1idx2] + 1e-8)
         b1 = s1.y[s1idx1] - m1 * s1.x[s1idx1]
 
+        # Get parameters for side 2 linear equation
         m2 = (s2.y[s2idx1] - s2.y[s2idx2]) / (s2.x[s2idx1] - s2.x[s2idx2] + 1e-8)
         b2 = s2.y[s2idx1] - m2 * s2.x[s2idx1]
 
-        if math.isinf(m1):
-            m1 = 1e10
-        elif math.isinf(m2):
-            m2 = 1e10
+        # Check for infinity slope
+        if math.isinf(m1): m1 = 1e10
+        elif math.isinf(m2): m2 = 1e10
 
+        # Calculate coordinates of cell corner
         x = (b2 - b1) / (m1 - m2 + 1e-8)
         y = m1 * x + b1
 
+        # Calculate corner cell centroid coordinates
         xc = 0.25 * (self.mesh.x[idxcorner] + s1.x[s1idx1] + s2.x[s2idx1] + x)
         yc = 0.25 * (self.mesh.y[idxcorner] + s1.y[s1idx1] + s2.y[s2idx1] + y)
 
         return xc, yc
-    
+
     def _index_in_west_boundary_block(self, x, y):
         return x < 0 and 0 <= y <= self.mesh.ny
 
@@ -364,7 +431,7 @@ class QuadBlock:
     # Grid methods
 
 
-    def get_cell_area(self):
+    def compute_cell_area(self):
         """
         Calculates area of every cell in this Block's mesh. A cell is represented as follows:
 
@@ -426,12 +493,12 @@ class QuadBlock:
     def get_east_ghost(self) -> np.ndarray:
         """
         Return the solution data used to build the WEST boundary condition for this block's EAST neighbor. The shape of
-        the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example: 
-        
-            - if nghost = 1, the second last column on the block's state will be returned. 
+        the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
+
+            - if nghost = 1, the second last column on the block's state will be returned.
             - if nghost = 2, the second and third last column on the block's state will be returned.
             - general case, return -(nghost + 1):-1 columns
-            
+
         This is illustrated in the figure below:
 
             nghost = 1: return second last column (-2)
