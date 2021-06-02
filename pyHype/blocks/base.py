@@ -14,22 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import math
 import numpy as np
-from pyHype.states.states import ConservativeState
-from pyHype.mesh.base import BlockDescription, Mesh
-from pyHype.input.input_file_builder import ProblemInput
-from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 
-from pyHype.fvm import SecondOrderGreenGauss
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-import math
 
-from pyHype.blocks.boundary import BoundaryBlockEast, \
-                          BoundaryBlockWest, \
-                          BoundaryBlockSouth,\
-                          BoundaryBlockNorth,\
-                          BoundaryBlock
+from pyHype.mesh.base import BlockDescription, Mesh
+from pyHype.input.input_file_builder import ProblemInput
+
+from pyHype.fvm import SecondOrderGreenGauss
+from pyHype.states.states import ConservativeState
+from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
+
+from pyHype.blocks.boundary import GhostBlockEast, \
+    GhostBlockWest, GhostBlockSouth, GhostBlockNorth, GhostBlock
 
 
 class Neighbors:
@@ -55,12 +54,12 @@ class Neighbors:
         self.S = S
 
 
-class BoundaryBlockContainer:
+class GhostBlockContainer:
     def __init__(self,
-                 E: 'BoundaryBlock' = None,
-                 W: 'BoundaryBlock' = None,
-                 N: 'BoundaryBlock' = None,
-                 S: 'BoundaryBlock' = None
+                 E: 'GhostBlock' = None,
+                 W: 'GhostBlock' = None,
+                 N: 'GhostBlock' = None,
+                 S: 'GhostBlock' = None
                  ) -> None:
         """
         A class designed to hold references to each Block's ghost blocks.
@@ -165,7 +164,7 @@ class QuadBlock:
         self.mesh               = Mesh(inputs, block_data)
         self.state              = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
         self.global_nBLK        = block_data.nBLK
-        self.boundaryBLK        = None
+        self.ghost              = None
         self.neighbors          = None
 
         # Store vertices for brevity
@@ -193,7 +192,7 @@ class QuadBlock:
         fvm = self.inputs.finite_volume_method
 
         if fvm == 'SecondOrderGreenGauss':
-            self._finite_volume_method = SecondOrderGreenGauss(self.inputs, self.global_nBLK)
+            self.fvm = SecondOrderGreenGauss(self.inputs, self.global_nBLK)
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
 
@@ -226,50 +225,74 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        self.boundaryBLK = BoundaryBlockContainer(E=BoundaryBlockEast(self.inputs, type_=block_data.BCTypeE, ref_BLK=self),
-                                                  W=BoundaryBlockWest(self.inputs, type_=block_data.BCTypeW, ref_BLK=self),
-                                                  N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
-                                                  S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
+        self.ghost = GhostBlockContainer(E=GhostBlockEast(self.inputs, type_=block_data.BCTypeE, ref_BLK=self),
+                                         W=GhostBlockWest(self.inputs, type_=block_data.BCTypeW, ref_BLK=self),
+                                         N=GhostBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
+                                         S=GhostBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
 
         # North East
-        xc, yc = self.get_centroid_corners(self.boundaryBLK.E.x[-1, 0], self.boundaryBLK.E.y[-1, 0],
-                                           self.boundaryBLK.E.x[-2, 0], self.boundaryBLK.E.y[-2, 0],
-                                           self.boundaryBLK.N.x[0, -1], self.boundaryBLK.N.y[0, -1],
-                                           self.boundaryBLK.N.x[0, -2], self.boundaryBLK.N.y[0, -2],
+        xc, yc = self.get_centroid_corners(self.ghost.E.x[-1, 0], self.ghost.E.y[-1, 0],
+                                           self.ghost.E.x[-2, 0], self.ghost.E.y[-2, 0],
+                                           self.ghost.N.x[0, -1], self.ghost.N.y[0, -1],
+                                           self.ghost.N.x[0, -2], self.ghost.N.y[0, -2],
                                            self.mesh.x[-1, -1], self.mesh.y[-1, -1])
 
         self.mesh.xc[-1, -1] = xc
         self.mesh.yc[-1, -1] = yc
 
         # South East
-        xc, yc = self.get_centroid_corners(self.boundaryBLK.E.x[0, 0], self.boundaryBLK.E.y[0, 0],
-                                           self.boundaryBLK.E.x[1, 0], self.boundaryBLK.E.y[1, 0],
-                                           self.boundaryBLK.S.x[0, -1], self.boundaryBLK.S.y[0, -1],
-                                           self.boundaryBLK.S.x[0, -2], self.boundaryBLK.S.y[0, -2],
+        xc, yc = self.get_centroid_corners(self.ghost.E.x[0, 0], self.ghost.E.y[0, 0],
+                                           self.ghost.E.x[1, 0], self.ghost.E.y[1, 0],
+                                           self.ghost.S.x[0, -1], self.ghost.S.y[0, -1],
+                                           self.ghost.S.x[0, -2], self.ghost.S.y[0, -2],
                                            self.mesh.x[0, -1], self.mesh.y[0, -1])
 
         self.mesh.xc[0, -1] = xc
         self.mesh.yc[0, -1] = yc
 
         # South West
-        xc, yc = self.get_centroid_corners(self.boundaryBLK.W.x[0, 0], self.boundaryBLK.W.y[0, 0],
-                                           self.boundaryBLK.W.x[1, 0], self.boundaryBLK.W.y[1, 0],
-                                           self.boundaryBLK.S.x[0, 0], self.boundaryBLK.S.y[0, 0],
-                                           self.boundaryBLK.S.x[0, 1], self.boundaryBLK.S.y[0, 1],
+        xc, yc = self.get_centroid_corners(self.ghost.W.x[0, 0], self.ghost.W.y[0, 0],
+                                           self.ghost.W.x[1, 0], self.ghost.W.y[1, 0],
+                                           self.ghost.S.x[0, 0], self.ghost.S.y[0, 0],
+                                           self.ghost.S.x[0, 1], self.ghost.S.y[0, 1],
                                            self.mesh.x[0, 0], self.mesh.y[0, 0])
 
         self.mesh.xc[0, 0] = xc
         self.mesh.yc[0, 0] = yc
 
         # North West
-        xc, yc = self.get_centroid_corners(self.boundaryBLK.W.x[-1, 0], self.boundaryBLK.W.y[-1, 0],
-                                           self.boundaryBLK.W.x[-2, 0], self.boundaryBLK.W.y[-2, 0],
-                                           self.boundaryBLK.N.x[0, 0], self.boundaryBLK.N.y[0, 0],
-                                           self.boundaryBLK.N.x[0, 1], self.boundaryBLK.N.y[0, 1],
+        xc, yc = self.get_centroid_corners(self.ghost.W.x[-1, 0], self.ghost.W.y[-1, 0],
+                                           self.ghost.W.x[-2, 0], self.ghost.W.y[-2, 0],
+                                           self.ghost.N.x[0, 0], self.ghost.N.y[0, 0],
+                                           self.ghost.N.x[0, 1], self.ghost.N.y[0, 1],
                                            self.mesh.x[-1, 0], self.mesh.y[-1, 0])
 
         self.mesh.xc[-1, 0] = xc
         self.mesh.yc[-1, 0] = yc
+
+        # Cell Area
+        s1 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, :-1]) ** 2 +
+                     (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, :-1]) ** 2)
+
+        s3 = np.sqrt((self.mesh.xc[1:, 1:] - self.mesh.xc[:-1, 1:]) ** 2 +
+                     (self.mesh.yc[1:, 1:] - self.mesh.yc[:-1, 1:]) ** 2)
+
+        s2 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[1:, 1:])**2 +
+                     (self.mesh.yc[1:, :-1] - self.mesh.yc[1:, 1:])**2)
+
+        s4 = np.sqrt((self.mesh.xc[:-1, :-1] - self.mesh.xc[:-1, 1:]) ** 2 +
+                     (self.mesh.yc[:-1, :-1] - self.mesh.yc[:-1, 1:]) ** 2)
+
+        d1 = (self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, 1:])**2 + (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, 1:])**2
+
+        alpha = np.arccos((s1 ** 2 + s4 ** 2 - d1) / 2 / s1 / s4)
+        beta = np.arccos((s2 ** 2 + s3 ** 2 - d1) / 2 / s2 / s3)
+
+        s = 0.5 * (s1 + s2 + s3 + s4)
+
+        self.mesh.A = np.sqrt((s - s1)*(s - s2)*(s - s3)*(s - s4) -
+                              0.5 * s1 * s2 * s3 * s4 * (1 + np.cos(alpha + beta)))
+
 
         # --------------------------------------------------------------------------------------------------------------
         # DEBUGGING
@@ -287,24 +310,35 @@ class QuadBlock:
         plt.gca().add_collection(LineCollection(segs1, colors='blue', linestyles='--'))
         plt.gca().add_collection(LineCollection(segs2, colors='blue', linestyles='--'))
 
-        plt.scatter(self.boundaryBLK.E.x, self.boundaryBLK.E.y, marker='s', color='black', s=15)
-        plt.scatter(self.boundaryBLK.W.x, self.boundaryBLK.W.y, marker='s', color='black', s=15)
-        plt.scatter(self.boundaryBLK.N.x, self.boundaryBLK.N.y, marker='s', color='black', s=15)
-        plt.scatter(self.boundaryBLK.S.x, self.boundaryBLK.S.y, marker='s', color='black', s=15)
+        plt.scatter(self.ghost.E.x, self.ghost.E.y, marker='s', color='black', s=15)
+        plt.scatter(self.ghost.W.x, self.ghost.W.y, marker='s', color='black', s=15)
+        plt.scatter(self.ghost.N.x, self.ghost.N.y, marker='s', color='black', s=15)
+        plt.scatter(self.ghost.S.x, self.ghost.S.y, marker='s', color='black', s=15)
 
         plt.show()
-        plt.pause(100)
+        #plt.pause(100)
 
         # --------------------------------------------------------------------------------------------------------------
 
+    @property
+    def Flux_X(self):
+        return self.fvm.Flux_X
+
+    @property
+    def Flux_Y(self):
+        return self.fvm.Flux_Y
+
+    @staticmethod
+    def _get_side_length(pt1, pt2):
+        return np.sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
 
     @staticmethod
     def get_centroid_corners(s1x1, s1y1, s1x2, s1y2, s2x1, s2y1, s2x2, s2y2, cx, cy):
 
-        m1 = (s1y1 - s1y2) / (s1x1 - s1x2 + 1e-10)
+        m1 = (s1y1 - s1y2) / (s1x1 - s1x2 + 1e-8)
         b1 = s1y1 - m1 * s1x1
 
-        m2 = (s2y1 - s2y2) / (s2x1 - s2x2 + 1e-10)
+        m2 = (s2y1 - s2y2) / (s2x1 - s2x2 + 1e-8)
         b2 = s2y1 - m2 * s2x1
 
         if math.isinf(m1):
@@ -312,26 +346,13 @@ class QuadBlock:
         elif math.isinf(m2):
             m2 = 1e10
 
-        x = (b2 - b1) / (m1 - m2 + 1e-10)
+        x = (b2 - b1) / (m1 - m2 + 1e-8)
         y = m1 * x + b1
 
         xc = 0.25 * (cx + s1x1 + s2x1 + x)
         yc = 0.25 * (cy + s1y1 + s2y1 + y)
 
         return xc, yc
-
-
-    @property
-    def Flux_X(self):
-        return self._finite_volume_method.Flux_X
-
-    @property
-    def Flux_Y(self):
-        return self._finite_volume_method.Flux_Y
-
-    @staticmethod
-    def _get_side_length(pt1, pt2):
-        return np.sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
 
     @staticmethod
     def _get_side_angle(pt1, pt2):
@@ -346,13 +367,13 @@ class QuadBlock:
         y, x, var = index
 
         if self._index_in_west_boundary_block(x, y):
-            return self.boundaryBLK.W.state[y, 0, var]
+            return self.ghost.W.state[y, 0, var]
         elif self._index_in_east_boundary_block(x, y):
-            return self.boundaryBLK.E.state[y, 0, var]
+            return self.ghost.E.state[y, 0, var]
         elif self._index_in_north_boundary_block(x, y):
-            return self.boundaryBLK.N.state[0, x, var]
+            return self.ghost.N.state[0, x, var]
         elif self._index_in_south_boundary_block(x, y):
-            return self.boundaryBLK.N.state[0, x, var]
+            return self.ghost.N.state[0, x, var]
         else:
             raise ValueError('Incorrect indexing')
 
@@ -368,10 +389,6 @@ class QuadBlock:
 
     def _index_in_north_boundary_block(self, x, y):
         return y > self.mesh.ny and 0 <= x <= self.mesh.nx
-
-    @property
-    def vertices(self):
-        return self.vertices
 
     # ------------------------------------------------------------------------------------------------------------------
     # Grid methods
@@ -733,15 +750,15 @@ class QuadBlock:
         return self.state.U[None, :, index, :]
 
     def fullrow(self, index: int) -> np.ndarray:
-        return np.concatenate((self.boundaryBLK.W[index, None, :],
+        return np.concatenate((self.ghost.W[index, None, :],
                                self.row(index),
-                               self.boundaryBLK.E[index, None, :]),
+                               self.ghost.E[index, None, :]),
                                axis=1)
 
     def fullcol(self, index: int) -> np.ndarray:
-        return np.concatenate((self.boundaryBLK.S[None, 0, index, None, :],
+        return np.concatenate((self.ghost.S[None, 0, index, None, :],
                                self.col(index),
-                               self.boundaryBLK.N[None, 0, index, None, :]),
+                               self.ghost.N[None, 0, index, None, :]),
                                axis=1)
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -752,10 +769,10 @@ class QuadBlock:
         self._time_integrator(dt)
 
     def get_flux(self):
-        self._finite_volume_method.get_flux(self)
+        self.fvm.get_flux(self)
 
     def set_BC(self) -> None:
-        self.boundaryBLK.E.set_BC()
-        self.boundaryBLK.W.set_BC()
-        self.boundaryBLK.N.set_BC()
-        self.boundaryBLK.S.set_BC()
+        self.ghost.E.set_BC()
+        self.ghost.W.set_BC()
+        self.ghost.N.set_BC()
+        self.ghost.S.set_BC()

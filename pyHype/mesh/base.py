@@ -63,6 +63,8 @@ class Mesh:
         self.normx = np.zeros((self.ny + 1, self.nx + 1))
         self.normy = np.zeros((self.ny + 1, self.nx + 1))
 
+        self.A = np.zeros((self.ny, self.nx))
+
         self.create_mesh()
 
         self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]

@@ -19,7 +19,7 @@ from abc import abstractmethod
 from pyHype.states import ConservativeState
 
 
-class BoundaryBlock:
+class GhostBlock:
     def __init__(self, inputs, BCtype: str, ref_BLK):
 
         self.BCtype = BCtype
@@ -79,7 +79,7 @@ class BoundaryBlock:
         pass
 
 
-class BoundaryBlockNorth(BoundaryBlock):
+class GhostBlockNorth(GhostBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
@@ -117,7 +117,7 @@ class BoundaryBlockNorth(BoundaryBlock):
         self.state.U[:, :, 2] *= -1
 
 
-class BoundaryBlockSouth(BoundaryBlock):
+class GhostBlockSouth(GhostBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
@@ -155,7 +155,7 @@ class BoundaryBlockSouth(BoundaryBlock):
         self.state.U[:, :, 2] *= -1
 
 
-class BoundaryBlockEast(BoundaryBlock):
+class GhostBlockEast(GhostBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
@@ -193,7 +193,7 @@ class BoundaryBlockEast(BoundaryBlock):
         self.state.U[:, :, 1] *= -1
 
 
-class BoundaryBlockWest(BoundaryBlock):
+class GhostBlockWest(GhostBlock):
     def __init__(self, inputs, type_, ref_BLK):
         super().__init__(inputs, type_, ref_BLK)
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
