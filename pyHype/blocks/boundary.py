@@ -33,6 +33,8 @@ class BoundaryBlock:
         self.theta = None
         self.x = None
         self.y = None
+        self.xc = None
+        self.yc = None
 
         # Assign the BCset method to avoid checking type everytime
         if self.BCtype == 'None':
@@ -41,6 +43,8 @@ class BoundaryBlock:
             self.set_BC = self.set_BC_outflow
         elif self.BCtype == 'Reflection':
             self.set_BC = self.set_BC_reflection
+
+
 
     def __getitem__(self, index):
         return self.state.U[index]
@@ -94,6 +98,14 @@ class BoundaryBlockNorth(BoundaryBlock):
         self.x[0, :] = x + dx
         self.y[0, :] = y + dy
 
+        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[-1:, :]), axis=0)
+        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[-1:, :]), axis=0)
+
+        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
+
+        self.ref_BLK.mesh.xc[-1, 1:-1] = xc
+        self.ref_BLK.mesh.yc[-1, 1:-1] = yc
+
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.N.get_south_ghost()
 
@@ -123,6 +135,14 @@ class BoundaryBlockSouth(BoundaryBlock):
 
         self.x[0, :] = x + dx
         self.y[0, :] = y + dy
+
+        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[0:1, :]), axis=0)
+        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[0:1, :]), axis=0)
+
+        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
+
+        self.ref_BLK.mesh.xc[0, 1:-1] = xc
+        self.ref_BLK.mesh.yc[0, 1:-1] = yc
 
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.S.get_north_ghost()
@@ -154,6 +174,14 @@ class BoundaryBlockEast(BoundaryBlock):
         self.x[:, 0] = x + dx
         self.y[:, 0] = y + dy
 
+        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[:, -1:]), axis=1)
+        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[:, -1:]), axis=1)
+
+        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
+
+        self.ref_BLK.mesh.xc[1:-1, -1] = xc.reshape(-1, )
+        self.ref_BLK.mesh.yc[1:-1, -1] = yc.reshape(-1, )
+
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.E.get_west_ghost()
 
@@ -183,6 +211,14 @@ class BoundaryBlockWest(BoundaryBlock):
 
         self.x[:, 0] = x + dx
         self.y[:, 0] = y + dy
+
+        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[:, 0:1]), axis=1)
+        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[:, 0:1]), axis=1)
+
+        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
+
+        self.ref_BLK.mesh.xc[1:-1, 0] = xc.reshape(-1, )
+        self.ref_BLK.mesh.yc[1:-1, 0] = yc.reshape(-1, )
 
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.W.get_east_ghost()

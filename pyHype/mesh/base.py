@@ -16,7 +16,6 @@ limitations under the License.
 
 import numpy as np
 from typing import Union
-import matplotlib.pyplot as plt
 
 
 class BlockDescription:
@@ -58,6 +57,12 @@ class Mesh:
         self.x = np.zeros((self.ny, self.nx))
         self.y = np.zeros((self.ny, self.nx))
 
+        self.xc = np.zeros((self.ny + 1, self.nx + 1))
+        self.yc = np.zeros((self.ny + 1, self.nx + 1))
+
+        self.normx = np.zeros((self.ny + 1, self.nx + 1))
+        self.normy = np.zeros((self.ny + 1, self.nx + 1))
+
         self.create_mesh()
 
         self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
@@ -79,6 +84,26 @@ class Mesh:
         for i in range(self.ny):
             self.x[i, :] = np.linspace(Wx[i], Ex[i], self.nx)
             self.y[i, :] = np.linspace(Wy[i], Ey[i], self.nx)
+
+        # Kernel of centroids
+        xc, yc = self.get_centroid(self.x, self.y)
+
+        # Kernel of centroids x-coordinates
+        self.xc[1:-1, 1:-1] = xc
+
+        # Kernel of centroids y-coordinates
+        self.yc[1:-1, 1:-1] = yc
+
+    @staticmethod
+    def get_centroid(x: np.ndarray, y: np.ndarray):
+
+        # Kernel of centroids x-coordinates
+        xc = 0.25 * (x[1:, 0:-1] + x[1:, 1:] + x[0:-1, 0:-1] + x[0:-1, 1:])
+
+        # Kernel of centroids y-coordinates
+        yc = 0.25 * (y[1:, 0:-1] + y[1:, 1:] + y[0:-1, 0:-1] + y[0:-1, 1:])
+
+        return xc, yc
 
 
 class Vertices:

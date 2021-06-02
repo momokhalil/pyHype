@@ -18,9 +18,12 @@ import numpy as np
 from pyHype.states.states import ConservativeState
 from pyHype.mesh.base import BlockDescription, Mesh
 from pyHype.input.input_file_builder import ProblemInput
-from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as erk
+from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 
 from pyHype.fvm import SecondOrderGreenGauss
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+import math
 
 from pyHype.blocks.boundary import BoundaryBlockEast, \
                           BoundaryBlockWest, \
@@ -165,6 +168,7 @@ class QuadBlock:
         self.boundaryBLK        = None
         self.neighbors          = None
 
+        # Store vertices for brevity
         vert = self.mesh.vertices
 
         # Side lengths
@@ -185,7 +189,6 @@ class QuadBlock:
         self.nS                 = NormalVector(self.thetaS)
         self.nN                 = NormalVector(self.thetaN)
 
-
         # Set finite volume method
         fvm = self.inputs.finite_volume_method
 
@@ -198,27 +201,27 @@ class QuadBlock:
         time_integrator = self.inputs.time_integrator
 
         if time_integrator      == 'ExplicitEuler1':
-            self._time_integrator = erk.ExplicitEuler1(self.inputs, self)
+            self._time_integrator = Erk.ExplicitEuler1(self.inputs, self)
         elif time_integrator    == 'RK2':
-            self._time_integrator = erk.RK2(self.inputs, self)
+            self._time_integrator = Erk.RK2(self.inputs, self)
         elif time_integrator    == 'Generic2':
-            self._time_integrator = erk.Generic2(self.inputs, self)
+            self._time_integrator = Erk.Generic2(self.inputs, self)
         elif time_integrator    == 'Ralston2':
-            self._time_integrator = erk.Ralston2(self.inputs, self)
+            self._time_integrator = Erk.Ralston2(self.inputs, self)
         elif time_integrator    == 'Generic3':
-            self._time_integrator = erk.Generic3(self.inputs, self)
+            self._time_integrator = Erk.Generic3(self.inputs, self)
         elif time_integrator    == 'RK3':
-            self._time_integrator = erk.RK3(self.inputs, self)
+            self._time_integrator = Erk.RK3(self.inputs, self)
         elif time_integrator    == 'RK3SSP':
-            self._time_integrator = erk.RK3SSP(self.inputs, self)
+            self._time_integrator = Erk.RK3SSP(self.inputs, self)
         elif time_integrator    == 'Ralston3':
-            self._time_integrator = erk.Ralston3(self.inputs, self)
+            self._time_integrator = Erk.Ralston3(self.inputs, self)
         elif time_integrator    == 'RK4':
-            self._time_integrator = erk.RK4(self.inputs, self)
+            self._time_integrator = Erk.RK4(self.inputs, self)
         elif time_integrator    == 'Ralston4':
-            self._time_integrator = erk.Ralston4(self.inputs, self)
+            self._time_integrator = Erk.Ralston4(self.inputs, self)
         elif time_integrator    == 'DormandPrince5':
-            self._time_integrator = erk.DormandPrince5(self.inputs, self)
+            self._time_integrator = Erk.DormandPrince5(self.inputs, self)
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
@@ -227,6 +230,96 @@ class QuadBlock:
                                                   W=BoundaryBlockWest(self.inputs, type_=block_data.BCTypeW, ref_BLK=self),
                                                   N=BoundaryBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
                                                   S=BoundaryBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
+
+        # North East
+        xc, yc = self.get_centroid_corners(self.boundaryBLK.E.x[-1, 0], self.boundaryBLK.E.y[-1, 0],
+                                           self.boundaryBLK.E.x[-2, 0], self.boundaryBLK.E.y[-2, 0],
+                                           self.boundaryBLK.N.x[0, -1], self.boundaryBLK.N.y[0, -1],
+                                           self.boundaryBLK.N.x[0, -2], self.boundaryBLK.N.y[0, -2],
+                                           self.mesh.x[-1, -1], self.mesh.y[-1, -1])
+
+        self.mesh.xc[-1, -1] = xc
+        self.mesh.yc[-1, -1] = yc
+
+        # South East
+        xc, yc = self.get_centroid_corners(self.boundaryBLK.E.x[0, 0], self.boundaryBLK.E.y[0, 0],
+                                           self.boundaryBLK.E.x[1, 0], self.boundaryBLK.E.y[1, 0],
+                                           self.boundaryBLK.S.x[0, -1], self.boundaryBLK.S.y[0, -1],
+                                           self.boundaryBLK.S.x[0, -2], self.boundaryBLK.S.y[0, -2],
+                                           self.mesh.x[0, -1], self.mesh.y[0, -1])
+
+        self.mesh.xc[0, -1] = xc
+        self.mesh.yc[0, -1] = yc
+
+        # South West
+        xc, yc = self.get_centroid_corners(self.boundaryBLK.W.x[0, 0], self.boundaryBLK.W.y[0, 0],
+                                           self.boundaryBLK.W.x[1, 0], self.boundaryBLK.W.y[1, 0],
+                                           self.boundaryBLK.S.x[0, 0], self.boundaryBLK.S.y[0, 0],
+                                           self.boundaryBLK.S.x[0, 1], self.boundaryBLK.S.y[0, 1],
+                                           self.mesh.x[0, 0], self.mesh.y[0, 0])
+
+        self.mesh.xc[0, 0] = xc
+        self.mesh.yc[0, 0] = yc
+
+        # North West
+        xc, yc = self.get_centroid_corners(self.boundaryBLK.W.x[-1, 0], self.boundaryBLK.W.y[-1, 0],
+                                           self.boundaryBLK.W.x[-2, 0], self.boundaryBLK.W.y[-2, 0],
+                                           self.boundaryBLK.N.x[0, 0], self.boundaryBLK.N.y[0, 0],
+                                           self.boundaryBLK.N.x[0, 1], self.boundaryBLK.N.y[0, 1],
+                                           self.mesh.x[-1, 0], self.mesh.y[-1, 0])
+
+        self.mesh.xc[-1, 0] = xc
+        self.mesh.yc[-1, 0] = yc
+
+        # --------------------------------------------------------------------------------------------------------------
+        # DEBUGGING
+
+        plt.scatter(self.mesh.x, self.mesh.y, color='black', s=15)
+        plt.scatter(self.mesh.xc, self.mesh.yc, color='blue', s=15)
+
+        segs1 = np.stack((self.mesh.x, self.mesh.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='black'))
+        plt.gca().add_collection(LineCollection(segs2, colors='black'))
+
+        segs1 = np.stack((self.mesh.xc, self.mesh.yc), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='blue', linestyles='--'))
+        plt.gca().add_collection(LineCollection(segs2, colors='blue', linestyles='--'))
+
+        plt.scatter(self.boundaryBLK.E.x, self.boundaryBLK.E.y, marker='s', color='black', s=15)
+        plt.scatter(self.boundaryBLK.W.x, self.boundaryBLK.W.y, marker='s', color='black', s=15)
+        plt.scatter(self.boundaryBLK.N.x, self.boundaryBLK.N.y, marker='s', color='black', s=15)
+        plt.scatter(self.boundaryBLK.S.x, self.boundaryBLK.S.y, marker='s', color='black', s=15)
+
+        plt.show()
+        plt.pause(100)
+
+        # --------------------------------------------------------------------------------------------------------------
+
+
+    @staticmethod
+    def get_centroid_corners(s1x1, s1y1, s1x2, s1y2, s2x1, s2y1, s2x2, s2y2, cx, cy):
+
+        m1 = (s1y1 - s1y2) / (s1x1 - s1x2 + 1e-10)
+        b1 = s1y1 - m1 * s1x1
+
+        m2 = (s2y1 - s2y2) / (s2x1 - s2x2 + 1e-10)
+        b2 = s2y1 - m2 * s2x1
+
+        if math.isinf(m1):
+            m1 = 1e10
+        elif math.isinf(m2):
+            m2 = 1e10
+
+        x = (b2 - b1) / (m1 - m2 + 1e-10)
+        y = m1 * x + b1
+
+        xc = 0.25 * (cx + s1x1 + s2x1 + x)
+        yc = 0.25 * (cy + s1y1 + s2y1 + y)
+
+        return xc, yc
+
 
     @property
     def Flux_X(self):

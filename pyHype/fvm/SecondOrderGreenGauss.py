@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import numpy as np
 import time
+import numpy as np
 from pyHype.fvm.base import MUSCLFiniteVolumeMethod
 from pyHype.states import ConservativeState
 
@@ -25,10 +25,14 @@ _ZERO_VEC = np.zeros((1, 1, 4))
 class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
 
-        super().__init__(inputs, global_nBLK)
+        if inputs.nghost != 1:
+            raise ValueError('Number of ghost cells must be equal to 1 for this method.')
 
-        self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
-        self.Uy = ConservativeState(inputs=self.inputs, nx=self.ny + 2, ny=1)
+        else:
+            super().__init__(inputs, global_nBLK)
+
+            self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
+            self.Uy = ConservativeState(inputs=self.inputs, nx=self.ny + 2, ny=1)
 
     def get_flux(self, refBLK):
         """

@@ -23,24 +23,15 @@ from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
 
 
+__DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
+__DEFINED_SLOPE_LIMITERS__ = ['VanAlbada', 'VanLeer']
+
 class MUSCLFiniteVolumeMethod:
     def __init__(self, inputs, global_nBLK):
         """
-        Solves the euler equations using the finite volume method. Consider a simple 4x4 grid as such
+        Solves the euler equations using a MUSCL-type finite volume scheme.
 
-        O----------O----------O----------O
-        |          |          |          |
-        |          |          |          |
-        |          |          |          |
-        O----------O----------O----------O
-        |          |          |          |
-        |          |          |          |
-        |          |          |          |
-        O----------O----------O----------O
-        |          |          |          |
-        |          |          |          |
-        |          |          |          |
-        O----------O----------O----------O
+        ------ DESCRIBE MUSCL BRIEFLY ------
 
         The matrix structure used for storing solution data in various State classes is a (ny * nx * 4) numpy ndarray
         which has planar dimentions equal to the number of cells in the y and x direction, and a depth of 4. The
@@ -75,19 +66,23 @@ class MUSCLFiniteVolumeMethod:
 
         then, cells are constructed as follows:
 
-        O---------O---------O---------O
-        |         |         |         |
-        |         |         |         |
-        |         |         |         |
-        O---------O---------O---------O
-        |         |         |         |
-        |         |    .....x.....    | -- Y+1/2
-        |         |    .    |    .    |
-        O---------O----x--- C ---x----O--- Y
-        |         |    .    |    .    |
-        |         |    .....x.....    | -- Y-1/2
-        |         |         |         |
-        O---------O---------O---------O
+        O---------O---------O---------O---------O
+        |         |         |         |         |
+        |         |         |         |         |
+        |         |         |         |         |
+        O---------O---------O---------O---------O
+        |         |         |         |         |
+        |         |    .....x.....    |         | -- Y+1/2
+        |         |    .    |    .    |         |
+        O---------O----x--- C ---x----O---------O -- Y
+        |         |    .    |    .    |         |
+        |         |    .....x.....    |         | -- Y-1/2
+        |         |         |         |         |
+        O---------O---------O---------O---------O
+        |         |         |         |         |
+        |         |         |         |         |
+        |         |         |         |         |
+        O---------O---------O---------O---------O
                        |    |    |
                    X-1/2    X    X+1/2
 
@@ -95,76 +90,99 @@ class MUSCLFiniteVolumeMethod:
 
         x - direction:
 
-        O---------O---------O---------O
-        |         |         |         |
-        |         |         |         |
-        |         |         |         |
-        O---------O---------O---------O
-        |         |         |         |
-        |         |         |         |
-      ..|.........|.........|.........|..
-      . O----x----O----x--- C ---x----O .
-      ..|.........|.........|.........|..
-        |         |         |         |
-        |         |         |         |
-        O---------O---------O---------O
+        O---------O---------O---------O---------O
+        |         |         |         |         |
+        |         |         |         |         |
+        |         |         |         |         |
+        O---------O---------O---------O---------O
+        |         |         |         |         |
+        |         |         |         |         |
+        |         |         |         |         |
+        O---------O---------O---------O---------O
+        |         |         |         |         |
+        |         |         |         |         |
+      ..|.........|.........|.........|.........|..
+      . O----x----O----x--- C ---x----O----x----0 .
+      ..|.........|.........|.........|.........|..
+        |         |         |         |         |
+        |         |         |         |         |
+        O---------O---------O---------O---------0
 
         y - direction:
-
                           . . .
-        O---------O---------O---------O
-        |         |       . | .       |
-        |         |       . x .       |
-        |         |       . | .       |
-        O---------O---------O---------O
-        |         |       . | .       |
-        |         |       . x .       |
-        |         |       . | .       |
-        O---------O-------- C --------O
-        |         |       . | .       |
-        |         |       . x .       |
-        |         |       . | .       |
-        O---------O---------O---------O
+        O---------O-------.-O-.-------O---------O
+        |         |       . | .       |         |
+        |         |       . x .       |         |
+        |         |       . | .       |         |
+        O---------O-------.-O-.-------O---------O
+        |         |       . | .       |         |
+        |         |       . x .       |         |
+        |         |       . | .       |         |
+        O---------O-------.-C-.-------O---------O
+        |         |       . | .       |         |
+        |         |       . x .       |         |
+        |         |       . | .       |         |
+        O---------O-------.-O-.-------O---------O
+        |         |       . | .       |         |
+        |         |       . x .       |         |
+        |         |       . | .       |         |
+        O---------O-------.-O-.-------O---------O
                           . . .
-
         """
 
-        self.inputs = inputs
+        # Set x and y direction number of points
         self.nx = inputs.nx
         self.ny = inputs.ny
+
+        # Set inputs
+        self.inputs = inputs
+
+        # Set global block number
         self.global_nBLK = global_nBLK
 
+        # Initialize x and y direction flux
         self.Flux_X = np.empty((self.ny, self.nx, 4))
         self.Flux_Y = np.empty((self.ny, self.nx, 4))
 
+        # Initialize left and right conservative states
         self.UL = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
         self.UR = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
 
-        # Set Flux Function
+        # Set Flux Function. Flux Function must be included in __DEFINED_FLUX_FUNCTIONS__
+        _flux_func = self.inputs.flux_function
 
-        # ROE Flux
-        if self.inputs.flux_function == 'Roe':
-            self.flux_function_X = ROE_FLUX_X(self.inputs)
-            self.flux_function_Y = ROE_FLUX_Y(self.inputs)
-        # HLLE Flux
-        elif self.inputs.flux_function == 'HLLE':
-            self.flux_function_X = HLLE_FLUX_X(self.inputs)
-            self.flux_function_Y = HLLE_FLUX_Y(self.inputs)
-        # HLLL Flux
-        elif self.inputs.flux_function == 'HLLL':
-            self.flux_function_X = HLLL_FLUX_X(self.inputs)
-            self.flux_function_Y = HLLL_FLUX_Y(self.inputs)
+        if _flux_func in __DEFINED_FLUX_FUNCTIONS__:
+
+            # ROE Flux
+            if _flux_func == 'Roe':
+                self.flux_function_X = ROE_FLUX_X(self.inputs)
+                self.flux_function_Y = ROE_FLUX_Y(self.inputs)
+            # HLLE Flux
+            elif _flux_func == 'HLLE':
+                self.flux_function_X = HLLE_FLUX_X(self.inputs)
+                self.flux_function_Y = HLLE_FLUX_Y(self.inputs)
+            # HLLL Flux
+            elif _flux_func == 'HLLL':
+                self.flux_function_X = HLLL_FLUX_X(self.inputs)
+                self.flux_function_Y = HLLL_FLUX_Y(self.inputs)
         # None
         else:
-            raise ValueError('FiniteVolumeMethod: Flux function type not specified.')
+            raise ValueError('MUSCLFiniteVolumeMethod: Flux function type not specified.')
 
-        # Van Leer limiter
-        if self.inputs.flux_limiter == 'van_leer':
-            self.flux_limiter = limiters.VanLeer(self.inputs)
+        # Set slope limiter. Slope limiter must be included in __DEFINED_SLOPE_LIMITERS__
+        _flux_limiter = self.inputs.flux_limiter
 
-        # Van Albada limiter
-        elif self.inputs.flux_limiter == 'van_albada':
-            self.flux_limiter = limiters.VanAlbada(self.inputs)
+        if _flux_limiter in __DEFINED_SLOPE_LIMITERS__:
+
+            # Van Leer limiter
+            if _flux_limiter == 'VanLeer':
+                self.flux_limiter = limiters.VanLeer(self.inputs)
+            # Van Albada limiter
+            elif _flux_limiter == 'VanAlbada':
+                self.flux_limiter = limiters.VanAlbada(self.inputs)
+        # None
+        else:
+            raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
     def reconstruct(self, U: ConservativeState):
         """
