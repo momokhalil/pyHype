@@ -231,67 +231,39 @@ class QuadBlock:
                                          S=GhostBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
 
         # North East
-        xc, yc = self.get_centroid_corners(self.ghost.E.x[-1, 0], self.ghost.E.y[-1, 0],
-                                           self.ghost.E.x[-2, 0], self.ghost.E.y[-2, 0],
-                                           self.ghost.N.x[0, -1], self.ghost.N.y[0, -1],
-                                           self.ghost.N.x[0, -2], self.ghost.N.y[0, -2],
-                                           self.mesh.x[-1, -1], self.mesh.y[-1, -1])
+        xc, yc = self.get_centroid_corners(s1=self.ghost.E, s1idx1=(-1, 0), s1idx2=(-2, 0),
+                                           s2=self.ghost.N, s2idx1=(0, -1), s2idx2=(0, -2),
+                                           idxcorner=(-1, -1))
 
         self.mesh.xc[-1, -1] = xc
         self.mesh.yc[-1, -1] = yc
 
         # South East
-        xc, yc = self.get_centroid_corners(self.ghost.E.x[0, 0], self.ghost.E.y[0, 0],
-                                           self.ghost.E.x[1, 0], self.ghost.E.y[1, 0],
-                                           self.ghost.S.x[0, -1], self.ghost.S.y[0, -1],
-                                           self.ghost.S.x[0, -2], self.ghost.S.y[0, -2],
-                                           self.mesh.x[0, -1], self.mesh.y[0, -1])
+        xc, yc = self.get_centroid_corners(s1=self.ghost.E, s1idx1=(0, 0), s1idx2=(1, 0),
+                                           s2=self.ghost.S, s2idx1=(0, -1), s2idx2=(0, -2),
+                                           idxcorner=(0, -1))
 
         self.mesh.xc[0, -1] = xc
         self.mesh.yc[0, -1] = yc
 
         # South West
-        xc, yc = self.get_centroid_corners(self.ghost.W.x[0, 0], self.ghost.W.y[0, 0],
-                                           self.ghost.W.x[1, 0], self.ghost.W.y[1, 0],
-                                           self.ghost.S.x[0, 0], self.ghost.S.y[0, 0],
-                                           self.ghost.S.x[0, 1], self.ghost.S.y[0, 1],
-                                           self.mesh.x[0, 0], self.mesh.y[0, 0])
+        xc, yc = self.get_centroid_corners(s1=self.ghost.W, s1idx1=(0, 0), s1idx2=(1, 0),
+                                           s2=self.ghost.S, s2idx1=(0, 0), s2idx2=(0, 1),
+                                           idxcorner=(0, 0))
 
         self.mesh.xc[0, 0] = xc
         self.mesh.yc[0, 0] = yc
 
         # North West
-        xc, yc = self.get_centroid_corners(self.ghost.W.x[-1, 0], self.ghost.W.y[-1, 0],
-                                           self.ghost.W.x[-2, 0], self.ghost.W.y[-2, 0],
-                                           self.ghost.N.x[0, 0], self.ghost.N.y[0, 0],
-                                           self.ghost.N.x[0, 1], self.ghost.N.y[0, 1],
-                                           self.mesh.x[-1, 0], self.mesh.y[-1, 0])
+        xc, yc = self.get_centroid_corners(s1=self.ghost.W, s1idx1=(-1, 0), s1idx2=(-2, 0),
+                                           s2=self.ghost.N, s2idx1=(0, 0), s2idx2=(0, 1),
+                                           idxcorner=(-1, 0))
 
         self.mesh.xc[-1, 0] = xc
         self.mesh.yc[-1, 0] = yc
 
         # Cell Area
-        s1 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, :-1]) ** 2 +
-                     (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, :-1]) ** 2)
-
-        s3 = np.sqrt((self.mesh.xc[1:, 1:] - self.mesh.xc[:-1, 1:]) ** 2 +
-                     (self.mesh.yc[1:, 1:] - self.mesh.yc[:-1, 1:]) ** 2)
-
-        s2 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[1:, 1:])**2 +
-                     (self.mesh.yc[1:, :-1] - self.mesh.yc[1:, 1:])**2)
-
-        s4 = np.sqrt((self.mesh.xc[:-1, :-1] - self.mesh.xc[:-1, 1:]) ** 2 +
-                     (self.mesh.yc[:-1, :-1] - self.mesh.yc[:-1, 1:]) ** 2)
-
-        d1 = (self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, 1:])**2 + (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, 1:])**2
-
-        alpha = np.arccos((s1 ** 2 + s4 ** 2 - d1) / 2 / s1 / s4)
-        beta = np.arccos((s2 ** 2 + s3 ** 2 - d1) / 2 / s2 / s3)
-
-        s = 0.5 * (s1 + s2 + s3 + s4)
-
-        self.mesh.A = np.sqrt((s - s1)*(s - s2)*(s - s3)*(s - s4) -
-                              0.5 * s1 * s2 * s3 * s4 * (1 + np.cos(alpha + beta)))
+        self.get_cell_area()
 
 
         # --------------------------------------------------------------------------------------------------------------
@@ -333,28 +305,6 @@ class QuadBlock:
         return np.sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
 
     @staticmethod
-    def get_centroid_corners(s1x1, s1y1, s1x2, s1y2, s2x1, s2y1, s2x2, s2y2, cx, cy):
-
-        m1 = (s1y1 - s1y2) / (s1x1 - s1x2 + 1e-8)
-        b1 = s1y1 - m1 * s1x1
-
-        m2 = (s2y1 - s2y2) / (s2x1 - s2x2 + 1e-8)
-        b2 = s2y1 - m2 * s2x1
-
-        if math.isinf(m1):
-            m1 = 1e10
-        elif math.isinf(m2):
-            m2 = 1e10
-
-        x = (b2 - b1) / (m1 - m2 + 1e-8)
-        y = m1 * x + b1
-
-        xc = 0.25 * (cx + s1x1 + s2x1 + x)
-        yc = 0.25 * (cy + s1y1 + s2y1 + y)
-
-        return xc, yc
-
-    @staticmethod
     def _get_side_angle(pt1, pt2):
         if pt1[1] == pt2[1]:
             return np.pi / 2
@@ -377,7 +327,27 @@ class QuadBlock:
         else:
             raise ValueError('Incorrect indexing')
 
+    def get_centroid_corners(self, s1, s1idx1, s1idx2, s2, s2idx1, s2idx2, idxcorner):
 
+        m1 = (s1.y[s1idx1] - s1.y[s1idx2]) / (s1.x[s1idx1] - s1.x[s1idx2] + 1e-8)
+        b1 = s1.y[s1idx1] - m1 * s1.x[s1idx1]
+
+        m2 = (s2.y[s2idx1] - s2.y[s2idx2]) / (s2.x[s2idx1] - s2.x[s2idx2] + 1e-8)
+        b2 = s2.y[s2idx1] - m2 * s2.x[s2idx1]
+
+        if math.isinf(m1):
+            m1 = 1e10
+        elif math.isinf(m2):
+            m2 = 1e10
+
+        x = (b2 - b1) / (m1 - m2 + 1e-8)
+        y = m1 * x + b1
+
+        xc = 0.25 * (self.mesh.x[idxcorner] + s1.x[s1idx1] + s2.x[s2idx1] + x)
+        yc = 0.25 * (self.mesh.y[idxcorner] + s1.y[s1idx1] + s2.y[s2idx1] + y)
+
+        return xc, yc
+    
     def _index_in_west_boundary_block(self, x, y):
         return x < 0 and 0 <= y <= self.mesh.ny
 
@@ -392,6 +362,58 @@ class QuadBlock:
 
     # ------------------------------------------------------------------------------------------------------------------
     # Grid methods
+
+
+    def get_cell_area(self):
+        """
+        Calculates area of every cell in this Block's mesh. A cell is represented as follows:
+
+                              ^
+                              | n
+                              |
+                x--------------------------x
+                |             s2        a2 |
+                |                          |
+        n <-----| s1          O         s3 |-----> n
+                |                          |
+                | a1          s4           |
+                x--------------------------x
+                              |
+                              | n
+                              v
+
+        Each side is labelled s1, s2, s3, s4. a1 and a2 are opposite angles. Note that the sides do not have to be
+        alligned with the cartesian axes.
+
+        """
+
+        # Side lengths
+        s1 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, :-1]) ** 2 +
+                     (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, :-1]) ** 2)
+
+        s3 = np.sqrt((self.mesh.xc[1:, 1:] - self.mesh.xc[:-1, 1:]) ** 2 +
+                     (self.mesh.yc[1:, 1:] - self.mesh.yc[:-1, 1:]) ** 2)
+
+        s2 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[1:, 1:]) ** 2 +
+                     (self.mesh.yc[1:, :-1] - self.mesh.yc[1:, 1:]) ** 2)
+
+        s4 = np.sqrt((self.mesh.xc[:-1, :-1] - self.mesh.xc[:-1, 1:]) ** 2 +
+                     (self.mesh.yc[:-1, :-1] - self.mesh.yc[:-1, 1:]) ** 2)
+
+        d1 = (self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, 1:]) ** 2 + \
+             (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, 1:]) ** 2
+
+        # Calculate opposite angles
+        a1 = np.arccos((s1 ** 2 + s4 ** 2 - d1) / 2 / s1 / s4)
+        a2 = np.arccos((s2 ** 2 + s3 ** 2 - d1) / 2 / s2 / s3)
+
+        # Semiperimiter
+        s = 0.5 * (s1 + s2 + s3 + s4)
+
+        # Bretschneider formula for quarilateral area
+        p1 = (s - s1) * (s - s2) * (s - s3) * (s - s4)
+        p2 = s1 * s2 * s3 * s4
+        self.mesh.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
 
     # Build connectivity with neighbor blocks
     def connect(self, NeighborE: 'QuadBlock',
