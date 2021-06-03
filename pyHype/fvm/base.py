@@ -201,16 +201,19 @@ class MUSCLFiniteVolumeMethod:
         # Primitive reconstruction
         if self.inputs.reconstruction_type == 'Primitive':
             stateL, stateR = self.reconstruct_primitive(U)
+            self.UL.from_primitive_state_vector(stateL)
+            self.UR.from_primitive_state_vector(stateR)
         # Conservative reconstruction
         elif self.inputs.reconstruction_type == 'Conservative':
             stateL, stateR = self.reconstruct_conservative(U)
+            self.UL.from_conservative_state_vector(stateL)
+            self.UR.from_conservative_state_vector(stateR)
         # Default to Conservative
         else:
             stateL, stateR = self.reconstruct_conservative(U)
+            self.UL.from_conservative_state_vector(stateL)
+            self.UR.from_conservative_state_vector(stateR)
 
-        # Set left and right conservative states
-        self.UL.from_conservative_state_vector(stateL)
-        self.UR.from_conservative_state_vector(stateR)
 
     def reconstruct_primitive(self, U: ConservativeState):
         """

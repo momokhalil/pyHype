@@ -60,9 +60,6 @@ class Mesh:
         self.xc = np.zeros((self.ny + 1, self.nx + 1))
         self.yc = np.zeros((self.ny + 1, self.nx + 1))
 
-        self.normx = np.zeros((self.ny + 1, self.nx + 1))
-        self.normy = np.zeros((self.ny + 1, self.nx + 1))
-
         self.A = np.zeros((self.ny, self.nx))
 
         self.create_mesh()
@@ -72,6 +69,9 @@ class Mesh:
 
         self.dx     = self.Lx / (self.nx + 1)
         self.dy     = self.Ly / (self.ny + 1)
+
+        self.normx = np.zeros((self.ny + 1, self.nx + 1))
+        self.normy = np.zeros((self.ny + 1, self.nx + 1))
 
     def create_mesh(self):
 
@@ -95,6 +95,72 @@ class Mesh:
 
         # Kernel of centroids y-coordinates
         self.yc[1:-1, 1:-1] = yc
+
+    def compute_normal(self) -> None:
+
+        self.normx = np.zeros((self.ny+1, 2))
+        self.normy = np.zeros((self.nx+1, 2))
+        print('AAAAAAAAAAAAA')
+
+        theta = np.arctan((self.yc[:, 0] - self.yc[:, -1])/(self.xc[:, -1] - self.xc[:, 0]))
+        self.normx[:, 0], self.normx[:, 1] = np.sin(theta), np.cos(theta)
+
+        theta = np.arctan((self.xc[0, :] - self.xc[-1, :])/(self.yc[-1, :] - self.yc[0, :]))
+        self.normy[:, 0], self.normy[:, 1] = np.cos(theta), np.sin(theta)
+
+        print(self.normx)
+        print(self.normy)
+
+    def compute_cell_area(self):
+        """
+        Calculates area of every cell in this Block's mesh. A cell is represented as follows:
+
+                              ^
+                              | n
+                              |
+                x--------------------------x
+                |             s2        a2 |
+                |                          |
+        n <-----| s1          O         s3 |-----> n
+                |                          |
+                | a1          s4           |
+                x--------------------------x
+                              |
+                              | n
+                              v
+
+        Each side is labelled s1, s2, s3, s4. a1 and a2 are opposite angles. Note that the sides do not have to be
+        alligned with the cartesian axes.
+
+        """
+
+        # Side lengths
+        s1 = np.sqrt((self.xc[1:, :-1] - self.xc[:-1, :-1]) ** 2 +
+                     (self.yc[1:, :-1] - self.yc[:-1, :-1]) ** 2)
+
+        s3 = np.sqrt((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 +
+                     (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2)
+
+        s2 = np.sqrt((self.xc[1:, :-1] - self.xc[1:, 1:]) ** 2 +
+                     (self.yc[1:, :-1] - self.yc[1:, 1:]) ** 2)
+
+        s4 = np.sqrt((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 +
+                     (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2)
+
+        d1 = (self.xc[1:, :-1] - self.xc[:-1, 1:]) ** 2 + \
+             (self.yc[1:, :-1] - self.yc[:-1, 1:]) ** 2
+
+        # Calculate opposite angles
+        a1 = np.arccos((s1 ** 2 + s4 ** 2 - d1) / 2 / s1 / s4)
+        a2 = np.arccos((s2 ** 2 + s3 ** 2 - d1) / 2 / s2 / s3)
+
+        # Semiperimiter
+        s = 0.5 * (s1 + s2 + s3 + s4)
+
+        # Bretschneider formula for quarilateral area
+        p1 = (s - s1) * (s - s2) * (s - s3) * (s - s4)
+        p2 = s1 * s2 * s3 * s4
+        self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
 
     @staticmethod
     def get_centroid(x: np.ndarray, y: np.ndarray):

@@ -263,8 +263,10 @@ class QuadBlock:
         self.mesh.yc[-1, 0] = yc
 
         # Cell Area
-        self.compute_cell_area()
+        self.mesh.compute_cell_area()
 
+        # Get normal vector arrays
+        self.mesh.compute_normal()
 
         # --------------------------------------------------------------------------------------------------------------
         # DEBUGGING
@@ -429,58 +431,6 @@ class QuadBlock:
 
     # ------------------------------------------------------------------------------------------------------------------
     # Grid methods
-
-
-    def compute_cell_area(self):
-        """
-        Calculates area of every cell in this Block's mesh. A cell is represented as follows:
-
-                              ^
-                              | n
-                              |
-                x--------------------------x
-                |             s2        a2 |
-                |                          |
-        n <-----| s1          O         s3 |-----> n
-                |                          |
-                | a1          s4           |
-                x--------------------------x
-                              |
-                              | n
-                              v
-
-        Each side is labelled s1, s2, s3, s4. a1 and a2 are opposite angles. Note that the sides do not have to be
-        alligned with the cartesian axes.
-
-        """
-
-        # Side lengths
-        s1 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, :-1]) ** 2 +
-                     (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, :-1]) ** 2)
-
-        s3 = np.sqrt((self.mesh.xc[1:, 1:] - self.mesh.xc[:-1, 1:]) ** 2 +
-                     (self.mesh.yc[1:, 1:] - self.mesh.yc[:-1, 1:]) ** 2)
-
-        s2 = np.sqrt((self.mesh.xc[1:, :-1] - self.mesh.xc[1:, 1:]) ** 2 +
-                     (self.mesh.yc[1:, :-1] - self.mesh.yc[1:, 1:]) ** 2)
-
-        s4 = np.sqrt((self.mesh.xc[:-1, :-1] - self.mesh.xc[:-1, 1:]) ** 2 +
-                     (self.mesh.yc[:-1, :-1] - self.mesh.yc[:-1, 1:]) ** 2)
-
-        d1 = (self.mesh.xc[1:, :-1] - self.mesh.xc[:-1, 1:]) ** 2 + \
-             (self.mesh.yc[1:, :-1] - self.mesh.yc[:-1, 1:]) ** 2
-
-        # Calculate opposite angles
-        a1 = np.arccos((s1 ** 2 + s4 ** 2 - d1) / 2 / s1 / s4)
-        a2 = np.arccos((s2 ** 2 + s3 ** 2 - d1) / 2 / s2 / s3)
-
-        # Semiperimiter
-        s = 0.5 * (s1 + s2 + s3 + s4)
-
-        # Bretschneider formula for quarilateral area
-        p1 = (s - s1) * (s - s2) * (s - s3) * (s - s4)
-        p2 = s1 * s2 * s3 * s4
-        self.mesh.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
 
     # Build connectivity with neighbor blocks
     def connect(self, NeighborE: 'QuadBlock',
