@@ -26,8 +26,14 @@ pyhype = '                                                                      
 ***                   ***                                                                       \n\
 ***                 ***                                                                         \n\
                                                                                                 \n\
-A python solver for the 2D Euler equations of inviscid fluids on distributed, multi-block grids.\n\
+A Python framework for developing parallelized Computational Fluid Dynamics software to solve   \n\
+the hyperbolic 2D Euler equations on distributed, multi-block structured grids.\n\
                                                                                                 '
+lice = '''*************************************************************************
+Copyright 2021 Mohamed Khalil.\n
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+*************************************************************************\n'''
 
 
 began_solving = 'Beginning solution to specified problem of type: '

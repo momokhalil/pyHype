@@ -16,8 +16,9 @@ limitations under the License.
 
 import numpy as np
 from abc import abstractmethod
+
 from pyHype.limiters import limiters
-from pyHype.states.states import ConservativeState
+from pyHype.states.states import ConservativeState, State
 from pyHype.flux.Roe import ROE_FLUX_X, ROE_FLUX_Y
 from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
@@ -27,10 +28,14 @@ __DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
 __DEFINED_SLOPE_LIMITERS__ = ['VanAlbada', 'VanLeer']
 
 class MUSCLFiniteVolumeMethod:
-    def __init__(self, inputs, global_nBLK):
+    def __init__(self,
+                 inputs,
+                 global_nBLK: int
+                 ) -> None:
         """
         Solves the euler equations using a MUSCL-type finite volume scheme.
 
+        TODO:
         ------ DESCRIBE MUSCL BRIEFLY ------
 
         The matrix structure used for storing solution data in various State classes is a (ny * nx * 4) numpy ndarray
@@ -184,7 +189,9 @@ class MUSCLFiniteVolumeMethod:
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
-    def reconstruct(self, U: ConservativeState):
+    def reconstruct(self,
+                    U: ConservativeState
+                    ) -> None:
         """
         This method routes the state required for reconstruction to the correct implementation of the reconstruction.
         Current reconstruction methods are Primitive and Conservative.
@@ -203,11 +210,13 @@ class MUSCLFiniteVolumeMethod:
             stateL, stateR = self.reconstruct_primitive(U)
             self.UL.from_primitive_state_vector(stateL)
             self.UR.from_primitive_state_vector(stateR)
+
         # Conservative reconstruction
         elif self.inputs.reconstruction_type == 'Conservative':
             stateL, stateR = self.reconstruct_conservative(U)
             self.UL.from_conservative_state_vector(stateL)
             self.UR.from_conservative_state_vector(stateR)
+
         # Default to Conservative
         else:
             stateL, stateR = self.reconstruct_conservative(U)
@@ -215,7 +224,9 @@ class MUSCLFiniteVolumeMethod:
             self.UR.from_conservative_state_vector(stateR)
 
 
-    def reconstruct_primitive(self, U: ConservativeState):
+    def reconstruct_primitive(self,
+                              U: ConservativeState
+                              ) -> [np.ndarray]:
         """
         Primitive reconstruction implementation. Simply convert the input ConservativeState into PrimitiveState and
         call the reconstruct_state implementation.
@@ -233,7 +244,9 @@ class MUSCLFiniteVolumeMethod:
 
         return stateL, stateR
 
-    def reconstruct_conservative(self, U: ConservativeState):
+    def reconstruct_conservative(self,
+                                 U: ConservativeState
+                                 ) -> [np.ndarray]:
         """
         Conservative reconstruction implementation. Simply pass the input ConservativeState into the
         reconstruct_state implementation.
@@ -251,28 +264,20 @@ class MUSCLFiniteVolumeMethod:
         return stateL, stateR
 
     @abstractmethod
-    def reconstruct_state(self, U) -> [np.ndarray]:
+    def reconstruct_state(self,
+                          U: State
+                          ) -> [np.ndarray]:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
         pass
 
     @abstractmethod
-    def get_dWdx(self):
-        dWdx = np.zeros((self.ny, self.nx, 4))
-        pass
-
-    @abstractmethod
-    def get_dWdy(self):
+    def get_gradW(self, refBLK):
         dWdy = np.zeros((self.ny, self.nx, 4))
         pass
 
     @abstractmethod
-    def get_dUdx(self):
+    def get_gradU(self, refBLK):
         dUdx = np.zeros((self.ny, self.nx, 4))
-        pass
-
-    @abstractmethod
-    def get_dUdy(self):
-        dUdy = np.zeros((self.ny, self.nx, 4))
         pass

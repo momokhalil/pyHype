@@ -79,7 +79,9 @@ class GhostBlockContainer:
 
 class NormalVector:
     def __init__(self,
-                 theta: float):
+                 theta: float
+                 ) -> None:
+
         if theta == 0:
             self.x, self.y = 1, 0
         elif theta == np.pi / 2:
@@ -99,23 +101,38 @@ class NormalVector:
 
 
 class Blocks:
-    def __init__(self, inputs):
+    def __init__(self,
+                 inputs
+                 ) -> None:
+
         self.inputs = inputs
         self.number_of_blocks = None
         self.blocks = {}
 
         self.build()
 
-    def __call__(self, block: int):
+    def __call__(self,
+                 block: int
+                 ) -> 'QuadBlock':
+
         return self.blocks[block]
 
-    def add(self, block) -> None:
+    def add(self,
+            block: 'QuadBlock'
+            ) -> None:
+
         self.blocks[block.global_nBLK] = block
 
-    def get(self, block: int):
+    def get(self,
+            block: int
+            ) -> 'QuadBlock':
+
         return self.blocks[block]
 
-    def update(self, dt) -> None:
+    def update(self,
+               dt: float
+               ) -> None:
+
         for block in self.blocks.values():
             block.update(dt)
 
@@ -158,7 +175,10 @@ class Blocks:
 
 # QuadBlock Class Definition
 class QuadBlock:
-    def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
+    def __init__(self,
+                 inputs: ProblemInput,
+                 block_data: BlockDescription
+                 ) -> None:
 
         self.inputs             = inputs
         self.mesh               = Mesh(inputs, block_data)
@@ -272,23 +292,24 @@ class QuadBlock:
         # DEBUGGING
 
         plt.scatter(self.mesh.x, self.mesh.y, color='black', s=15)
-        plt.scatter(self.mesh.xc, self.mesh.yc, color='blue', s=15)
+        plt.scatter(self.mesh.xc, self.mesh.yc, color='steelblue', s=15)
 
         segs1 = np.stack((self.mesh.x, self.mesh.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='black'))
-        plt.gca().add_collection(LineCollection(segs2, colors='black'))
+        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
+        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
 
         segs1 = np.stack((self.mesh.xc, self.mesh.yc), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='blue', linestyles='--'))
-        plt.gca().add_collection(LineCollection(segs2, colors='blue', linestyles='--'))
+        plt.gca().add_collection(LineCollection(segs1, colors='steelblue', linestyles='--', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2, colors='steelblue', linestyles='--', linewidths=1, alpha=0.5))
 
         plt.scatter(self.ghost.E.x, self.ghost.E.y, marker='s', color='black', s=15)
         plt.scatter(self.ghost.W.x, self.ghost.W.y, marker='s', color='black', s=15)
         plt.scatter(self.ghost.N.x, self.ghost.N.y, marker='s', color='black', s=15)
         plt.scatter(self.ghost.S.x, self.ghost.S.y, marker='s', color='black', s=15)
 
+        plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
         #plt.pause(100)
 
@@ -301,6 +322,20 @@ class QuadBlock:
     @property
     def Flux_Y(self):
         return self.fvm.Flux_Y
+
+    def __getitem__(self, index):
+        y, x, var = index
+
+        if self._index_in_west_ghost_block(x, y):
+            return self.ghost.W.state[y, 0, var]
+        elif self._index_in_east_ghost_block(x, y):
+            return self.ghost.E.state[y, 0, var]
+        elif self._index_in_north_ghost_block(x, y):
+            return self.ghost.N.state[0, x, var]
+        elif self._index_in_south_ghost_block(x, y):
+            return self.ghost.N.state[0, x, var]
+        else:
+            raise ValueError('Incorrect indexing')
 
     @staticmethod
     def _get_side_length(pt1, pt2):
@@ -315,20 +350,6 @@ class QuadBlock:
         else:
             return np.arctan((pt1[0] - pt2[0]) / (pt2[1] - pt1[1]))
 
-    def __getitem__(self, index):
-        y, x, var = index
-
-        if self._index_in_west_boundary_block(x, y):
-            return self.ghost.W.state[y, 0, var]
-        elif self._index_in_east_boundary_block(x, y):
-            return self.ghost.E.state[y, 0, var]
-        elif self._index_in_north_boundary_block(x, y):
-            return self.ghost.N.state[0, x, var]
-        elif self._index_in_south_boundary_block(x, y):
-            return self.ghost.N.state[0, x, var]
-        else:
-            raise ValueError('Incorrect indexing')
-
     def get_centroid_corners(self,
                              s1: GhostBlock,
                              s1idx1: [int],
@@ -336,7 +357,8 @@ class QuadBlock:
                              s2: GhostBlock,
                              s2idx1: [int],
                              s2idx2: [int],
-                             idxcorner: [int]):
+                             idxcorner: [int]
+                             ) -> [np.ndarray]:
         """
         Calculates the coordinates of any of the four corner cells. It does this by calculating the linear equation
         of the line that passes through the nodes closest to the domain in either ghost block, then calculates the
@@ -394,7 +416,6 @@ class QuadBlock:
             - yc: centroid y coordinate
         """
 
-
         # Get parameters for side 1 linear equation
         m1 = (s1.y[s1idx1] - s1.y[s1idx2]) / (s1.x[s1idx1] - s1.x[s1idx2] + 1e-8)
         b1 = s1.y[s1idx1] - m1 * s1.x[s1idx1]
@@ -417,16 +438,16 @@ class QuadBlock:
 
         return xc, yc
 
-    def _index_in_west_boundary_block(self, x, y):
+    def _index_in_west_ghost_block(self, x, y):
         return x < 0 and 0 <= y <= self.mesh.ny
 
-    def _index_in_east_boundary_block(self, x, y):
+    def _index_in_east_ghost_block(self, x, y):
         return x > self.mesh.nx and 0 <= y <= self.mesh.ny
 
-    def _index_in_south_boundary_block(self, x, y):
+    def _index_in_south_ghost_block(self, x, y):
         return y < 0 and 0 <= x <= self.mesh.nx
 
-    def _index_in_north_boundary_block(self, x, y):
+    def _index_in_north_ghost_block(self, x, y):
         return y > self.mesh.ny and 0 <= x <= self.mesh.nx
 
     # ------------------------------------------------------------------------------------------------------------------

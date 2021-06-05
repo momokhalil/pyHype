@@ -50,8 +50,6 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         self.UL.reset(shape=(1, self.nx + 1, 4))
         self.UR.reset(shape=(1, self.nx + 1, 4))
 
-        self.get_dUdx(refBLK)
-
         # Iterate over all rows in block
         for row in range(self.ny):
             # Set x-direction U state vector holder to the rowth full-row of the block
@@ -82,57 +80,10 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
             self.Flux_Y[:, col, :] = (flux[4:] - flux[:-4]).reshape(-1, 4)
 
 
-    def reconstruct_state(self, state: np.ndarray) -> [np.ndarray]:
+    def reconstruct_state(self, state) -> [np.ndarray]:
         limited_state   = self.flux_limiter.limit(state) * (state[:, 2:, :] - state[:, :-2, :]) / 4
 
         stateL = state[:, :-1, :] + np.concatenate((_ZERO_VEC, limited_state), axis=1)
         stateR = state[:, 1:, :] - np.concatenate((limited_state, _ZERO_VEC), axis=1)
 
         return stateL, stateR
-
-    @staticmethod
-    def get_interface_values_arithmetic(refBLK):
-
-        # Concatenate mesh state and ghost block states
-        catx = np.concatenate((refBLK.ghost.W.state.U, refBLK.state.U, refBLK.ghost.E.state.U), axis=1)
-        caty = np.concatenate((refBLK.ghost.S.state.U, refBLK.state.U, refBLK.ghost.N.state.U), axis=0)
-
-        # Compute arithmetic mean
-        eastU = 0.5 * (catx[:, 1:-1, :] + catx[:, 2:, :])
-        westU = 0.5 * (catx[:, :-2, :] + catx[:, 1:-1, :])
-        northU = 0.5 * (caty[1:-1, :, :] + caty[2:, :, :])
-        southU = 0.5 * (caty[:-2, :, :] + caty[1:-1, :, :])
-
-        return eastU, westU, northU, southU
-
-    def get_gradU(self, refBLK):
-
-        # Concatenate mesh state and ghost block states
-        interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values_arithmetic(refBLK)
-
-        # Calculate Side Length
-        lengthE = refBLK.mesh.east_side_length()[:, :, np.newaxis]
-        lengthW = refBLK.mesh.west_side_length()[:, :, np.newaxis]
-        lengthN = refBLK.mesh.north_side_length()[:, :, np.newaxis]
-        lengthS = refBLK.mesh.south_side_length()[:, :, np.newaxis]
-
-        # Get each face's contribution to dUdx
-        E = interfaceE * refBLK.mesh.EW_norm_x[0:, 1:,  np.newaxis] * lengthE
-        W = interfaceW * refBLK.mesh.EW_norm_x[0:, :-1, np.newaxis] * lengthW * (-1)
-        N = interfaceN * refBLK.mesh.NS_norm_x[1:, 0:,  np.newaxis] * lengthN
-        S = interfaceS * refBLK.mesh.NS_norm_x[:-1, 0:, np.newaxis] * lengthS * (-1)
-
-        # Compute dUdx
-        dUdx = (E + W + N + S) / refBLK.mesh.A[:, :, np.newaxis]
-
-        # Get each face's contribution to dUdy
-        E = interfaceE * refBLK.mesh.EW_norm_y[0:, 1:,  np.newaxis] * lengthE
-        W = interfaceW * refBLK.mesh.EW_norm_y[0:, :-1, np.newaxis] * lengthW * (-1)
-        N = interfaceN * refBLK.mesh.NS_norm_y[1:, 0:,  np.newaxis] * lengthN
-        S = interfaceS * refBLK.mesh.NS_norm_y[:-1, 0:, np.newaxis] * lengthS * (-1)
-
-        # Compute dUdy
-        dUdy = (E + W + N + S) / refBLK.mesh.A[:, :, np.newaxis]
-
-        return dUdx, dUdy
-

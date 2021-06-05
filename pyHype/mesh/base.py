@@ -70,8 +70,14 @@ class Mesh:
         self.dx     = self.Lx / (self.nx + 1)
         self.dy     = self.Ly / (self.ny + 1)
 
-        self.normx = np.zeros((self.ny + 1, self.nx + 1))
-        self.normy = np.zeros((self.ny + 1, self.nx + 1))
+        self.EW_norm_x = np.zeros((1, self.nx + 1))
+        self.EW_norm_y = np.zeros((1, self.nx + 1))
+
+        self.NS_norm_x = np.zeros((self.ny + 1, 1))
+        self.NS_norm_y = np.zeros((self.ny + 1, 1))
+
+        self.thetax = np.zeros((self.nx + 1))
+        self.thetay = np.zeros((self.ny + 1))
 
     def create_mesh(self):
 
@@ -97,19 +103,85 @@ class Mesh:
         self.yc[1:-1, 1:-1] = yc
 
     def compute_normal(self) -> None:
+        """
+        Computes the x and y components of the normal vector for each cell boundary. For storage efficiency, the results
+        are stored for each mesh line in the x and y directions. To make this clear, consider the following 3 x 3 mesh:
+                      ^
+                      |nx3
+            3   O---------O---------O
+                |ny1      |ny2      |ny3
+                |-->  ^   |-->      |-->
+                |     |nx2|         |
+            2   O---------O---------O
+                |         |         |
+                |     ^   |         |
+                |     |nx1|         |
+            1   O---------O---------O
 
-        self.normx = np.zeros((self.ny+1, 2))
-        self.normy = np.zeros((self.nx+1, 2))
-        print('AAAAAAAAAAAAA')
+                1         2         3
 
-        theta = np.arctan((self.yc[:, 0] - self.yc[:, -1])/(self.xc[:, -1] - self.xc[:, 0]))
-        self.normx[:, 0], self.normx[:, 1] = np.sin(theta), np.cos(theta)
+        where nx1 is the normal vector for the horizontal line of nodes 1, nx2 is the normal vector for the horizontal
+        line of nodes 2, etc. Same applies for ny1, ny2...etc.
 
-        theta = np.arctan((self.xc[0, :] - self.xc[-1, :])/(self.yc[-1, :] - self.yc[0, :]))
-        self.normy[:, 0], self.normy[:, 1] = np.cos(theta), np.sin(theta)
+        Note that the grid does not have to be alligned with the cartesian axis, this example was done so for clarity.
 
-        print(self.normx)
-        print(self.normy)
+        The resulting normx and normy vectors are as such:
+
+        normx = [nx1_x, nx1_y
+                 nx2_x, nx2_y
+                 nx3_x, nx3_y]
+
+        normy = [ny1_x, ny1_y
+                 ny2_x, ny2_y
+                 ny3_x, ny3_y]
+
+        """
+
+        # Angle and normal vector for y-aligned nodes (used for left and right sides of cells)
+
+        # Numerator and denominator for arctan
+        num = self.xc[1, :] - self.xc[-2, :]
+        den = self.yc[-2, :] - self.yc[1, :]
+
+        # Check for zero denominator
+        _non_zero_den = den != 0
+        _zero_den = den == 0
+
+        # Calculate thetax
+        self.thetax[_non_zero_den] = np.arctan(num[_non_zero_den] / den[_non_zero_den])
+        self.thetax[_zero_den] = 0
+
+        # Calculate normal vector
+        self.EW_norm_x[0, :] = np.cos(self.thetax)
+        self.EW_norm_y[0, :] = np.sin(self.thetax)
+
+        # Angle and normal vector for x-aligned nodes (used for top and bottom sides of cells)
+
+        # Numerator and denominator for arctan
+        num = self.yc[:, 1] - self.yc[:, -2]
+        den = self.xc[:, -2] - self.xc[:, 1]
+
+        # Check for zero denominator
+        _non_zero_den = den != 0
+        _zero_den = den == 0
+
+        # Calculate thetax
+        self.thetay[_non_zero_den] = np.pi / 2 - np.arctan(num[_non_zero_den] / den[_non_zero_den])
+        self.thetay[_zero_den] = np.pi / 2
+
+        # Calculate normal vector
+        self.NS_norm_x[:, 0] = np.cos(self.thetay)
+        self.NS_norm_y[:, 0] = np.sin(self.thetay)
+
+        print('------------------------------------------')
+        print(180 * self.thetax / np.pi)
+        print(self.EW_norm_x)
+        print(self.EW_norm_y)
+
+        print('------------------------------------------')
+        print(180 * self.thetay / np.pi)
+        print(self.NS_norm_x)
+        print(self.NS_norm_y)
 
     def compute_cell_area(self):
         """
@@ -172,6 +244,18 @@ class Mesh:
         yc = 0.25 * (y[1:, 0:-1] + y[1:, 1:] + y[0:-1, 0:-1] + y[0:-1, 1:])
 
         return xc, yc
+
+    def east_side_length(self):
+        return np.sqrt(((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 + (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2))
+
+    def west_side_length(self):
+        return np.sqrt(((self.xc[1:, :-1] - self.xc[:-1, :-1]) ** 2 + (self.yc[1:, :-1] - self.yc[:-1, :-1]) ** 2))
+
+    def north_side_length(self):
+        return np.sqrt(((self.xc[1:, :-1] - self.xc[1:, 1:]) ** 2 + (self.yc[1:, :-1] - self.yc[1:, 1:]) ** 2))
+
+    def south_side_length(self):
+        return np.sqrt(((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 + (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2))
 
 
 class Vertices:

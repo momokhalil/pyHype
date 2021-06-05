@@ -36,7 +36,10 @@ __OPTIONAL__ = ['alpha', 'write_time']
 
 
 class ProblemInput:
-    def __init__(self, input_dict: dict, mesh_dict: dict):
+    def __init__(self,
+                 input_dict: dict,
+                 mesh_dict: dict
+                 ) -> None:
         """
         Sets required input parametes from input parameter dict. Initialized values to default, with the correct type
         """
@@ -59,14 +62,14 @@ class ProblemInput:
                 self.__setattr__(opt_name, input_dict[opt_name])
 
     @staticmethod
-    def _check_input_dict(input_dict):
+    def _check_input_dict(input_dict: dict) -> None:
         for key in __REQUIRED__:
             if key not in input_dict.keys():
                 raise KeyError(key + ' not found in inputs.')
 
 
 class Euler2DSolver:
-    def __init__(self, input_dict: dict):
+    def __init__(self, input_dict: dict) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
         # Store mesh features required to create block descriptions
@@ -82,16 +85,21 @@ class Euler2DSolver:
         # Create dictionary that describes each block in mesh
 
         # Get function that creates the dictionary of block description dictionaries.
-        mesh_func = meshes.DEFINED_MESHES[mesh_name]
+        _mesh_func = meshes.DEFINED_MESHES[mesh_name]
         # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
-        mesh_dict = mesh_func(nx=nx, ny=ny)
+        _mesh_dict = _mesh_func(nx=nx, ny=ny)
         # Initialise dictionary to store a BlockDescription for each block in the mesh
-        mesh_desc = {}
+        _mesh_desc = {}
         # Create BlockDescription for each block in the mesh
-        for blk, blkData in mesh_dict.items():
-            mesh_desc[blk] = BlockDescription(blkData)
+        for blk, blkData in _mesh_dict.items():
+            _mesh_desc[blk] = BlockDescription(blkData)
         # Create ProblemInput to store inputs and mesh description
-        self.inputs = ProblemInput(input_dict, mesh_desc)
+        self.inputs = ProblemInput(input_dict, _mesh_desc)
+
+        print(execution_prints.pyhype)
+        print(execution_prints.lice)
+        print(execution_prints.began_solving + self.inputs.problem_type)
+        print('Date and time: ', datetime.today())
 
         # Create Blocks
         self._blocks = Blocks(self.inputs)
@@ -121,7 +129,6 @@ class Euler2DSolver:
     def set_IC(self):
 
         problem_type = self.inputs.problem_type
-        print(problem_type)
         g = self.inputs.gamma
         ny = self.inputs.ny
         nx = self.inputs.nx
@@ -195,20 +202,20 @@ class Euler2DSolver:
             # High pressure zone
             rhoL = 4.6968
             pL = 404400.0
-            uL = 0.00
+            uL = 10.0
             vL = 0.0
-            eL = pL / (g - 1)
+            eL = pL / (g - 1) + rhoL * (uL**2 + vL**2) / 2
 
             # Low pressure zone
             rhoR = 1.1742
             pR = 101100.0
-            uR = 0.00
+            uR = 30.00
             vR = 0.0
-            eR = pR / (g - 1)
+            eR = pR / (g - 1) + rhoR * (uR**2 + vR**2) / 2
 
             # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL])
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR])
 
             # Fill state vector in each block
             for block in self.blocks:
@@ -218,36 +225,6 @@ class Euler2DSolver:
                             block.state.U[i, j, :] = QL
                         else:
                             block.state.U[i, j, :] = QR
-                block.state.non_dim()
-
-        elif problem_type == 'shocktube':
-
-            # High pressure zone
-            rhoL = 4.6968
-            pL = 404400.0
-            uL = 0.0
-            vL = 0.0
-            eL = pL / (g - 1)
-
-            # Low pressure zone
-            rhoR = 1.1742
-            pR = 101100.0
-            uR = 0.0
-            vR = 0.0
-            eR = pR / (g - 1)
-
-            # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
-
-            # Fill state vector in each block
-            for block in self.blocks:
-                for i in range(ny):
-                    for j in range(nx):
-                        if block.mesh.x[i, j] <= 5:
-                            block.state.U[i, j, :] = QR
-                        else:
-                            block.state.U[i, j, :] = QL
                 block.state.non_dim()
 
     def set_BC(self):
@@ -268,10 +245,6 @@ class Euler2DSolver:
         return dt
 
     def solve(self):
-
-        print(execution_prints.pyhype)
-        print(execution_prints.began_solving + self.inputs.problem_type)
-        print('Date and time: ', datetime.today())
 
         print()
         print('----------------------------------------------------------------------------------------')
@@ -303,16 +276,6 @@ class Euler2DSolver:
 
             # print('update block')
             self._blocks.update(dt)
-
-            """fig, ax = plt.subplots()
-            ax.scatter(self._blocks.blocks[1].mesh.x, self._blocks.blocks[1].mesh.y)
-            ax.scatter(self._blocks.blocks[1].boundaryBLK.W.x, self._blocks.blocks[1].boundaryBLK.W.y)
-            ax.scatter(self._blocks.blocks[1].boundaryBLK.E.x, self._blocks.blocks[1].boundaryBLK.E.y)
-            ax.scatter(self._blocks.blocks[1].boundaryBLK.S.x, self._blocks.blocks[1].boundaryBLK.S.y)
-            ax.scatter(self._blocks.blocks[1].boundaryBLK.N.x, self._blocks.blocks[1].boundaryBLK.N.y)
-
-            fig.set_size_inches(5, 10)
-            plt.show()"""
 
             #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
 

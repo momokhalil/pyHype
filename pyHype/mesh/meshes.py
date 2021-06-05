@@ -115,7 +115,6 @@ def chamber(nx, ny):
     block1 = {'nBLK': 1,
               'NW': [0, 20], 'NE': [10, 30],
               'SW': [0, 0],   'SE': [10, -10],
-
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
