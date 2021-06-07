@@ -1,9 +1,12 @@
 from pyHype.solvers import solver
+import numpy as np
+import matplotlib.pyplot as plt
 
 explosion = {'problem_type':            'explosion',
              'IC_type':                 'from_IC',
              'flux_function':           'Roe',
              'reconstruction_type':     'Primitive',
+             'interface_interpolation': 'arithmetic_average',
              'realplot':                True,
              'makeplot':                False,
              'time_it':                 False,
@@ -24,3 +27,4 @@ explosion = {'problem_type':            'explosion',
 
 exp = solver.Euler2DSolver(explosion)
 exp.solve()
+

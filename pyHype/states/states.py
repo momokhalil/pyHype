@@ -265,6 +265,17 @@ class PrimitiveState(State):
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
 
+    def get_U_array(self):
+
+        U = np.zeros_like(self.W)
+
+        U[:, :, 0] = self.rho
+        U[:, :, 1] = self.u * self.rho
+        U[:, :, 2] = self.v * self.rho
+        U[:, :, 3] = self.p / (self.g - 1) + 0.5 * (self.u ** 2 + self.v ** 2) / self.rho
+
+        return U
+
 
 class ConservativeState(State):
     """
@@ -444,6 +455,7 @@ class ConservativeState(State):
         """
 
         """
+        print('hereeeeeeeeeeeeeee')
         self.rho    = W_vector[:, :, 0].copy()
         self.rhou   = self.rho * W_vector[:, :, 1]
         self.rhov   = self.rho * W_vector[:, :, 2]
@@ -451,7 +463,6 @@ class ConservativeState(State):
 
 
         self.set_state_from_vars()
-
 
 
     def from_primitive_state_vars(self,
@@ -518,6 +529,16 @@ class ConservativeState(State):
 
         self.set_vars_from_state()
 
+    def get_W_array(self):
+
+        W = np.zeros_like(self.U)
+
+        W[:, :, 0] = self.rho
+        W[:, :, 1] = self.u()
+        W[:, :, 2] = self.v()
+        W[:, :, 3] = self.p()
+
+        return W
 
 class RoePrimitiveState(PrimitiveState):
     """

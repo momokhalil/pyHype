@@ -263,6 +263,51 @@ class MUSCLFiniteVolumeMethod:
 
         return stateL, stateR
 
+    def get_interface_values(self, refBLK):
+
+        if self.inputs.interface_interpolation == 'arithmetic_average':
+            eastU, westU, northU, southU = self.get_interface_values_arithmetic(refBLK)
+            return eastU, westU, northU, southU
+        else:
+            raise ValueError('Interface Interpolation method is not defined.')
+
+    def get_interface_values_arithmetic(self, refBLK) -> [np.ndarray]:
+
+        # Concatenate mesh state and ghost block states
+        if self.inputs.reconstruction_type == 'Primitive':
+            _W = refBLK.state.get_W_array()
+            catx = np.concatenate((refBLK.ghost.W.state.get_W_array(),
+                                   _W,
+                                   refBLK.ghost.E.state.get_W_array()),
+                                  axis=1)
+
+            caty = np.concatenate((refBLK.ghost.N.state.get_W_array(),
+                                   _W,
+                                   refBLK.ghost.S.state.get_W_array()),
+                                  axis=0)
+
+        elif self.inputs.reconstruction_type == 'Conservative':
+            catx = np.concatenate((refBLK.ghost.W.state.U,
+                                   refBLK.state.U,
+                                   refBLK.ghost.E.state.get_W_array()),
+                                  axis=1)
+
+            caty = np.concatenate((refBLK.ghost.N.state.U,
+                                   refBLK.state.U,
+                                   refBLK.ghost.S.state.U),
+                                  axis=0)
+
+        else:
+            raise ValueError('Undefined reconstruction type')
+
+        # Compute arithmetic mean
+        interfaceE = 0.5 * (catx[:, 1:-1, :] + catx[:, 2:, :])
+        interfaceW = 0.5 * (catx[:, :-2, :]  + catx[:, 1:-1, :])
+        interfaceN = 0.5 * (caty[1:-1, :, :] + caty[2:, :, :])
+        interfaceS = 0.5 * (caty[:-2, :, :]  + caty[1:-1, :, :])
+
+        return interfaceE, interfaceW, interfaceN, interfaceS
+
     @abstractmethod
     def reconstruct_state(self,
                           U: State
@@ -273,11 +318,5 @@ class MUSCLFiniteVolumeMethod:
         pass
 
     @abstractmethod
-    def get_gradW(self, refBLK):
-        dWdy = np.zeros((self.ny, self.nx, 4))
-        pass
-
-    @abstractmethod
-    def get_gradU(self, refBLK):
-        dUdx = np.zeros((self.ny, self.nx, 4))
+    def get_grad(self, refBLK):
         pass

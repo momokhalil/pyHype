@@ -40,6 +40,17 @@ class BlockDescription:
         self.BCTypeS = blk_input['BCTypeS']
 
 
+class Vertices:
+    def __init__(self, NE: tuple[Union[float, int], Union[float, int]],
+                       NW: tuple[Union[float, int], Union[float, int]],
+                       SE: tuple[Union[float, int], Union[float, int]],
+                       SW: tuple[Union[float, int], Union[float, int]]) -> None:
+        self.NW = NW
+        self.NE = NE
+        self.SW = SW
+        self.SE = SE
+
+
 class Mesh:
     def __init__(self, inputs, mesh_data):
 
@@ -78,6 +89,11 @@ class Mesh:
 
         self.thetax = np.zeros((self.nx + 1))
         self.thetay = np.zeros((self.ny + 1))
+
+        self.east_face_midpoint_x, self.east_face_midpoint_y = self.get_east_face_midpoint()
+        self.west_face_midpoint_x, self.west_face_midpoint_y = self.get_west_face_midpoint()
+        self.north_face_midpoint_x, self.north_face_midpoint_y = self.get_north_face_midpoint()
+        self.south_face_midpoint_x, self.south_face_midpoint_y = self.get_south_face_midpoint()
 
     def create_mesh(self):
 
@@ -173,16 +189,6 @@ class Mesh:
         self.NS_norm_x[:, 0] = np.cos(self.thetay)
         self.NS_norm_y[:, 0] = np.sin(self.thetay)
 
-        print('------------------------------------------')
-        print(180 * self.thetax / np.pi)
-        print(self.EW_norm_x)
-        print(self.EW_norm_y)
-
-        print('------------------------------------------')
-        print(180 * self.thetay / np.pi)
-        print(self.NS_norm_x)
-        print(self.NS_norm_y)
-
     def compute_cell_area(self):
         """
         Calculates area of every cell in this Block's mesh. A cell is represented as follows:
@@ -207,18 +213,12 @@ class Mesh:
         """
 
         # Side lengths
-        s1 = np.sqrt((self.xc[1:, :-1] - self.xc[:-1, :-1]) ** 2 +
-                     (self.yc[1:, :-1] - self.yc[:-1, :-1]) ** 2)
+        s1 = self.west_side_length()
+        s3 = self.east_side_length()
+        s2 = self.north_side_length()
+        s4 = self.south_side_length()
 
-        s3 = np.sqrt((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 +
-                     (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2)
-
-        s2 = np.sqrt((self.xc[1:, :-1] - self.xc[1:, 1:]) ** 2 +
-                     (self.yc[1:, :-1] - self.yc[1:, 1:]) ** 2)
-
-        s4 = np.sqrt((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 +
-                     (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2)
-
+        # Diagonal
         d1 = (self.xc[1:, :-1] - self.xc[:-1, 1:]) ** 2 + \
              (self.yc[1:, :-1] - self.yc[:-1, 1:]) ** 2
 
@@ -232,6 +232,7 @@ class Mesh:
         # Bretschneider formula for quarilateral area
         p1 = (s - s1) * (s - s2) * (s - s3) * (s - s4)
         p2 = s1 * s2 * s3 * s4
+
         self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
 
     @staticmethod
@@ -246,24 +247,45 @@ class Mesh:
         return xc, yc
 
     def east_side_length(self):
-        return np.sqrt(((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 + (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2))
+        return np.sqrt(((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 +
+                        (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2))
 
     def west_side_length(self):
-        return np.sqrt(((self.xc[1:, :-1] - self.xc[:-1, :-1]) ** 2 + (self.yc[1:, :-1] - self.yc[:-1, :-1]) ** 2))
+        return np.sqrt(((self.xc[1:, :-1] - self.xc[:-1, :-1]) ** 2 +
+                        (self.yc[1:, :-1] - self.yc[:-1, :-1]) ** 2))
 
     def north_side_length(self):
-        return np.sqrt(((self.xc[1:, :-1] - self.xc[1:, 1:]) ** 2 + (self.yc[1:, :-1] - self.yc[1:, 1:]) ** 2))
+        return np.sqrt(((self.xc[1:, :-1] - self.xc[1:, 1:]) ** 2 +
+                        (self.yc[1:, :-1] - self.yc[1:, 1:]) ** 2))
 
     def south_side_length(self):
-        return np.sqrt(((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 + (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2))
+        return np.sqrt(((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 +
+                        (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2))
 
+    def get_east_face_midpoint(self):
 
-class Vertices:
-    def __init__(self, NE: tuple[Union[float, int], Union[float, int]],
-                       NW: tuple[Union[float, int], Union[float, int]],
-                       SE: tuple[Union[float, int], Union[float, int]],
-                       SW: tuple[Union[float, int], Union[float, int]]) -> None:
-        self.NW = NW
-        self.NE = NE
-        self.SW = SW
-        self.SE = SE
+        x = 0.5 * (self.xc[1:, :-1] + self.xc[1:, 1:])
+        y = 0.5 * (self.yc[1:, :-1] + self.yc[1:, 1:])
+
+        return x[:, :, np.newaxis], y[:, :, np.newaxis]
+
+    def get_west_face_midpoint(self):
+
+        x = 0.5 * (self.xc[:-1, :-1] + self.xc[:-1, 1:])
+        y = 0.5 * (self.yc[:-1, :-1] + self.yc[:-1, 1:])
+
+        return x[:, :, np.newaxis], y[:, :, np.newaxis]
+
+    def get_north_face_midpoint(self):
+
+        x = 0.5 * (self.xc[1:, :-1] + self.xc[1:, 1:])
+        y = 0.5 * (self.yc[1:, :-1] + self.yc[1:, 1:])
+
+        return x[:, :, np.newaxis], y[:, :, np.newaxis]
+
+    def get_south_face_midpoint(self):
+
+        x = 0.5 * (self.xc[:-1, :-1] + self.xc[:-1, 1:])
+        y = 0.5 * (self.yc[:-1, :-1] + self.yc[:-1, 1:])
+
+        return x[:, :, np.newaxis], y[:, :, np.newaxis]

@@ -25,6 +25,7 @@ import pyHype.utils.utils as utils
 
 _ZERO_VEC = np.zeros((1, 1, 4))
 
+
 class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
 
@@ -37,11 +38,56 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
             self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
             self.Uy = ConservativeState(inputs=self.inputs, nx=self.ny + 2, ny=1)
 
+    @staticmethod
+    def high_order_term_EW(refBLK, gradx, grady):
+
+        #stateL = np.concatenate((refBLK.ghost.W.state.U, refBLK.state.U), axis=1)
+
+        high_ord_L = gradx * (refBLK.mesh.east_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
+                   + grady * (refBLK.mesh.east_face_midpoint_y - refBLK.mesh.y[:, :, np.newaxis])
+
+        #stateR = np.concatenate((refBLK.state.U, refBLK.ghost.E.state.U), axis=1)
+
+        high_ord_R = gradx * (refBLK.mesh.west_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
+                   + grady * (refBLK.mesh.west_face_midpoint_y - refBLK.mesh.y[:, :, np.newaxis])
+
+        return high_ord_L, high_ord_R
+
+    @staticmethod
+    def high_order_term_NS(refBLK, gradx, grady):
+
+        high_ord_L = gradx * (refBLK.mesh.south_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
+                   + grady * (refBLK.mesh.south_face_midpoint_y - refBLK.mesh.y[:, :, np.newaxis])
+
+        high_ord_R = gradx * (refBLK.mesh.north_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
+                   + grady * (refBLK.mesh.north_face_midpoint_y - refBLK.mesh.y[:, :, np.newaxis])
+
+        return high_ord_L, high_ord_R
+
+
     def get_flux(self, refBLK):
         """
         Compute the flux at each cell center using the Green Gauss reconstruction method and the approximate Riemann
         solver and slope limiter of choice.
         """
+
+        # Compute x and y direction gradients
+        gradx, grady = self.get_grad(refBLK)
+
+        # East-West high order term for left and right states on each east-west cell interface
+        high_ord_EW_L, high_ord_EW_R = self.high_order_term_EW(refBLK, gradx, grady)
+
+        # North-South high order term for left and right states on each north-south cell interface
+        high_ord_NS_L, high_ord_NS_R = self.high_order_term_NS(refBLK, gradx, grady)
+
+        # East-West direction left and right states
+        state_EW_L = np.concatenate((refBLK.ghost.W.state.U, refBLK.state.U), axis=1)
+        state_EW_R = np.concatenate((refBLK.state.U, refBLK.ghost.E.state.U), axis=1)
+
+        # North-South direction left and right states
+        state_NS_L = np.concatenate((refBLK.state.U, refBLK.ghost.S.state.U), axis=0)
+        state_NS_R = np.concatenate((refBLK.ghost.N.state.U, refBLK.state.U), axis=0)
+
 
         # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
@@ -50,7 +96,6 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         self.UL.reset(shape=(1, self.nx + 1, 4))
         self.UR.reset(shape=(1, self.nx + 1, 4))
 
-        self.get_dUdx(refBLK)
 
         # Iterate over all rows in block
         for row in range(self.ny):
@@ -83,32 +128,21 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
 
 
     def reconstruct_state(self, state: np.ndarray) -> [np.ndarray]:
-        limited_state   = self.flux_limiter.limit(state) * (state[:, 2:, :] - state[:, :-2, :]) / 4
 
-        stateL = state[:, :-1, :] + np.concatenate((_ZERO_VEC, limited_state), axis=1)
-        stateR = state[:, 1:, :] - np.concatenate((limited_state, _ZERO_VEC), axis=1)
 
         return stateL, stateR
 
-    @staticmethod
-    def get_interface_values_arithmetic(refBLK):
+    def get_grad(self, refBLK):
+
+        print(refBLK.ghost.N.state.U[:, :, 0].shape, refBLK.ghost.N.state.rho.shape)
+        print(refBLK.ghost.S.state.U[:, :, 0].shape)
+        print(refBLK.ghost.E.state.U[:, :, 0].shape)
+        print(refBLK.ghost.W.state.U[:, :, 0].shape)
+
+        print(refBLK.state.U[:, :, 0].shape, refBLK.state.rho.shape)
 
         # Concatenate mesh state and ghost block states
-        catx = np.concatenate((refBLK.ghost.W.state.U, refBLK.state.U, refBLK.ghost.E.state.U), axis=1)
-        caty = np.concatenate((refBLK.ghost.S.state.U, refBLK.state.U, refBLK.ghost.N.state.U), axis=0)
-
-        # Compute arithmetic mean
-        eastU = 0.5 * (catx[:, 1:-1, :] + catx[:, 2:, :])
-        westU = 0.5 * (catx[:, :-2, :] + catx[:, 1:-1, :])
-        northU = 0.5 * (caty[1:-1, :, :] + caty[2:, :, :])
-        southU = 0.5 * (caty[:-2, :, :] + caty[1:-1, :, :])
-
-        return eastU, westU, northU, southU
-
-    def get_gradU(self, refBLK):
-
-        # Concatenate mesh state and ghost block states
-        interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values_arithmetic(refBLK)
+        interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values(refBLK)
 
         # Calculate Side Length
         lengthE = refBLK.mesh.east_side_length()[:, :, np.newaxis]
@@ -135,4 +169,3 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         dUdy = (E + W + N + S) / refBLK.mesh.A[:, :, np.newaxis]
 
         return dUdx, dUdy
-

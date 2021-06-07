@@ -108,13 +108,18 @@ class GhostBlockNorth(GhostBlock):
 
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.N.get_south_ghost()
+        self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
         self.state.U[:, :, :] = self.ref_BLK.get_north_edge()
+        self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
+        print('NORTH BCCCCCCCCCCCCCCC')
+        print(self.ref_BLK.get_north_ghost().shape)
         self.state.U = self.ref_BLK.get_north_ghost()
         self.state.U[:, :, 2] *= -1
+        self.state.set_vars_from_state()
 
 
 class GhostBlockSouth(GhostBlock):
@@ -146,13 +151,16 @@ class GhostBlockSouth(GhostBlock):
 
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.S.get_north_ghost()
+        self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
         self.state.U[:, :, :] = self.ref_BLK.get_south_edge()
+        self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
         self.state.U = self.ref_BLK.get_south_ghost()
         self.state.U[:, :, 2] *= -1
+        self.state.set_vars_from_state()
 
 
 class GhostBlockEast(GhostBlock):
@@ -184,13 +192,16 @@ class GhostBlockEast(GhostBlock):
 
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.E.get_west_ghost()
+        self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
         self.state.U[:, :, :] = self.ref_BLK.get_east_edge()
+        self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
         self.state.U = self.ref_BLK.get_east_ghost()
         self.state.U[:, :, 1] *= -1
+        self.state.set_vars_from_state()
 
 
 class GhostBlockWest(GhostBlock):
@@ -222,10 +233,13 @@ class GhostBlockWest(GhostBlock):
 
     def set_BC_none(self):
         self.state.U = self.ref_BLK.neighbors.W.get_east_ghost()
+        self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
         self.state.U[:, :, :] = self.ref_BLK.get_west_edge()
+        self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
         self.state.U = self.ref_BLK.get_west_ghost()
         self.state.U[:, :, 1] *= -1
+        self.state.set_vars_from_state()
