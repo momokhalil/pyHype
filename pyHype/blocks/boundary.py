@@ -115,8 +115,6 @@ class GhostBlockNorth(GhostBlock):
         self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
-        print('NORTH BCCCCCCCCCCCCCCC')
-        print(self.ref_BLK.get_north_ghost().shape)
         self.state.U = self.ref_BLK.get_north_ghost()
         self.state.U[:, :, 2] *= -1
         self.state.set_vars_from_state()

@@ -41,6 +41,8 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
     @staticmethod
     def high_order_term_EW(refBLK, gradx, grady):
 
+        _ZERO_COL = np.zeros((refBLK.mesh.ny, 1, 4))
+
         #stateL = np.concatenate((refBLK.ghost.W.state.U, refBLK.state.U), axis=1)
 
         high_ord_L = gradx * (refBLK.mesh.east_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
@@ -51,10 +53,12 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         high_ord_R = gradx * (refBLK.mesh.west_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
                    + grady * (refBLK.mesh.west_face_midpoint_y - refBLK.mesh.y[:, :, np.newaxis])
 
-        return high_ord_L, high_ord_R
+        return np.concatenate((_ZERO_COL, high_ord_L), axis=1), np.concatenate((high_ord_R, _ZERO_COL), axis=1)
 
     @staticmethod
     def high_order_term_NS(refBLK, gradx, grady):
+
+        _ZERO_ROW = np.zeros((1, refBLK.mesh.nx, 4))
 
         high_ord_L = gradx * (refBLK.mesh.south_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
                    + grady * (refBLK.mesh.south_face_midpoint_y - refBLK.mesh.y[:, :, np.newaxis])
@@ -62,7 +66,7 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         high_ord_R = gradx * (refBLK.mesh.north_face_midpoint_x - refBLK.mesh.x[:, :, np.newaxis]) \
                    + grady * (refBLK.mesh.north_face_midpoint_y - refBLK.mesh.y[:, :, np.newaxis])
 
-        return high_ord_L, high_ord_R
+        return np.concatenate((high_ord_L, _ZERO_ROW), axis=0), np.concatenate((_ZERO_ROW, high_ord_R), axis=0)
 
 
     def get_flux(self, refBLK):
@@ -87,6 +91,26 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         # North-South direction left and right states
         state_NS_L = np.concatenate((refBLK.state.U, refBLK.ghost.S.state.U), axis=0)
         state_NS_R = np.concatenate((refBLK.ghost.N.state.U, refBLK.state.U), axis=0)
+
+        # Values at east, west, north, south quadrature points
+        quad_W = state_EW_R + high_ord_EW_R
+        quad_E = state_EW_L + high_ord_EW_L
+
+        quad_N = state_NS_L + high_ord_NS_L
+        quad_S = state_NS_R + high_ord_NS_R
+
+        # Barth-Jespersen Limiter here for now
+        max_avg = np.maximum(np.maximum(state_EW_L[:, :-1, :], state_EW_R[:, 1:, :]),
+                             np.maximum(state_NS_L[:-1, :, :], state_NS_R[1:, :, :]))
+
+        u_max = np.maximum(refBLK.state.U, max_avg)
+
+        min_avg = np.minimum(np.minimum(state_EW_L[:, :-1, :], state_EW_R[:, 1:, :]),
+                             np.minimum(state_NS_L[:-1, :, :], state_NS_R[1:, :, :]))
+
+        u_min = np.minimum(refBLK.state.U, min_avg)
+
+        print(max_avg.shape)
 
 
         # --------------------------------------------------------------------------------------------------------------
@@ -134,13 +158,13 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
 
     def get_grad(self, refBLK):
 
-        print(refBLK.ghost.N.state.U[:, :, 0].shape, refBLK.ghost.N.state.rho.shape)
+        """print(refBLK.ghost.N.state.U[:, :, 0].shape, refBLK.ghost.N.state.rho.shape)
         print(refBLK.ghost.S.state.U[:, :, 0].shape)
         print(refBLK.ghost.E.state.U[:, :, 0].shape)
         print(refBLK.ghost.W.state.U[:, :, 0].shape)
 
         print(refBLK.state.U[:, :, 0].shape, refBLK.state.rho.shape)
-
+"""
         # Concatenate mesh state and ghost block states
         interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values(refBLK)
 
