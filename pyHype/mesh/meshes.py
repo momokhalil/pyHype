@@ -113,8 +113,8 @@ def one_mesh(nx, ny):
 
 def chamber(nx, ny):
     block1 = {'nBLK': 1,
-              'NW': [0, 20], 'NE': [10, 30],
-              'SW': [0, 0],   'SE': [10, -10],
+              'NW': [0, 20], 'NE': [10, 20],
+              'SW': [0, 0],   'SE': [10, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,

@@ -203,14 +203,14 @@ class Euler2DSolver:
             # High pressure zone
             rhoL = 4.6968
             pL = 404400.0
-            uL = 10.0
+            uL = 0.0
             vL = 0.0
             eL = pL / (g - 1) + rhoL * (uL**2 + vL**2) / 2
 
             # Low pressure zone
             rhoR = 1.1742
             pR = 101100.0
-            uR = 30.00
+            uR = 0.00
             vR = 0.0
             eR = pR / (g - 1) + rhoR * (uR**2 + vR**2) / 2
 

@@ -99,18 +99,90 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         quad_N = state_NS_L + high_ord_NS_L
         quad_S = state_NS_R + high_ord_NS_R
 
+        # ------------------------------------------------------------------------------
         # Barth-Jespersen Limiter here for now
+
+        # u_max for interior cells
         max_avg = np.maximum(np.maximum(state_EW_L[:, :-1, :], state_EW_R[:, 1:, :]),
                              np.maximum(state_NS_L[:-1, :, :], state_NS_R[1:, :, :]))
 
         u_max = np.maximum(refBLK.state.U, max_avg)
 
+        # u_min for interior cells
         min_avg = np.minimum(np.minimum(state_EW_L[:, :-1, :], state_EW_R[:, 1:, :]),
                              np.minimum(state_NS_L[:-1, :, :], state_NS_R[1:, :, :]))
 
         u_min = np.minimum(refBLK.state.U, min_avg)
 
-        print(max_avg.shape)
+        # u_max for boundaries
+        max_avg_E = np.maximum(refBLK.state.U[:, -1:, :], refBLK.ghost.E.state.U)
+        max_avg_W = np.maximum(refBLK.state.U[:, :0, :], refBLK.ghost.W.state.U)
+        max_avg_S = np.maximum(refBLK.state.U[:0, :, :], refBLK.ghost.S.state.U)
+        max_avg_N = np.maximum(refBLK.state.U[-1:, :, :], refBLK.ghost.N.state.U)
+
+        # Difference between quadrature point and cell average
+        diff_E = quad_E[:, 1:, :]  - refBLK.state.U
+        diff_W = quad_W[:, :-1, :] - refBLK.state.U
+        diff_N = quad_N[1:, :, :]  - refBLK.state.U
+        diff_S = quad_S[:-1, :, :] - refBLK.state.U
+
+        # Difference between min/max and cell average
+        diff_max = u_max - refBLK.state.U
+        diff_min = u_min - refBLK.state.U
+
+        # Indices for ui,q - ui
+        phiE = np.zeros_like(refBLK.state.U)
+        phiW = np.zeros_like(refBLK.state.U)
+        phiN = np.zeros_like(refBLK.state.U)
+        phiS = np.zeros_like(refBLK.state.U)
+
+        """phiE = np.where(diff_E > 0, np.minimum(1, diff_max / (diff_E + 1e-8)), phiE)
+        phiE = np.where(diff_E < 0, np.minimum(1, diff_min / (diff_E + 1e-8)), phiE)
+        phiE = np.where(diff_E == 0, 1, phiE)
+
+        phiW = np.where(diff_W > 0, np.minimum(1, diff_max / (diff_W + 1e-8)), phiW)
+        phiW = np.where(diff_W < 0, np.minimum(1, diff_min / (diff_W + 1e-8)), phiW)
+        phiW = np.where(diff_W == 0, 1, phiW)
+
+        phiN = np.where(diff_N > 0, np.minimum(1, diff_max / (diff_N + 1e-8)), phiN)
+        phiN = np.where(diff_N < 0, np.minimum(1, diff_min / (diff_N + 1e-8)), phiN)
+        phiN = np.where(diff_N == 0, 1, phiN)
+
+        phiS = np.where(diff_S > 0, np.minimum(1, diff_max / (diff_S + 1e-8)), phiS)
+        phiS = np.where(diff_S < 0, np.minimum(1, diff_min / (diff_S + 1e-8)), phiS)
+        phiS = np.where(diff_S == 0, 1, phiS)
+        
+        phi = np.minimum(np.minimum(phiE, phiW), np.minimum(phiN, phiS))"""
+
+        # Venkatakrishnan
+        y_max = diff_max / (diff_E + 1e-8)
+        y_min = diff_min / (diff_E + 1e-8)
+        phiE = np.where(diff_E > 0, (y_max**2 + 2*y_max)/(y_max**2 + y_max + 2), phiE)
+        phiE = np.where(diff_E < 0, (y_min**2 + 2*y_min)/(y_min**2 + y_min + 2), phiE)
+        phiE = np.where(diff_E == 0, 1, phiE)
+
+        y_max = diff_max / (diff_W + 1e-8)
+        y_min = diff_min / (diff_W + 1e-8)
+        phiW = np.where(diff_W > 0, (y_max**2 + 2*y_max)/(y_max**2 + y_max + 2), phiW)
+        phiW = np.where(diff_W < 0, (y_min**2 + 2*y_min)/(y_min**2 + y_min + 2), phiW)
+        phiW = np.where(diff_W == 0, 1, phiW)
+
+        y_max = diff_max / (diff_N + 1e-8)
+        y_min = diff_min / (diff_N + 1e-8)
+        phiN = np.where(diff_N > 0, (y_max**2 + 2*y_max)/(y_max**2 + y_max + 2), phiN)
+        phiN = np.where(diff_N < 0, (y_min**2 + 2*y_min)/(y_min**2 + y_min + 2), phiN)
+        phiN = np.where(diff_N == 0, 1, phiN)
+
+        y_max = diff_max / (diff_S + 1e-8)
+        y_min = diff_min / (diff_S + 1e-8)
+        phiS = np.where(diff_S > 0, (y_max**2 + 2*y_max)/(y_max**2 + y_max + 2), phiS)
+        phiS = np.where(diff_S < 0, (y_min**2 + 2*y_min)/(y_min**2 + y_min + 2), phiS)
+        phiS = np.where(diff_S == 0, 1, phiS)
+
+        phi = np.minimum(np.minimum(phiE, phiW), np.minimum(phiN, phiS))
+
+        print(phi[:, :, 1])
+
 
 
         # --------------------------------------------------------------------------------------------------------------
