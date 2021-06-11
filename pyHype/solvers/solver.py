@@ -192,7 +192,7 @@ class Euler2DSolver:
             for block in self.blocks:
                 for i in range(ny):
                     for j in range(nx):
-                        if block.mesh.x[i, j] <= 3 and block.mesh.y[i, j] <= 3:
+                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
                             block.state.U[i, j, :] = QR
                         else:
                             block.state.U[i, j, :] = QL
@@ -281,7 +281,7 @@ class Euler2DSolver:
             #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
 
             if self.inputs.realplot:
-                if self.numTimeStep % 1 == 0:
+                if self.numTimeStep % 5 == 0:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,

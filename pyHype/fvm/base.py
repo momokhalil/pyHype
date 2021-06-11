@@ -266,8 +266,8 @@ class MUSCLFiniteVolumeMethod:
     def get_interface_values(self, refBLK):
 
         if self.inputs.interface_interpolation == 'arithmetic_average':
-            eastU, westU, northU, southU = self.get_interface_values_arithmetic(refBLK)
-            return eastU, westU, northU, southU
+            interfaceEW, interfaceNS = self.get_interface_values_arithmetic(refBLK)
+            return interfaceEW, interfaceNS
         else:
             raise ValueError('Interface Interpolation method is not defined.')
 
@@ -289,24 +289,22 @@ class MUSCLFiniteVolumeMethod:
         elif self.inputs.reconstruction_type == 'Conservative':
             catx = np.concatenate((refBLK.ghost.W.state.U,
                                    refBLK.state.U,
-                                   refBLK.ghost.E.state.get_W_array()),
+                                   refBLK.ghost.E.state.U),
                                   axis=1)
 
-            caty = np.concatenate((refBLK.ghost.N.state.U,
+            caty = np.concatenate((refBLK.ghost.S.state.U,
                                    refBLK.state.U,
-                                   refBLK.ghost.S.state.U),
+                                   refBLK.ghost.N.state.U),
                                   axis=0)
 
         else:
             raise ValueError('Undefined reconstruction type')
 
         # Compute arithmetic mean
-        interfaceE = 0.5 * (catx[:, 1:-1, :] + catx[:, 2:, :])
-        interfaceW = 0.5 * (catx[:, :-2, :]  + catx[:, 1:-1, :])
-        interfaceN = 0.5 * (caty[1:-1, :, :] + caty[2:, :, :])
-        interfaceS = 0.5 * (caty[:-2, :, :]  + caty[1:-1, :, :])
+        interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
+        interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
 
-        return interfaceE, interfaceW, interfaceN, interfaceS
+        return interfaceEW, interfaceNS
 
     @abstractmethod
     def reconstruct_state(self,

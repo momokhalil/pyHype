@@ -24,6 +24,8 @@ from pyHype.mesh.base import BlockDescription, Mesh
 from pyHype.input.input_file_builder import ProblemInput
 
 from pyHype.fvm import SecondOrderGreenGauss
+from pyHype.fvm.experimental import SecondOrderGreenGauss as SecondOrderGreenGauss_EXP
+
 from pyHype.states.states import ConservativeState
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 
@@ -208,11 +210,17 @@ class QuadBlock:
         self.nS                 = NormalVector(self.thetaS)
         self.nN                 = NormalVector(self.thetaN)
 
+        # Gradient
+        self.gradx              = np.zeros_like(self.mesh.x)
+        self.grady              = np.zeros_like(self.mesh.y)
+
         # Set finite volume method
         fvm = self.inputs.finite_volume_method
 
         if fvm == 'SecondOrderGreenGauss':
             self.fvm = SecondOrderGreenGauss(self.inputs, self.global_nBLK)
+        elif fvm == 'SecondOrderGreenGauss_EXP':
+            self.fvm = SecondOrderGreenGauss_EXP(self.inputs, self.global_nBLK)
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
 
@@ -288,11 +296,15 @@ class QuadBlock:
         # Get normal vector arrays
         self.mesh.compute_normal()
 
+        # Compute face midpoints
+        self.mesh.EW_midpoint_x, self.mesh.EW_midpoint_y = self.mesh.get_EW_face_midpoint()
+        self.mesh.NS_midpoint_x, self.mesh.NS_midpoint_y = self.mesh.get_NS_face_midpoint()
+
         # --------------------------------------------------------------------------------------------------------------
         # DEBUGGING
 
         plt.scatter(self.mesh.x, self.mesh.y, color='black', s=15)
-        plt.scatter(self.mesh.xc, self.mesh.yc, color='steelblue', s=15)
+        plt.scatter(self.mesh.xc, self.mesh.yc, color='mediumslateblue', s=15)
 
         segs1 = np.stack((self.mesh.x, self.mesh.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
@@ -301,13 +313,18 @@ class QuadBlock:
 
         segs1 = np.stack((self.mesh.xc, self.mesh.yc), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='steelblue', linestyles='--', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2, colors='steelblue', linestyles='--', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
         plt.scatter(self.ghost.E.x, self.ghost.E.y, marker='s', color='black', s=15)
         plt.scatter(self.ghost.W.x, self.ghost.W.y, marker='s', color='black', s=15)
         plt.scatter(self.ghost.N.x, self.ghost.N.y, marker='s', color='black', s=15)
         plt.scatter(self.ghost.S.x, self.ghost.S.y, marker='s', color='black', s=15)
+
+        plt.scatter(self.mesh.EW_midpoint_x[:, :, 0], self.mesh.EW_midpoint_y[:, :, 0], marker='^', color='red', s=15)
+        plt.scatter(self.mesh.NS_midpoint_x[:, :, 0], self.mesh.NS_midpoint_y[:, :, 0], marker='x', color='green', s=15)
+
+        #plt.scatter(self.mesh.xc[1:, :], self.mesh.yc[1:, :], marker='^', color='red', s=15)
 
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()

@@ -90,10 +90,10 @@ class Mesh:
         self.thetax = np.zeros((self.nx + 1))
         self.thetay = np.zeros((self.ny + 1))
 
-        self.east_face_midpoint_x, self.east_face_midpoint_y = self.get_east_face_midpoint()
-        self.west_face_midpoint_x, self.west_face_midpoint_y = self.get_west_face_midpoint()
-        self.north_face_midpoint_x, self.north_face_midpoint_y = self.get_north_face_midpoint()
-        self.south_face_midpoint_x, self.south_face_midpoint_y = self.get_south_face_midpoint()
+        self.EW_midpoint_x = None
+        self.EW_midpoint_y = None
+        self.NS_midpoint_x = None
+        self.NS_midpoint_y = None
 
     def create_mesh(self):
 
@@ -189,6 +189,9 @@ class Mesh:
         self.NS_norm_x[:, 0] = np.cos(self.thetay)
         self.NS_norm_y[:, 0] = np.sin(self.thetay)
 
+        print(self.thetax)
+        print(self.thetay)
+
     def compute_cell_area(self):
         """
         Calculates area of every cell in this Block's mesh. A cell is represented as follows:
@@ -247,6 +250,14 @@ class Mesh:
         return xc, yc
 
     def east_side_length(self):
+        """print('-----------------------------------------------')
+        print(self.x)
+        print(self.y)
+        print('-----------------------------------------------')
+        print(self.xc)
+        print(self.yc)
+        print(self.yc[1:, 1:])
+        print(self.yc[:-1, 1:])"""
         return np.sqrt(((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 +
                         (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2))
 
@@ -262,30 +273,16 @@ class Mesh:
         return np.sqrt(((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 +
                         (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2))
 
-    def get_east_face_midpoint(self):
+    def get_EW_face_midpoint(self):
 
-        x = 0.5 * (self.xc[1:, :-1] + self.xc[1:, 1:])
-        y = 0.5 * (self.yc[1:, :-1] + self.yc[1:, 1:])
-
-        return x[:, :, np.newaxis], y[:, :, np.newaxis]
-
-    def get_west_face_midpoint(self):
-
-        x = 0.5 * (self.xc[:-1, :-1] + self.xc[:-1, 1:])
-        y = 0.5 * (self.yc[:-1, :-1] + self.yc[:-1, 1:])
+        x = 0.5 * (self.xc[1:, :] + self.xc[:-1, :])
+        y = 0.5 * (self.yc[1:, :] + self.yc[:-1, :])
 
         return x[:, :, np.newaxis], y[:, :, np.newaxis]
 
-    def get_north_face_midpoint(self):
+    def get_NS_face_midpoint(self):
 
-        x = 0.5 * (self.xc[1:, :-1] + self.xc[1:, 1:])
-        y = 0.5 * (self.yc[1:, :-1] + self.yc[1:, 1:])
-
-        return x[:, :, np.newaxis], y[:, :, np.newaxis]
-
-    def get_south_face_midpoint(self):
-
-        x = 0.5 * (self.xc[:-1, :-1] + self.xc[:-1, 1:])
-        y = 0.5 * (self.yc[:-1, :-1] + self.yc[:-1, 1:])
+        x = 0.5 * (self.xc[:, 1:] + self.xc[:, :-1])
+        y = 0.5 * (self.yc[:, 1:] + self.yc[:, :-1])
 
         return x[:, :, np.newaxis], y[:, :, np.newaxis]
