@@ -28,10 +28,10 @@ class SlopeLimiter:
     def __init__(self, inputs):
         self.inputs = inputs
 
-    def get_slope(self, U: np.ndarray) -> np.ndarray:
+    def get_slope(self, U: np.ndarray, *args) -> np.ndarray:
         pass
 
-    def limit(self, U: np.ndarray) -> np.ndarray:
+    def limit(self, U: np.ndarray, *args) -> np.ndarray:
         pass
 
     @staticmethod

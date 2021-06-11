@@ -25,7 +25,7 @@ from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
 
 
 __DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
-__DEFINED_SLOPE_LIMITERS__ = ['VanAlbada', 'VanLeer']
+__DEFINED_SLOPE_LIMITERS__ = ['VanAlbada', 'VanLeer', 'Venkatakrishnan']
 
 class MUSCLFiniteVolumeMethod:
     def __init__(self,
@@ -185,6 +185,9 @@ class MUSCLFiniteVolumeMethod:
             # Van Albada limiter
             elif _flux_limiter == 'VanAlbada':
                 self.flux_limiter = limiters.VanAlbada(self.inputs)
+            # Venkatakrishnan
+            elif _flux_limiter == 'Venkatakrishnan':
+                self.flux_limiter = limiters.Venkatakrishnan(self.inputs)
         # None
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')

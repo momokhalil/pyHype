@@ -189,8 +189,6 @@ class Mesh:
         self.NS_norm_x[:, 0] = np.cos(self.thetay)
         self.NS_norm_y[:, 0] = np.sin(self.thetay)
 
-        print(self.thetax)
-        print(self.thetay)
 
     def compute_cell_area(self):
         """

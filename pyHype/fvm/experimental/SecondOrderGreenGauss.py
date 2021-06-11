@@ -141,14 +141,6 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
             # Calculate flux at each cell interface
             flux = self.flux_function_Y.get_flux(self.UL, self.UR).reshape(-1, 4)
 
-            """if col == 5:
-                print(refBLK.state.U[:, col, 0])
-                print(self.UL.rho)
-                print(self.UR.rho)
-                print(flux)
-
-                plt.pause(5)"""
-
             # Calculate flux difference between cell interfaces
             self.Flux_Y[:, col, :] = (flux[1:, :] - flux[:-1, :])
 
@@ -175,18 +167,6 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         state_N = np.concatenate((refBLK.ghost.S.state.U, refBLK.state.U), axis=0)
         state_S = np.concatenate((refBLK.state.U, refBLK.ghost.N.state.U), axis=0)
 
-        """print('-------------------------------------------')
-        print(refBLK.ghost.S.state.U[:, :, 0])
-        print(refBLK.ghost.N.state.U[:, :, 0])
-        print('-------------------------------------------')
-        print(state_N[:, :, 0])
-        print(state_S[:, :, 0])
-
-        plt.pause(10)"""
-
-        """plt.contourf(refBLK.mesh.x, refBLK.mesh.y, state_N[1:, :, 0], 50, cmap='magma')
-        plt.pause(1)"""
-
         # Values at east, west, north, south quadrature points
         quad_E = state_E + high_ord_E
         quad_W = state_W + high_ord_W
@@ -194,67 +174,13 @@ class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
         quad_N = state_N + high_ord_N
         quad_S = state_S + high_ord_S
 
-        # ------------------------------------------------------------------------------
-        # Venkatakrishnan Limiter here for now
+        # Compute slope limiter
+        phi = self.flux_limiter.limit(refBLK.state.U, state_E, state_W, state_N, state_S,
+                                      quad_E, quad_W, quad_N, quad_S)
 
-        # u_max for interior cells
-        u_max = np.maximum(refBLK.state.U,
-                           np.maximum(np.maximum(state_E[:, :-1, :], state_W[:, 1:, :]),
-                                      np.maximum(state_N[:-1, :, :], state_S[1:, :, :]))
-                           )
-
-        # u_min for interior cells
-        u_min = np.minimum(refBLK.state.U,
-                           np.minimum(np.minimum(state_E[:, :-1, :], state_W[:, 1:, :]),
-                                      np.minimum(state_N[:-1, :, :], state_S[1:, :, :]))
-                           )
-
-        # Difference between quadrature point and cell average
-        diff_E = quad_E[:, 1:, :]  - refBLK.state.U
-        diff_W = quad_W[:, :-1, :] - refBLK.state.U
-        diff_N = quad_N[1:, :, :]  - refBLK.state.U
-        diff_S = quad_S[:-1, :, :] - refBLK.state.U
-
-        # Difference between min/max and cell average
-        diff_max = u_max - refBLK.state.U
-        diff_min = u_min - refBLK.state.U
-
-        #plt.contourf(refBLK.mesh.x, refBLK.mesh.y, (diff_min)[:, :, 0], 50, cmap='magma')
-        #plt.pause(0.01)
-
-        # Indices for ui,q - ui
-        phiE = np.ones_like(refBLK.state.U)
-        phiW = np.ones_like(refBLK.state.U)
-        phiN = np.ones_like(refBLK.state.U)
-        phiS = np.ones_like(refBLK.state.U)
-
-        # Get phi
-        y_max = diff_max / (diff_E + 1e-8)
-        y_min = diff_min / (diff_E + 1e-8)
-        phiE = np.where(diff_E > 0, (y_max ** 2 + 2 * y_max) / (y_max ** 2 + y_max + 2), phiE)
-        phiE = np.where(diff_E < 0, (y_min ** 2 + 2 * y_min) / (y_min ** 2 + y_min + 2), phiE)
-
-        y_max = diff_max / (diff_W + 1e-8)
-        y_min = diff_min / (diff_W + 1e-8)
-        phiW = np.where(diff_W > 0, (y_max ** 2 + 2 * y_max) / (y_max ** 2 + y_max + 2), phiW)
-        phiW = np.where(diff_W < 0, (y_min ** 2 + 2 * y_min) / (y_min ** 2 + y_min + 2), phiW)
-
-        y_max = diff_max / (diff_N + 1e-8)
-        y_min = diff_min / (diff_N + 1e-8)
-        phiN = np.where(diff_N > 0, (y_max ** 2 + 2 * y_max) / (y_max ** 2 + y_max + 2), phiN)
-        phiN = np.where(diff_N < 0, (y_min ** 2 + 2 * y_min) / (y_min ** 2 + y_min + 2), phiN)
-
-        y_max = diff_max / (diff_S + 1e-8)
-        y_min = diff_min / (diff_S + 1e-8)
-        phiS = np.where(diff_S > 0, (y_max ** 2 + 2 * y_max) / (y_max ** 2 + y_max + 2), phiS)
-        phiS = np.where(diff_S < 0, (y_min ** 2 + 2 * y_min) / (y_min ** 2 + y_min + 2), phiS)
-
-        phi = np.minimum(np.minimum(phiE, phiW), np.minimum(phiN, phiS))
-        phi = np.where(phi < 0, 0, phi)
-
+        # Compute limited values at quadrature points
         quad_E = state_E + np.concatenate((_ZC, phi), axis=1) * high_ord_E
         quad_W = state_W + np.concatenate((phi, _ZC), axis=1) * high_ord_W
-
         quad_N = state_N + np.concatenate((phi, _ZR), axis=0) * high_ord_N
         quad_S = state_S + np.concatenate((_ZR, phi), axis=0) * high_ord_S
 
