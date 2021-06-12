@@ -25,7 +25,7 @@ import pyHype.utils.utils as utils
 
 _ZERO_VEC = np.zeros((1, 1, 4))
 
-class SecondOrderGreenGauss(MUSCLFiniteVolumeMethod):
+class SecondOrderPWL(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
 
         if inputs.nghost != 1:

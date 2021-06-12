@@ -18,14 +18,16 @@ import numpy as np
 from abc import abstractmethod
 
 from pyHype.limiters import limiters
-from pyHype.states.states import ConservativeState, State
+from pyHype.states.states import ConservativeState, PrimitiveState, State
 from pyHype.flux.Roe import ROE_FLUX_X, ROE_FLUX_Y
 from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
+import pyHype.fvm.Gradients as Grads
 
 
 __DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
 __DEFINED_SLOPE_LIMITERS__ = ['VanAlbada', 'VanLeer', 'Venkatakrishnan', 'BarthJespersen']
+__DEFINED_GRADIENT_FUNCS__ = ['GreenGauss']
 
 class MUSCLFiniteVolumeMethod:
     def __init__(self,
@@ -195,15 +197,27 @@ class MUSCLFiniteVolumeMethod:
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
+        # Set slope limiter. Slope limiter must be included in __DEFINED_SLOPE_LIMITERS__
+        _gradient = self.inputs.gradient_method
+
+        if _gradient in __DEFINED_GRADIENT_FUNCS__:
+
+            # Van Leer limiter
+            if _gradient == 'GreenGauss':
+                self.gradient = Grads.GreenGauss(self.inputs)
+            # None
+            else:
+                raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
+
     def reconstruct(self,
-                    U: ConservativeState
-                    ) -> None:
+                    refBLK
+                    ) -> [np.ndarray]:
         """
         This method routes the state required for reconstruction to the correct implementation of the reconstruction.
         Current reconstruction methods are Primitive and Conservative.
 
         Parameters:
-            - U: Input ConservativeState that needs reconstruction.
+            - refBLK: Reference block to reconstruct
 
         Return:
             N.A
@@ -213,25 +227,21 @@ class MUSCLFiniteVolumeMethod:
 
         # Primitive reconstruction
         if self.inputs.reconstruction_type == 'Primitive':
-            stateL, stateR = self.reconstruct_primitive(U)
-            self.UL.from_primitive_state_vector(stateL)
-            self.UR.from_primitive_state_vector(stateR)
+            stateE, stateW, stateN, stateS = self.reconstruct_primitive(refBLK)
 
         # Conservative reconstruction
         elif self.inputs.reconstruction_type == 'Conservative':
-            stateL, stateR = self.reconstruct_conservative(U)
-            self.UL.from_conservative_state_vector(stateL)
-            self.UR.from_conservative_state_vector(stateR)
+            stateE, stateW, stateN, stateS = self.reconstruct_conservative(refBLK)
 
         # Default to Conservative
         else:
-            stateL, stateR = self.reconstruct_conservative(U)
-            self.UL.from_conservative_state_vector(stateL)
-            self.UR.from_conservative_state_vector(stateR)
+            stateE, stateW, stateN, stateS = self.reconstruct_conservative(refBLK)
+
+        return stateE, stateW, stateN, stateS
 
 
     def reconstruct_primitive(self,
-                              U: ConservativeState
+                              refBLK,
                               ) -> [np.ndarray]:
         """
         Primitive reconstruction implementation. Simply convert the input ConservativeState into PrimitiveState and
@@ -245,13 +255,26 @@ class MUSCLFiniteVolumeMethod:
             - stateR: Right reconstructed conservative state
         """
 
-        _to_construct = U.to_primitive_state()
-        stateL, stateR = self.reconstruct_state(_to_construct)
+        _state          = refBLK.state.to_primitive_vector()
+        _state_E_ghost  = refBLK.ghost.E.state.to_primitive_vector()
+        _state_W_ghost  = refBLK.ghost.W.state.to_primitive_vector()
+        _state_N_ghost  = refBLK.ghost.N.state.to_primitive_vector()
+        _state_S_ghost  = refBLK.ghost.S.state.to_primitive_vector()
 
-        return stateL, stateR
+        stateE, stateW, stateN, stateS = self.reconstruct_state(refBLK, _state,
+                                                                _state_E_ghost, _state_W_ghost,
+                                                                _state_N_ghost, _state_S_ghost)
+
+        UE = ConservativeState(inputs=self.inputs, W_vector=stateE).U
+        UW = ConservativeState(inputs=self.inputs, W_vector=stateW).U
+        UN = ConservativeState(inputs=self.inputs, W_vector=stateN).U
+        US = ConservativeState(inputs=self.inputs, W_vector=stateS).U
+
+        return UE, UW, UN, US
+
 
     def reconstruct_conservative(self,
-                                 U: ConservativeState
+                                 refBLK,
                                  ) -> [np.ndarray]:
         """
         Conservative reconstruction implementation. Simply pass the input ConservativeState into the
@@ -265,62 +288,20 @@ class MUSCLFiniteVolumeMethod:
             - stateR: Right reconstructed conservative state
         """
 
-        stateL, stateR = self.reconstruct_state(U)
-
-        return stateL, stateR
-
-    def get_interface_values(self, refBLK):
-
-        if self.inputs.interface_interpolation == 'arithmetic_average':
-            interfaceEW, interfaceNS = self.get_interface_values_arithmetic(refBLK)
-            return interfaceEW, interfaceNS
-        else:
-            raise ValueError('Interface Interpolation method is not defined.')
-
-    def get_interface_values_arithmetic(self, refBLK) -> [np.ndarray]:
-
-        # Concatenate mesh state and ghost block states
-        if self.inputs.reconstruction_type == 'Primitive':
-            _W = refBLK.state.get_W_array()
-            catx = np.concatenate((refBLK.ghost.W.state.get_W_array(),
-                                   _W,
-                                   refBLK.ghost.E.state.get_W_array()),
-                                  axis=1)
-
-            caty = np.concatenate((refBLK.ghost.N.state.get_W_array(),
-                                   _W,
-                                   refBLK.ghost.S.state.get_W_array()),
-                                  axis=0)
-
-        elif self.inputs.reconstruction_type == 'Conservative':
-            catx = np.concatenate((refBLK.ghost.W.state.U,
-                                   refBLK.state.U,
-                                   refBLK.ghost.E.state.U),
-                                  axis=1)
-
-            caty = np.concatenate((refBLK.ghost.S.state.U,
-                                   refBLK.state.U,
-                                   refBLK.ghost.N.state.U),
-                                  axis=0)
-
-        else:
-            raise ValueError('Undefined reconstruction type')
-
-        # Compute arithmetic mean
-        interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
-        interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
-
-        return interfaceEW, interfaceNS
+        return self.reconstruct_state(refBLK, refBLK.state.U,
+                                      refBLK.ghost.E.state.U, refBLK.ghost.W.state.U,
+                                      refBLK.ghost.N.state.U, refBLK.ghost.S.state.U)
 
     @abstractmethod
     def reconstruct_state(self,
-                          U: State
+                          refBLK,
+                          state: np.ndarray,
+                          ghostE: np.ndarray,
+                          ghostW: np.ndarray,
+                          ghostN: np.ndarray,
+                          ghostS: np.ndarray
                           ) -> [np.ndarray]:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
-        pass
-
-    @abstractmethod
-    def get_grad(self, refBLK):
         pass

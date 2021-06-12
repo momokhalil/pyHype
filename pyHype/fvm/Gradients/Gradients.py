@@ -20,6 +20,11 @@ from pyHype.input.input_file_builder import ProblemInput
 from pyHype.fvm.Gradients.least_squares import least_squares_9_point
 
 
+class Gradient:
+    def __init__(self, inputs: ProblemInput):
+        self.inputs = inputs
+
+
 class LeastSquares9Point:
     def __init__(self, inputs: ProblemInput):
         self.inputs = inputs
@@ -43,3 +48,40 @@ class LeastSquares9Point:
                                            self.inputs.nx, self.inputs.ny,
                                            self.stencilSW, self.stencilNW, self.stencilSE, self.stencilNE)
         return dQdx, dQdy
+
+
+class GreenGauss:
+    def __init__(self, inputs: ProblemInput):
+        self.inputs = inputs
+
+    def __call__(self, refBLK):
+        return self.green_gauss(refBLK)
+
+    def green_gauss(self, refBLK):
+
+        # Concatenate mesh state and ghost block states
+        interfaceEW, interfaceNS = refBLK.get_interface_values(self.inputs.reconstruction_type)
+
+        # Calculate Side Length
+        lengthE = refBLK.mesh.east_side_length()[:, :, np.newaxis]
+        lengthW = refBLK.mesh.west_side_length()[:, :, np.newaxis]
+        lengthN = refBLK.mesh.north_side_length()[:, :, np.newaxis]
+        lengthS = refBLK.mesh.south_side_length()[:, :, np.newaxis]
+
+        # Get each face's contribution to dUdx
+        E = interfaceEW[:, 1:, :] * refBLK.mesh.EW_norm_x[0:, 1:, np.newaxis] * lengthE
+        W = interfaceEW[:, :-1, :] * refBLK.mesh.EW_norm_x[0:, :-1, np.newaxis] * lengthW * (-1)
+        N = interfaceNS[1:, :, :] * refBLK.mesh.NS_norm_x[1:, 0:, np.newaxis] * lengthN
+        S = interfaceNS[:-1, :, :] * refBLK.mesh.NS_norm_x[:-1, 0:, np.newaxis] * lengthS * (-1)
+
+        # Compute dUdx
+        refBLK.gradx = (E + W + N + S) / refBLK.mesh.A[:, :, np.newaxis]
+
+        # Get each face's contribution to dUdy
+        E = interfaceEW[:, 1:, :] * refBLK.mesh.EW_norm_y[0:, 1:, np.newaxis] * lengthE
+        W = interfaceEW[:, :-1, :] * refBLK.mesh.EW_norm_y[0:, :-1, np.newaxis] * lengthW * (-1)
+        N = interfaceNS[1:, :, :] * refBLK.mesh.NS_norm_y[1:, 0:, np.newaxis] * lengthN
+        S = interfaceNS[:-1, :, :] * refBLK.mesh.NS_norm_y[:-1, 0:, np.newaxis] * lengthS * (-1)
+
+        # Compute dUdy
+        refBLK.grady = (E + W + N + S) / refBLK.mesh.A[:, :, np.newaxis]

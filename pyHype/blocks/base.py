@@ -23,8 +23,7 @@ from matplotlib.collections import LineCollection
 from pyHype.mesh.base import BlockDescription, Mesh
 from pyHype.input.input_file_builder import ProblemInput
 
-from pyHype.fvm import SecondOrderGreenGauss
-from pyHype.fvm.experimental import SecondOrderGreenGauss as SecondOrderGreenGauss_EXP
+from pyHype.fvm import SecondOrderPWL
 
 from pyHype.states.states import ConservativeState
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
@@ -217,10 +216,8 @@ class QuadBlock:
         # Set finite volume method
         fvm = self.inputs.finite_volume_method
 
-        if fvm == 'SecondOrderGreenGauss':
-            self.fvm = SecondOrderGreenGauss(self.inputs, self.global_nBLK)
-        elif fvm == 'SecondOrderGreenGauss_EXP':
-            self.fvm = SecondOrderGreenGauss_EXP(self.inputs, self.global_nBLK)
+        if fvm == 'SecondOrderPWL':
+            self.fvm = SecondOrderPWL(self.inputs, self.global_nBLK)
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
 
@@ -837,6 +834,49 @@ class QuadBlock:
                                self.col(index),
                                self.ghost.N[None, 0, index, None, :]),
                                axis=1)
+
+    def get_interface_values(self, reconstruction_type: str = None):
+
+        if self.inputs.interface_interpolation == 'arithmetic_average':
+            interfaceEW, interfaceNS = self.get_interface_values_arithmetic(reconstruction_type)
+            return interfaceEW, interfaceNS
+        else:
+            raise ValueError('Interface Interpolation method is not defined.')
+
+    def get_interface_values_arithmetic(self, reconstruction_type: str = None) -> [np.ndarray]:
+
+        # Concatenate mesh state and ghost block states
+        if reconstruction_type == 'Primitive':
+            _W = self.state.to_primitive_vector()
+            catx = np.concatenate((self.ghost.W.state.to_primitive_vector(),
+                                   _W,
+                                   self.ghost.E.state.to_primitive_vector()),
+                                  axis=1)
+
+            caty = np.concatenate((self.ghost.N.state.to_primitive_vector(),
+                                   _W,
+                                   self.ghost.S.state.to_primitive_vector()),
+                                  axis=0)
+
+        elif reconstruction_type == 'Conservative' or not reconstruction_type:
+            catx = np.concatenate((self.ghost.W.state.U,
+                                   self.state.U,
+                                   self.ghost.E.state.U),
+                                  axis=1)
+
+            caty = np.concatenate((self.ghost.S.state.U,
+                                   self.state.U,
+                                   self.ghost.N.state.U),
+                                  axis=0)
+
+        else:
+            raise ValueError('Undefined reconstruction type')
+
+        # Compute arithmetic mean
+        interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
+        interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
+
+        return interfaceEW, interfaceNS
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods

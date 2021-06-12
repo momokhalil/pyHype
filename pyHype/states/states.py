@@ -89,7 +89,7 @@ class PrimitiveState(State):
             self.from_conservative_state_vector(U_vector)
 
         elif W_vector is not None:
-            self.from_conservative_state_vector(W_vector)
+            self.from_primitive_state_vector(W_vector)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Define primitive state properties
@@ -238,6 +238,17 @@ class PrimitiveState(State):
         """
         return ConservativeState(self.inputs, W_vector=self.W)
 
+    def to_conservative_vector(self):
+
+        U = np.zeros_like(self.W)
+
+        U[:, :, 0] = self.rho.copy()
+        U[:, :, 1] = self.u * self.rho
+        U[:, :, 2] = self.v * self.rho
+        U[:, :, 3] = self.p / (self.g - 1) + 0.5 * (self.u ** 2 + self.v ** 2) / self.rho
+
+        return U
+
     def H(self) -> np.ndarray:
         return (self.g / (self.g - 1)) * (self.p / self.rho) + np.mean(self.u**2 + self.v**2)
 
@@ -264,17 +275,6 @@ class PrimitiveState(State):
 
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
-
-    def get_U_array(self):
-
-        U = np.zeros_like(self.W)
-
-        U[:, :, 0] = self.rho
-        U[:, :, 1] = self.u * self.rho
-        U[:, :, 2] = self.v * self.rho
-        U[:, :, 3] = self.p / (self.g - 1) + 0.5 * (self.u ** 2 + self.v ** 2) / self.rho
-
-        return U
 
 
 class ConservativeState(State):
@@ -344,7 +344,7 @@ class ConservativeState(State):
             self.from_conservative_state_vector(U_vector)
 
         elif W_vector is not None:
-            self.from_conservative_state_vector(W_vector)
+            self.from_primitive_state_vector(W_vector)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Define primitive state properties
@@ -455,7 +455,6 @@ class ConservativeState(State):
         """
 
         """
-        print('hereeeeeeeeeeeeeee')
         self.rho    = W_vector[:, :, 0].copy()
         self.rhou   = self.rho * W_vector[:, :, 1]
         self.rhov   = self.rho * W_vector[:, :, 2]
@@ -495,6 +494,17 @@ class ConservativeState(State):
         """
         return PrimitiveState(self.inputs, U_vector=self.U)
 
+    def to_primitive_vector(self):
+
+        W = np.zeros_like(self.U)
+
+        W[:, :, 0] = self.rho.copy()
+        W[:, :, 1] = self.u()
+        W[:, :, 2] = self.v()
+        W[:, :, 3] = self.p()
+
+        return W
+
     def H(self):
         return self.g / (self.g - 1) * self.p() / self.rho + 0.5 * (self.rhou**2 + self.rhov**2) / self.rho
 
@@ -529,16 +539,6 @@ class ConservativeState(State):
 
         self.set_vars_from_state()
 
-    def get_W_array(self):
-
-        W = np.zeros_like(self.U)
-
-        W[:, :, 0] = self.rho
-        W[:, :, 1] = self.u()
-        W[:, :, 2] = self.v()
-        W[:, :, 3] = self.p()
-
-        return W
 
 class RoePrimitiveState(PrimitiveState):
     """

@@ -31,7 +31,7 @@ np.set_printoptions(threshold=sys.maxsize)
 __REQUIRED__ = ['problem_type', 'IC_type', 'realplot', 'makeplot', 'time_it', 't_final', 'time_integrator',
                 'flux_function', 'CFL', 'flux_function', 'reconstruction_type', 'finite_volume_method', 'flux_limiter',
                 'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'nghost', 'mesh_name', 'profile',
-                'interface_interpolation']
+                'interface_interpolation', 'gradient_method']
 
 __OPTIONAL__ = ['alpha', 'write_time']
 
@@ -281,11 +281,11 @@ class Euler2DSolver:
             #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
 
             if self.inputs.realplot:
-                if self.numTimeStep % 5 == 0:
+                if self.numTimeStep % 2 == 0:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,
-                                           100, cmap='magma')
+                                           70, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
 
