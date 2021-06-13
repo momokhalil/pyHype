@@ -210,6 +210,9 @@ class MUSCLFiniteVolumeMethod:
             else:
                 raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
+    # ------------------------------------------------------------------------------------------------------------------
+    # Reconstruction functions
+
     def reconstruct(self,
                     refBLK
                     ) -> [np.ndarray]:
@@ -307,10 +310,52 @@ class MUSCLFiniteVolumeMethod:
         """
         pass
 
+    # ------------------------------------------------------------------------------------------------------------------
+    # Flux evaluation and integration functions
+
+    @abstractmethod
+    def integrate_flux_E(self, refBLK):
+        pass
+
+
+    @abstractmethod
+    def integrate_flux_W(self, refBLK):
+        pass
+
+
+    @abstractmethod
+    def integrate_flux_N(self, refBLK):
+        pass
+
+
+    @abstractmethod
+    def integrate_flux_S(self, refBLK):
+        pass
+
+
+    def get_residual(self, refBLK):
+        """
+        Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
+        applying the semi-discrete Godunov method:
+
+        dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
+        """
+
+        # Compute fluxes
+        self.get_flux(refBLK)
+
+        # Integrate fluxes
+        fluxE = self.integrate_flux_E(refBLK)
+        fluxW = self.integrate_flux_W(refBLK)
+        fluxN = self.integrate_flux_N(refBLK)
+        fluxS = self.integrate_flux_S(refBLK)
+
+        return -(fluxE + fluxW + fluxN + fluxS) / refBLK.mesh.A
+
+
     def get_flux(self, refBLK):
         """
-        Compute the flux at each cell center using the Green Gauss reconstruction method and the approximate Riemann
-        solver and slope limiter of choice.
+        Compute the flux at each cell face by sweeping through rows and columns of the domain.
         """
 
         # Compute x and y direction gradients

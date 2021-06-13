@@ -115,17 +115,3 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
     def integrate_flux_S(self, refBLK):
         return self.Flux_NS[:-1, :, :] * refBLK.mesh.S_face_L * (-1)
-
-
-    def get_residual(self, refBLK):
-
-        # Compute fluxes
-        self.get_flux(refBLK)
-
-        # Integrate fluxes
-        fluxE = self.integrate_flux_E(refBLK)
-        fluxW = self.integrate_flux_W(refBLK)
-        fluxN = self.integrate_flux_N(refBLK)
-        fluxS = self.integrate_flux_S(refBLK)
-
-        return -(fluxE + fluxW + fluxN + fluxS) / refBLK.mesh.A
