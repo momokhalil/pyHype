@@ -92,7 +92,7 @@ class State:
     def __sub__(self, other: 'State') -> np.ndarray:
         return self.Q - other.Q
 
-    def reset(self, shape: tuple[int] = None):
+    def reset(self, shape: [int] = None):
 
         if shape:
             self.Q = np.zeros(shape=shape)

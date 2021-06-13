@@ -17,8 +17,8 @@ limitations under the License.
 import numpy as np
 
 
-def rotate(array: np.ndarray,
-           theta: float
+def rotate(theta: float,
+           *arrays: np.ndarray,
            ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees counterclockwise.
@@ -40,15 +40,17 @@ def rotate(array: np.ndarray,
     y' = y cos(theta) - x sin(theta)
     """
 
-    u = array[:, :, 1] * np.cos(theta) + array[:, :, 2] * np.sin(theta)
-    v = array[:, :, 2] * np.cos(theta) - array[:, :, 1] * np.sin(theta)
+    for array in arrays:
 
-    array[:, :, 1] = u
-    array[:, :, 2] = v
+        u = array[:, :, 1] * np.cos(theta) + array[:, :, 2] * np.sin(theta)
+        v = array[:, :, 2] * np.cos(theta) - array[:, :, 1] * np.sin(theta)
+
+        array[:, :, 1] = u
+        array[:, :, 2] = v
 
 
-def unrotate(array: np.ndarray,
-             theta: float
+def unrotate(theta: float,
+             *arrays: np.ndarray,
              ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees clockwise. Basically the
@@ -70,9 +72,10 @@ def unrotate(array: np.ndarray,
     y = y' cos(theta) + x' sin(theta)
     """
 
-    u = array[:, :, 1] * np.cos(theta) - array[:, :, 2] * np.sin(theta)
-    v = array[:, :, 2] * np.cos(theta) + array[:, :, 1] * np.sin(theta)
+    for array in arrays:
+        u = array[:, :, 1] * np.cos(theta) - array[:, :, 2] * np.sin(theta)
+        v = array[:, :, 2] * np.cos(theta) + array[:, :, 1] * np.sin(theta)
 
-    array[:, :, 1] = u
-    array[:, :, 2] = v
+        array[:, :, 1] = u
+        array[:, :, 2] = v
 

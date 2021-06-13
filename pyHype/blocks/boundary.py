@@ -117,7 +117,7 @@ class GhostBlockEast(GhostBlock):
 
     def set_BC_reflection(self):
         state = self.ref_BLK.get_east_ghost()
-        utils.rotate(state, self.ref_BLK.mesh.thetax[-1])
+        utils.rotate(self.ref_BLK.mesh.thetax[-1], state)
         state[:, :, 1] *= -1
 
         self.state.update(state)
@@ -160,7 +160,7 @@ class GhostBlockWest(GhostBlock):
 
     def set_BC_reflection(self):
         state = self.ref_BLK.get_west_ghost()
-        utils.rotate(state, self.ref_BLK.mesh.thetax[0])
+        utils.rotate(self.ref_BLK.mesh.thetax[0], state)
         state[:, :, 1] *= -1
         self.state.update(state)
 
@@ -202,7 +202,7 @@ class GhostBlockNorth(GhostBlock):
 
     def set_BC_reflection(self):
         state = self.ref_BLK.get_north_ghost()
-        utils.rotate(state, np.pi / 2 - self.ref_BLK.mesh.thetay[-1])
+        utils.rotate(np.pi / 2 - self.ref_BLK.mesh.thetay[-1], state)
         state[:, :, 2] *= -1
         self.state.update(state)
 
@@ -244,6 +244,6 @@ class GhostBlockSouth(GhostBlock):
 
     def set_BC_reflection(self):
         state = self.ref_BLK.get_south_ghost()
-        utils.rotate(state, np.pi / 2 - self.ref_BLK.mesh.thetay[0])
+        utils.rotate(np.pi / 2 - self.ref_BLK.mesh.thetay[0], state)
         state[:, :, 2] *= -1
         self.state.update(state)

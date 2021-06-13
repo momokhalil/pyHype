@@ -18,11 +18,12 @@ import numpy as np
 from abc import abstractmethod
 
 from pyHype.limiters import limiters
-from pyHype.states.states import ConservativeState, PrimitiveState, State
-from pyHype.flux.Roe import ROE_FLUX_X, ROE_FLUX_Y
+from pyHype.states.states import ConservativeState
+from pyHype.flux.Roe import ROE_FLUX_X
 from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
 import pyHype.fvm.Gradients as Grads
+import pyHype.utils.utils as utils
 
 
 __DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
@@ -305,3 +306,65 @@ class MUSCLFiniteVolumeMethod:
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
         pass
+
+    def get_flux(self, refBLK):
+        """
+        Compute the flux at each cell center using the Green Gauss reconstruction method and the approximate Riemann
+        solver and slope limiter of choice.
+        """
+
+        # Compute x and y direction gradients
+        self.gradient(refBLK)
+
+        # Get reconstructed quadrature points
+        stateE, stateW, stateN, stateS = self.reconstruct(refBLK)
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Calculate x-direction Flux
+
+        # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
+        self.UL.reset(shape=(1, self.nx + 1, 4))
+        self.UR.reset(shape=(1, self.nx + 1, 4))
+
+        # Rotate to allign with cell faces
+        utils.rotate(refBLK.mesh.thetax, stateE, stateW)
+
+        # Iterate over all rows in block
+        for row in range(self.ny):
+
+            # Set vectors based on left and right states
+            self.UL.from_conservative_state_vector(stateE[row:row+1, :, :])
+            self.UR.from_conservative_state_vector(stateW[row:row+1, :, :])
+
+            # Calculate face-normal-flux at each cell interface
+            self.Flux_EW[row, :, :] = self.flux_function_X.get_flux(self.UL, self.UR)
+
+        # Rotate flux back to local frame
+        utils.unrotate(refBLK.mesh.thetax, self.Flux_EW)
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Calculate y-direction Flux
+
+        # Reset U vector holder sizes to ensure compatible with number of cells in y-direction
+        self.UL.reset(shape=(1, self.ny + 1, 4))
+        self.UR.reset(shape=(1, self.ny + 1, 4))
+
+        # Rotate to allign with cell faces
+        utils.rotate(refBLK.mesh.thetay[:, np.newaxis], stateN, stateS)
+
+        # Transpose North and South states
+        stateN = stateN.transpose((1, 0, 2))
+        stateS = stateS.transpose((1, 0, 2))
+
+        # Iterate over all columns in block
+        for col in range(self.nx):
+
+            # Set vectors based on left and right states
+            self.UL.from_conservative_state_vector(stateN[col:col + 1, :, :])
+            self.UR.from_conservative_state_vector(stateS[col:col + 1, :, :])
+
+            # Calculate face-normal-flux at each cell interface
+            self.Flux_NS[:, col, :] = self.flux_function_Y.get_flux(self.UL, self.UR).reshape(-1, 4)
+
+        # Rotate flux back to global frame
+        utils.unrotate(refBLK.mesh.thetay[:, np.newaxis], self.Flux_NS)

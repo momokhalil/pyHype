@@ -225,27 +225,27 @@ class QuadBlock:
         time_integrator = self.inputs.time_integrator
 
         if time_integrator      == 'ExplicitEuler1':
-            self._time_integrator = Erk.ExplicitEuler1(self.inputs, self)
+            self._time_integrator = Erk.ExplicitEuler1(self.inputs)
         elif time_integrator    == 'RK2':
-            self._time_integrator = Erk.RK2(self.inputs, self)
+            self._time_integrator = Erk.RK2(self.inputs)
         elif time_integrator    == 'Generic2':
-            self._time_integrator = Erk.Generic2(self.inputs, self)
+            self._time_integrator = Erk.Generic2(self.inputs)
         elif time_integrator    == 'Ralston2':
-            self._time_integrator = Erk.Ralston2(self.inputs, self)
+            self._time_integrator = Erk.Ralston2(self.inputs)
         elif time_integrator    == 'Generic3':
-            self._time_integrator = Erk.Generic3(self.inputs, self)
+            self._time_integrator = Erk.Generic3(self.inputs)
         elif time_integrator    == 'RK3':
-            self._time_integrator = Erk.RK3(self.inputs, self)
+            self._time_integrator = Erk.RK3(self.inputs)
         elif time_integrator    == 'RK3SSP':
-            self._time_integrator = Erk.RK3SSP(self.inputs, self)
+            self._time_integrator = Erk.RK3SSP(self.inputs)
         elif time_integrator    == 'Ralston3':
-            self._time_integrator = Erk.Ralston3(self.inputs, self)
+            self._time_integrator = Erk.Ralston3(self.inputs)
         elif time_integrator    == 'RK4':
-            self._time_integrator = Erk.RK4(self.inputs, self)
+            self._time_integrator = Erk.RK4(self.inputs)
         elif time_integrator    == 'Ralston4':
-            self._time_integrator = Erk.Ralston4(self.inputs, self)
+            self._time_integrator = Erk.Ralston4(self.inputs)
         elif time_integrator    == 'DormandPrince5':
-            self._time_integrator = Erk.DormandPrince5(self.inputs, self)
+            self._time_integrator = Erk.DormandPrince5(self.inputs)
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
@@ -887,10 +887,13 @@ class QuadBlock:
 
     # Update solution state
     def update(self, dt) -> None:
-        self._time_integrator(dt)
+        self._time_integrator(self, dt)
 
     def get_flux(self):
         self.fvm.get_flux(self)
+
+    def get_residual(self):
+        return self.fvm.get_residual(self)
 
     def set_BC(self) -> None:
         self.ghost.E.set_BC()

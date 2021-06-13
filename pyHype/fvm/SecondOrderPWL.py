@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pyHype.fvm.base import MUSCLFiniteVolumeMethod
 from pyHype.states import ConservativeState
-import pyHype.utils.utils as utils
+
 
 np.set_printoptions(precision=3)
 
@@ -61,79 +61,6 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         return np.concatenate((_ZERO_ROW, high_ord_N), axis=0), np.concatenate((high_ord_S, _ZERO_ROW), axis=0)
 
 
-    def get_flux(self, refBLK):
-        """
-        Compute the flux at each cell center using the Green Gauss reconstruction method and the approximate Riemann
-        solver and slope limiter of choice.
-        """
-
-        # Compute x and y direction gradients
-        self.gradient(refBLK)
-
-        # Get reconstructed quadrature points
-        stateE, stateW, stateN, stateS = self.reconstruct(refBLK)
-
-        # Calculate x-direction Flux
-        # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
-        self.UL.reset(shape=(1, self.nx + 1, 4))
-        self.UR.reset(shape=(1, self.nx + 1, 4))
-
-        # Iterate over all rows in block
-        for row in range(self.ny):
-
-            # Get vectors for the current row
-            stateL = stateE[row:row+1, :, :]
-            stateR = stateW[row:row+1, :, :]
-
-            # Rotate to allign with cell faces
-            utils.rotate(stateL, refBLK.mesh.thetax)
-            utils.rotate(stateR, refBLK.mesh.thetax)
-
-            # Set vectors based on left and right states
-            self.UL.from_conservative_state_vector(stateL)
-            self.UR.from_conservative_state_vector(stateR)
-
-            # Calculate face-normal-flux at each cell interface
-            flux = self.flux_function_X.get_flux(self.UL, self.UR)
-
-            # Rotate flux back to local frame
-            utils.unrotate(flux, refBLK.mesh.thetax)
-
-            # Calculate flux difference between cell interfaces
-            self.Flux_EW[row, :, :] = flux
-
-        # --------------------------------------------------------------------------------------------------------------
-        # Calculate x-direction Flux
-
-        # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
-        self.UL.reset(shape=(1, self.ny + 1, 4))
-        self.UR.reset(shape=(1, self.ny + 1, 4))
-
-        # Iterate over all columns in block
-        for col in range(self.nx):
-
-            # Get vectors for the current row
-            stateL = stateN[:, col:col + 1, :].transpose((1, 0, 2))
-            stateR = stateS[:, col:col + 1, :].transpose((1, 0, 2))
-
-            # Rotate to allign with cell faces
-            utils.rotate(stateL, refBLK.mesh.thetay)
-            utils.rotate(stateR, refBLK.mesh.thetay)
-
-            # Set vectors based on left and right states
-            self.UL.from_conservative_state_vector(stateL)
-            self.UR.from_conservative_state_vector(stateR)
-
-            # Calculate face-normal-flux at each cell interface
-            flux = self.flux_function_Y.get_flux(self.UL, self.UR)
-
-            # Rotate flux back to global frame
-            utils.unrotate(flux, refBLK.mesh.thetay)
-
-            # Calculate flux difference between cell interfaces
-            self.Flux_NS[:, col, :] = flux.reshape(-1, 4)
-
-
     def reconstruct_state(self,
                           refBLK,
                           state: np.ndarray,
@@ -172,3 +99,33 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         stateS[:-1, :, :] += phi * high_ord_S[:-1, :, :]
 
         return stateE, stateW, stateN, stateS
+
+
+    def integrate_flux_E(self, refBLK):
+        return self.Flux_EW[:, 1:, :] * refBLK.mesh.E_face_L
+
+
+    def integrate_flux_W(self, refBLK):
+        return self.Flux_EW[:, :-1, :] * refBLK.mesh.W_face_L * (-1)
+
+
+    def integrate_flux_N(self, refBLK):
+        return self.Flux_NS[1:, :, :] * refBLK.mesh.N_face_L
+
+
+    def integrate_flux_S(self, refBLK):
+        return self.Flux_NS[:-1, :, :] * refBLK.mesh.S_face_L * (-1)
+
+
+    def get_residual(self, refBLK):
+
+        # Compute fluxes
+        self.get_flux(refBLK)
+
+        # Integrate fluxes
+        fluxE = self.integrate_flux_E(refBLK)
+        fluxW = self.integrate_flux_W(refBLK)
+        fluxN = self.integrate_flux_N(refBLK)
+        fluxS = self.integrate_flux_S(refBLK)
+
+        return -(fluxE + fluxW + fluxN + fluxS) / refBLK.mesh.A

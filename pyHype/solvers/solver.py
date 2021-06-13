@@ -288,7 +288,7 @@ class Euler2D:
             #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
 
             if self.inputs.realplot:
-                if self.numTimeStep % 5 == 0:
+                if self.numTimeStep % 1 == 0:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,
