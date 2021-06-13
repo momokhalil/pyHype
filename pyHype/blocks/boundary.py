@@ -21,14 +21,14 @@ from pyHype.utils import utils
 
 
 class GhostBlock:
-    def __init__(self, inputs, BCtype: str, ref_BLK):
+    def __init__(self, inputs, BCtype: str, refBLK):
 
         self.BCtype = BCtype
         self.inputs = inputs
         self.nx = inputs.nx
         self.ny = inputs.ny
         self.nghost = inputs.nghost
-        self.ref_BLK = ref_BLK
+        self.refBLK = refBLK
 
         self.state = None
         self.theta = None
@@ -55,16 +55,16 @@ class GhostBlock:
     MODIFY
     
     def get_mesh_from_east(self):
-        self.x = self.ref_BLK.boundaryBLK.E.x[:, 1]
+        self.x = self.refBLK.boundaryBLK.E.x[:, 1]
 
     def get_mesh_from_west(self):
-        self.x = self.ref_BLK.boundaryBLK.W.x[:, -2]
+        self.x = self.refBLK.boundaryBLK.W.x[:, -2]
 
     def get_mesh_from_north(self):
-        self.x = self.ref_BLK.boundaryBLK.N.x[1, :]
+        self.x = self.refBLK.boundaryBLK.N.x[1, :]
 
     def get_mesh_from_south(self):
-        self.x = self.ref_BLK.boundaryBLK.S.x[-2, :]
+        self.x = self.refBLK.boundaryBLK.S.x[-2, :]
     """
 
     @abstractmethod
@@ -81,169 +81,145 @@ class GhostBlock:
 
 
 class GhostBlockEast(GhostBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
+    def __init__(self, inputs, type_, refBLK):
+        super().__init__(inputs, type_, refBLK)
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
 
         self.x = np.zeros((self.inputs.ny, 1))
         self.y = np.zeros((self.inputs.ny, 1))
 
-        self.theta = ref_BLK.thetaE
+        self.theta = refBLK.thetaE
 
-        x = self.ref_BLK.mesh.x[:, -1]
-        y = self.ref_BLK.mesh.y[:, -1]
+        self.x[:, 0] = 2 * self.refBLK.mesh.x[:, -1] - self.refBLK.mesh.x[:, -2]
+        self.y[:, 0] = 2 * self.refBLK.mesh.y[:, -1] - self.refBLK.mesh.y[:, -2]
 
-        dx = x - self.ref_BLK.mesh.x[:, -2]
-        dy = y - self.ref_BLK.mesh.y[:, -2]
+        cont_x = np.concatenate((self.x, refBLK.mesh.x[:, -1:]), axis=1)
+        cont_y = np.concatenate((self.y, refBLK.mesh.y[:, -1:]), axis=1)
 
-        self.x[:, 0] = x + dx
-        self.y[:, 0] = y + dy
+        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
 
-        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[:, -1:]), axis=1)
-        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[:, -1:]), axis=1)
-
-        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.ref_BLK.mesh.xc[1:-1, -1] = xc.reshape(-1, )
-        self.ref_BLK.mesh.yc[1:-1, -1] = yc.reshape(-1, )
+        self.refBLK.mesh.xc[1:-1, -1] = xc.reshape(-1, )
+        self.refBLK.mesh.yc[1:-1, -1] = yc.reshape(-1, )
 
     def set_BC_none(self):
-        self.state.U = self.ref_BLK.neighbors.E.get_west_ghost()
+        self.state.U = self.refBLK.neighbors.E.get_west_ghost()
         self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.ref_BLK.get_east_edge()
+        self.state.U[:, :, :] = self.refBLK.get_east_edge()
         self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
-        state = self.ref_BLK.get_east_ghost()
-        utils.rotate(self.ref_BLK.mesh.thetax[-1], state)
+        state = self.refBLK.get_east_ghost()
+        utils.rotate(self.refBLK.mesh.thetax[-1], state)
         state[:, :, 1] *= -1
 
         self.state.update(state)
 
 
 class GhostBlockWest(GhostBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
+    def __init__(self, inputs, type_, refBLK):
+        super().__init__(inputs, type_, refBLK)
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
 
         self.x = np.zeros((self.inputs.ny, 1))
         self.y = np.zeros((self.inputs.ny, 1))
 
-        self.theta = ref_BLK.thetaW
+        self.theta = refBLK.thetaW
 
-        x = self.ref_BLK.mesh.x[:, 0]
-        y = self.ref_BLK.mesh.y[:, 0]
+        self.x[:, 0] = 2 * self.refBLK.mesh.x[:, 0] - self.refBLK.mesh.x[:, 1]
+        self.y[:, 0] = 2 * self.refBLK.mesh.y[:, 0] - self.refBLK.mesh.y[:, 1]
 
-        dx = x - self.ref_BLK.mesh.x[:, 1]
-        dy = y - self.ref_BLK.mesh.y[:, 1]
+        cont_x = np.concatenate((self.x, refBLK.mesh.x[:, 0:1]), axis=1)
+        cont_y = np.concatenate((self.y, refBLK.mesh.y[:, 0:1]), axis=1)
 
-        self.x[:, 0] = x + dx
-        self.y[:, 0] = y + dy
+        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
 
-        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[:, 0:1]), axis=1)
-        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[:, 0:1]), axis=1)
-
-        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.ref_BLK.mesh.xc[1:-1, 0] = xc.reshape(-1, )
-        self.ref_BLK.mesh.yc[1:-1, 0] = yc.reshape(-1, )
+        self.refBLK.mesh.xc[1:-1, 0] = xc.reshape(-1, )
+        self.refBLK.mesh.yc[1:-1, 0] = yc.reshape(-1, )
 
     def set_BC_none(self):
-        self.state.U = self.ref_BLK.neighbors.W.get_east_ghost()
+        self.state.U = self.refBLK.neighbors.W.get_east_ghost()
         self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.ref_BLK.get_west_edge()
+        self.state.U[:, :, :] = self.refBLK.get_west_edge()
         self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
-        state = self.ref_BLK.get_west_ghost()
-        utils.rotate(self.ref_BLK.mesh.thetax[0], state)
+        state = self.refBLK.get_west_ghost()
+        utils.rotate(self.refBLK.mesh.thetax[0], state)
         state[:, :, 1] *= -1
         self.state.update(state)
 
 
 class GhostBlockNorth(GhostBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
+    def __init__(self, inputs, type_, refBLK):
+        super().__init__(inputs, type_, refBLK)
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
 
         self.x = np.zeros((1, self.inputs.nx))
         self.y = np.zeros((1, self.inputs.nx))
 
-        self.theta = ref_BLK.thetaN
+        self.theta = refBLK.thetaN
 
-        x = self.ref_BLK.mesh.x[-1, :]
-        y = self.ref_BLK.mesh.y[-1, :]
+        self.x[0, :] = 2 * self.refBLK.mesh.x[-1, :] - self.refBLK.mesh.x[-2, :]
+        self.y[0, :] = 2 * self.refBLK.mesh.y[-1, :] - self.refBLK.mesh.y[-2, :]
 
-        dx = x - self.ref_BLK.mesh.x[-2, :]
-        dy = y - self.ref_BLK.mesh.y[-2, :]
+        cont_x = np.concatenate((self.x, refBLK.mesh.x[-1:, :]), axis=0)
+        cont_y = np.concatenate((self.y, refBLK.mesh.y[-1:, :]), axis=0)
 
-        self.x[0, :] = x + dx
-        self.y[0, :] = y + dy
+        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
 
-        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[-1:, :]), axis=0)
-        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[-1:, :]), axis=0)
-
-        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.ref_BLK.mesh.xc[-1, 1:-1] = xc
-        self.ref_BLK.mesh.yc[-1, 1:-1] = yc
+        self.refBLK.mesh.xc[-1, 1:-1] = xc
+        self.refBLK.mesh.yc[-1, 1:-1] = yc
 
     def set_BC_none(self):
-        self.state.U = self.ref_BLK.neighbors.N.get_south_ghost()
+        self.state.U = self.refBLK.neighbors.N.get_south_ghost()
         self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.ref_BLK.get_north_edge()
+        self.state.U[:, :, :] = self.refBLK.get_north_edge()
         self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
-        state = self.ref_BLK.get_north_ghost()
-        utils.rotate(np.pi / 2 - self.ref_BLK.mesh.thetay[-1], state)
+        state = self.refBLK.get_north_ghost()
+        utils.rotate(np.pi / 2 - self.refBLK.mesh.thetay[-1], state)
         state[:, :, 2] *= -1
         self.state.update(state)
 
 
 class GhostBlockSouth(GhostBlock):
-    def __init__(self, inputs, type_, ref_BLK):
-        super().__init__(inputs, type_, ref_BLK)
+    def __init__(self, inputs, type_, refBLK):
+        super().__init__(inputs, type_, refBLK)
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
 
         self.x = np.zeros((1, self.inputs.nx))
         self.y = np.zeros((1, self.inputs.nx))
 
-        self.theta = ref_BLK.thetaS
+        self.theta = refBLK.thetaS
 
-        x = self.ref_BLK.mesh.x[0, :]
-        y = self.ref_BLK.mesh.y[0, :]
+        self.x[0, :] = 2 * self.refBLK.mesh.x[0, :] - self.refBLK.mesh.x[1, :]
+        self.y[0, :] = 2 * self.refBLK.mesh.y[0, :] - self.refBLK.mesh.y[1, :]
 
-        dx = x - self.ref_BLK.mesh.x[1, :]
-        dy = y - self.ref_BLK.mesh.y[1, :]
+        cont_x = np.concatenate((self.x, refBLK.mesh.x[0:1, :]), axis=0)
+        cont_y = np.concatenate((self.y, refBLK.mesh.y[0:1, :]), axis=0)
 
-        self.x[0, :] = x + dx
-        self.y[0, :] = y + dy
+        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
 
-        cont_x = np.concatenate((self.x, ref_BLK.mesh.x[0:1, :]), axis=0)
-        cont_y = np.concatenate((self.y, ref_BLK.mesh.y[0:1, :]), axis=0)
-
-        xc, yc = ref_BLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.ref_BLK.mesh.xc[0, 1:-1] = xc
-        self.ref_BLK.mesh.yc[0, 1:-1] = yc
+        self.refBLK.mesh.xc[0, 1:-1] = xc
+        self.refBLK.mesh.yc[0, 1:-1] = yc
 
     def set_BC_none(self):
-        self.state.U = self.ref_BLK.neighbors.S.get_north_ghost()
+        self.state.U = self.refBLK.neighbors.S.get_north_ghost()
         self.state.set_vars_from_state()
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.ref_BLK.get_south_edge()
+        self.state.U[:, :, :] = self.refBLK.get_south_edge()
         self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
-        state = self.ref_BLK.get_south_ghost()
-        utils.rotate(np.pi / 2 - self.ref_BLK.mesh.thetay[0], state)
+        state = self.refBLK.get_south_ghost()
+        utils.rotate(np.pi / 2 - self.refBLK.mesh.thetay[0], state)
         state[:, :, 2] *= -1
         self.state.update(state)

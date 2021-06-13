@@ -250,10 +250,10 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        self.ghost = GhostBlockContainer(E=GhostBlockEast(self.inputs, type_=block_data.BCTypeE, ref_BLK=self),
-                                         W=GhostBlockWest(self.inputs, type_=block_data.BCTypeW, ref_BLK=self),
-                                         N=GhostBlockNorth(self.inputs, type_=block_data.BCTypeN, ref_BLK=self),
-                                         S=GhostBlockSouth(self.inputs, type_=block_data.BCTypeS, ref_BLK=self))
+        self.ghost = GhostBlockContainer(E=GhostBlockEast(self.inputs, type_=block_data.BCTypeE, refBLK=self),
+                                         W=GhostBlockWest(self.inputs, type_=block_data.BCTypeW, refBLK=self),
+                                         N=GhostBlockNorth(self.inputs, type_=block_data.BCTypeN, refBLK=self),
+                                         S=GhostBlockSouth(self.inputs, type_=block_data.BCTypeS, refBLK=self))
 
         # North East
         xc, yc = self.get_centroid_corners(s1=self.ghost.E, s1idx1=(-1, 0), s1idx2=(-2, 0),
