@@ -29,6 +29,8 @@ import pyHype.utils.utils as utils
 __DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
 __DEFINED_SLOPE_LIMITERS__ = ['VanAlbada', 'VanLeer', 'Venkatakrishnan', 'BarthJespersen']
 __DEFINED_GRADIENT_FUNCS__ = ['GreenGauss']
+__DEFINED_RECONSTRUCTION__ = ['Primitive', 'Conservative']
+
 
 class MUSCLFiniteVolumeMethod:
     def __init__(self,
@@ -224,24 +226,23 @@ class MUSCLFiniteVolumeMethod:
             - refBLK: Reference block to reconstruct
 
         Return:
-            N.A
+            - stateE: Reconstructed state on east cell face
+            - stateW: Reconstructed state on west cell face
+            - stateN: Reconstructed state on north cell face
+            - stateS: Reconstructed state on south cell face
         """
 
         # Select correct reconstruction type and return left and right reconstructed conservative states
 
         # Primitive reconstruction
         if self.inputs.reconstruction_type == 'Primitive':
-            stateE, stateW, stateN, stateS = self.reconstruct_primitive(refBLK)
+            return self.reconstruct_primitive(refBLK)
 
-        # Conservative reconstruction
-        elif self.inputs.reconstruction_type == 'Conservative':
-            stateE, stateW, stateN, stateS = self.reconstruct_conservative(refBLK)
-
-        # Default to Conservative
+        # Conservative reconstruction (by default)
         else:
-            stateE, stateW, stateN, stateS = self.reconstruct_conservative(refBLK)
-
-        return stateE, stateW, stateN, stateS
+            return self.reconstruct_state(refBLK, refBLK.state.U,
+                                          refBLK.ghost.E.state.U, refBLK.ghost.W.state.U,
+                                          refBLK.ghost.N.state.U, refBLK.ghost.S.state.U)
 
 
     def reconstruct_primitive(self,
@@ -269,32 +270,13 @@ class MUSCLFiniteVolumeMethod:
                                                                 _state_E_ghost, _state_W_ghost,
                                                                 _state_N_ghost, _state_S_ghost)
 
-        UE = ConservativeState(inputs=self.inputs, W_vector=stateE).U
-        UW = ConservativeState(inputs=self.inputs, W_vector=stateW).U
-        UN = ConservativeState(inputs=self.inputs, W_vector=stateN).U
-        US = ConservativeState(inputs=self.inputs, W_vector=stateS).U
+        _state_E = ConservativeState(inputs=self.inputs, W_vector=stateE).U
+        _state_W = ConservativeState(inputs=self.inputs, W_vector=stateW).U
+        _state_N = ConservativeState(inputs=self.inputs, W_vector=stateN).U
+        _state_S = ConservativeState(inputs=self.inputs, W_vector=stateS).U
 
-        return UE, UW, UN, US
+        return _state_E, _state_W, _state_N, _state_S
 
-
-    def reconstruct_conservative(self,
-                                 refBLK,
-                                 ) -> [np.ndarray]:
-        """
-        Conservative reconstruction implementation. Simply pass the input ConservativeState into the
-        reconstruct_state implementation.
-
-        Parameters:
-            - U: Input ConservativeState for reconstruction.
-
-        Return:
-            - stateL: Left reconstructed conservative state
-            - stateR: Right reconstructed conservative state
-        """
-
-        return self.reconstruct_state(refBLK, refBLK.state.U,
-                                      refBLK.ghost.E.state.U, refBLK.ghost.W.state.U,
-                                      refBLK.ghost.N.state.U, refBLK.ghost.S.state.U)
 
     @abstractmethod
     def reconstruct_state(self,
