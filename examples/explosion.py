@@ -1,19 +1,17 @@
 from pyHype.solvers import solver
-import numpy as np
-import matplotlib.pyplot as plt
 
 explosion = {'problem_type':            'explosion',
              'IC_type':                 'from_IC',
              'flux_function':           'Roe',
-             'reconstruction_type':     'Primitive',
+             'reconstruction_type':     'Conservative',
              'interface_interpolation': 'arithmetic_average',
              'finite_volume_method':    'SecondOrderPWL',
              'gradient_method':         'GreenGauss',
              'flux_limiter':            'Venkatakrishnan',
              'time_integrator':         'RK2',
-             'CFL':                     0.4,
+             'CFL':                     0.45,
              't_final':                 0.06,
-             'realplot':                False,
+             'realplot':                True,
              'makeplot':                False,
              'time_it':                 False,
              'gamma':                   1.4,
@@ -26,6 +24,6 @@ explosion = {'problem_type':            'explosion',
              'mesh_name':               'chamber',
              'profile':                 False}
 
-exp = solver.Euler2DSolver(explosion)
+exp = solver.Euler2D(explosion)
 exp.solve()
 

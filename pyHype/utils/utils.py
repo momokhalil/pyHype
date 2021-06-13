@@ -18,7 +18,7 @@ import numpy as np
 
 def rotate_row(array: np.ndarray,
                theta: float
-               ) -> np.ndarray:
+               ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees counterclockwise.
     The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
@@ -39,16 +39,16 @@ def rotate_row(array: np.ndarray,
     y' = y cos(theta) - x sin(theta)
     """
 
-    rotated = array.copy()
-    rotated[:, :, 1] = rotated[:, :, 1] * np.cos(theta) + rotated[:, :, 2] * np.sin(theta)
-    rotated[:, :, 2] = rotated[:, :, 2] * np.cos(theta) - rotated[:, :, 1] * np.sin(theta)
+    u = array[:, :, 1] * np.cos(theta) + array[:, :, 2] * np.sin(theta)
+    v = array[:, :, 2] * np.cos(theta) - array[:, :, 1] * np.sin(theta)
 
-    return rotated
+    array[:, :, 1] = u
+    array[:, :, 2] = v
 
 
 def unrotate_row(array: np.ndarray,
                  theta: float
-                 ) -> np.ndarray:
+                 ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees clockwise. Basically the
     inverse of rotate_row(). The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
@@ -69,8 +69,9 @@ def unrotate_row(array: np.ndarray,
     y = y' cos(theta) + x' sin(theta)
     """
 
-    rotated = array.copy()
-    rotated[:, :, 1] = rotated[:, :, 1] * np.cos(theta) - rotated[:, :, 2] * np.sin(theta)
-    rotated[:, :, 2] = rotated[:, :, 2] * np.cos(theta) + rotated[:, :, 1] * np.sin(theta)
+    u = array[:, :, 1] * np.cos(theta) - array[:, :, 2] * np.sin(theta)
+    v = array[:, :, 2] * np.cos(theta) + array[:, :, 1] * np.sin(theta)
 
-    return rotated
+    array[:, :, 1] = u
+    array[:, :, 2] = v
+

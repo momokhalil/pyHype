@@ -297,6 +297,9 @@ class QuadBlock:
         self.mesh.EW_midpoint_x, self.mesh.EW_midpoint_y = self.mesh.get_EW_face_midpoint()
         self.mesh.NS_midpoint_x, self.mesh.NS_midpoint_y = self.mesh.get_NS_face_midpoint()
 
+        self.mesh.dx = self.mesh.EW_midpoint_x[:, 1:, :] - self.mesh.EW_midpoint_x[:, :-1, :]
+        self.mesh.dy = self.mesh.NS_midpoint_y[1:, :, :] - self.mesh.NS_midpoint_y[:-1, :, :]
+
         # --------------------------------------------------------------------------------------------------------------
         # DEBUGGING
 

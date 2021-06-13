@@ -78,9 +78,6 @@ class Mesh:
         self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
         self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
 
-        self.dx     = self.Lx / (self.nx + 1)
-        self.dy     = self.Ly / (self.ny + 1)
-
         self.EW_norm_x = np.zeros((1, self.nx + 1))
         self.EW_norm_y = np.zeros((1, self.nx + 1))
 

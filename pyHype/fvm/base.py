@@ -162,8 +162,8 @@ class MUSCLFiniteVolumeMethod:
 
             # ROE Flux
             if _flux_func == 'Roe':
-                self.flux_function_X = ROE_FLUX_X(self.inputs)
-                self.flux_function_Y = ROE_FLUX_Y(self.inputs)
+                self.flux_function_X = ROE_FLUX_X(self.inputs, self.inputs.nx)
+                self.flux_function_Y = ROE_FLUX_X(self.inputs, self.inputs.ny)
             # HLLE Flux
             elif _flux_func == 'HLLE':
                 self.flux_function_X = HLLE_FLUX_X(self.inputs)

@@ -69,7 +69,7 @@ class ProblemInput:
                 raise KeyError(key + ' not found in inputs.')
 
 
-class Euler2DSolver:
+class Euler2D:
     def __init__(self, input_dict: dict) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
@@ -236,12 +236,13 @@ class Euler2DSolver:
         for block in self.blocks:
             a = block.state.a()
 
-            t1 = block.mesh.dx / (np.absolute(block.state.u()) + a)
-            t2 = block.mesh.dy / (np.absolute(block.state.v()) + a)
+            t1 = block.mesh.dx[:, :, 0] / (np.absolute(block.state.u()) + a)
+            t2 = block.mesh.dy[:, :, 0] / (np.absolute(block.state.v()) + a)
 
             dt_ = self.CFL * min(t1.min(), t2.min())
 
-            if dt_ < dt: dt = dt_
+            if dt_ < dt:
+                dt = dt_
 
         return dt
 
