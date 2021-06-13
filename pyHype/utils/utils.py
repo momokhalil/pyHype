@@ -16,9 +16,10 @@ limitations under the License.
 
 import numpy as np
 
-def rotate_row(array: np.ndarray,
-               theta: float
-               ) -> None:
+
+def rotate(array: np.ndarray,
+           theta: float
+           ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees counterclockwise.
     The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
@@ -46,9 +47,9 @@ def rotate_row(array: np.ndarray,
     array[:, :, 2] = v
 
 
-def unrotate_row(array: np.ndarray,
-                 theta: float
-                 ) -> None:
+def unrotate(array: np.ndarray,
+             theta: float
+             ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees clockwise. Basically the
     inverse of rotate_row(). The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...

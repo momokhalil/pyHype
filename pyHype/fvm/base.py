@@ -148,8 +148,8 @@ class MUSCLFiniteVolumeMethod:
         self.global_nBLK = global_nBLK
 
         # Initialize x and y direction flux
-        self.Flux_X = np.empty((self.ny, self.nx, 4))
-        self.Flux_Y = np.empty((self.ny, self.nx, 4))
+        self.Flux_EW = np.empty((self.ny, self.nx + 1, 4))
+        self.Flux_NS = np.empty((self.ny + 1, self.nx, 4))
 
         # Initialize left and right conservative states
         self.UL = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)

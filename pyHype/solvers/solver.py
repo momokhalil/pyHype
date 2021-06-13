@@ -261,7 +261,13 @@ class Euler2D:
         if self.inputs.realplot:
             plt.ion()
             self.realplot = plt.axes()
-            self.realplot.figure.set_size_inches(5, 10)
+            w = max(self.inputs.mesh_inputs[1].SE[0] - self.inputs.mesh_inputs[1].SW[0],
+                    self.inputs.mesh_inputs[1].NE[0] - self.inputs.mesh_inputs[1].NW[0])
+            l = max(self.inputs.mesh_inputs[1].SE[1] - self.inputs.mesh_inputs[1].NE[1],
+                    self.inputs.mesh_inputs[1].NW[1] - self.inputs.mesh_inputs[1].SW[1])
+            a = l/w
+            pl = 10
+            self.realplot.figure.set_size_inches(pl/a, pl)
 
         if self.inputs.profile:
             print('Enable profiler')
@@ -282,11 +288,11 @@ class Euler2D:
             #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
 
             if self.inputs.realplot:
-                if self.numTimeStep % 2 == 0:
+                if self.numTimeStep % 5 == 0:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,
-                                           70, cmap='magma')
+                                           40, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
 

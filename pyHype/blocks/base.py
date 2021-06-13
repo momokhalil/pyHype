@@ -297,12 +297,15 @@ class QuadBlock:
         self.mesh.EW_midpoint_x, self.mesh.EW_midpoint_y = self.mesh.get_EW_face_midpoint()
         self.mesh.NS_midpoint_x, self.mesh.NS_midpoint_y = self.mesh.get_NS_face_midpoint()
 
+        self.mesh.E_face_L = self.mesh.east_face_length()[:, :, np.newaxis]
+        self.mesh.W_face_L = self.mesh.west_face_length()[:, :, np.newaxis]
+        self.mesh.N_face_L = self.mesh.north_face_length()[:, :, np.newaxis]
+        self.mesh.S_face_L = self.mesh.south_face_length()[:, :, np.newaxis]
+
         self.mesh.dx = self.mesh.EW_midpoint_x[:, 1:, :] - self.mesh.EW_midpoint_x[:, :-1, :]
         self.mesh.dy = self.mesh.NS_midpoint_y[1:, :, :] - self.mesh.NS_midpoint_y[:-1, :, :]
 
-        # --------------------------------------------------------------------------------------------------------------
-        # DEBUGGING
-
+    def plot(self):
         plt.scatter(self.mesh.x, self.mesh.y, color='black', s=15)
         plt.scatter(self.mesh.xc, self.mesh.yc, color='mediumslateblue', s=15)
 
@@ -313,8 +316,11 @@ class QuadBlock:
 
         segs1 = np.stack((self.mesh.xc, self.mesh.yc), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+
+        plt.gca().add_collection(
+            LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(
+            LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
         plt.scatter(self.ghost.E.x, self.ghost.E.y, marker='s', color='black', s=15)
         plt.scatter(self.ghost.W.x, self.ghost.W.y, marker='s', color='black', s=15)
@@ -324,21 +330,16 @@ class QuadBlock:
         plt.scatter(self.mesh.EW_midpoint_x[:, :, 0], self.mesh.EW_midpoint_y[:, :, 0], marker='^', color='red', s=15)
         plt.scatter(self.mesh.NS_midpoint_x[:, :, 0], self.mesh.NS_midpoint_y[:, :, 0], marker='x', color='green', s=15)
 
-        #plt.scatter(self.mesh.xc[1:, :], self.mesh.yc[1:, :], marker='^', color='red', s=15)
-
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
-        #plt.pause(100)
-
-        # --------------------------------------------------------------------------------------------------------------
 
     @property
-    def Flux_X(self):
-        return self.fvm.Flux_X
+    def Flux_EW(self):
+        return self.fvm.Flux_EW
 
     @property
-    def Flux_Y(self):
-        return self.fvm.Flux_Y
+    def Flux_NS(self):
+        return self.fvm.Flux_NS
 
     def __getitem__(self, index):
         y, x, var = index

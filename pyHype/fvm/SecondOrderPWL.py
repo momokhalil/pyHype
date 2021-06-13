@@ -85,20 +85,22 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
             stateL = stateE[row:row+1, :, :]
             stateR = stateW[row:row+1, :, :]
 
-            # Rotate to allign with coordinate axis
-            utils.rotate_row(stateL, refBLK.mesh.thetax)
-            utils.rotate_row(stateR, refBLK.mesh.thetax)
+            # Rotate to allign with cell faces
+            utils.rotate(stateL, refBLK.mesh.thetax)
+            utils.rotate(stateR, refBLK.mesh.thetax)
 
             # Set vectors based on left and right states
             self.UL.from_conservative_state_vector(stateL)
             self.UR.from_conservative_state_vector(stateR)
 
-            # Calculate flux at each cell interface
+            # Calculate face-normal-flux at each cell interface
             flux = self.flux_function_X.get_flux(self.UL, self.UR)
-            utils.unrotate_row(flux, refBLK.mesh.thetax)
+
+            # Rotate flux back to local frame
+            utils.unrotate(flux, refBLK.mesh.thetax)
 
             # Calculate flux difference between cell interfaces
-            self.Flux_X[row, :, :] = flux[:, 1:, :] - flux[:, :-1, :]
+            self.Flux_EW[row, :, :] = flux
 
         # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
@@ -114,20 +116,22 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
             stateL = stateN[:, col:col + 1, :].transpose((1, 0, 2))
             stateR = stateS[:, col:col + 1, :].transpose((1, 0, 2))
 
-            # Rotate to allign with coordinate axis
-            utils.rotate_row(stateL, refBLK.mesh.thetay)
-            utils.rotate_row(stateR, refBLK.mesh.thetay)
+            # Rotate to allign with cell faces
+            utils.rotate(stateL, refBLK.mesh.thetay)
+            utils.rotate(stateR, refBLK.mesh.thetay)
 
             # Set vectors based on left and right states
             self.UL.from_conservative_state_vector(stateL)
             self.UR.from_conservative_state_vector(stateR)
 
-            # Calculate flux at each cell interface
+            # Calculate face-normal-flux at each cell interface
             flux = self.flux_function_Y.get_flux(self.UL, self.UR)
-            utils.unrotate_row(flux, refBLK.mesh.thetay)
+
+            # Rotate flux back to global frame
+            utils.unrotate(flux, refBLK.mesh.thetay)
 
             # Calculate flux difference between cell interfaces
-            self.Flux_Y[:, col, :] = (flux[:, 1:, :] - flux[:, :-1, :]).reshape(-1, 4)
+            self.Flux_NS[:, col, :] = flux.reshape(-1, 4)
 
 
     def reconstruct_state(self,

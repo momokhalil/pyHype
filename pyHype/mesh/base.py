@@ -16,6 +16,8 @@ limitations under the License.
 
 import numpy as np
 from typing import Union
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 
 class BlockDescription:
@@ -71,13 +73,6 @@ class Mesh:
         self.xc = np.zeros((self.ny + 1, self.nx + 1))
         self.yc = np.zeros((self.ny + 1, self.nx + 1))
 
-        self.A = np.zeros((self.ny, self.nx))
-
-        self.create_mesh()
-
-        self.Lx    = self.vertices.NE[0] - self.vertices.NW[0]
-        self.Ly    = self.vertices.NE[1] - self.vertices.SE[1]
-
         self.EW_norm_x = np.zeros((1, self.nx + 1))
         self.EW_norm_y = np.zeros((1, self.nx + 1))
 
@@ -87,10 +82,19 @@ class Mesh:
         self.thetax = np.zeros((self.nx + 1))
         self.thetay = np.zeros((self.ny + 1))
 
+        self.E_face_L = None
+        self.W_face_L = None
+        self.N_face_L = None
+        self.S_face_L = None
+
         self.EW_midpoint_x = None
         self.EW_midpoint_y = None
         self.NS_midpoint_x = None
         self.NS_midpoint_y = None
+
+        self.A = np.zeros((self.ny, self.nx))
+
+        self.create_mesh()
 
     def create_mesh(self):
 
@@ -211,10 +215,10 @@ class Mesh:
         """
 
         # Side lengths
-        s1 = self.west_side_length()
-        s3 = self.east_side_length()
-        s2 = self.north_side_length()
-        s4 = self.south_side_length()
+        s1 = self.west_face_length()
+        s3 = self.east_face_length()
+        s2 = self.north_face_length()
+        s4 = self.south_face_length()
 
         # Diagonal
         d1 = (self.xc[1:, :-1] - self.xc[:-1, 1:]) ** 2 + \
@@ -231,7 +235,7 @@ class Mesh:
         p1 = (s - s1) * (s - s2) * (s - s3) * (s - s4)
         p2 = s1 * s2 * s3 * s4
 
-        self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
+        self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))[:, :, np.newaxis]
 
     @staticmethod
     def get_centroid(x: np.ndarray, y: np.ndarray):
@@ -244,27 +248,19 @@ class Mesh:
 
         return xc, yc
 
-    def east_side_length(self):
-        """print('-----------------------------------------------')
-        print(self.x)
-        print(self.y)
-        print('-----------------------------------------------')
-        print(self.xc)
-        print(self.yc)
-        print(self.yc[1:, 1:])
-        print(self.yc[:-1, 1:])"""
+    def east_face_length(self):
         return np.sqrt(((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 +
                         (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2))
 
-    def west_side_length(self):
+    def west_face_length(self):
         return np.sqrt(((self.xc[1:, :-1] - self.xc[:-1, :-1]) ** 2 +
                         (self.yc[1:, :-1] - self.yc[:-1, :-1]) ** 2))
 
-    def north_side_length(self):
+    def north_face_length(self):
         return np.sqrt(((self.xc[1:, :-1] - self.xc[1:, 1:]) ** 2 +
                         (self.yc[1:, :-1] - self.yc[1:, 1:]) ** 2))
 
-    def south_side_length(self):
+    def south_face_length(self):
         return np.sqrt(((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 +
                         (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2))
 

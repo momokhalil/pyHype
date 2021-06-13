@@ -25,10 +25,18 @@ class TimeIntegrator:
     def __call__(self, dt):
         self.integrate(dt)
 
-    # Calculate residuals in x and y directions
     def get_residual(self):
+
+        # Compute fluxes on each cell face
         self.refBLK.get_flux()
-        return -self.refBLK.Flux_X / self.refBLK.mesh.dx - self.refBLK.Flux_Y / self.refBLK.mesh.dy
+
+        # Integrate fluxes
+        fluxE = self.refBLK.Flux_EW[:, 1:, :]  * self.refBLK.mesh.E_face_L
+        fluxW = self.refBLK.Flux_EW[:, :-1, :] * self.refBLK.mesh.W_face_L * (-1)
+        fluxN = self.refBLK.Flux_NS[1:, :, :]  * self.refBLK.mesh.N_face_L
+        fluxS = self.refBLK.Flux_NS[:-1, :, :] * self.refBLK.mesh.S_face_L * (-1)
+
+        return -(fluxE + fluxW + fluxN + fluxS) / self.refBLK.mesh.A
 
     # Update state and boundary conditions
     def update_state(self, U):

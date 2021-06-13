@@ -62,26 +62,22 @@ class GreenGauss:
         # Concatenate mesh state and ghost block states
         interfaceEW, interfaceNS = refBLK.get_interface_values(self.inputs.reconstruction_type)
 
-        # Calculate Side Length
-        lengthE = refBLK.mesh.east_side_length()[:, :, np.newaxis]
-        lengthW = refBLK.mesh.west_side_length()[:, :, np.newaxis]
-        lengthN = refBLK.mesh.north_side_length()[:, :, np.newaxis]
-        lengthS = refBLK.mesh.south_side_length()[:, :, np.newaxis]
-
         # Get each face's contribution to dUdx
-        E = interfaceEW[:, 1:, :] * refBLK.mesh.EW_norm_x[0:, 1:, np.newaxis] * lengthE
-        W = interfaceEW[:, :-1, :] * refBLK.mesh.EW_norm_x[0:, :-1, np.newaxis] * lengthW * (-1)
-        N = interfaceNS[1:, :, :] * refBLK.mesh.NS_norm_x[1:, 0:, np.newaxis] * lengthN
-        S = interfaceNS[:-1, :, :] * refBLK.mesh.NS_norm_x[:-1, 0:, np.newaxis] * lengthS * (-1)
+        E = interfaceEW[:, 1:, :] * refBLK.mesh.E_face_L
+        W = interfaceEW[:, :-1, :] * refBLK.mesh.W_face_L * (-1)
+        N = interfaceNS[1:, :, :] * refBLK.mesh.N_face_L
+        S = interfaceNS[:-1, :, :] * refBLK.mesh.S_face_L * (-1)
 
         # Compute dUdx
-        refBLK.gradx = (E + W + N + S) / refBLK.mesh.A[:, :, np.newaxis]
-
-        # Get each face's contribution to dUdy
-        E = interfaceEW[:, 1:, :] * refBLK.mesh.EW_norm_y[0:, 1:, np.newaxis] * lengthE
-        W = interfaceEW[:, :-1, :] * refBLK.mesh.EW_norm_y[0:, :-1, np.newaxis] * lengthW * (-1)
-        N = interfaceNS[1:, :, :] * refBLK.mesh.NS_norm_y[1:, 0:, np.newaxis] * lengthN
-        S = interfaceNS[:-1, :, :] * refBLK.mesh.NS_norm_y[:-1, 0:, np.newaxis] * lengthS * (-1)
+        refBLK.gradx = (E * refBLK.mesh.EW_norm_x[0:, 1:, np.newaxis]  +
+                        W * refBLK.mesh.EW_norm_x[0:, :-1, np.newaxis] +
+                        N * refBLK.mesh.NS_norm_x[1:, 0:, np.newaxis]  +
+                        S * refBLK.mesh.NS_norm_x[:-1, 0:, np.newaxis]
+                        ) / refBLK.mesh.A
 
         # Compute dUdy
-        refBLK.grady = (E + W + N + S) / refBLK.mesh.A[:, :, np.newaxis]
+        refBLK.grady = (E * refBLK.mesh.EW_norm_y[0:, 1:, np.newaxis] +
+                        W * refBLK.mesh.EW_norm_y[0:, :-1, np.newaxis] +
+                        N * refBLK.mesh.NS_norm_y[1:, 0:, np.newaxis] +
+                        S * refBLK.mesh.NS_norm_y[:-1, 0:, np.newaxis]
+                        ) / refBLK.mesh.A
