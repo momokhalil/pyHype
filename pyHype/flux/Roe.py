@@ -57,13 +57,13 @@ class ROE_FLUX_X(FluxFunction):
         self.Li, self.Lj = idx.Li, idx.Lj
 
         # Build sparse matrices
-        data = stack(self.A_m3, self.A_m2, self.A_m1, self.A_d0, self.A_p1, self.A_p2)
+        data = np.concatenate((self.A_m3, self.A_m2, self.A_m1, self.A_d0, self.A_p1, self.A_p2))
         self.A = sparse.coo_matrix((data, (self.Ai, self.Aj)))
 
-        data = stack(self.X_m3, self.X_m2, self.X_m1, self.X_d0, self.X_p1, self.X_p2)
+        data = np.concatenate((self.X_m3, self.X_m2, self.X_m1, self.X_d0, self.X_p1, self.X_p2))
         self.X = sparse.coo_matrix((data, (self.Xi, self.Xj)))
 
-        data = stack(self.Xi_m3, self.Xi_m2, self.Xi_m1, self.Xi_d0, self.Xi_p1, self.Xi_p2, self.Xi_p3)
+        data = np.concatenate((self.Xi_m3, self.Xi_m2, self.Xi_m1, self.Xi_d0, self.Xi_p1, self.Xi_p2, self.Xi_p3))
         self.Xi = sparse.coo_matrix((data, (self.Xi_i, self.Xi_j)))
 
         data = np.zeros((4 * size + 4))
@@ -81,72 +81,80 @@ class ROE_FLUX_X(FluxFunction):
 
         # Calculate quantities to construct eigensystem. These quantities are in vector for, where each element
         # corresponds to each point on the local 1D problem being solved.
-        a = Wroe.a()  # roe average speed of sound
-        gu = self.g * Wroe.u  # gamma * roe u
-        gbu = self.gb * Wroe.u  # gamma_bar * roe u
-        gtu = self.gt * Wroe.u  # gamma_tar * roe u
-        ghu = self.gh * Wroe.u  # gamma_hat * roe u
-        ghv = self.gh * Wroe.v  # gamma_hat * roe v
-        gtv = self.gt * Wroe.v  # gamma_tau * roe v
-        u2 = Wroe.u ** 2  # roe u squared
-        v2 = Wroe.v ** 2  # roe v squared
-        uv = Wroe.u * Wroe.v  # product of roe velocities
-        ek = 0.5 * (u2 + v2)  # 0.5 * sum of squared roe velocities
+        a = Wroe.a()                # roe average speed of sound
+        gu = self.g * Wroe.u        # gamma * roe u
+        gbu = self.gb * Wroe.u      # gamma_bar * roe u
+        gtu = self.gt * Wroe.u      # gamma_tar * roe u
+        ghu = self.gh * Wroe.u      # gamma_hat * roe u
+        ghv = self.gh * Wroe.v      # gamma_hat * roe v
+        gtv = self.gt * Wroe.v      # gamma_tau * roe v
+        u2 = Wroe.u ** 2            # roe u squared
+        v2 = Wroe.v ** 2            # roe v squared
+        uv = Wroe.u * Wroe.v        # product of roe velocities
+        ek = 0.5 * (u2 + v2)        # 0.5 * sum of squared roe velocities
         a2 = a ** 2
         ta2 = a2 * 2
         ua = Wroe.u * a
         ghek = self.gh * ek
         H = Wroe.H()
 
-        self.A_m3 = Wroe.u * (ghek - H)
+        self.A_m3[:] = Wroe.u * (ghek - H)
+        self.A_m2[0::2] = -uv
+        self.A_m2[1::2] = H - self.gh * u2
+        self.A_m1[0::3] = ghek - u2
+        self.A_m1[1::3] = Wroe.v
+        self.A_m1[2::3] = -self.gh * uv
+        self.A_d0[0::3] = gbu
+        self.A_d0[1::3] = Wroe.u
+        self.A_d0[2::3] = gu
+        self.A_p1[1::2] = -ghv
 
-        self.A_m2[0, 0::2] = -uv
-        self.A_m2[0, 1::2] = H - self.gh * u2
-        self.A_m1[0, 0::3] = ghek - u2
-        self.A_m1[0, 1::3] = Wroe.v
-        self.A_m1[0, 2::3] = -self.gh * uv
-        self.A_d0[0, 0::3] = gbu
-        self.A_d0[0, 1::3] = Wroe.u
-        self.A_d0[0, 2::3] = gu
-        self.A_p1[0, 1::2] = -ghv
+        self.A.data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,
+                                      self.A_d0,
+                                      self.A_p1, self.A_p2),
+                                     axis=0)
 
-        self.A.data = stack(self.A_m3, self.A_m2, self.A_m1, self.A_d0, self.A_p1, self.A_p2)
+        self.X_m3[:] = H - ua
+        self.X_m2[0::2] = Wroe.v
+        self.X_m2[1::2] = ek
+        self.X_m1[0::3] = Lm
+        self.X_m1[1::3] = Wroe.v
+        self.X_m1[2::3] = H + ua
+        self.X_d0[1::4] = Wroe.u
+        self.X_d0[2::4] = Wroe.v
+        self.X_d0[3::4] = Wroe.v
+        self.X_p1[1::3] = Lp
 
-        self.X_m3 = H - ua
-        self.X_m2[0, 0::2] = Wroe.v
-        self.X_m2[0, 1::2] = ek
-        self.X_m1[0, 0::3] = Lm
-        self.X_m1[0, 1::3] = Wroe.v
-        self.X_m1[0, 2::3] = H + ua
-        self.X_d0[0, 1::4] = Wroe.u
-        self.X_d0[0, 2::4] = Wroe.v
-        self.X_d0[0, 3::4] = Wroe.v
-        self.X_p1[0, 1::3] = Lp
+        self.X.data = np.concatenate((self.X_m3, self.X_m2, self.X_m1,
+                                      self.X_d0,
+                                      self.X_p1, self.X_p2),
+                                     axis=0)
 
-        self.X.data = stack(self.X_m3, self.X_m2, self.X_m1, self.X_d0, self.X_p1, self.X_p2)
+        self.Xi_m3[:] = Wroe.v
+        self.Xi_m2[:] = (ghek - ua) / ta2
+        self.Xi_m1[0::3] = (a2 - ghek) / a2
+        self.Xi_m1[1::3] = (gtu + a) / ta2
+        self.Xi_d0[0::3] = (ghek + ua) / ta2
+        self.Xi_d0[1::3] = ghu / a2
+        self.Xi_d0[2::3] = gtv / ta2
+        self.Xi_p1[0::3] = (gtu - a) / ta2
+        self.Xi_p1[1::3] = ghv / a2
+        self.Xi_p1[2::3] = self.gh / ta2
+        self.Xi_p2[0::2] = gtv / ta2
+        self.Xi_p2[1::2] = self.gt / a2
+        self.Xi_p3[:] = self.gh / ta2
 
-        self.Xi_m3 = Wroe.v
-        self.Xi_m2 = (ghek - ua) / ta2
-        self.Xi_m1[0, 0::3] = (a2 - ghek) / a2
-        self.Xi_m1[0, 1::3] = (gtu + a) / ta2
-        self.Xi_d0[0, 0::3] = (ghek + ua) / ta2
-        self.Xi_d0[0, 1::3] = ghu / a2
-        self.Xi_d0[0, 2::3] = gtv / ta2
-        self.Xi_p1[0, 0::3] = (gtu - a) / ta2
-        self.Xi_p1[0, 1::3] = ghv / a2
-        self.Xi_p1[0, 2::3] = self.gh / ta2
-        self.Xi_p2[0, 0::2] = gtv / ta2
-        self.Xi_p2[0, 1::2] = self.gt / a2
-        self.Xi_p3 = self.gh / ta2
+        self.Xi.data = np.concatenate((self.Xi_m3, self.Xi_m2, self.Xi_m1,
+                                       self.Xi_d0,
+                                       self.Xi_p1, self.Xi_p2, self.Xi_p3),
+                                      axis=0)
 
-        self.Xi.data = stack(self.Xi_m3, self.Xi_m2, self.Xi_m1, self.Xi_d0, self.Xi_p1, self.Xi_p2, self.Xi_p3)
+        self.lam[0::4] = Lm
+        self.lam[1::4] = Wroe.u
+        self.lam[2::4] = Lp
+        self.lam[3::4] = Wroe.u
 
-        self.lam[0, 0::4] = Lm
-        self.lam[0, 1::4] = Wroe.u
-        self.lam[0, 2::4] = Lp
-        self.lam[0, 3::4] = Wroe.u
-
-        self.Lambda.data = self.lam.reshape(-1, )
+        self.Lambda.data = self.lam
 
     def get_flux(self, UL, UR):
         self._get_eigen_system_from_roe_state(UL, UR)
@@ -157,7 +165,3 @@ class ROE_FLUX_X(FluxFunction):
                               self.Xi.dot(
                                   (UL - UR).reshape(-1, ))))
                       ).reshape(1, -1, 4)
-
-
-def stack(*args):
-    return np.concatenate(args, axis=1).reshape(-1, )
