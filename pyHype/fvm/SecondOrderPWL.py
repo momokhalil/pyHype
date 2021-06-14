@@ -106,7 +106,7 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
 
     def integrate_flux_W(self, refBLK):
-        return self.Flux_EW[:, :-1, :] * refBLK.mesh.W_face_L * (-1)
+        return -self.Flux_EW[:, :-1, :] * refBLK.mesh.W_face_L
 
 
     def integrate_flux_N(self, refBLK):
@@ -114,4 +114,4 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
 
     def integrate_flux_S(self, refBLK):
-        return self.Flux_NS[:-1, :, :] * refBLK.mesh.S_face_L * (-1)
+        return -self.Flux_NS[:-1, :, :] * refBLK.mesh.S_face_L

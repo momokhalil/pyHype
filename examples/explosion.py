@@ -1,5 +1,4 @@
 from pyHype.solvers import solver
-import os
 
 explosion = {'problem_type':            'explosion',
              'IC_type':                 'from_IC',

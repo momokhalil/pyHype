@@ -63,21 +63,26 @@ class GreenGauss:
         interfaceEW, interfaceNS = refBLK.get_interface_values(self.inputs.reconstruction_type)
 
         # Get each face's contribution to dUdx
-        E = interfaceEW[:, 1:, :]  * refBLK.mesh.E_face_L
-        W = interfaceEW[:, :-1, :] * refBLK.mesh.W_face_L * (-1)
-        N = interfaceNS[1:, :, :]  * refBLK.mesh.N_face_L
-        S = interfaceNS[:-1, :, :] * refBLK.mesh.S_face_L * (-1)
+        E, W, N, S = self.face_contribution(interfaceEW, interfaceNS, refBLK)
 
         # Compute dUdx
-        refBLK.gradx = (E * refBLK.mesh.EW_norm_x[:, 1:, :]  +
-                        W * refBLK.mesh.EW_norm_x[:, :-1, :] +
-                        N * refBLK.mesh.NS_norm_x[1:, :, :]  +
-                        S * refBLK.mesh.NS_norm_x[:-1, :, :]
+        refBLK.gradx = (E * refBLK.mesh.E_norm_x +
+                        W * refBLK.mesh.W_norm_x +
+                        N * refBLK.mesh.N_norm_x +
+                        S * refBLK.mesh.S_norm_x
                         ) / refBLK.mesh.A
 
         # Compute dUdy
-        refBLK.grady = (E * refBLK.mesh.EW_norm_y[:, 1:, :]  +
-                        W * refBLK.mesh.EW_norm_y[:, :-1, :] +
-                        N * refBLK.mesh.NS_norm_y[1:, :, :]  +
-                        S * refBLK.mesh.NS_norm_y[:-1, :, :]
+        refBLK.grady = (E * refBLK.mesh.E_norm_y +
+                        W * refBLK.mesh.W_norm_y +
+                        N * refBLK.mesh.N_norm_y +
+                        S * refBLK.mesh.S_norm_y
                         ) / refBLK.mesh.A
+
+    @staticmethod
+    def face_contribution(interfaceEW, interfaceNS, refBLK):
+        E = interfaceEW[:, 1:, :] * refBLK.mesh.E_face_L
+        W = interfaceEW[:, :-1, :] * refBLK.mesh.W_face_L
+        N = interfaceNS[1:, :, :] * refBLK.mesh.N_face_L
+        S = interfaceNS[:-1, :, :] * refBLK.mesh.S_face_L
+        return E, W, N, S

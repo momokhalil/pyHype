@@ -250,7 +250,7 @@ class PrimitiveState(State):
         return U
 
     def H(self) -> np.ndarray:
-        return (self.g / (self.g - 1)) * (self.p / self.rho) + np.mean(self.u**2 + self.v**2)
+        return (self.g / (self.g - 1)) * (self.p / self.rho) + 0.5 * (self.u**2 + self.v**2)
 
     def a(self) -> np.ndarray:
         return np.sqrt(self.g * self.p / self.rho)
