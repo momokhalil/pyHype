@@ -46,7 +46,6 @@ class GhostBlock:
             self.set_BC = self.set_BC_reflection
 
 
-
     def __getitem__(self, index):
         return self.state.U[index]
 

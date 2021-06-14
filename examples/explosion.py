@@ -1,4 +1,5 @@
 from pyHype.solvers import solver
+import os
 
 explosion = {'problem_type':            'explosion',
              'IC_type':                 'from_IC',
@@ -8,22 +9,23 @@ explosion = {'problem_type':            'explosion',
              'finite_volume_method':    'SecondOrderPWL',
              'gradient_method':         'GreenGauss',
              'flux_limiter':            'Venkatakrishnan',
-             'time_integrator':         'RK3SSP',
-             'CFL':                     0.7,
-             't_final':                 0.07,
-             'realplot':                True,
+             'time_integrator':         'RK2',
+             'CFL':                     0.4,
+             't_final':                 0.002,
+             'realplot':                False,
              'makeplot':                False,
              'time_it':                 False,
              'gamma':                   1.4,
              'rho_inf':                 1.0,
              'a_inf':                   343.0,
              'R':                       287.0,
-             'nx':                      101,
-             'ny':                      151,
+             'nx':                      200,
+             'ny':                      400,
              'nghost':                  1,
              'mesh_name':               'chamber',
-             'profile':                 False}
+             'profile':                 True}
 
 exp = solver.Euler2D(explosion)
 exp.solve()
 
+exp.profile_data.sort_stats('tottime').print_stats()

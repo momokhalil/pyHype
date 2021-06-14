@@ -73,11 +73,11 @@ class Mesh:
         self.xc = np.zeros((self.ny + 1, self.nx + 1))
         self.yc = np.zeros((self.ny + 1, self.nx + 1))
 
-        self.EW_norm_x = np.zeros((1, self.nx + 1))
-        self.EW_norm_y = np.zeros((1, self.nx + 1))
+        self.EW_norm_x = np.zeros((1, self.nx + 1, 1))
+        self.EW_norm_y = np.zeros((1, self.nx + 1, 1))
 
-        self.NS_norm_x = np.zeros((self.ny + 1, 1))
-        self.NS_norm_y = np.zeros((self.ny + 1, 1))
+        self.NS_norm_x = np.zeros((self.ny + 1, 1, 1))
+        self.NS_norm_y = np.zeros((self.ny + 1, 1, 1))
 
         self.thetax = np.zeros((self.nx + 1))
         self.thetay = np.zeros((self.ny + 1))
@@ -169,8 +169,8 @@ class Mesh:
         self.thetax[_zero_den] = 0
 
         # Calculate normal vector
-        self.EW_norm_x[0, :] = np.cos(self.thetax)
-        self.EW_norm_y[0, :] = np.sin(self.thetax)
+        self.EW_norm_x[0, :, 0] = np.cos(self.thetax)
+        self.EW_norm_y[0, :, 0] = np.sin(self.thetax)
 
         # Angle and normal vector for x-aligned nodes (used for top and bottom sides of cells)
 
@@ -187,8 +187,8 @@ class Mesh:
         self.thetay[_zero_den] = np.pi / 2
 
         # Calculate normal vector
-        self.NS_norm_x[:, 0] = np.cos(self.thetay)
-        self.NS_norm_y[:, 0] = np.sin(self.thetay)
+        self.NS_norm_x[:, 0, 0] = np.cos(self.thetay)
+        self.NS_norm_y[:, 0, 0] = np.sin(self.thetay)
 
 
     def compute_cell_area(self):

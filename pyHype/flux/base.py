@@ -34,23 +34,31 @@ class FluxFunction:
 
 
     def harten_correction_x(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState):
-        lambda_R_1, lambda_R_3 = self.wavespeeds_x(WR)
-        lambda_L_1, lambda_L_3 = self.wavespeeds_x(WL)
-        lambda_roe_1, lambda_roe_3 = self.wavespeeds_x(Wroe)
+        lambda_R_p, lambda_R_m = self.wavespeeds_x(WR)
+        lambda_L_p, lambda_L_m = self.wavespeeds_x(WL)
+        lambda_roe_p, lambda_roe_m = self.wavespeeds_x(Wroe)
 
-        theta_1 = 2 * (lambda_R_1 - lambda_L_1)
-        theta_3 = 2 * (lambda_R_3 - lambda_L_3)
+        theta_p = 2 * (lambda_R_p - lambda_L_p)
+        theta_m = 2 * (lambda_R_m - lambda_L_m)
 
-        theta_1 = theta_1 * (theta_1 > 0)
-        theta_3 = theta_3 * (theta_3 > 0)
+        theta_p = theta_p * (theta_p > 0)
+        theta_m = theta_m * (theta_m > 0)
 
-        idx1 = np.absolute(lambda_roe_1) < theta_1
-        idx3 = np.absolute(lambda_roe_3) < theta_3
+        idx1 = np.absolute(lambda_roe_p) < theta_p
+        idx3 = np.absolute(lambda_roe_m) < theta_m
 
-        lambda_roe_1[idx1] = 0.5 * (np.square(lambda_roe_1[idx1]) / theta_1[idx1] + theta_1[idx1])
-        lambda_roe_3[idx3] = 0.5 * (np.square(lambda_roe_3[idx3]) / theta_3[idx3] + theta_3[idx3])
+        lambda_roe_p[idx1] = 0.5 * (np.square(lambda_roe_p[idx1]) / theta_p[idx1] + theta_p[idx1])
+        lambda_roe_m[idx3] = 0.5 * (np.square(lambda_roe_m[idx3]) / theta_m[idx3] + theta_m[idx3])
 
-        return lambda_roe_1, lambda_roe_3
+        """lambda_roe_p = np.where(np.absolute(lambda_roe_p) < theta_p,
+                                0.5 * ((lambda_roe_p ** 2) / (theta_p + 1e-8) + theta_p),
+                                lambda_roe_p)
+
+        lambda_roe_m = np.where(np.absolute(lambda_roe_m) < theta_m,
+                                0.5 * ((lambda_roe_m ** 2) / (theta_m + 1e-8) + theta_m),
+                                lambda_roe_m)"""
+
+        return lambda_roe_p, lambda_roe_m
 
 
     @staticmethod
@@ -59,23 +67,31 @@ class FluxFunction:
 
 
     def harten_correction_y(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState):
-        lambda_R_1, lambda_R_3 = self.wavespeeds_y(WR)
-        lambda_L_1, lambda_L_3 = self.wavespeeds_y(WL)
-        lambda_roe_1, lambda_roe_3 = self.wavespeeds_y(Wroe)
+        lambda_R_p, lambda_R_m = self.wavespeeds_y(WR)
+        lambda_L_p, lambda_L_m = self.wavespeeds_y(WL)
+        lambda_roe_p, lambda_roe_m = self.wavespeeds_y(Wroe)
 
-        theta_1 = 2 * (lambda_R_1 - lambda_L_1)
-        theta_3 = 2 * (lambda_R_3 - lambda_L_3)
+        theta_p = 2 * (lambda_R_p - lambda_L_p)
+        theta_m = 2 * (lambda_R_m - lambda_L_m)
 
-        theta_1 = theta_1 * (theta_1 > 0)
-        theta_3 = theta_3 * (theta_3 > 0)
+        theta_p = theta_p * (theta_p > 0)
+        theta_m = theta_m * (theta_m > 0)
 
-        idx1 = np.absolute(lambda_roe_1) < theta_1
-        idx3 = np.absolute(lambda_roe_3) < theta_3
+        idxp = np.absolute(lambda_roe_p) < theta_p
+        idxm = np.absolute(lambda_roe_m) < theta_m
 
-        lambda_roe_1[idx1] = 0.5 * (np.square(lambda_roe_1[idx1]) / theta_1[idx1] + theta_1[idx1])
-        lambda_roe_3[idx3] = 0.5 * (np.square(lambda_roe_3[idx3]) / theta_3[idx3] + theta_3[idx3])
+        lambda_roe_p[idxp] = 0.5 * (np.square(lambda_roe_p[idxp]) / theta_p[idxp] + theta_p[idxp])
+        lambda_roe_m[idxm] = 0.5 * (np.square(lambda_roe_m[idxm]) / theta_m[idxm] + theta_m[idxm])
 
-        return lambda_roe_1, lambda_roe_3
+        """lambda_roe_p = np.where(np.absolute(lambda_roe_p) < theta_p,
+                                0.5*((lambda_roe_p ** 2) / (theta_p + 1e-8) + theta_p),
+                                lambda_roe_p)
+
+        lambda_roe_m = np.where(np.absolute(lambda_roe_m) < theta_m,
+                                0.5 * ((lambda_roe_m ** 2) / (theta_m + 1e-8) + theta_m),
+                                lambda_roe_m)"""
+
+        return lambda_roe_p, lambda_roe_m
 
     @abstractmethod
     def get_flux(self, UL, UR):
