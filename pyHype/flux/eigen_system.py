@@ -22,30 +22,30 @@ class XDIR_EIGENSYSTEM_VECTORS:
 
         self.inputs = inputs
 
-        self.A_d0 = np.ones((1, 3 * (nx + 1)))
-        self.A_m1 = np.ones((1, 3 * (nx + 1)))
-        self.A_m2 = np.ones((1, 2 * (nx + 1)))
-        self.A_m3 = np.ones((1, 1 * (nx + 1)))
-        self.A_p1 = np.ones((1, 2 * (nx + 1)))
-        self.A_p2 = np.full((1, 1 * (nx + 1)), self.inputs.gamma - 1)
+        self.A_d0 = np.ones((3 * (nx + 1)))
+        self.A_m1 = np.ones((3 * (nx + 1)))
+        self.A_m2 = np.ones((2 * (nx + 1)))
+        self.A_m3 = np.ones((1 * (nx + 1)))
+        self.A_p1 = np.ones((2 * (nx + 1)))
+        self.A_p2 = np.full((1 * (nx + 1)), self.inputs.gamma - 1)
 
-        self.X_d0 = np.ones((1, 4 * (nx + 1)))
-        self.X_m1 = np.ones((1, 3 * (nx + 1)))
-        self.X_m2 = np.ones((1, 2 * (nx + 1)))
-        self.X_m3 = np.ones((1, 1 * (nx + 1)))
-        self.X_p1 = np.ones((1, 3 * (nx + 1)))
-        self.X_p1[0, 2::3] = -1
-        self.X_p2 = np.ones((1, 1 * (nx + 1)))
+        self.X_d0 = np.ones((4 * (nx + 1)))
+        self.X_m1 = np.ones((3 * (nx + 1)))
+        self.X_m2 = np.ones((2 * (nx + 1)))
+        self.X_m3 = np.ones((1 * (nx + 1)))
+        self.X_p1 = np.ones((3 * (nx + 1)))
+        self.X_p1[2::3] = -1
+        self.X_p2 = np.ones((1 * (nx + 1)))
 
-        self.Xi_d0 = np.ones((1, 3 * (nx + 1)))
-        self.Xi_m1 = -np.ones((1, 3 * (nx + 1)))
-        self.Xi_m2 = np.ones((1, 1 * (nx + 1)))
-        self.Xi_m3 = np.ones((1, 1 * (nx + 1)))
-        self.Xi_p1 = np.ones((1, 3 * (nx + 1)))
-        self.Xi_p2 = np.ones((1, 2 * (nx + 1)))
-        self.Xi_p3 = np.ones((1, 1 * (nx + 1)))
+        self.Xi_d0 = np.ones((3 * (nx + 1)))
+        self.Xi_m1 = -np.ones((3 * (nx + 1)))
+        self.Xi_m2 = np.ones((1 * (nx + 1)))
+        self.Xi_m3 = np.ones((1 * (nx + 1)))
+        self.Xi_p1 = np.ones((3 * (nx + 1)))
+        self.Xi_p2 = np.ones((2 * (nx + 1)))
+        self.Xi_p3 = np.ones((1 * (nx + 1)))
 
-        self.lam = np.zeros((1, 4 * (nx + 1)))
+        self.lam = np.zeros((4 * (nx + 1)))
 
 
 class XDIR_EIGENSYSTEM_INDICES:
