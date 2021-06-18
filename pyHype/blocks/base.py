@@ -214,7 +214,7 @@ class QuadBlock:
         self.grady              = np.zeros_like(self.mesh.y)
 
         # Set finite volume method
-        fvm = self.inputs.finite_volume_method
+        fvm = self.inputs.fvm
 
         if fvm == 'SecondOrderPWL':
             self.fvm = SecondOrderPWL(self.inputs, self.global_nBLK)
@@ -222,7 +222,7 @@ class QuadBlock:
             raise ValueError('Specified finite volume method has not been specialized.')
 
         # Set time integrator
-        time_integrator = self.inputs.time_integrator
+        time_integrator = self.inputs.integrator
 
         if time_integrator      == 'ExplicitEuler1':
             self._time_integrator = Erk.ExplicitEuler1(self.inputs)

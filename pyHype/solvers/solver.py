@@ -28,59 +28,76 @@ from pyHype.mesh.base import BlockDescription
 np.set_printoptions(threshold=sys.maxsize)
 
 
-__REQUIRED__ = ['problem_type', 'IC_type', 'realplot', 'makeplot', 'time_it', 't_final', 'time_integrator',
-                'flux_function', 'CFL', 'flux_function', 'reconstruction_type', 'finite_volume_method', 'flux_limiter',
+__REQUIRED__ = ['problem_type', 'realplot', 'makeplot', 'time_it', 't_final', 'CFL',
                 'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'nghost', 'mesh_name', 'profile',
-                'interface_interpolation', 'gradient_method']
+                'interface_interpolation', 'reconstruction_type']
 
 __OPTIONAL__ = ['alpha', 'write_time']
 
 
 class ProblemInput:
     def __init__(self,
-                 input_dict: dict,
-                 mesh_dict: dict
+                 fvm: str,
+                 gradient: str,
+                 flux_function: str,
+                 limiter: str,
+                 integrator: str,
+                 settings: dict,
+                 mesh_inputs: dict
                  ) -> None:
         """
         Sets required input parametes from input parameter dict. Initialized values to default, with the correct type
         """
 
         # Check input dictionary to check if all required fields are present
-        self._check_input_dict(input_dict)
+        self._check_input_settings(settings)
 
         # REQUIRED
 
+        self.fvm = fvm
+        self.gradient = gradient
+        self.flux_function = flux_function
+        self.limiter = limiter
+        self.integrator = integrator
+
         # General parameters
         for req_name in __REQUIRED__:
-            self.__setattr__(req_name, input_dict[req_name])
+            self.__setattr__(req_name, settings[req_name])
 
-        self.n = input_dict['nx'] * input_dict['ny']
-        self.mesh_inputs = mesh_dict
+        self.n = settings['nx'] * settings['ny']
+        self.mesh_inputs = mesh_inputs
 
         # OPTIONAL
         for opt_name in __OPTIONAL__:
-            if opt_name in input_dict.keys():
-                self.__setattr__(opt_name, input_dict[opt_name])
+            if opt_name in settings.keys():
+                self.__setattr__(opt_name, settings[opt_name])
 
     @staticmethod
-    def _check_input_dict(input_dict: dict) -> None:
+    def _check_input_settings(input_dict: dict) -> None:
         for key in __REQUIRED__:
             if key not in input_dict.keys():
                 raise KeyError(key + ' not found in inputs.')
 
 
 class Euler2D:
-    def __init__(self, input_dict: dict) -> None:
+    def __init__(self,
+                 fvm:           str = 'SecondOrderPWL',
+                 gradient:      str = 'GreenGauss',
+                 flux_function: str = 'Roe',
+                 limiter:       str = 'Venkatakrishnan',
+                 integrator:    str = 'RK2',
+                 settings:      dict = None
+                 ) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
         # Store mesh features required to create block descriptions
 
         # Mesh name
-        mesh_name = input_dict['mesh_name']
+        mesh_name = settings['mesh_name']
         # Number of nodes in x-direction per block
-        nx = input_dict['nx']
+        nx = settings['nx']
         # Number of nodes in y-direction per block
-        ny = input_dict['ny']
+        ny = settings['ny']
 
         # --------------------------------------------------------------------------------------------------------------
         # Create dictionary that describes each block in mesh
@@ -90,12 +107,13 @@ class Euler2D:
         # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
         _mesh_dict = _mesh_func(nx=nx, ny=ny)
         # Initialise dictionary to store a BlockDescription for each block in the mesh
-        _mesh_desc = {}
+        _mesh_inputs = {}
         # Create BlockDescription for each block in the mesh
         for blk, blkData in _mesh_dict.items():
-            _mesh_desc[blk] = BlockDescription(blkData)
+            _mesh_inputs[blk] = BlockDescription(blkData)
         # Create ProblemInput to store inputs and mesh description
-        self.inputs = ProblemInput(input_dict, _mesh_desc)
+        self.inputs = ProblemInput(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
+                                   integrator=integrator, settings=settings, mesh_inputs=_mesh_inputs)
 
         print(execution_prints.pyhype)
         print(execution_prints.lice)

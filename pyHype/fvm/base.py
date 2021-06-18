@@ -180,7 +180,7 @@ class MUSCLFiniteVolumeMethod:
             raise ValueError('MUSCLFiniteVolumeMethod: Flux function type not specified.')
 
         # Set slope limiter. Slope limiter must be included in __DEFINED_SLOPE_LIMITERS__
-        _flux_limiter = self.inputs.flux_limiter
+        _flux_limiter = self.inputs.limiter
 
         if _flux_limiter in __DEFINED_SLOPE_LIMITERS__:
 
@@ -201,7 +201,7 @@ class MUSCLFiniteVolumeMethod:
             raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
         # Set slope limiter. Slope limiter must be included in __DEFINED_SLOPE_LIMITERS__
-        _gradient = self.inputs.gradient_method
+        _gradient = self.inputs.gradient
 
         if _gradient in __DEFINED_GRADIENT_FUNCS__:
 
