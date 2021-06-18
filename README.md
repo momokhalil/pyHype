@@ -12,8 +12,9 @@ The core idea behind pyHype is flexibility and modularity. pyHype offers a plug-
 Here is an example of an explosion simulation performed on one block. The simulation was performed with the following: 
 - 600 x 1200 cartesian grid
 - Roe approximate riemann solver
-- Van-Albada flux limiter
-- Second-order Green-Gauss reconstruction
+- Venkatakrishnan flux limiter
+- Piecewise-Linear second order reconstruction
+- Green-Gauss gradient method
 - RK4 time stepping with CFL=0.8
 - Reflection boundary conditions
 
@@ -22,28 +23,31 @@ The example in given in the file [examples/explosion.py](https://github.com/momo
 ```python
 from pyHype.solvers import solver
 
-explosion = {'problem_type':          'explosion',
-             'IC_type':               'from_IC',
-             'flux_function':         'Roe',
-             'reconstruction_type':   'Primitive',
-             'realplot':              False,
-             'makeplot':              False,
-             'time_it':               False,
-             't_final':               0.06,
-             'CFL':                   0.8,
-             'time_integrator':       'RK4',
-             'finite_volume_method':  'SecondOrderGreenGauss',
-             'flux_limiter':          'van_albada',
-             'gamma':                 1.4,
-             'rho_inf':               1.0,
-             'a_inf':                 343.0,
-             'R':                     287.0,
-             'nx':                    600,
-             'ny':                    1200,
-             'mesh_name':             'chamber',
-             'profile':               False}
+explosion = {'problem_type':            'explosion',
+             'IC_type':                 'from_IC',
+             'flux_function':           'Roe',
+             'reconstruction_type':     'Conservative',
+             'interface_interpolation': 'arithmetic_average',
+             'finite_volume_method':    'SecondOrderPWL',
+             'gradient_method':         'GreenGauss',
+             'flux_limiter':            'Venkatakrishnan',
+             'time_integrator':         'RK4',
+             'CFL':                     0.8,
+             't_final':                 0.07,
+             'realplot':                False,
+             'makeplot':                False,
+             'time_it':                 False,
+             'gamma':                   1.4,
+             'rho_inf':                 1.0,
+             'a_inf':                   343.0,
+             'R':                       287.0,
+             'nx':                      600,
+             'ny':                      1200,
+             'nghost':                  1,
+             'mesh_name':               'chamber',
+             'profile':                 False}
 
-exp = solver.Euler2DSolver(explosion)
+exp = solver.Euler2D(explosion)
 exp.solve()
 ```
 ![alt text](/explosion.gif)
