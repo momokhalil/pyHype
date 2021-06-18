@@ -92,10 +92,8 @@ def simple_mesh(nx, ny):
 
 def one_mesh(nx, ny):
     block1 = {'nBLK': 1,
-              'NE': [10, 10],
-              'NW': [0, 10],
-              'SE': [10, 0],
-              'SW': [0, 0],
+              'NW': [0, 10], 'NE': [10, 10],
+              'SW': [0, 0], 'SE': [10, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
@@ -113,7 +111,25 @@ def one_mesh(nx, ny):
 
 def chamber(nx, ny):
     block1 = {'nBLK': 1,
-              'NW': [0, 15], 'NE': [10, 20],
+              'NW': [0, 20], 'NE': [10, 20],
+              'SW': [0, 0],   'SE': [10, 0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'NeighborE': 0,
+              'NeighborW': 0,
+              'NeighborN': 0,
+              'NeighborS': 0,
+              'BCTypeE': 'Reflection',
+              'BCTypeW': 'Reflection',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    return {1: block1}
+
+def chamber_skewed(nx, ny):
+    block1 = {'nBLK': 1,
+              'NW': [0, 20], 'NE': [10, 15],
               'SW': [0, -5],   'SE': [10, 0],
               'nx': nx,
               'ny': ny,

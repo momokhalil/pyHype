@@ -10,7 +10,7 @@ explosion = {'problem_type':            'explosion',
              'flux_limiter':            'Venkatakrishnan',
              'time_integrator':         'RK2',
              'CFL':                     0.4,
-             't_final':                 0.002,
+             't_final':                 0.07,
              'realplot':                False,
              'makeplot':                False,
              'time_it':                 False,
@@ -18,13 +18,11 @@ explosion = {'problem_type':            'explosion',
              'rho_inf':                 1.0,
              'a_inf':                   343.0,
              'R':                       287.0,
-             'nx':                      200,
-             'ny':                      400,
+             'nx':                      600,
+             'ny':                      1200,
              'nghost':                  1,
              'mesh_name':               'chamber',
-             'profile':                 True}
+             'profile':                 False}
 
 exp = solver.Euler2D(explosion)
 exp.solve()
-
-exp.profile_data.sort_stats('tottime').print_stats()

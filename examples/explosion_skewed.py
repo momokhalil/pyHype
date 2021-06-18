@@ -1,15 +1,15 @@
 from pyHype.solvers import solver
 
-implosion = {'problem_type':            'implosion',
+explo_skw = {'problem_type':            'explosion',
              'IC_type':                 'from_IC',
              'flux_function':           'Roe',
-             'reconstruction_type':     'Primitive',
+             'reconstruction_type':     'Conservative',
              'interface_interpolation': 'arithmetic_average',
              'finite_volume_method':    'SecondOrderPWL',
              'gradient_method':         'GreenGauss',
              'flux_limiter':            'Venkatakrishnan',
-             'time_integrator':         'RK3SSP',
-             'CFL':                     0.6,
+             'time_integrator':         'RK2',
+             'CFL':                     0.4,
              't_final':                 0.07,
              'realplot':                False,
              'makeplot':                False,
@@ -18,11 +18,11 @@ implosion = {'problem_type':            'implosion',
              'rho_inf':                 1.0,
              'a_inf':                   343.0,
              'R':                       287.0,
-             'nx':                      400,
-             'ny':                      400,
+             'nx':                      600,
+             'ny':                      1200,
              'nghost':                  1,
-             'mesh_name':               'one_mesh',
+             'mesh_name':               'chamber_skewed',
              'profile':                 False}
 
-imp = solver.Euler2D(implosion)
-imp.solve()
+exp = solver.Euler2D(explo_skw)
+exp.solve()
