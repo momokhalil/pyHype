@@ -900,3 +900,30 @@ class QuadBlock:
         self.ghost.W.set_BC()
         self.ghost.N.set_BC()
         self.ghost.S.set_BC()
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Gradient methods
+
+    def drho_dx(self):
+        return self.gradx[:, :, 0, None]
+
+    def du_dx(self):
+        return (self.gradx[:, :, 1, None] - self.state.u() * self.drho_dx()) / self.state.rho
+
+    def dv_dx(self):
+        return (self.gradx[:, :, 2, None] - self.state.v() * self.drho_dx()) / self.state.rho
+
+    def de_dx(self):
+        return self.gradx[:, :, -1, None]
+
+    def drho_dy(self):
+        return self.grady[:, :, 0, None]
+
+    def du_dy(self):
+        return (self.grady[:, :, 1, None] - self.state.u() * self.drho_dx()) / self.state.rho
+
+    def dv_dy(self):
+        return (self.grady[:, :, 2, None] - self.state.v() * self.drho_dx()) / self.state.rho
+
+    def de_dy(self):
+        return self.grady[:, :, -1, None]
