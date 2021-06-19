@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 from pyHype.mesh.base import BlockDescription, Mesh
-from pyHype.input.input_file_builder import ProblemInput
+from pyHype.solvers.solver import ProblemInput
 
 from pyHype.fvm import SecondOrderPWL
 
@@ -885,14 +885,25 @@ class QuadBlock:
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
 
-    # Update solution state
-    def update(self, dt) -> None:
+    def update(self, dt: float) -> None:
+        """
+        Updates the solution state stored in the current block. Also includes any pre-processing needed prior to the
+        calculation of the state updates, such as preconditioning, etc. The core operation in this method is calling the
+        _time_integrator class, which steps the solution state through time by an amount of dt seconds.
+
+        Parameters:
+            - dt (float): Time step
+
+        Returns:
+            - N.A
+        """
+
         self._time_integrator(self, dt)
 
-    def get_flux(self):
+    def get_flux(self) -> None:
         self.fvm.get_flux(self)
 
-    def get_residual(self):
+    def get_residual(self) -> None:
         return self.fvm.get_residual(self)
 
     def set_BC(self) -> None:
@@ -904,26 +915,151 @@ class QuadBlock:
     # ------------------------------------------------------------------------------------------------------------------
     # Gradient methods
 
-    def drho_dx(self):
+    def drho_dx(self) -> np.ndarray:
+        """
+        Calculate the derivative of density with respect to the x direction. This is equivalent of returning
+        gradx[:, :, 0], and no further calculations are needed.
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - drho_dx(np.ndarray): Derivative of rho with respect to the x direction.
+        """
+
         return self.gradx[:, :, 0, None]
 
-    def du_dx(self):
+    def du_dx(self) -> np.ndarray:
+        """
+        Calculate the derivative of u with respect to the x direction. This is done by applying the chain rule to the
+        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
+        available under `self.refBLK.gradx`. To compute this gradient, utilize the chain rule on drhou_dx:
+
+        \\frac{\\partial(\\rho u)}{\\partial x} = \\rho \\frac{\\partial u}{\\partial x} +
+        u \\frac{\\partial \\rho}{\\partial x},
+
+        and rearrange to compute du_dx:
+
+        \\frac{\\partial u}{\\partial x} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho u)}{\\partial x} -
+        u \\frac{\\partial \\rho}{\\partial x} \\right).
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - du_dx (np.ndarray): Derivative of u with respect to the x direction.
+        """
+
         return (self.gradx[:, :, 1, None] - self.state.u() * self.drho_dx()) / self.state.rho
 
-    def dv_dx(self):
+    def dv_dx(self) -> np.ndarray:
+        """
+        Calculate the derivative of v with respect to the x direction. This is done by applying the chain rule to the
+        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
+        available under `self.refBLK.gradx`. To compute this gradient, utilize the chain rule on drhov_dx:
+
+        \\frac{\\partial(\\rho v)}{\\partial x} = \\rho \\frac{\\partial v}{\\partial x} +
+        v \\frac{\\partial \\rho}{\\partial x},
+
+        and rearrange to compute dv_dx:
+
+        \\frac{\\partial v}{\\partial x} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho v)}{\\partial x} -
+        v \\frac{\\partial \\rho}{\\partial x} \\right).
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - dv_dx (np.ndarray): Derivative of v with respect to the x direction.
+        """
+
         return (self.gradx[:, :, 2, None] - self.state.v() * self.drho_dx()) / self.state.rho
 
-    def de_dx(self):
+    def de_dx(self) -> np.ndarray:
+        """
+        Calculate the derivative of energy with respect to the x direction. This is equivalent of returning
+        gradx[:, :, 3], and no further calculations are needed.
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - de_dx (np.ndarray): Derivative of e with respect to the x direction.
+        """
+
         return self.gradx[:, :, -1, None]
 
-    def drho_dy(self):
+    def drho_dy(self) -> np.ndarray:
+        """
+        Calculate the derivative of density with respect to the y direction. This is equivalent of returning
+        grady[:, :, 0], and no further calculations are needed.
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - drho_dy (np.ndarray): Derivative of rho with respect to the y direction.
+        """
         return self.grady[:, :, 0, None]
 
-    def du_dy(self):
+    def du_dy(self) -> np.ndarray:
+        """
+        Calculate the derivative of u with respect to the x direction. This is done by applying the chain rule to the
+        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
+        available under `self.refBLK.grady`. To compute this gradient, utilize the chain rule on drhou_dy:
+
+        \\frac{\\partial(\\rho u)}{\\partial y} = \\rho \\frac{\\partial u}{\\partial y} +
+        u \\frac{\\partial \\rho}{\\partial y},
+
+        and rearrange to compute du_dy:
+
+        \\frac{\\partial u}{\\partial y} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho u)}{\\partial y} -
+        u \\frac{\\partial \\rho}{\\partial y} \\right).
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - du_dy (np.ndarray): Derivative of u with respect to the y direction.
+        """
+
         return (self.grady[:, :, 1, None] - self.state.u() * self.drho_dx()) / self.state.rho
 
-    def dv_dy(self):
+    def dv_dy(self) -> np.ndarray:
+        """
+        Calculate the derivative of v with respect to the x direction. This is done by applying the chain rule to the
+        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
+        available under `self.refBLK.grady`. To compute this gradient, utilize the chain rule on drhov_dy:
+
+        \\frac{\\partial(\\rho v)}{\\partial y} = \\rho \\frac{\\partial v}{\\partial y} +
+        v \\frac{\\partial \\rho}{\\partial y},
+
+        and rearrange to compute dv_dx:
+
+        \\frac{\\partial v}{\\partial x} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho v)}{\\partial y} -
+        v \\frac{\\partial \\rho}{\\partial y} \\right).
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - dv_dy (np.ndarray): Derivative of v with respect to the y direction.
+        """
+
         return (self.grady[:, :, 2, None] - self.state.v() * self.drho_dx()) / self.state.rho
 
-    def de_dy(self):
+    def de_dy(self) -> np.ndarray:
+        """
+        Calculate the derivative of energy with respect to the y direction. This is equivalent of returning
+        grady[:, :, 3], and no further calculations are needed.
+
+        Parameters:
+            - N.A
+
+        Returns:
+            - de_dy (np.ndarray): Derivative of e with respect to the y direction.
+        """
+
         return self.grady[:, :, -1, None]
+
+    # Test test
