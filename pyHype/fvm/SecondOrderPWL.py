@@ -13,7 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import matplotlib.pyplot as plt
+import os
+os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
 import numpy as np
 from pyHype.fvm.base import MUSCLFiniteVolumeMethod
 from pyHype.states import ConservativeState

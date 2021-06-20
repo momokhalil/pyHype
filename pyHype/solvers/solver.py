@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import os
+os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import sys
 import pstats
@@ -328,6 +330,7 @@ class Euler2D:
         if self.inputs.profile:
             profiler.disable()
             self.profile_data = pstats.Stats(profiler)
+            self.profile_data.sort_stats('tottime').print_stats()
 
     @staticmethod
     def write_output_nodes(filename: str, array: np.ndarray):

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import os
+os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
 from pyHype.states.base import State
@@ -544,6 +546,26 @@ class ConservativeState(State):
         self.U[:, :, 3] /= self.inputs.rho_inf * self.inputs.a_inf ** 2
 
         self.set_vars_from_state()
+
+    def F(self):
+
+        u = self.u()
+        p = self.p()
+
+        return np.dstack((self.rho * u,
+                          self.rho * u ** 2 + p,
+                          self.rho * u * self.v(),
+                          u * (self.e + p)))
+
+    def G(self):
+
+        v = self.u()
+        p = self.p()
+
+        return np.dstack((self.rho * v,
+                          self.rho * v * self.u(),
+                          self.rho * v ** 2 + p,
+                          v * (self.e + p)))
 
 
 class RoePrimitiveState(PrimitiveState):

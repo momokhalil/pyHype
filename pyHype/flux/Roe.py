@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import os
+os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import time
 import numpy as np
@@ -69,31 +71,10 @@ class ROE_FLUX_X(FluxFunction):
         data = np.zeros((4 * size + 4))
         self.Lambda = sparse.coo_matrix((data, (self.Li, self.Lj)))
 
-    def _get_eigen_system_from_roe_state(self, UL, UR):
-        # Create Left and Right PrimitiveStates
-        WL, WR = UL.to_primitive_state(), UR.to_primitive_state()
 
-        # Get Roe state
-        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+    def _compute_flux_jacobian(self, Wroe, ghek, H, uv, u2, ghv):
 
-        # Harten entropy correction
-        Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
-
-        # Calculate quantities to construct eigensystem. These quantities are in vector for, where each element
-        # corresponds to each point on the local 1D problem being solved.
-        a       = Wroe.a()
-        gtu     = self.gt * Wroe.u
-        ghv     = self.gh * Wroe.v
-        gtv     = self.gt * Wroe.v
-        u2      = Wroe.u ** 2
-        uv      = Wroe.u * Wroe.v
-        ek      = 0.5 * (u2 + Wroe.v ** 2)
-        a2      = a ** 2
-        ta2     = a2 * 2
-        ua      = Wroe.u * a
-        ghek    = self.gh * ek
-        H       = Wroe.H()
-
+        # Flux Jacobian
         self.A_m3[:] = Wroe.u * (ghek - H)
         self.A_m2[0::2] = -uv
         self.A_m2[1::2] = H - self.gh * u2
@@ -110,6 +91,10 @@ class ROE_FLUX_X(FluxFunction):
                                       self.A_p1, self.A_p2),
                                      axis=0)
 
+
+    def _compute_left_eigenvectors(self, Wroe, H, ua, ek, Lm, Lp):
+
+        # Left Eigenvectors
         self.X_m3[:] = H - ua
         self.X_m2[0::2] = Wroe.v
         self.X_m2[1::2] = ek
@@ -126,6 +111,10 @@ class ROE_FLUX_X(FluxFunction):
                                       self.X_p1, self.X_p2),
                                      axis=0)
 
+
+    def _compute_right_eigenvectors(self, Wroe, a, ghek, ua, ta2, a2, gtu, gtv, ghv):
+
+        # Left eigenvectors
         self.Xi_m3[:] = Wroe.v
         self.Xi_m2[:] = (ghek - ua) / ta2
         self.Xi_m1[0::3] = (a2 - ghek) / a2
@@ -145,6 +134,9 @@ class ROE_FLUX_X(FluxFunction):
                                        self.Xi_p1, self.Xi_p2, self.Xi_p3),
                                       axis=0)
 
+
+    def _compute_eigenvalues(self, Wroe, Lp, Lm):
+
         self.lam[0::4] = Lm
         self.lam[1::4] = Wroe.u
         self.lam[2::4] = Lp
@@ -152,12 +144,53 @@ class ROE_FLUX_X(FluxFunction):
 
         self.Lambda.data = self.lam
 
+
+    def _get_eigen_system_from_roe_state(self, UL, UR):
+        # Create Left and Right PrimitiveStates
+        WL, WR = UL.to_primitive_state(), UR.to_primitive_state()
+
+        # Get Roe state
+        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+
+        # Harten entropy correction
+        Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
+
+        # Calculate quantities to construct eigensystem
+        a = Wroe.a()
+        H = Wroe.H()
+        gtu = self.gt * Wroe.u
+        ghv = self.gh * Wroe.v
+        gtv = self.gt * Wroe.v
+        u2 = Wroe.u ** 2
+        uv = Wroe.u * Wroe.v
+        ek = 0.5 * (u2 + Wroe.v ** 2)
+        a2 = a ** 2
+        ta2 = a2 * 2
+        ua = Wroe.u * a
+        ghek = self.gh * ek
+
+        # Flux Jacobian
+        self._compute_flux_jacobian(Wroe, ghek, H, uv, u2, ghv)
+
+        # Left eigenvectors
+        self._compute_left_eigenvectors(Wroe, H, ua, ek, Lm, Lp)
+
+        # Right eigenvectors
+        self._compute_right_eigenvectors(Wroe, a, ghek, ua, ta2, a2, gtu, gtv, ghv)
+
+        # Eigenvalues
+        self._compute_eigenvalues(Wroe, Lp, Lm)
+
+
     def get_flux(self, UL, UR):
         self._get_eigen_system_from_roe_state(UL, UR)
 
-        return 0.5 * (self.A.dot((UL + UR).reshape(-1, )) +
+        return 0.5 * (self.A.dot((UL + UR).flatten()) +
                       self.X.dot(
-                          np.absolute(self.Lambda).dot(
-                              self.Xi.dot(
-                                  (UL - UR).reshape(-1, ))))
+                                np.absolute(self.Lambda).dot(
+                                                            self.Xi.dot(
+                                                                       (UL - UR).flatten()
+                                                                       )
+                                                            )
+                                )
                       ).reshape(1, -1, 4)
