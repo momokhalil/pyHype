@@ -81,22 +81,18 @@ class ROE_FLUX_X(FluxFunction):
 
         # Calculate quantities to construct eigensystem. These quantities are in vector for, where each element
         # corresponds to each point on the local 1D problem being solved.
-        a = Wroe.a()                # roe average speed of sound
-        gu = self.g * Wroe.u        # gamma * roe u
-        gbu = self.gb * Wroe.u      # gamma_bar * roe u
-        gtu = self.gt * Wroe.u      # gamma_tar * roe u
-        ghu = self.gh * Wroe.u      # gamma_hat * roe u
-        ghv = self.gh * Wroe.v      # gamma_hat * roe v
-        gtv = self.gt * Wroe.v      # gamma_tau * roe v
-        u2 = Wroe.u ** 2            # roe u squared
-        v2 = Wroe.v ** 2            # roe v squared
-        uv = Wroe.u * Wroe.v        # product of roe velocities
-        ek = 0.5 * (u2 + v2)        # 0.5 * sum of squared roe velocities
-        a2 = a ** 2
-        ta2 = a2 * 2
-        ua = Wroe.u * a
-        ghek = self.gh * ek
-        H = Wroe.H()
+        a       = Wroe.a()
+        gtu     = self.gt * Wroe.u
+        ghv     = self.gh * Wroe.v
+        gtv     = self.gt * Wroe.v
+        u2      = Wroe.u ** 2
+        uv      = Wroe.u * Wroe.v
+        ek      = 0.5 * (u2 + Wroe.v ** 2)
+        a2      = a ** 2
+        ta2     = a2 * 2
+        ua      = Wroe.u * a
+        ghek    = self.gh * ek
+        H       = Wroe.H()
 
         self.A_m3[:] = Wroe.u * (ghek - H)
         self.A_m2[0::2] = -uv
@@ -104,9 +100,9 @@ class ROE_FLUX_X(FluxFunction):
         self.A_m1[0::3] = ghek - u2
         self.A_m1[1::3] = Wroe.v
         self.A_m1[2::3] = -self.gh * uv
-        self.A_d0[0::3] = gbu
+        self.A_d0[0::3] = self.gb * Wroe.u
         self.A_d0[1::3] = Wroe.u
-        self.A_d0[2::3] = gu
+        self.A_d0[2::3] = self.g * Wroe.u
         self.A_p1[1::2] = -ghv
 
         self.A.data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,
@@ -135,7 +131,7 @@ class ROE_FLUX_X(FluxFunction):
         self.Xi_m1[0::3] = (a2 - ghek) / a2
         self.Xi_m1[1::3] = (gtu + a) / ta2
         self.Xi_d0[0::3] = (ghek + ua) / ta2
-        self.Xi_d0[1::3] = ghu / a2
+        self.Xi_d0[1::3] = self.gh * Wroe.u / a2
         self.Xi_d0[2::3] = gtv / ta2
         self.Xi_p1[0::3] = (gtu - a) / ta2
         self.Xi_p1[1::3] = ghv / a2

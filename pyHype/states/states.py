@@ -17,6 +17,7 @@ limitations under the License.
 import numpy as np
 from pyHype.states.base import State
 from pyHype.input.input_file_builder import ProblemInput
+import functools
 
 
 class PrimitiveState(State):
@@ -31,6 +32,11 @@ class PrimitiveState(State):
     utilizes a primitive formulation. Another primary use-case for `PrimitiveState` is converting a `ConservativeState`
     into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
     """
+
+    RHO_IDX = 0
+    U_IDX = 1
+    V_IDX = 2
+    P_IDX = 3
 
     def __init__(self,
                  inputs: ProblemInput,

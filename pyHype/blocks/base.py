@@ -21,7 +21,6 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 from pyHype.mesh.base import BlockDescription, Mesh
-from pyHype.solvers.solver import ProblemInput
 
 from pyHype.fvm import SecondOrderPWL
 
@@ -177,7 +176,7 @@ class Blocks:
 # QuadBlock Class Definition
 class QuadBlock:
     def __init__(self,
-                 inputs: ProblemInput,
+                 inputs,
                  block_data: BlockDescription
                  ) -> None:
 
