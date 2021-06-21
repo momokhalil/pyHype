@@ -104,9 +104,9 @@ class XDIR_EIGENSYSTEM_INDICES:
 
         self.Ai = np.hstack((A_d0_m3_i, A_d0_m2_i, A_d0_m1_i, A_d0_i, A_d0_p1_i, A_d0_p2_i))
         self.Aj = np.hstack((A_d0_m3_j, A_d0_m2_j, A_d0_m1_j, A_d0_j, A_d0_p1_j, A_d0_p2_j))
-        self.Lc = np.hstack((Rc_d0_m3_i, Rc_d0_m2_i, Rc_d0_m1_i, Rc_d0_i, Rc_d0_p1_i, Rc_d0_p2_i))
+        self.Rci = np.hstack((Rc_d0_m3_i, Rc_d0_m2_i, Rc_d0_m1_i, Rc_d0_i, Rc_d0_p1_i, Rc_d0_p2_i))
         self.Rcj = np.hstack((Rc_d0_m3_j, Rc_d0_m2_j, Rc_d0_m1_j, Rc_d0_j, Rc_d0_p1_j, Rc_d0_p2_j))
-        self.Lc_i = np.hstack((Lc_d0_m3_i, Lc_d0_m2_i, Lc_d0_m1_i, Lc_d0_i, Lc_d0_p1_i, Lc_d0_p2_i, Lc_d0_p3_i))
-        self.Lc_j = np.hstack((Lc_d0_m3_j, Lc_d0_m2_j, Lc_d0_m1_j, Lc_d0_j, Lc_d0_p1_j, Lc_d0_p2_j, Lc_d0_p3_j))
+        self.Lci = np.hstack((Lc_d0_m3_i, Lc_d0_m2_i, Lc_d0_m1_i, Lc_d0_i, Lc_d0_p1_i, Lc_d0_p2_i, Lc_d0_p3_i))
+        self.Lcj = np.hstack((Lc_d0_m3_j, Lc_d0_m2_j, Lc_d0_m1_j, Lc_d0_j, Lc_d0_p1_j, Lc_d0_p2_j, Lc_d0_p3_j))
         self.Li = L_d_i
         self.Lj = L_d_j

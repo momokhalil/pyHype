@@ -54,22 +54,33 @@ class ROE_FLUX_X(FluxFunction):
         idx = XDIR_EIGENSYSTEM_INDICES(size)
 
         self.Ai, self.Aj = idx.Ai, idx.Aj
-        self.Lc, self.Rcj = idx.Lc, idx.Rcj
-        self.Lc_i, self.Lc_j = idx.Lc_i, idx.Lc_j
+        self.Rci, self.Rcj = idx.Rci, idx.Rcj
+        self.Lci, self.Lcj = idx.Lci, idx.Lcj
         self.Li, self.Lj = idx.Li, idx.Lj
 
         # Build sparse matrices
-        data = np.concatenate((self.A_m3, self.A_m2, self.A_m1, self.A_d0, self.A_p1, self.A_p2))
-        self.A = sparse.coo_matrix((data, (self.Ai, self.Aj)))
 
-        data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1, self.Rc_d0, self.Rc_p1, self.Rc_p2))
-        self.Rc = sparse.coo_matrix((data, (self.Lc, self.Rcj)))
+        # Flux jacobian
+        A_data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,       # Subdiagonals
+                                 self.A_d0,                             # Diagonal
+                                 self.A_p1, self.A_p2))                 # Superdiagonals
+        self.A = sparse.coo_matrix((A_data, (self.Ai, self.Aj)))
 
-        data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1, self.Lc_d0, self.Lc_p1, self.Lc_p2, self.Lc_p3))
-        self.Lc = sparse.coo_matrix((data, (self.Lc_i, self.Lc_j)))
+        # Right eigenvectors
+        Rc_data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,   # Subdiagonals
+                                  self.Rc_d0,                           # Diagonal
+                                  self.Rc_p1, self.Rc_p2))              # Superdiagonals
+        self.Rc = sparse.coo_matrix((Rc_data, (self.Rci, self.Rcj)))
 
-        data = np.zeros((4 * size + 4))
-        self.Lambda = sparse.coo_matrix((data, (self.Li, self.Lj)))
+        # Left eigenvectors
+        Lc_data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1,   # Subdiagonals
+                                  self.Lc_d0,                           # Diagonal
+                                  self.Lc_p1, self.Lc_p2, self.Lc_p3))  # Superdiagonals
+        self.Lc = sparse.coo_matrix((Lc_data, (self.Lci, self.Lcj)))
+
+        # Eigenvalues
+        L_data = np.zeros((4 * size + 4))
+        self.Lambda = sparse.coo_matrix((L_data, (self.Li, self.Lj)))
 
 
     def compute_flux_jacobian(self,
@@ -143,7 +154,7 @@ class ROE_FLUX_X(FluxFunction):
         self.Rc.data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,
                                       self.Rc_d0,
                                       self.Rc_p1, self.Rc_p2),
-                                     axis=0)
+                                      axis=0)
 
 
     def compute_left_eigenvectors(self,
