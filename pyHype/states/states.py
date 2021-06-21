@@ -169,7 +169,7 @@ class PrimitiveState(State):
         self.rho = U.rho.copy()
         self.u = U.rhou / self.rho
         self.v = U.rhov / self.rho
-        self.p = (self.g - 1) * (U.e - 0.5 * (U.rhou**2 + U.rhov**2) / self.rho)
+        self.p = (self.g - 1) * (U.e - 0.5 * (U.rhou ** 2 + U.rhov ** 2) / self.rho)
 
         self.set_state_from_vars()
 

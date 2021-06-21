@@ -31,70 +31,74 @@ class FluxFunction:
 
 
     @staticmethod
-    def wavespeeds_x(W: PrimitiveState):
-        return W.u - W.a(), W.u + W.a()
+    def wavespeeds_x(W: PrimitiveState) -> [np.ndarray]:
+        """
+        Calculates the slow and fast wavespeeds u - a and u + a.
+
+        Parameters:
+            - W (PrimitiveState): PrimitiveState used to calculate the wavespeeds.
+
+        Returns:
+            - slow (np.ndarray): Array that stores the slow wavespeeds
+            - fast (np.ndarray): Array that stores the fast wavespeeds
+        """
+
+        # Check if PrimitiveState
+        if isinstance(W, PrimitiveState):
+            # Speed of sound
+            a = W.a()
+            # Compute wavespeeds
+            slow, fast = W.u - a, W.u + a
+            return slow, fast
+        else:
+            raise TypeError('Input is not PrimitiveState.')
 
 
-    def harten_correction_x(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState):
+    def harten_correction_x(self,
+                            Wroe: RoePrimitiveState,
+                            WL: PrimitiveState,
+                            WR: PrimitiveState
+                            ) -> [np.ndarray]:
+        """
+        Perform the Harten correction to eliminate expansion shocks when using approximate riemann solvers.
+
+        Parameters:
+            - Wroe (RoePrimitiveState): Roe primitive state object, contains the roe average state calculated using
+            the left and right conservative states used for the flux calculation.
+            - WL (PrimitiveState): Left primitive state
+            - WR (PrimitiveState): Right primitive state
+
+        Returns:
+            - lambda_roe_p (np.ndarray): Slow corrected wavespeeds
+            - lambda_roe_m (np.ndarray): Fast corrected wavespeeds
+        """
+
+        # Right fast and slow wavespeeds
         lambda_R_p, lambda_R_m = self.wavespeeds_x(WR)
+        # Left fast and slow wavespeeds
         lambda_L_p, lambda_L_m = self.wavespeeds_x(WL)
+        # Roe fast and slow wavespeeds
         lambda_roe_p, lambda_roe_m = self.wavespeeds_x(Wroe)
 
+        # Theta parameters for determining where to apply the correction
         theta_p = 2 * (lambda_R_p - lambda_L_p)
         theta_m = 2 * (lambda_R_m - lambda_L_m)
 
+        # Prevent negative thetas
         theta_p = theta_p * (theta_p > 0)
         theta_m = theta_m * (theta_m > 0)
 
-        idx1 = np.absolute(lambda_roe_p) < theta_p
-        idx3 = np.absolute(lambda_roe_m) < theta_m
-
-        lambda_roe_p[idx1] = 0.5 * (np.square(lambda_roe_p[idx1]) / theta_p[idx1] + theta_p[idx1])
-        lambda_roe_m[idx3] = 0.5 * (np.square(lambda_roe_m[idx3]) / theta_m[idx3] + theta_m[idx3])
-
-        """lambda_roe_p = np.where(np.absolute(lambda_roe_p) < theta_p,
+        # Corrected fast and slow Roe wavespeeds
+        lambda_roe_p = np.where(np.absolute(lambda_roe_p) < theta_p,
                                 0.5 * ((lambda_roe_p ** 2) / (theta_p + 1e-8) + theta_p),
                                 lambda_roe_p)
 
         lambda_roe_m = np.where(np.absolute(lambda_roe_m) < theta_m,
                                 0.5 * ((lambda_roe_m ** 2) / (theta_m + 1e-8) + theta_m),
-                                lambda_roe_m)"""
-
-        return lambda_roe_p, lambda_roe_m
-
-
-    @staticmethod
-    def wavespeeds_y(W: PrimitiveState):
-        return W.v - W.a(), W.v + W.a()
-
-
-    def harten_correction_y(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState):
-        lambda_R_p, lambda_R_m = self.wavespeeds_y(WR)
-        lambda_L_p, lambda_L_m = self.wavespeeds_y(WL)
-        lambda_roe_p, lambda_roe_m = self.wavespeeds_y(Wroe)
-
-        theta_p = 2 * (lambda_R_p - lambda_L_p)
-        theta_m = 2 * (lambda_R_m - lambda_L_m)
-
-        theta_p = theta_p * (theta_p > 0)
-        theta_m = theta_m * (theta_m > 0)
-
-        idxp = np.absolute(lambda_roe_p) < theta_p
-        idxm = np.absolute(lambda_roe_m) < theta_m
-
-        lambda_roe_p[idxp] = 0.5 * (np.square(lambda_roe_p[idxp]) / theta_p[idxp] + theta_p[idxp])
-        lambda_roe_m[idxm] = 0.5 * (np.square(lambda_roe_m[idxm]) / theta_m[idxm] + theta_m[idxm])
-
-        """lambda_roe_p = np.where(np.absolute(lambda_roe_p) < theta_p,
-                                0.5*((lambda_roe_p ** 2) / (theta_p + 1e-8) + theta_p),
-                                lambda_roe_p)
-
-        lambda_roe_m = np.where(np.absolute(lambda_roe_m) < theta_m,
-                                0.5 * ((lambda_roe_m ** 2) / (theta_m + 1e-8) + theta_m),
-                                lambda_roe_m)"""
+                                lambda_roe_m)
 
         return lambda_roe_p, lambda_roe_m
 
     @abstractmethod
-    def get_flux(self, UL, UR):
+    def compute_flux(self, UL, UR):
         pass

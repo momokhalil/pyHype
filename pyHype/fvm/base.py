@@ -366,7 +366,7 @@ class MUSCLFiniteVolumeMethod:
             self.UR.from_conservative_state_vector(stateW[row:row+1, :, :])
 
             # Calculate face-normal-flux at each cell interface
-            self.Flux_EW[row, :, :] = self.flux_function_X.get_flux(self.UL, self.UR)
+            self.Flux_EW[row, :, :] = self.flux_function_X.compute_flux(self.UL, self.UR)
 
         # Rotate flux back to local frame
         utils.unrotate(refBLK.mesh.thetax, self.Flux_EW)
@@ -393,7 +393,7 @@ class MUSCLFiniteVolumeMethod:
             self.UR.from_conservative_state_vector(stateS[col:col + 1, :, :])
 
             # Calculate face-normal-flux at each cell interface
-            self.Flux_NS[:, col, :] = self.flux_function_Y.get_flux(self.UL, self.UR).reshape(-1, 4)
+            self.Flux_NS[:, col, :] = self.flux_function_Y.compute_flux(self.UL, self.UR).reshape(-1, 4)
 
         # Rotate flux back to global frame
         utils.unrotate(refBLK.mesh.thetay[:, np.newaxis], self.Flux_NS)

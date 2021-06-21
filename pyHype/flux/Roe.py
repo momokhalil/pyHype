@@ -145,29 +145,24 @@ class ROE_FLUX_X(FluxFunction):
         self.Lambda.data = self.lam
 
 
-    def _get_eigen_system_from_roe_state(self, UL, UR):
-        # Create Left and Right PrimitiveStates
-        WL, WR = UL.to_primitive_state(), UR.to_primitive_state()
-
-        # Get Roe state
-        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+    def _get_eigen_system_from_roe_state(self, Wroe, WL, WR):
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
 
         # Calculate quantities to construct eigensystem
-        a = Wroe.a()
-        H = Wroe.H()
-        gtu = self.gt * Wroe.u
-        ghv = self.gh * Wroe.v
-        gtv = self.gt * Wroe.v
-        u2 = Wroe.u ** 2
-        uv = Wroe.u * Wroe.v
-        ek = 0.5 * (u2 + Wroe.v ** 2)
-        a2 = a ** 2
-        ta2 = a2 * 2
-        ua = Wroe.u * a
-        ghek = self.gh * ek
+        a       = Wroe.a()
+        H       = Wroe.H()
+        gtu     = self.gt * Wroe.u
+        ghv     = self.gh * Wroe.v
+        gtv     = self.gt * Wroe.v
+        u2      = Wroe.u ** 2
+        uv      = Wroe.u * Wroe.v
+        ek      = 0.5 * (u2 + Wroe.v ** 2)
+        a2      = a ** 2
+        ta2     = a2 * 2
+        ua      = Wroe.u * a
+        ghek    = self.gh * ek
 
         # Flux Jacobian
         self._compute_flux_jacobian(Wroe, ghek, H, uv, u2, ghv)
@@ -182,8 +177,14 @@ class ROE_FLUX_X(FluxFunction):
         self._compute_eigenvalues(Wroe, Lp, Lm)
 
 
-    def get_flux(self, UL, UR):
-        self._get_eigen_system_from_roe_state(UL, UR)
+    def compute_flux(self, UL, UR):
+
+        # Create Left and Right PrimitiveStates
+        WL, WR = UL.to_primitive_state(), UR.to_primitive_state()
+        # Get Roe state
+        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+        # Get eigenstructure
+        self._get_eigen_system_from_roe_state(Wroe, WL, WR)
 
         return 0.5 * (self.A.dot((UL + UR).flatten()) +
                       self.X.dot(
