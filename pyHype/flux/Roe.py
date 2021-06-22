@@ -20,7 +20,7 @@ import time
 import numpy as np
 import scipy.sparse as sparse
 from pyHype.flux.base import FluxFunction
-from pyHype.states.states import RoePrimitiveState
+from pyHype.states.states import RoePrimitiveState, ConservativeState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_VECTORS
 
 
@@ -235,7 +235,41 @@ class ROE_FLUX_X(FluxFunction):
         self.compute_eigenvalues(Wroe, Lp, Lm)
 
 
-    def compute_flux(self, UL, UR):
+    def compute_flux(self,
+                     UL: ConservativeState,
+                     UR: ConservativeState
+                     ) -> np.ndarray:
+        """
+        Computes the flux using the Roe approximate riemann solver. First, the Roe average state is computed based on
+        the given left and right states, and then, the euler eigensystem is computed by diagonalization. The
+        eigensystem is then used to compute the flux via the Roe flux function.
+
+        Diagonalization
+        ---------------
+
+        The diagonalizaion is possible due to the hyperbolicty of the Euler equations. The 2D Euler equation in
+        conservation form is given as:
+
+        dU     dF     dG
+        --  +  --  +  --  =  0
+        dt     dx     dy
+
+        .. math:
+            \partial_t \mathbf{U} + \partial_x \mathbf{F} + \partial_y \mathbf{G} = 0,
+
+        where :math:'U' is the vector of conserved variables, and :math:'F' and :math:'G' are the x and y direction
+        fluxes, respectively. To diagonalize the system, the Euler equations can be re-expressed as:
+
+        dU     dF dU     dG dU     dU      dU      dU
+        --  +  -- --  +  -- --  =  --  +  A--  +  B--
+        dt     dU dx     dU dy     dt      dx      dy
+
+        .. math:
+            \partial_t \mathbf{U} + \mathcal{A}\partial_x \mathbf{U} + \mathcal{B}\partial_y \mathbf{U} = 0,
+
+        where :math:'A' and :math:'B' are the x and y direction flux jacobians, respectively.
+
+        """
 
         # Create Left and Right PrimitiveStates
         WL, WR = UL.to_primitive_state(), UR.to_primitive_state()
@@ -250,6 +284,8 @@ class ROE_FLUX_X(FluxFunction):
         LmR = (UL - UR).flatten()
         # absolute value
         absL = np.absolute(self.Lambda)
+        # Prune
+        absL.eliminate_zeros()
 
         # Non-dissipative flux term
         nondisp = self.A.dot(LpR)
