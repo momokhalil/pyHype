@@ -314,7 +314,7 @@ class Euler2D:
                     self.realplot.contourf(self._blocks.blocks[1].mesh.x,
                                            self._blocks.blocks[1].mesh.y,
                                            self._blocks.blocks[1].state.rho,
-                                           80, cmap='magma')
+                                           40, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
 
