@@ -19,7 +19,7 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import time
 import numpy as np
-import scipy.sparse as sparse
+from pyHype.utils.math.coo import coo
 from pyHype.flux.base import FluxFunction
 from pyHype.states.states import RoePrimitiveState, ConservativeState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_VECTORS
@@ -68,28 +68,28 @@ class ROE_FLUX_X(FluxFunction):
         A_data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,  # Subdiagonals
                                  self.A_d0,  # Diagonal
                                  self.A_p1, self.A_p2))  # Superdiagonals
-        self.A = sparse.coo_matrix((A_data, (self.Ai, self.Aj)))
+        self.A = coo((A_data, (self.Ai, self.Aj)))
 
         # Right eigenvectors
         Rc_data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,  # Subdiagonals
                                   self.Rc_d0,  # Diagonal
                                   self.Rc_p1, self.Rc_p2))  # Superdiagonals
-        self.Rc = sparse.coo_matrix((Rc_data, (self.Rci, self.Rcj)))
+        self.Rc = coo((Rc_data, (self.Rci, self.Rcj)))
 
         # Left eigenvectors
         Lc_data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1,  # Subdiagonals
                                   self.Lc_d0,  # Diagonal
                                   self.Lc_p1, self.Lc_p2, self.Lc_p3))  # Superdiagonals
-        self.Lc = sparse.coo_matrix((Lc_data, (self.Lci, self.Lcj)))
+        self.Lc = coo((Lc_data, (self.Lci, self.Lcj)))
 
         # Left eigenvectors primitive
         Lp_data = np.concatenate((self.Lp_m1,  # Subdiagonals
                                   self.Lp_p1, self.Lp_p2, self.Lp_p3))  # Superdiagonals
-        self.Lp = sparse.coo_matrix((Lp_data, (self.Lpi, self.Lpj)))
+        self.Lp = coo((Lp_data, (self.Lpi, self.Lpj)))
 
         # Eigenvalues
         L_data = np.zeros((4 * size + 4))
-        self.Lambda = sparse.coo_matrix((L_data, (self.Li, self.Lj)))
+        self.Lambda = coo((L_data, (self.Li, self.Lj)))
 
     def compute_flux_jacobian(self,
                               Wroe: RoePrimitiveState,
@@ -164,11 +164,6 @@ class ROE_FLUX_X(FluxFunction):
                                        self.Rc_p1, self.Rc_p2),
                                       axis=0)
 
-
-    """
-    
-    DEPRECATED
-    
     def compute_Lc(self,
                    Wroe: RoePrimitiveState,
                    a: np.ndarray,
@@ -199,7 +194,6 @@ class ROE_FLUX_X(FluxFunction):
                                        self.Lc_d0,
                                        self.Lc_p1, self.Lc_p2, self.Lc_p3),
                                       axis=0)
-        """
 
     def compute_Lp(self,
                    Wroe: RoePrimitiveState,
@@ -245,6 +239,27 @@ class ROE_FLUX_X(FluxFunction):
         # Eigenvalues
         self.compute_eigenvalues(Wroe, Lp, Lm)
 
+    def diagonalize_con(self, Wroe, WL, WR):
+
+        # Harten entropy correction
+        Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
+
+        # Speed of sound
+        a = Wroe.a()
+        # Enthalpy
+        H = Wroe.H()
+
+        ua = Wroe.u * a
+        ghek = 0.5 * (Wroe.u ** 2 + Wroe.v ** 2) * self.gh
+        a2 = a ** 2
+
+        # Right eigenvectors
+        self.compute_Rc(Wroe, a, H, Lm, Lp)
+        # Left eigenvectors
+        self.compute_Lc(Wroe, a, ghek, ua, 2 * a2, a2, self.gt * Wroe.u, self.gt * Wroe.v, self.gh * Wroe.v)
+        # Eigenvalues
+        self.compute_eigenvalues(Wroe, Lp, Lm)
+
     def compute_flux(self,
                      UL: ConservativeState,
                      UR: ConservativeState
@@ -279,6 +294,8 @@ class ROE_FLUX_X(FluxFunction):
 
         where :math:'A' and :math:'B' are the x and y direction flux jacobians, respectively.
 
+        to be continued...
+
         """
 
         # Create Left and Right PrimitiveStates
@@ -295,11 +312,7 @@ class ROE_FLUX_X(FluxFunction):
         # Prune
         absL.eliminate_zeros()
 
-        # Non-dissipative flux term
-        nondisp = UL.F() + UR.F()
-
         # Dissipative upwind term
-        alpha = self.Lp.dot(dW)
-        upwind = self.Rc.dot(absL.dot(alpha)).reshape(1, -1, 4)
+        upwind = (self.Rc @ absL @ self.Lp @ dW).reshape(1, -1, 4)
 
-        return 0.5 * (nondisp + upwind)
+        return 0.5 * (UL.F() + UR.F() + upwind)

@@ -6,18 +6,18 @@ settings = {'problem_type':             'implosion',
             'reconstruction_type':      'Conservative',
             'CFL':                      0.4,
             't_final':                  0.007,
-            'realplot':                 False,
+            'realplot':                 True,
             'makeplot':                 False,
             'time_it':                  False,
             'gamma':                    1.4,
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
             'R':                        287.0,
-            'nx':                       200,
-            'ny':                       200,
+            'nx':                       100,
+            'ny':                       100,
             'nghost':                   1,
             'mesh_name':                'one_mesh',
-            'profile':                  True}
+            'profile':                  False}
 
 # Create solver
 exp = solver.Euler2D(fvm='SecondOrderPWL', gradient='GreenGauss', flux_function='Roe',
