@@ -74,30 +74,30 @@ class FluxFunction:
         """
 
         # Right fast and slow wavespeeds
-        lambda_R_p, lambda_R_m = self.wavespeeds_x(WR)
+        R_p, R_m = self.wavespeeds_x(WR)
         # Left fast and slow wavespeeds
-        lambda_L_p, lambda_L_m = self.wavespeeds_x(WL)
+        L_p, L_m = self.wavespeeds_x(WL)
         # Roe fast and slow wavespeeds
-        lambda_roe_p, lambda_roe_m = self.wavespeeds_x(Wroe)
+        Roe_p, Roe_m = self.wavespeeds_x(Wroe)
 
         # Theta parameters for determining where to apply the correction
-        theta_p = 2 * (lambda_R_p - lambda_L_p)
-        theta_m = 2 * (lambda_R_m - lambda_L_m)
+        theta_p = 2 * (R_p - L_p)
+        theta_m = 2 * (R_m - L_m)
 
         # Prevent negative thetas
         theta_p = theta_p * (theta_p > 0)
         theta_m = theta_m * (theta_m > 0)
 
         # Corrected fast and slow Roe wavespeeds
-        lambda_roe_p = np.where(np.absolute(lambda_roe_p) < theta_p,
-                                0.5 * ((lambda_roe_p ** 2) / (theta_p + 1e-8) + theta_p),
-                                lambda_roe_p)
+        Roe_p = np.where(np.absolute(Roe_p) < theta_p,
+                         0.5 * ((Roe_p ** 2) / (theta_p + 1e-8) + theta_p),
+                         Roe_p)
 
-        lambda_roe_m = np.where(np.absolute(lambda_roe_m) < theta_m,
-                                0.5 * ((lambda_roe_m ** 2) / (theta_m + 1e-8) + theta_m),
-                                lambda_roe_m)
+        Roe_m = np.where(np.absolute(Roe_m) < theta_m,
+                         0.5 * ((Roe_m ** 2) / (theta_m + 1e-8) + theta_m),
+                         Roe_m)
 
-        return lambda_roe_p, lambda_roe_m
+        return Roe_p, Roe_m
 
     @abstractmethod
     def compute_flux(self, UL, UR):

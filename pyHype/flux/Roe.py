@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
+
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import time
@@ -27,7 +28,6 @@ from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_
 class ROE_FLUX_X(FluxFunction):
 
     def __init__(self, inputs, size):
-
         # Superclass constructor
         super().__init__(inputs)
 
@@ -48,6 +48,9 @@ class ROE_FLUX_X(FluxFunction):
         self.Lc_d0, self.Lc_m1, self.Lc_m2, self.Lc_m3, self.Lc_p1, self.Lc_p2, self.Lc_p3 \
             = vec.Lc_d0, vec.Lc_m1, vec.Lc_m2, vec.Lc_m3, vec.Lc_p1, vec.Lc_p2, vec.Lc_p3
 
+        self.Lp_m1, self.Lp_p1, self.Lp_p2, self.Lp_p3 \
+            = vec.Lp_m1, vec.Lp_p1, vec.Lp_p2, vec.Lp_p3
+
         self.lam = vec.lam
 
         # Rc-direction eigensystem indices
@@ -56,40 +59,40 @@ class ROE_FLUX_X(FluxFunction):
         self.Ai, self.Aj = idx.Ai, idx.Aj
         self.Rci, self.Rcj = idx.Rci, idx.Rcj
         self.Lci, self.Lcj = idx.Lci, idx.Lcj
+        self.Lpi, self.Lpj = idx.Lpi, idx.Lpj
         self.Li, self.Lj = idx.Li, idx.Lj
 
         # Build sparse matrices
 
         # Flux jacobian
-        A_data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,       # Subdiagonals
-                                 self.A_d0,                             # Diagonal
-                                 self.A_p1, self.A_p2))                 # Superdiagonals
+        A_data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,  # Subdiagonals
+                                 self.A_d0,  # Diagonal
+                                 self.A_p1, self.A_p2))  # Superdiagonals
         self.A = sparse.coo_matrix((A_data, (self.Ai, self.Aj)))
 
         # Right eigenvectors
-        Rc_data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,   # Subdiagonals
-                                  self.Rc_d0,                           # Diagonal
-                                  self.Rc_p1, self.Rc_p2))              # Superdiagonals
+        Rc_data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,  # Subdiagonals
+                                  self.Rc_d0,  # Diagonal
+                                  self.Rc_p1, self.Rc_p2))  # Superdiagonals
         self.Rc = sparse.coo_matrix((Rc_data, (self.Rci, self.Rcj)))
 
         # Left eigenvectors
-        Lc_data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1,   # Subdiagonals
-                                  self.Lc_d0,                           # Diagonal
+        Lc_data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1,  # Subdiagonals
+                                  self.Lc_d0,  # Diagonal
                                   self.Lc_p1, self.Lc_p2, self.Lc_p3))  # Superdiagonals
         self.Lc = sparse.coo_matrix((Lc_data, (self.Lci, self.Lcj)))
+
+        # Left eigenvectors primitive
+        Lp_data = np.concatenate((self.Lp_m1,  # Subdiagonals
+                                  self.Lp_p1, self.Lp_p2, self.Lp_p3))  # Superdiagonals
+        self.Lp = sparse.coo_matrix((Lp_data, (self.Lpi, self.Lpj)))
 
         # Eigenvalues
         L_data = np.zeros((4 * size + 4))
         self.Lambda = sparse.coo_matrix((L_data, (self.Li, self.Lj)))
 
-
     def compute_flux_jacobian(self,
                               Wroe: RoePrimitiveState,
-                              ghek: np.ndarray,
-                              H: np.ndarray,
-                              uv: np.ndarray,
-                              u2: np.ndarray,
-                              ghv: np.ndarray
                               ) -> None:
         """
         Calculate the x-direction sparse flux jacobian matrix A. A is defined as:
@@ -112,7 +115,12 @@ class ROE_FLUX_X(FluxFunction):
             - N.A
         """
 
-        # Flux Jacobian
+        ghv = self.gh * Wroe.v
+        u2 = Wroe.u ** 2
+        uv = Wroe.u * Wroe.v
+        ghek = self.gh * 0.5 * (Wroe.u ** 2 + Wroe.v ** 2)
+        H = Wroe.H()
+
         self.A_m3[:] = Wroe.u * (ghek - H)
         self.A_m2[0::2] = -uv
         self.A_m2[1::2] = H - self.gh * u2
@@ -129,17 +137,17 @@ class ROE_FLUX_X(FluxFunction):
                                       self.A_p1, self.A_p2),
                                      axis=0)
 
+    def compute_Rc(self,
+                   Wroe: RoePrimitiveState,
+                   H: np.ndarray,
+                   a: np.ndarray,
+                   Lm: np.ndarray,
+                   Lp: np.ndarray
+                   ) -> None:
 
-    def compute_right_eigenvectors(self,
-                                   Wroe: RoePrimitiveState,
-                                   H: np.ndarray,
-                                   ua: np.ndarray,
-                                   ek: np.ndarray,
-                                   Lm: np.ndarray,
-                                   Lp: np.ndarray
-                                   ) -> None:
+        ua = Wroe.u * a
+        ek = 0.5 * (Wroe.u ** 2 + Wroe.v ** 2)
 
-        # right Eigenvectors
         self.Rc_m3[:] = H - ua
         self.Rc_m2[0::2] = Wroe.v
         self.Rc_m2[1::2] = ek
@@ -152,25 +160,28 @@ class ROE_FLUX_X(FluxFunction):
         self.Rc_p1[1::3] = Lp
 
         self.Rc.data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,
-                                      self.Rc_d0,
-                                      self.Rc_p1, self.Rc_p2),
+                                       self.Rc_d0,
+                                       self.Rc_p1, self.Rc_p2),
                                       axis=0)
 
 
-    def compute_left_eigenvectors(self,
-                                  Wroe: RoePrimitiveState,
-                                  a: np.ndarray,
-                                  ghek: np.ndarray,
-                                  ua: np.ndarray,
-                                  ta2: np.ndarray,
-                                  a2: np.ndarray,
-                                  gtu: np.ndarray,
-                                  gtv: np.ndarray,
-                                  ghv: np.ndarray
-                                  ) -> None:
+    """
+    
+    DEPRECATED
+    
+    def compute_Lc(self,
+                   Wroe: RoePrimitiveState,
+                   a: np.ndarray,
+                   ghek: np.ndarray,
+                   ua: np.ndarray,
+                   ta2: np.ndarray,
+                   a2: np.ndarray,
+                   gtu: np.ndarray,
+                   gtv: np.ndarray,
+                   ghv: np.ndarray
+                   ) -> None:
 
-        # left eigenvectors
-        self.Lc_m3[:] = Wroe.v
+        self.Lc_m3[:] = -Wroe.v
         self.Lc_m2[:] = (ghek - ua) / ta2
         self.Lc_m1[0::3] = (a2 - ghek) / a2
         self.Lc_m1[1::3] = (gtu + a) / ta2
@@ -188,7 +199,22 @@ class ROE_FLUX_X(FluxFunction):
                                        self.Lc_d0,
                                        self.Lc_p1, self.Lc_p2, self.Lc_p3),
                                       axis=0)
+        """
 
+    def compute_Lp(self,
+                   Wroe: RoePrimitiveState,
+                   a: np.ndarray,
+                   ) -> None:
+
+        ap2 = Wroe.rho * a / 2
+
+        self.Lp_m1[1::3] = ap2
+        self.Lp_p1[0::2] = -ap2
+        self.Lp_p2[:] = -1 / (a ** 2)
+
+        self.Lp.data = np.concatenate((self.Lp_m1,
+                                       self.Lp_p1, self.Lp_p2, self.Lp_p3),
+                                      axis=0)
 
     def compute_eigenvalues(self,
                             Wroe: RoePrimitiveState,
@@ -202,38 +228,22 @@ class ROE_FLUX_X(FluxFunction):
 
         self.Lambda.data = self.lam
 
-
     def diagonalize(self, Wroe, WL, WR):
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
 
-        # Calculate quantities to construct eigensystem
-        a       = Wroe.a()
-        H       = Wroe.H()
-        gtu     = self.gt * Wroe.u
-        ghv     = self.gh * Wroe.v
-        gtv     = self.gt * Wroe.v
-        u2      = Wroe.u ** 2
-        uv      = Wroe.u * Wroe.v
-        ek      = 0.5 * (u2 + Wroe.v ** 2)
-        a2      = a ** 2
-        ta2     = a2 * 2
-        ua      = Wroe.u * a
-        ghek    = self.gh * ek
-
-        # Flux Jacobian
-        self.compute_flux_jacobian(Wroe, ghek, H, uv, u2, ghv)
+        # Speed of sound
+        a = Wroe.a()
+        # Enthalpy
+        H = Wroe.H()
 
         # Right eigenvectors
-        self.compute_right_eigenvectors(Wroe, H, ua, ek, Lm, Lp)
-
+        self.compute_Rc(Wroe, a, H, Lm, Lp)
         # Left eigenvectors
-        self.compute_left_eigenvectors(Wroe, a, ghek, ua, ta2, a2, gtu, gtv, ghv)
-
+        self.compute_Lp(Wroe, a)
         # Eigenvalues
         self.compute_eigenvalues(Wroe, Lp, Lm)
-
 
     def compute_flux(self,
                      UL: ConservativeState,
@@ -279,17 +289,17 @@ class ROE_FLUX_X(FluxFunction):
         self.diagonalize(Wroe, WL, WR)
 
         # Left state plus right state
-        LpR = (UL + UR).flatten()
-        # Left state minus right state
-        LmR = (UL - UR).flatten()
+        dW = (WL - WR).flatten()
         # absolute value
         absL = np.absolute(self.Lambda)
         # Prune
         absL.eliminate_zeros()
 
         # Non-dissipative flux term
-        nondisp = self.A.dot(LpR)
-        # Dissipative upwind term
-        upwind = self.Rc.dot(absL.dot(self.Lc.dot(LmR)))
+        nondisp = UL.F() + UR.F()
 
-        return 0.5 * (nondisp + upwind).reshape(1, -1, 4)
+        # Dissipative upwind term
+        alpha = self.Lp.dot(dW)
+        upwind = self.Rc.dot(absL.dot(alpha)).reshape(1, -1, 4)
+
+        return 0.5 * (nondisp + upwind)

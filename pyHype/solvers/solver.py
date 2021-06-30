@@ -299,6 +299,8 @@ class Euler2D:
         print('Start simulation')
         while self.t < self.t_final:
 
+            print(self.t)
+
             dt = self.dt()
             self.numTimeStep += 1
 
@@ -331,6 +333,8 @@ class Euler2D:
             profiler.disable()
             self.profile_data = pstats.Stats(profiler)
             self.profile_data.sort_stats('tottime').print_stats()
+
+        print('Date and time: ', datetime.today())
 
     @staticmethod
     def write_output_nodes(filename: str, array: np.ndarray):

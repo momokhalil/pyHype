@@ -150,6 +150,7 @@ def chamber_skewed(nx, ny):
 
 DEFINED_MESHES = {'simple_mesh': simple_mesh,
                   'one_mesh': one_mesh,
-                  'chamber': chamber}
+                  'chamber': chamber,
+                  'chamber_skewed': chamber_skewed}
 
 

@@ -550,21 +550,23 @@ class ConservativeState(State):
     def F(self):
 
         u = self.u()
+        ru = self.rho * u
         p = self.p()
 
-        return np.dstack((self.rho * u,
-                          self.rho * u ** 2 + p,
-                          self.rho * u * self.v(),
+        return np.dstack((ru,
+                          ru * u + p,
+                          ru * self.v(),
                           u * (self.e + p)))
 
     def G(self):
 
-        v = self.u()
+        v = self.v()
+        rv = self.rho * v
         p = self.p()
 
-        return np.dstack((self.rho * v,
-                          self.rho * v * self.u(),
-                          self.rho * v ** 2 + p,
+        return np.dstack((rv,
+                          rv * self.u(),
+                          rv * v + p,
                           v * (self.e + p)))
 
 
