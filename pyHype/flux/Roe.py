@@ -303,16 +303,16 @@ class ROE_FLUX_X(FluxFunction):
         # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR)
         # Get eigenstructure
-        self.diagonalize(Wroe, WL, WR)
+        self.diagonalize_con(Wroe, WL, WR)
 
         # Left state plus right state
-        dW = (WL - WR).flatten()
+        dW = (UL - UR).flatten()
         # absolute value
         absL = np.absolute(self.Lambda)
         # Prune
         absL.eliminate_zeros()
 
         # Dissipative upwind term
-        upwind = (self.Rc @ absL @ self.Lp @ dW).reshape(1, -1, 4)
+        upwind = (self.Rc @ absL @ self.Lc @ dW).reshape(1, -1, 4)
 
         return 0.5 * (UL.F() + UR.F() + upwind)
