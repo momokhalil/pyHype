@@ -34,7 +34,7 @@ __REQUIRED__ = ['problem_type', 'realplot', 'makeplot', 'time_it', 't_final', 'C
                 'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'nghost', 'mesh_name', 'profile',
                 'interface_interpolation', 'reconstruction_type']
 
-__OPTIONAL__ = ['alpha', 'write_time']
+__OPTIONAL__ = ['alpha', 'write_time', 'upwind_mode']
 
 
 class ProblemInput:

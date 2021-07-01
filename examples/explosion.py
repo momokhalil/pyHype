@@ -4,6 +4,7 @@ from pyHype.solvers import solver
 settings = {'problem_type':             'explosion',
             'interface_interpolation':  'arithmetic_average',
             'reconstruction_type':      'Conservative',
+            'upwind_mode':              'primitive',
             'CFL':                      0.4,
             't_final':                  0.005,
             'realplot':                 True,
