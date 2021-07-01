@@ -17,8 +17,8 @@ limitations under the License.
 from scipy import sparse
 
 class coo(sparse.coo_matrix):
-    def __init__(self, data, shape=None, dtype=None, copy=None):
-        super().__init__(data, shape, dtype, copy)
+    def __init__(self, data):
+        super().__init__(data)
 
     def __matmul__(self, other):
         return self.dot(other)

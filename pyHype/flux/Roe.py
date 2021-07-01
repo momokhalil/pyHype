@@ -19,7 +19,7 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import time
 import numpy as np
-from pyHype.utils.math.coo import coo
+from scipy.sparse import coo_matrix as coo
 from pyHype.flux.base import FluxFunction
 from pyHype.states.states import RoePrimitiveState, ConservativeState, PrimitiveState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_VECTORS
@@ -100,6 +100,7 @@ class ROE_FLUX_X(FluxFunction):
         else:
             raise ValueError('Must specify type of upwinding')
 
+
     def compute_flux_jacobian(self,
                               Wroe: RoePrimitiveState,
                               ) -> None:
@@ -141,12 +142,11 @@ class ROE_FLUX_X(FluxFunction):
         self.A_d0[2::3] = self.g * Wroe.u
         self.A_p1[1::2] = -ghv
 
-        data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,
+        self.A.data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,
                                       self.A_d0,
                                       self.A_p1, self.A_p2),
                                      axis=0)
 
-        self.A = coo((data, (self.Ai, self.Aj))).eliminate_zeros()
 
     def compute_Rc(self,
                    Wroe: RoePrimitiveState,
@@ -170,12 +170,11 @@ class ROE_FLUX_X(FluxFunction):
         self.Rc_d0[3::4] = Wroe.v
         self.Rc_p1[1::3] = Lp
 
-        data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,
+        self.Rc.data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,
                                        self.Rc_d0,
                                        self.Rc_p1, self.Rc_p2),
                                       axis=0)
-        self.Rc = coo((data, (self.Rci, self.Rcj)))
-        self.Rc.eliminate_zeros()
+
 
     def compute_Lc(self,
                    Wroe: RoePrimitiveState,
@@ -204,13 +203,11 @@ class ROE_FLUX_X(FluxFunction):
         self.Lc_p2[1::2] = self.gt / a2
         self.Lc_p3[:] = self.gh / ta2
 
-        data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1,
+        self.Lc.data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1,
                                        self.Lc_d0,
                                        self.Lc_p1, self.Lc_p2, self.Lc_p3),
                                       axis=0)
 
-        self.Lc = coo((data, (self.Lci, self.Lcj)))
-        self.Lc.eliminate_zeros()
 
     def compute_Lp(self,
                    Wroe: RoePrimitiveState,
@@ -223,12 +220,10 @@ class ROE_FLUX_X(FluxFunction):
         self.Lp_p1[0::2] = -ap2
         self.Lp_p2[:] = -1 / (a ** 2)
 
-        data = np.concatenate((self.Lp_m1,
+        self.Lp.data = np.concatenate((self.Lp_m1,
                                        self.Lp_p1, self.Lp_p2, self.Lp_p3),
                                       axis=0)
 
-        self.Lp = coo((data, (self.Lpi, self.Lpj)))
-        self.Lp.eliminate_zeros()
 
     def compute_eigenvalues(self,
                             Wroe: RoePrimitiveState,
@@ -240,12 +235,10 @@ class ROE_FLUX_X(FluxFunction):
         self.lam[2::4] = Lp
         self.lam[3::4] = Wroe.u
 
-        data = self.lam
+        self.Lambda.data = self.lam
 
-        self.Lambda = coo((data, (self.Li, self.Lj)))
-        self.Lambda.eliminate_zeros()
 
-    def diagonalize(self, Wroe, WL, WR):
+    def diagonalize_primitive(self, Wroe, WL, WR):
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
@@ -262,7 +255,8 @@ class ROE_FLUX_X(FluxFunction):
         # Eigenvalues
         self.compute_eigenvalues(Wroe, Lp, Lm)
 
-    def diagonalize_con(self, Wroe, WL, WR):
+
+    def diagonalize_conservative(self, Wroe, WL, WR):
 
         # Harten entropy correction
         Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
@@ -278,6 +272,7 @@ class ROE_FLUX_X(FluxFunction):
         self.compute_Lc(Wroe, a)
         # Eigenvalues
         self.compute_eigenvalues(Wroe, Lp, Lm)
+
 
     def compute_flux(self,
                      UL: ConservativeState,
@@ -341,7 +336,7 @@ class ROE_FLUX_X(FluxFunction):
                                 UR: ConservativeState = None,
                                 ) -> np.ndarray:
         # Diagonalize
-        self.diagonalize_con(Wroe, WL, WR)
+        self.diagonalize_conservative(Wroe, WL, WR)
         # Conservative state jump
         dU = (UR - UL).flatten()
         # absolute value
@@ -350,7 +345,7 @@ class ROE_FLUX_X(FluxFunction):
         absL.eliminate_zeros()
 
         # Dissipative upwind term
-        return (self.Rc @ absL @ self.Lc @ dU).reshape(1, -1, 4)
+        return 0.5 * (self.Rc.dot(absL.dot(self.Lc.dot(dU)))).reshape(1, -1, 4)
 
 
     def get_upwind_primitive(self,
@@ -361,7 +356,7 @@ class ROE_FLUX_X(FluxFunction):
                              UR: ConservativeState = None,
                              ) -> np.ndarray:
         # Diagonalize
-        self.diagonalize(Wroe, WL, WR)
+        self.diagonalize_primitive(Wroe, WL, WR)
         # Primitive state jump
         dW = (WR - WL).flatten()
         # absolute value
@@ -370,4 +365,4 @@ class ROE_FLUX_X(FluxFunction):
         absL.eliminate_zeros()
 
         # Dissipative upwind term
-        return 0.5 * (self.Rc @ absL @ self.Lp @ dW).reshape(1, -1, 4)
+        return 0.5 * (self.Rc.dot(absL.dot(self.Lp.dot(dW)))).reshape(1, -1, 4)

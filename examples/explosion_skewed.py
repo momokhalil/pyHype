@@ -4,11 +4,11 @@ from pyHype.solvers import solver
 settings = {'problem_type':             'explosion',
             'interface_interpolation':  'arithmetic_average',
             'reconstruction_type':      'Conservative',
+            'upwind_mode':              'primitive',
             'CFL':                      0.4,
             't_final':                  0.07,
             'realplot':                 True,
-            'makeplot':                 False,
-            'time_it':                  False,
+            'profile':                  False,
             'gamma':                    1.4,
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
@@ -16,8 +16,8 @@ settings = {'problem_type':             'explosion',
             'nx':                       100,
             'ny':                       200,
             'nghost':                   1,
-            'mesh_name':                'chamber_skewed',
-            'profile':                  False}
+            'mesh_name':                'chamber_skewed'
+            }
 
 # Create solver
 exp = solver.Euler2D(fvm='SecondOrderPWL', gradient='GreenGauss', flux_function='Roe',

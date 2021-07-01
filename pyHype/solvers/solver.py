@@ -30,7 +30,7 @@ from pyHype.mesh.base import BlockDescription
 np.set_printoptions(threshold=sys.maxsize)
 
 
-__REQUIRED__ = ['problem_type', 'realplot', 'makeplot', 'time_it', 't_final', 'CFL',
+__REQUIRED__ = ['problem_type', 'realplot', 't_final', 'CFL',
                 'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'nghost', 'mesh_name', 'profile',
                 'interface_interpolation', 'reconstruction_type']
 
@@ -319,15 +319,6 @@ class Euler2D:
                     plt.pause(0.001)
 
             self.t += dt
-
-        if self.inputs.makeplot:
-            self.plot = plt.axes()
-            self.plot.figure.set_size_inches(8, 8)
-            self.plot.contourf(self._blocks.blocks[1].mesh.x,
-                               self._blocks.blocks[1].mesh.y,
-                               self._blocks.blocks[1].state.U[:, :, 0],
-                               100, cmap='magma')
-            plt.show(block=True)
 
         if self.inputs.profile:
             profiler.disable()
