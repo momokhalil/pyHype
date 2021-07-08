@@ -92,14 +92,6 @@ class ROE_FLUX_X(FluxFunction):
         L_data = np.zeros((4 * size + 4))
         self.Lambda = coo((L_data, (self.Li, self.Lj)))
 
-        # Set upwinding method
-        if self.inputs.upwind_mode == 'conservative':
-            self.upwind = self.get_upwind_conservative
-        elif self.inputs.upwind_mode == 'primitive':
-            self.upwind = self.get_upwind_primitive
-        else:
-            raise ValueError('Must specify type of upwinding')
-
 
     def compute_flux_jacobian(self,
                               Wroe: RoePrimitiveState,
@@ -323,7 +315,12 @@ class ROE_FLUX_X(FluxFunction):
         nondis = 0.5 * (UL.F() + UR.F())
 
         # Compute dissipative upwind flux term
-        upwind = self.upwind(Wroe, WL, WR, UL, UR)
+        if self.inputs.upwind_mode == 'conservative':
+            upwind = self.get_upwind_conservative(Wroe, WL, WR, UL, UR)
+        elif self.inputs.upwind_mode == 'primitive':
+            upwind = self.get_upwind_primitive(Wroe, WL, WR)
+        else:
+            raise ValueError('Must specify type of upwinding')
 
         return nondis - upwind
 
@@ -352,8 +349,6 @@ class ROE_FLUX_X(FluxFunction):
                              Wroe: RoePrimitiveState,
                              WL: PrimitiveState,
                              WR: PrimitiveState,
-                             UL: ConservativeState = None,
-                             UR: ConservativeState = None,
                              ) -> np.ndarray:
         # Diagonalize
         self.diagonalize_primitive(Wroe, WL, WR)
