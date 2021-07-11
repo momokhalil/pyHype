@@ -55,6 +55,32 @@ class Vertices:
         self.SE = SE
 
 
+class GridLocation:
+    def __init__(self,
+                 x: np.ndarray,
+                 y: np.ndarray):
+        self.x = x
+        self.y = y
+
+
+class CellFace:
+    def __init__(self) -> None:
+
+        # Define face midpoint locations
+        self.xmid = None
+        self.ymid = None
+
+        # Define normals
+        self.xnorm = None
+        self.ynorm = None
+
+        # Define angles
+        self.theta = None
+
+        # Define face length
+        self.L = None
+
+
 class Mesh:
     def __init__(self, inputs, mesh_data):
 
@@ -69,140 +95,206 @@ class Mesh:
                                  SW=mesh_data.SW,
                                  SE=mesh_data.SE)
 
+        # x and y locations of each cell centroid
         self.x = np.zeros((self.ny, self.nx))
         self.y = np.zeros((self.ny, self.nx))
 
-        self.xc = np.zeros((self.ny + 1, self.nx + 1))
-        self.yc = np.zeros((self.ny + 1, self.nx + 1))
-
-        self.E_norm_x = np.zeros((1, self.nx, 1))
-        self.E_norm_y = np.zeros((1, self.nx, 1))
-
-        self.W_norm_x = np.zeros((1, self.nx, 1))
-        self.W_norm_y = np.zeros((1, self.nx, 1))
-
-        self.N_norm_x = np.zeros((self.ny, 1, 1))
-        self.N_norm_y = np.zeros((self.ny, 1, 1))
-
-        self.S_norm_x = np.zeros((self.ny, 1, 1))
-        self.S_norm_y = np.zeros((self.ny, 1, 1))
-
-        self.thetax = np.zeros((self.nx + 1))
-        self.thetay = np.zeros((self.ny + 1))
-
-        self.E_face_L = None
-        self.W_face_L = None
-        self.N_face_L = None
-        self.S_face_L = None
+        self.nodes = None
 
         self.EW_midpoint_x = None
         self.EW_midpoint_y = None
         self.NS_midpoint_x = None
         self.NS_midpoint_y = None
 
+        self.E_face_L = None
+        self.W_face_L = None
+        self.N_face_L = None
+        self.S_face_L = None
+
+        self.faceE = None
+        self.faceW = None
+        self.faceN = None
+        self.faceS = None
+
         self.A = np.zeros((self.ny, self.nx))
 
         self.create_mesh()
 
+
     def create_mesh(self):
 
+        # Initialize temporary storage arrays for x and y node locations
+        x = np.zeros((self.ny + 1, self.nx + 1))
+        y = np.zeros((self.ny + 1, self.nx + 1))
+
         # East edge x and y node locations
-        Ex = np.linspace(self.vertices.SE[0], self.vertices.NE[0], self.ny)
-        Ey = np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny)
+        Ex = np.linspace(self.vertices.SE[0], self.vertices.NE[0], self.ny + 1)
+        Ey = np.linspace(self.vertices.SE[1], self.vertices.NE[1], self.ny + 1)
+
         # West edge x and y node locations
-        Wx = np.linspace(self.vertices.SW[0], self.vertices.NW[0], self.ny)
-        Wy = np.linspace(self.vertices.SW[1], self.vertices.NW[1], self.ny)
+        Wx = np.linspace(self.vertices.SW[0], self.vertices.NW[0], self.ny + 1)
+        Wy = np.linspace(self.vertices.SW[1], self.vertices.NW[1], self.ny + 1)
 
         # Set x and y location for all nodes
-        for i in range(self.ny):
-            self.x[i, :] = np.linspace(Wx[i], Ex[i], self.nx)
-            self.y[i, :] = np.linspace(Wy[i], Ey[i], self.nx)
+        for i in range(self.ny + 1):
+            x[i, :] = np.linspace(Wx[i], Ex[i], self.nx + 1)
+            y[i, :] = np.linspace(Wy[i], Ey[i], self.nx + 1)
 
-        # Kernel of centroids
-        xc, yc = self.get_centroid(self.x, self.y)
+        # Create nodal location class
+        self.nodes = GridLocation(x, y)
 
-        # Kernel of centroids x-coordinates
-        self.xc[1:-1, 1:-1] = xc
+        # Centroid x and y locations
+        self.x, self.y = self.get_centroid(x, y)
 
-        # Kernel of centroids y-coordinates
-        self.yc[1:-1, 1:-1] = yc
+        """plt.scatter(x, y, color='black', s=15)
+        plt.scatter(self.x, self.y, color='mediumslateblue', s=15)
 
-    def compute_normal(self) -> None:
-        """
-        Computes the x and y components of the normal vector for each cell boundary. For storage efficiency, the results
-        are stored for each mesh line in the x and y directions. To make this clear, consider the following 3 x 3 mesh:
-                      ^
-                      |nx3
-            3   O---------O---------O
-                |ny1      |ny2      |ny3
-                |-->  ^   |-->      |-->
-                |     |nx2|         |
-            2   O---------O---------O
-                |         |         |
-                |     ^   |         |
-                |     |nx1|         |
-            1   O---------O---------O
+        segs1 = np.stack((x, y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
+        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
 
-                1         2         3
+        segs1 = np.stack((self.x, self.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
 
-        where nx1 is the normal vector for the horizontal line of nodes 1, nx2 is the normal vector for the horizontal
-        line of nodes 2, etc. Same applies for ny1, ny2...etc.
+        plt.gca().add_collection(
+            LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(
+            LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
-        Note that the grid does not have to be alligned with the cartesian axis, this example was done so for clarity.
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.show()"""
 
-        The resulting normx and normy vectors are as such:
+        EW_mid_x, EW_mid_y = self.get_EW_face_midpoint()
+        NS_mid_x, NS_mid_y = self.get_NS_face_midpoint()
 
-        normx = [nx1_x, nx1_y
-                 nx2_x, nx2_y
-                 nx3_x, nx3_y]
+        # -------------------------------------------------------------------
+        # East Face
 
-        normy = [ny1_x, ny1_y
-                 ny2_x, ny2_y
-                 ny3_x, ny3_y]
+        self.faceE = CellFace()
+        self.faceE.L = self.east_face_length()
+        self.faceE.xmid = EW_mid_x[:, 1:]
+        self.faceE.ymid = EW_mid_y[:, 1:]
+        self.compute_east_face_norm()
 
-        """
+        # -------------------------------------------------------------------
+        # West Face
 
-        # Angle and normal vector for y-aligned nodes (used for left and right sides of cells)
+        self.faceW = CellFace()
+        self.faceW.L = self.west_face_length()
+        self.faceW.xmid = EW_mid_x[:, :-1]
+        self.faceW.ymid = EW_mid_y[:, :-1]
+        self.compute_west_face_norm()
 
-        # Numerator and denominator for arctan
-        num = self.xc[1, :] - self.xc[-2, :]
-        den = self.yc[-2, :] - self.yc[1, :]
+        # -------------------------------------------------------------------
+        # North Face
 
-        # Check for zero denominator
-        _non_zero_den = den != 0
-        _zero_den = den == 0
+        self.faceN = CellFace()
+        self.faceN.L = self.north_face_length()
+        self.faceN.xmid = NS_mid_x[1:, :]
+        self.faceN.ymid = NS_mid_y[1:, :]
+        self.compute_north_face_norm()
 
-        # Calculate thetax
-        self.thetax[_non_zero_den] = np.arctan(num[_non_zero_den] / den[_non_zero_den])
-        self.thetax[_zero_den] = 0
+        # -------------------------------------------------------------------
+        # South Face
 
-        # Calculate normal vector
-        EW_x, EW_y = np.cos(self.thetax), np.sin(self.thetax)
-        self.E_norm_x[0, :, 0] = EW_x[1:]
-        self.E_norm_y[0, :, 0] = EW_y[1:]
-        self.W_norm_x[0, :, 0] = -EW_x[:-1]
-        self.W_norm_y[0, :, 0] = -EW_y[:-1]
+        self.faceS = CellFace()
+        self.faceS.L = self.south_face_length()
+        self.faceS.xmid = NS_mid_x[:-1, :]
+        self.faceS.ymid = NS_mid_y[:-1, :]
+        self.compute_south_face_norm()
 
-        # Angle and normal vector for x-aligned nodes (used for top and bottom sides of cells)
 
-        # Numerator and denominator for arctan
-        num = self.yc[:, 1] - self.yc[:, -2]
-        den = self.xc[:, -2] - self.xc[:, 1]
+    def get_east_face_norm(self) -> [np.ndarray]:
 
-        # Check for zero denominator
-        _non_zero_den = den != 0
-        _zero_den = den == 0
+        den = self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]
+        num = self.nodes.x[:-1, 1:] - self.nodes.x[1:, 1:]
+        theta = np.where(den != 0, np.arctan(num / den), 0)
+        xnorm = np.cos(theta)
+        ynorm = np.sin(theta)
 
-        # Calculate thetax
-        self.thetay[_non_zero_den] = np.pi / 2 - np.arctan(num[_non_zero_den] / den[_non_zero_den])
-        self.thetay[_zero_den] = np.pi / 2
+        return xnorm, ynorm, theta
 
-        # Calculate normal vector
-        NS_x, NS_y = np.cos(self.thetay), np.sin(self.thetay)
-        self.N_norm_x[:, 0, 0] = NS_x[1:]
-        self.N_norm_y[:, 0, 0] = NS_y[1:]
-        self.S_norm_x[:, 0, 0] = -NS_x[:-1]
-        self.S_norm_y[:, 0, 0] = -NS_y[:-1]
+
+    def compute_east_face_norm(self) -> None:
+
+        if isinstance(self.faceE, CellFace):
+            den = self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]
+            num = self.nodes.x[:-1, 1:] - self.nodes.x[1:, 1:]
+            self.faceE.theta = np.where(den != 0, np.arctan(num / den), 0)
+            self.faceE.xnorm = np.cos(self.faceE.theta)
+            self.faceE.ynorm = np.sin(self.faceE.theta)
+        else:
+            raise TypeError('faceE is not of type CellFace')
+
+
+    def get_west_face_norm(self):
+
+        den = self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]
+        num = self.nodes.x[:-1, :-1] - self.nodes.x[1:, :-1]
+        theta = np.where(den != 0, np.arctan(num / den), 0)
+        xnorm = np.cos(theta)
+        ynorm = np.sin(theta)
+
+        return xnorm, ynorm, theta
+
+
+    def compute_west_face_norm(self):
+
+        if isinstance(self.faceW, CellFace):
+            den = self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]
+            num = self.nodes.x[:-1, :-1] - self.nodes.x[1:, :-1]
+            self.faceW.theta = np.where(den != 0, np.arctan(num / den), 0)
+            self.faceW.xnorm = np.cos(self.faceW.theta)
+            self.faceW.ynorm = np.sin(self.faceW.theta)
+        else:
+            raise TypeError('faceW is not of type CellFace')
+
+
+    def get_north_face_norm(self):
+
+        den = self.nodes.x[1:, 1:] - self.nodes.x[1:, :-1]
+        num = self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]
+        theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
+        xnorm = np.cos(theta)
+        ynorm = np.sin(theta)
+
+        return xnorm, ynorm, theta
+
+
+    def compute_north_face_norm(self):
+
+        if isinstance(self.faceN, CellFace):
+            den = self.nodes.x[1:, 1:] - self.nodes.x[1:, :-1]
+            num = self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]
+            self.faceN.theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
+            self.faceN.xnorm = np.cos(self.faceN.theta)
+            self.faceN.ynorm = np.sin(self.faceN.theta)
+        else:
+            raise TypeError('faceN is not of type CellFace')
+
+
+    def get_south_face_norm(self):
+
+        den = self.nodes.x[:-1, 1:] - self.nodes.x[:-1, :-1]
+        num = self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]
+        theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
+        xnorm = np.cos(theta)
+        ynorm = np.sin(theta)
+
+        return xnorm, ynorm, theta
+
+
+    def compute_south_face_norm(self):
+
+        if isinstance(self.faceS, CellFace):
+            den = self.nodes.x[:-1, 1:] - self.nodes.x[:-1, :-1]
+            num = self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]
+            self.faceS.theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
+            self.faceS.xnorm = np.cos(self.faceS.theta)
+            self.faceS.ynorm = np.sin(self.faceS.theta)
+        else:
+            raise TypeError('faceS is not of type CellFace')
 
 
     def compute_cell_area(self):
@@ -235,8 +327,8 @@ class Mesh:
         s4 = self.south_face_length()
 
         # Diagonal
-        d1 = (self.xc[1:, :-1] - self.xc[:-1, 1:]) ** 2 + \
-             (self.yc[1:, :-1] - self.yc[:-1, 1:]) ** 2
+        d1 = (self.nodes.x[1:, :-1] - self.nodes.x[:-1, 1:]) ** 2 + \
+             (self.nodes.y[1:, :-1] - self.nodes.y[:-1, 1:]) ** 2
 
         # Calculate opposite angles
         a1 = np.arccos((s1 ** 2 + s4 ** 2 - d1) / 2 / s1 / s4)
@@ -263,31 +355,31 @@ class Mesh:
         return xc, yc
 
     def east_face_length(self):
-        return np.sqrt(((self.xc[1:, 1:] - self.xc[:-1, 1:]) ** 2 +
-                        (self.yc[1:, 1:] - self.yc[:-1, 1:]) ** 2))
+        return np.sqrt(((self.nodes.x[1:, 1:] - self.nodes.x[:-1, 1:]) ** 2 +
+                        (self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]) ** 2))
 
     def west_face_length(self):
-        return np.sqrt(((self.xc[1:, :-1] - self.xc[:-1, :-1]) ** 2 +
-                        (self.yc[1:, :-1] - self.yc[:-1, :-1]) ** 2))
+        return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[:-1, :-1]) ** 2 +
+                        (self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]) ** 2))
 
     def north_face_length(self):
-        return np.sqrt(((self.xc[1:, :-1] - self.xc[1:, 1:]) ** 2 +
-                        (self.yc[1:, :-1] - self.yc[1:, 1:]) ** 2))
+        return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[1:, 1:]) ** 2 +
+                        (self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]) ** 2))
 
     def south_face_length(self):
-        return np.sqrt(((self.xc[:-1, :-1] - self.xc[:-1, 1:]) ** 2 +
-                        (self.yc[:-1, :-1] - self.yc[:-1, 1:]) ** 2))
+        return np.sqrt(((self.nodes.x[:-1, :-1] - self.nodes.x[:-1, 1:]) ** 2 +
+                        (self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]) ** 2))
 
     def get_EW_face_midpoint(self):
 
-        x = 0.5 * (self.xc[1:, :] + self.xc[:-1, :])
-        y = 0.5 * (self.yc[1:, :] + self.yc[:-1, :])
+        x = 0.5 * (self.nodes.x[1:, :] + self.nodes.x[:-1, :])
+        y = 0.5 * (self.nodes.y[1:, :] + self.nodes.y[:-1, :])
 
         return x[:, :, np.newaxis], y[:, :, np.newaxis]
 
     def get_NS_face_midpoint(self):
 
-        x = 0.5 * (self.xc[:, 1:] + self.xc[:, :-1])
-        y = 0.5 * (self.yc[:, 1:] + self.yc[:, :-1])
+        x = 0.5 * (self.nodes.x[:, 1:] + self.nodes.x[:, :-1])
+        y = 0.5 * (self.nodes.y[:, 1:] + self.nodes.y[:, :-1])
 
         return x[:, :, np.newaxis], y[:, :, np.newaxis]

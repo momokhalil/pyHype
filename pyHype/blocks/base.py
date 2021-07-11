@@ -114,11 +114,11 @@ class Blocks:
 
         self.build()
 
-    def __call__(self,
-                 block: int
-                 ) -> 'QuadBlock':
+    def __getitem__(self,
+                    blknum: int
+                    ) -> 'QuadBlock':
 
-        return self.blocks[block]
+        return self.blocks[blknum]
 
     def add(self,
             block: 'QuadBlock'
