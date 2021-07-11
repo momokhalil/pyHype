@@ -84,12 +84,17 @@ class CellFace:
 class Mesh:
     def __init__(self, inputs, mesh_data):
 
-        self.nx = inputs.nx
-        self.ny = inputs.ny
-        self.nghost = inputs.nghost
-
+        # Initialize inputs class
         self.inputs = inputs
 
+        # Number of cells in x and y directions
+        self.nx = inputs.nx
+        self.ny = inputs.ny
+
+        # Number of ghost cells
+        self.nghost = inputs.nghost
+
+        # Initialize vertices class
         self.vertices = Vertices(NW=mesh_data.NW,
                                  NE=mesh_data.NE,
                                  SW=mesh_data.SW,
@@ -99,25 +104,23 @@ class Mesh:
         self.x = np.zeros((self.ny, self.nx))
         self.y = np.zeros((self.ny, self.nx))
 
+        # Initialize nodes attribute
         self.nodes = None
 
-        self.EW_midpoint_x = None
-        self.EW_midpoint_y = None
-        self.NS_midpoint_x = None
-        self.NS_midpoint_y = None
-
-        self.E_face_L = None
-        self.W_face_L = None
-        self.N_face_L = None
-        self.S_face_L = None
-
+        # Initialize cell face attributes
         self.faceE = None
         self.faceW = None
         self.faceN = None
         self.faceS = None
 
-        self.A = np.zeros((self.ny, self.nx))
+        # Initialize cell area attribute
+        self.A = None
 
+        # Initialize x and y direction cell sizes
+        self.dx = None
+        self.dy = None
+
+        # Build mesh
         self.create_mesh()
 
 
@@ -146,63 +149,43 @@ class Mesh:
         # Centroid x and y locations
         self.x, self.y = self.get_centroid(x, y)
 
-        """plt.scatter(x, y, color='black', s=15)
-        plt.scatter(self.x, self.y, color='mediumslateblue', s=15)
-
-        segs1 = np.stack((x, y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
-        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
-
-        segs1 = np.stack((self.x, self.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-
-        plt.gca().add_collection(
-            LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(
-            LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
-
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.show()"""
-
-        EW_mid_x, EW_mid_y = self.get_EW_face_midpoint()
-        NS_mid_x, NS_mid_y = self.get_NS_face_midpoint()
-
         # -------------------------------------------------------------------
         # East Face
 
         self.faceE = CellFace()
-        self.faceE.L = self.east_face_length()
-        self.faceE.xmid = EW_mid_x[:, 1:]
-        self.faceE.ymid = EW_mid_y[:, 1:]
+        self.faceE.L = self.east_face_length()[:, :, np.newaxis]
+        self.compute_east_face_midpoint()
         self.compute_east_face_norm()
 
         # -------------------------------------------------------------------
         # West Face
 
         self.faceW = CellFace()
-        self.faceW.L = self.west_face_length()
-        self.faceW.xmid = EW_mid_x[:, :-1]
-        self.faceW.ymid = EW_mid_y[:, :-1]
+        self.faceW.L = self.west_face_length()[:, :, np.newaxis]
+        self.compute_west_face_midpoint()
         self.compute_west_face_norm()
 
         # -------------------------------------------------------------------
         # North Face
 
         self.faceN = CellFace()
-        self.faceN.L = self.north_face_length()
-        self.faceN.xmid = NS_mid_x[1:, :]
-        self.faceN.ymid = NS_mid_y[1:, :]
+        self.faceN.L = self.north_face_length()[:, :, np.newaxis]
+        self.compute_north_face_midpoint()
         self.compute_north_face_norm()
 
         # -------------------------------------------------------------------
         # South Face
 
         self.faceS = CellFace()
-        self.faceS.L = self.south_face_length()
-        self.faceS.xmid = NS_mid_x[:-1, :]
-        self.faceS.ymid = NS_mid_y[:-1, :]
+        self.faceS.L = self.south_face_length()[:, :, np.newaxis]
+        self.compute_south_face_midpoint()
         self.compute_south_face_norm()
+
+        # Cell area
+        self.compute_cell_area()
+
+        self.dx = self.faceE.xmid - self.faceW.xmid
+        self.dy = self.faceN.ymid - self.faceS.ymid
 
 
     def get_east_face_norm(self) -> [np.ndarray]:
@@ -219,11 +202,7 @@ class Mesh:
     def compute_east_face_norm(self) -> None:
 
         if isinstance(self.faceE, CellFace):
-            den = self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]
-            num = self.nodes.x[:-1, 1:] - self.nodes.x[1:, 1:]
-            self.faceE.theta = np.where(den != 0, np.arctan(num / den), 0)
-            self.faceE.xnorm = np.cos(self.faceE.theta)
-            self.faceE.ynorm = np.sin(self.faceE.theta)
+            self.faceE.xnorm, self.faceE.ynorm, self.faceE.theta = self.get_east_face_norm()
         else:
             raise TypeError('faceE is not of type CellFace')
 
@@ -242,11 +221,7 @@ class Mesh:
     def compute_west_face_norm(self):
 
         if isinstance(self.faceW, CellFace):
-            den = self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]
-            num = self.nodes.x[:-1, :-1] - self.nodes.x[1:, :-1]
-            self.faceW.theta = np.where(den != 0, np.arctan(num / den), 0)
-            self.faceW.xnorm = np.cos(self.faceW.theta)
-            self.faceW.ynorm = np.sin(self.faceW.theta)
+            self.faceW.xnorm, self.faceW.ynorm, self.faceW.theta = self.get_west_face_norm()
         else:
             raise TypeError('faceW is not of type CellFace')
 
@@ -265,11 +240,7 @@ class Mesh:
     def compute_north_face_norm(self):
 
         if isinstance(self.faceN, CellFace):
-            den = self.nodes.x[1:, 1:] - self.nodes.x[1:, :-1]
-            num = self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]
-            self.faceN.theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
-            self.faceN.xnorm = np.cos(self.faceN.theta)
-            self.faceN.ynorm = np.sin(self.faceN.theta)
+            self.faceN.xnorm, self.faceN.ynorm, self.faceN.theta = self.get_north_face_norm()
         else:
             raise TypeError('faceN is not of type CellFace')
 
@@ -288,11 +259,7 @@ class Mesh:
     def compute_south_face_norm(self):
 
         if isinstance(self.faceS, CellFace):
-            den = self.nodes.x[:-1, 1:] - self.nodes.x[:-1, :-1]
-            num = self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]
-            self.faceS.theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
-            self.faceS.xnorm = np.cos(self.faceS.theta)
-            self.faceS.ynorm = np.sin(self.faceS.theta)
+            self.faceS.xnorm, self.faceS.ynorm, self.faceS.theta = self.get_south_face_norm()
         else:
             raise TypeError('faceS is not of type CellFace')
 
@@ -343,6 +310,7 @@ class Mesh:
 
         self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))[:, :, np.newaxis]
 
+
     @staticmethod
     def get_centroid(x: np.ndarray, y: np.ndarray):
 
@@ -354,32 +322,93 @@ class Mesh:
 
         return xc, yc
 
+
     def east_face_length(self):
         return np.sqrt(((self.nodes.x[1:, 1:] - self.nodes.x[:-1, 1:]) ** 2 +
                         (self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]) ** 2))
+
 
     def west_face_length(self):
         return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[:-1, :-1]) ** 2 +
                         (self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]) ** 2))
 
+
     def north_face_length(self):
         return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[1:, 1:]) ** 2 +
                         (self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]) ** 2))
+
 
     def south_face_length(self):
         return np.sqrt(((self.nodes.x[:-1, :-1] - self.nodes.x[:-1, 1:]) ** 2 +
                         (self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]) ** 2))
 
-    def get_EW_face_midpoint(self):
 
-        x = 0.5 * (self.nodes.x[1:, :] + self.nodes.x[:-1, :])
-        y = 0.5 * (self.nodes.y[1:, :] + self.nodes.y[:-1, :])
+    def get_east_face_midpoint(self):
+
+        x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[:-1, 1:])
+        y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[:-1, 1:])
+
+        return x[:, :, np.newaxis], y[:, :, np.newaxis]
+
+
+    def get_west_face_midpoint(self):
+
+        x = 0.5 * (self.nodes.x[1:, :-1] + self.nodes.x[:-1, :-1])
+        y = 0.5 * (self.nodes.y[1:, :-1] + self.nodes.y[:-1, :-1])
 
         return x[:, :, np.newaxis], y[:, :, np.newaxis]
 
-    def get_NS_face_midpoint(self):
 
-        x = 0.5 * (self.nodes.x[:, 1:] + self.nodes.x[:, :-1])
-        y = 0.5 * (self.nodes.y[:, 1:] + self.nodes.y[:, :-1])
+    def get_north_face_midpoint(self):
+
+        x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[1:, :-1])
+        y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[1:, :-1])
 
         return x[:, :, np.newaxis], y[:, :, np.newaxis]
+
+
+    def get_south_face_midpoint(self):
+
+        x = 0.5 * (self.nodes.x[:-1, 1:] + self.nodes.x[:-1, :-1])
+        y = 0.5 * (self.nodes.y[:-1, 1:] + self.nodes.y[:-1, :-1])
+
+        return x[:, :, np.newaxis], y[:, :, np.newaxis]
+
+
+    def compute_east_face_midpoint(self):
+
+        self.faceE.xmid, self.faceE.ymid = self.get_east_face_midpoint()
+
+    def compute_west_face_midpoint(self):
+
+        self.faceW.xmid, self.faceW.ymid = self.get_west_face_midpoint()
+
+    def compute_north_face_midpoint(self):
+
+        self.faceN.xmid, self.faceN.ymid = self.get_north_face_midpoint()
+
+    def compute_south_face_midpoint(self):
+
+        self.faceS.xmid, self.faceS.ymid = self.get_south_face_midpoint()
+
+    def plot(self):
+
+        plt.scatter(self.nodes.x, self.nodes.y, color='black', s=15)
+        plt.scatter(self.x, self.y, color='mediumslateblue', s=15)
+
+        segs1 = np.stack((self.nodes.x, self.nodes.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
+        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
+
+        segs1 = np.stack((self.x, self.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+
+        plt.gca().add_collection(
+            LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(
+            LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.show()
+        plt.close()

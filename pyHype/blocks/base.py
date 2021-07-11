@@ -257,55 +257,7 @@ class QuadBlock:
                                          N=GhostBlockNorth(self.inputs, type_=block_data.BCTypeN, refBLK=self),
                                          S=GhostBlockSouth(self.inputs, type_=block_data.BCTypeS, refBLK=self))
 
-        # North East
-        xc, yc = self.get_centroid_corners(s1=self.ghost.E, s1idx1=(-1, 0), s1idx2=(-2, 0),
-                                           s2=self.ghost.N, s2idx1=(0, -1), s2idx2=(0, -2),
-                                           idxcorner=(-1, -1))
 
-        self.mesh.xc[-1, -1] = xc
-        self.mesh.yc[-1, -1] = yc
-
-        # South East
-        xc, yc = self.get_centroid_corners(s1=self.ghost.E, s1idx1=(0, 0), s1idx2=(1, 0),
-                                           s2=self.ghost.S, s2idx1=(0, -1), s2idx2=(0, -2),
-                                           idxcorner=(0, -1))
-
-        self.mesh.xc[0, -1] = xc
-        self.mesh.yc[0, -1] = yc
-
-        # South West
-        xc, yc = self.get_centroid_corners(s1=self.ghost.W, s1idx1=(0, 0), s1idx2=(1, 0),
-                                           s2=self.ghost.S, s2idx1=(0, 0), s2idx2=(0, 1),
-                                           idxcorner=(0, 0))
-
-        self.mesh.xc[0, 0] = xc
-        self.mesh.yc[0, 0] = yc
-
-        # North West
-        xc, yc = self.get_centroid_corners(s1=self.ghost.W, s1idx1=(-1, 0), s1idx2=(-2, 0),
-                                           s2=self.ghost.N, s2idx1=(0, 0), s2idx2=(0, 1),
-                                           idxcorner=(-1, 0))
-
-        self.mesh.xc[-1, 0] = xc
-        self.mesh.yc[-1, 0] = yc
-
-        # Cell Area
-        self.mesh.compute_cell_area()
-
-        # Get normal vector arrays
-        self.mesh.compute_normal()
-
-        # Compute face midpoints
-        self.mesh.EW_midpoint_x, self.mesh.EW_midpoint_y = self.mesh.get_EW_face_midpoint()
-        self.mesh.NS_midpoint_x, self.mesh.NS_midpoint_y = self.mesh.get_NS_face_midpoint()
-
-        self.mesh.E_face_L = self.mesh.east_face_length()[:, :, np.newaxis]
-        self.mesh.W_face_L = self.mesh.west_face_length()[:, :, np.newaxis]
-        self.mesh.N_face_L = self.mesh.north_face_length()[:, :, np.newaxis]
-        self.mesh.S_face_L = self.mesh.south_face_length()[:, :, np.newaxis]
-
-        self.mesh.dx = self.mesh.EW_midpoint_x[:, 1:, :] - self.mesh.EW_midpoint_x[:, :-1, :]
-        self.mesh.dy = self.mesh.NS_midpoint_y[1:, :, :] - self.mesh.NS_midpoint_y[:-1, :, :]
 
     def plot(self):
         plt.scatter(self.mesh.x, self.mesh.y, color='black', s=15)

@@ -94,13 +94,6 @@ class GhostBlockEast(GhostBlock):
         self.x[:, 0] = 2 * self.refBLK.mesh.x[:, -1] - self.refBLK.mesh.x[:, -2]
         self.y[:, 0] = 2 * self.refBLK.mesh.y[:, -1] - self.refBLK.mesh.y[:, -2]
 
-        cont_x = np.concatenate((self.x, refBLK.mesh.x[:, -1:]), axis=1)
-        cont_y = np.concatenate((self.y, refBLK.mesh.y[:, -1:]), axis=1)
-
-        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.refBLK.mesh.xc[1:-1, -1] = xc.reshape(-1, )
-        self.refBLK.mesh.yc[1:-1, -1] = yc.reshape(-1, )
 
     def set_BC_none(self):
         self.state.U = self.refBLK.neighbors.E.get_west_ghost()
@@ -131,13 +124,6 @@ class GhostBlockWest(GhostBlock):
         self.x[:, 0] = 2 * self.refBLK.mesh.x[:, 0] - self.refBLK.mesh.x[:, 1]
         self.y[:, 0] = 2 * self.refBLK.mesh.y[:, 0] - self.refBLK.mesh.y[:, 1]
 
-        cont_x = np.concatenate((self.x, refBLK.mesh.x[:, 0:1]), axis=1)
-        cont_y = np.concatenate((self.y, refBLK.mesh.y[:, 0:1]), axis=1)
-
-        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.refBLK.mesh.xc[1:-1, 0] = xc.reshape(-1, )
-        self.refBLK.mesh.yc[1:-1, 0] = yc.reshape(-1, )
 
     def set_BC_none(self):
         self.state.U = self.refBLK.neighbors.W.get_east_ghost()
@@ -167,13 +153,6 @@ class GhostBlockNorth(GhostBlock):
         self.x[0, :] = 2 * self.refBLK.mesh.x[-1, :] - self.refBLK.mesh.x[-2, :]
         self.y[0, :] = 2 * self.refBLK.mesh.y[-1, :] - self.refBLK.mesh.y[-2, :]
 
-        cont_x = np.concatenate((self.x, refBLK.mesh.x[-1:, :]), axis=0)
-        cont_y = np.concatenate((self.y, refBLK.mesh.y[-1:, :]), axis=0)
-
-        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.refBLK.mesh.xc[-1, 1:-1] = xc
-        self.refBLK.mesh.yc[-1, 1:-1] = yc
 
     def set_BC_none(self):
         self.state.U = self.refBLK.neighbors.N.get_south_ghost()
@@ -203,13 +182,6 @@ class GhostBlockSouth(GhostBlock):
         self.x[0, :] = 2 * self.refBLK.mesh.x[0, :] - self.refBLK.mesh.x[1, :]
         self.y[0, :] = 2 * self.refBLK.mesh.y[0, :] - self.refBLK.mesh.y[1, :]
 
-        cont_x = np.concatenate((self.x, refBLK.mesh.x[0:1, :]), axis=0)
-        cont_y = np.concatenate((self.y, refBLK.mesh.y[0:1, :]), axis=0)
-
-        xc, yc = refBLK.mesh.get_centroid(cont_x, cont_y)
-
-        self.refBLK.mesh.xc[0, 1:-1] = xc
-        self.refBLK.mesh.yc[0, 1:-1] = yc
 
     def set_BC_none(self):
         self.state.U = self.refBLK.neighbors.S.get_north_ghost()
