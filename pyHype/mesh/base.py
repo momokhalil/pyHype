@@ -82,23 +82,49 @@ class CellFace:
 
 
 class Mesh:
-    def __init__(self, inputs, mesh_data):
+    def __init__(self,
+                 inputs,
+                 block_data: BlockDescription = None,
+                 NE: [float] = None,
+                 NW: [float] = None,
+                 SE: [float] = None,
+                 SW: [float] = None,
+                 nx: int = None,
+                 ny: int = None,
+                 ) -> None:
+
+        if isinstance(block_data, BlockDescription) and (NE or NW or SE or SW or nx or ny):
+            raise ValueError('Cannot provide block_data of type BlockDescription and also vertices and/or cell count.')
+
+        elif not isinstance(block_data, BlockDescription) and not (NE and NW and SE and SW and nx and ny):
+            raise ValueError('If block_data of type BlockDescription is not provided, then vertices for each corner'
+                             ' and cell count must be provided.')
 
         # Initialize inputs class
         self.inputs = inputs
 
-        # Number of cells in x and y directions
-        self.nx = inputs.nx
-        self.ny = inputs.ny
-
         # Number of ghost cells
         self.nghost = inputs.nghost
 
-        # Initialize vertices class
-        self.vertices = Vertices(NW=mesh_data.NW,
-                                 NE=mesh_data.NE,
-                                 SW=mesh_data.SW,
-                                 SE=mesh_data.SE)
+        # If block_data is not given
+        if not isinstance(block_data, BlockDescription):
+            # Initialize vertices class
+            self.vertices = Vertices(NW=NW, NE=NE, SW=SW, SE=SE)
+
+            # Number of cells in x and y directions
+            self.nx = nx
+            self.ny = ny
+
+        else:
+            # Initialize vertices class
+            self.vertices = Vertices(NW=block_data.NW,
+                                     NE=block_data.NE,
+                                     SW=block_data.SW,
+                                     SE=block_data.SE)
+
+            # Number of cells in x and y directions
+            self.nx = inputs.nx
+            self.ny = inputs.ny
 
         # x and y locations of each cell centroid
         self.x = np.zeros((self.ny, self.nx))
@@ -113,12 +139,12 @@ class Mesh:
         self.faceN = None
         self.faceS = None
 
-        # Initialize cell area attribute
-        self.A = None
-
         # Initialize x and y direction cell sizes
         self.dx = None
         self.dy = None
+
+        # Initialize cell area attribute
+        self.A = None
 
         # Build mesh
         self.create_mesh()
@@ -126,9 +152,8 @@ class Mesh:
 
     def create_mesh(self):
 
-        # Initialize temporary storage arrays for x and y node locations
-        x = np.zeros((self.ny + 1, self.nx + 1))
-        y = np.zeros((self.ny + 1, self.nx + 1))
+        # --------------------------------------------------------------------------------------------------------------
+        # Build node and cell coordinates
 
         # East edge x and y node locations
         Ex = np.linspace(self.vertices.SE[0], self.vertices.NE[0], self.ny + 1)
@@ -137,6 +162,10 @@ class Mesh:
         # West edge x and y node locations
         Wx = np.linspace(self.vertices.SW[0], self.vertices.NW[0], self.ny + 1)
         Wy = np.linspace(self.vertices.SW[1], self.vertices.NW[1], self.ny + 1)
+
+        # Initialize temporary storage arrays for x and y node locations
+        x = np.zeros((self.ny + 1, self.nx + 1))
+        y = np.zeros((self.ny + 1, self.nx + 1))
 
         # Set x and y location for all nodes
         for i in range(self.ny + 1):
@@ -149,33 +178,28 @@ class Mesh:
         # Centroid x and y locations
         self.x, self.y = self.get_centroid(x, y)
 
-        # -------------------------------------------------------------------
-        # East Face
+        # --------------------------------------------------------------------------------------------------------------
+        # Create cell face classes
 
+        # East Face
         self.faceE = CellFace()
         self.faceE.L = self.east_face_length()[:, :, np.newaxis]
         self.compute_east_face_midpoint()
         self.compute_east_face_norm()
 
-        # -------------------------------------------------------------------
         # West Face
-
         self.faceW = CellFace()
         self.faceW.L = self.west_face_length()[:, :, np.newaxis]
         self.compute_west_face_midpoint()
         self.compute_west_face_norm()
 
-        # -------------------------------------------------------------------
         # North Face
-
         self.faceN = CellFace()
         self.faceN.L = self.north_face_length()[:, :, np.newaxis]
         self.compute_north_face_midpoint()
         self.compute_north_face_norm()
 
-        # -------------------------------------------------------------------
         # South Face
-
         self.faceS = CellFace()
         self.faceS.L = self.south_face_length()[:, :, np.newaxis]
         self.compute_south_face_midpoint()
@@ -184,6 +208,7 @@ class Mesh:
         # Cell area
         self.compute_cell_area()
 
+        # Compute dx and dy
         self.dx = self.faceE.xmid - self.faceW.xmid
         self.dy = self.faceN.ymid - self.faceS.ymid
 

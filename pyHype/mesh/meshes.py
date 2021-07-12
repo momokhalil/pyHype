@@ -94,8 +94,8 @@ def simple_mesh(nx, ny):
 
 def one_mesh(nx, ny):
     block1 = {'nBLK': 1,
-              'NW': [0, 5], 'NE': [10, 10],
-              'SW': [0, 0], 'SE': [5, 0],
+              'NW': [0, 5], 'NE': [5, 7],
+              'SW': [0, 0], 'SE': [5, -2],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,

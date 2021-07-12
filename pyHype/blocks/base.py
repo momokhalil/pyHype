@@ -189,6 +189,9 @@ class QuadBlock:
         self.global_nBLK        = block_data.nBLK
         self.ghost              = None
         self.neighbors          = None
+        self.nx                 = inputs.nx
+        self.ny                 = inputs.ny
+
 
         # Store vertices for brevity
         vert = self.mesh.vertices
@@ -252,23 +255,24 @@ class QuadBlock:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
         # Build boundary blocks
-        self.ghost = GhostBlockContainer(E=GhostBlockEast(self.inputs, type_=block_data.BCTypeE, refBLK=self),
-                                         W=GhostBlockWest(self.inputs, type_=block_data.BCTypeW, refBLK=self),
-                                         N=GhostBlockNorth(self.inputs, type_=block_data.BCTypeN, refBLK=self),
-                                         S=GhostBlockSouth(self.inputs, type_=block_data.BCTypeS, refBLK=self))
+        self.ghost = GhostBlockContainer(E=GhostBlockEast(self.inputs, BCtype=block_data.BCTypeE, refBLK=self),
+                                         W=GhostBlockWest(self.inputs, BCtype=block_data.BCTypeW, refBLK=self),
+                                         N=GhostBlockNorth(self.inputs, BCtype=block_data.BCTypeN, refBLK=self),
+                                         S=GhostBlockSouth(self.inputs, BCtype=block_data.BCTypeS, refBLK=self))
 
+        self.plot()
 
 
     def plot(self):
-        plt.scatter(self.mesh.x, self.mesh.y, color='black', s=15)
-        plt.scatter(self.mesh.xc, self.mesh.yc, color='mediumslateblue', s=15)
+        plt.scatter(self.mesh.nodes.x, self.mesh.nodes.y, color='black', s=15)
+        plt.scatter(self.mesh.x, self.mesh.y, color='mediumslateblue', s=15)
 
-        segs1 = np.stack((self.mesh.x, self.mesh.y), axis=2)
+        segs1 = np.stack((self.mesh.nodes.x, self.mesh.nodes.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
         plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
         plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
 
-        segs1 = np.stack((self.mesh.xc, self.mesh.yc), axis=2)
+        segs1 = np.stack((self.mesh.x, self.mesh.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
 
         plt.gca().add_collection(
@@ -276,13 +280,10 @@ class QuadBlock:
         plt.gca().add_collection(
             LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
-        plt.scatter(self.ghost.E.x, self.ghost.E.y, marker='s', color='black', s=15)
-        plt.scatter(self.ghost.W.x, self.ghost.W.y, marker='s', color='black', s=15)
-        plt.scatter(self.ghost.N.x, self.ghost.N.y, marker='s', color='black', s=15)
-        plt.scatter(self.ghost.S.x, self.ghost.S.y, marker='s', color='black', s=15)
-
-        plt.scatter(self.mesh.EW_midpoint_x[:, :, 0], self.mesh.EW_midpoint_y[:, :, 0], marker='^', color='red', s=15)
-        plt.scatter(self.mesh.NS_midpoint_x[:, :, 0], self.mesh.NS_midpoint_y[:, :, 0], marker='x', color='green', s=15)
+        plt.scatter(self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y, color='red', marker='x', s=15)
+        plt.scatter(self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y, color='red', marker='x', s=15)
+        plt.scatter(self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y, color='red', marker='x', s=15)
+        plt.scatter(self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y, color='red', marker='x', s=15)
 
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
