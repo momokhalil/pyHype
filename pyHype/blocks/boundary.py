@@ -91,18 +91,21 @@ class GhostBlockEast(GhostBlock):
         # Calculate location of SouthWest corner
         SWx = self.refBLK.mesh.nodes.x[0, -1]
         SWy = self.refBLK.mesh.nodes.y[0, -1]
-        # Calculate x-direction and y-direction distance between NorthWest and NorthEast corner
-        dx_NE = NWx - self.refBLK.mesh.nodes.x[-1, -1 - self.inputs.nghost]
-        dy_NE = NWy - self.refBLK.mesh.nodes.y[-1, -1 - self.inputs.nghost]
-        # Calculate x-direction and y-direction distance between SouthWest and SouthEast corner
-        dx_SE = SWx - self.refBLK.mesh.nodes.x[0, -1 - self.inputs.nghost]
-        dy_SE = SWy - self.refBLK.mesh.nodes.y[0, -1 - self.inputs.nghost]
+
+        # Get points on the outside of the block
+        NEx, NEy = utils.reflect_point(NWx, NWy, SWx, SWy,
+                                       xr=self.refBLK.mesh.nodes.x[-1, -1 - self.inputs.nghost],
+                                       yr=self.refBLK.mesh.nodes.y[-1, -1 - self.inputs.nghost])
+
+        SEx, SEy = utils.reflect_point(NWx, NWy, SWx, SWy,
+                                       xr=self.refBLK.mesh.nodes.x[0, -1 - self.inputs.nghost],
+                                       yr=self.refBLK.mesh.nodes.y[0, -1 - self.inputs.nghost])
 
         # Construct Mesh
         self.mesh = Mesh(self.inputs,
-                         NE=(NWx + dx_NE, NWy - dy_NE),
+                         NE=(NEx, NEy),
                          NW=(NWx, NWy),
-                         SE=(SWx + dx_SE, SWy - dy_SE),
+                         SE=(SEx, SEy),
                          SW=(SWx, SWy),
                          nx=inputs.nghost,
                          ny=self.refBLK.ny)
@@ -145,31 +148,32 @@ class GhostBlockWest(GhostBlock):
         # Calculate location of SouthEast corner
         SEx = self.refBLK.mesh.nodes.x[0, 0]
         SEy = self.refBLK.mesh.nodes.y[0, 0]
-        # Calculate x-direction and y-direction distance between NorthWest and NorthEast corner
-        dx_NW = NEx - self.refBLK.mesh.nodes.x[-1, self.inputs.nghost]
-        dy_NW = NEy - self.refBLK.mesh.nodes.y[-1, self.inputs.nghost]
-        # Calculate x-direction and y-direction distance between SouthWest and SouthEast corner
-        dx_SW = SEx - self.refBLK.mesh.nodes.x[0, self.inputs.nghost]
-        dy_SW = SEy - self.refBLK.mesh.nodes.y[0, self.inputs.nghost]
+
+        # Get points on the outside of the block
+        NWx, NWy = utils.reflect_point(NEx, NEy, SEx, SEy,
+                                       xr=self.refBLK.mesh.nodes.x[-1, self.inputs.nghost],
+                                       yr=self.refBLK.mesh.nodes.y[-1, self.inputs.nghost])
+
+        SWx, SWy = utils.reflect_point(NEx, NEy, SEx, SEy,
+                                       xr=self.refBLK.mesh.nodes.x[0, self.inputs.nghost],
+                                       yr=self.refBLK.mesh.nodes.y[0, self.inputs.nghost])
 
         # Construct Mesh
         self.mesh = Mesh(self.inputs,
                          NE=(NEx, NEy),
-                         NW=(NEx + dx_NW, NEy - dy_NW),
+                         NW=(NWx, NWy),
                          SE=(SEx, SEy),
-                         SW=(SEx + dx_SW, SEy - dy_SW),
+                         SW=(SWx, SWy),
                          nx=inputs.nghost,
                          ny=self.refBLK.ny)
 
 
 
     def set_BC_none(self):
-        self.state.U = self.refBLK.neighbors.W.get_east_ghost()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.neighbors.W.get_east_ghost())
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.refBLK.get_west_edge()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.get_west_edge())
 
     def set_BC_reflection(self):
         state = self.refBLK.get_west_ghost()
@@ -199,17 +203,20 @@ class GhostBlockNorth(GhostBlock):
         # Calculate location of SouthEast corner
         SEx = self.refBLK.mesh.nodes.x[-1, -1]
         SEy = self.refBLK.mesh.nodes.y[-1, -1]
-        # Calculate x-direction and y-direction distance between NorthWest and SouthWest corner
-        dx_NW = SWx - self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, 0]
-        dy_NW = SWy - self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, 0]
-        # Calculate x-direction and y-direction distance between NorthEast and SouthEast corner
-        dx_NE = SEx - self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, -1]
-        dy_NE = SEy - self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, -1]
+
+        # Get points on the outside of the block
+        NWx, NWy = utils.reflect_point(SWx, SWy, SEx, SEy,
+                                       xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, 0],
+                                       yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, 0])
+
+        NEx, NEy = utils.reflect_point(SWx, SWy, SEx, SEy,
+                                       xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, -1],
+                                       yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, -1])
 
         # Construct Mesh
         self.mesh = Mesh(self.inputs,
-                         NE=(SEx - dx_NE, SEy + dy_NE),
-                         NW=(SWx - dx_NW, SWy + dy_NW),
+                         NE=(NEx, NEy),
+                         NW=(NWx, NWy),
                          SE=(SEx, SEy),
                          SW=(SWx, SWy),
                          nx=self.refBLK.ny,
@@ -250,19 +257,22 @@ class GhostBlockSouth(GhostBlock):
         # Calculate location of NorthEast corner
         NEx = self.refBLK.mesh.nodes.x[0, -1]
         NEy = self.refBLK.mesh.nodes.y[0, -1]
-        # Calculate x-direction and y-direction distance between NorthWest and SouthWest corner
-        dx_SW = NWx - self.refBLK.mesh.nodes.x[self.inputs.nghost, 0]
-        dy_SW = NWy - self.refBLK.mesh.nodes.y[self.inputs.nghost, 0]
-        # Calculate x-direction and y-direction distance between NorthEast and SouthEast corner
-        dx_SE = NEx - self.refBLK.mesh.nodes.x[self.inputs.nghost, -1]
-        dy_SE = NEy - self.refBLK.mesh.nodes.y[self.inputs.nghost, -1]
+
+        # Get points on the outside of the block
+        SWx, SWy = utils.reflect_point(NWx, NWy, NEx, NEy,
+                                       xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, 0],
+                                       yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, 0])
+
+        SEx, SEy = utils.reflect_point(NWx, NWy, NEx, NEy,
+                                       xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, -1],
+                                       yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, -1])
 
         # Construct Mesh
         self.mesh = Mesh(self.inputs,
                          NE=(NEx, NEy),
                          NW=(NWx, NWy),
-                         SE=(NEx - dx_SE, NEy + dy_SE),
-                         SW=(NWx - dx_SW, NWy + dy_SW),
+                         SE=(SEx, SEy),
+                         SW=(SWx, SWy),
                          nx=self.refBLK.ny,
                          ny=inputs.nghost)
 

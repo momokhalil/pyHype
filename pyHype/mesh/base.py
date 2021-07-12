@@ -176,7 +176,7 @@ class Mesh:
         self.nodes = GridLocation(x, y)
 
         # Centroid x and y locations
-        self.x, self.y = self.get_centroid(x, y)
+        self.compute_centroid()
 
         # --------------------------------------------------------------------------------------------------------------
         # Create cell face classes
@@ -337,15 +337,38 @@ class Mesh:
 
 
     @staticmethod
-    def get_centroid(x: np.ndarray, y: np.ndarray):
+    def get_centroid_from_arrays(x: np.ndarray, y: np.ndarray):
 
-        # Kernel of centroids x-coordinates
         xc = 0.25 * (x[1:, 0:-1] + x[1:, 1:] + x[0:-1, 0:-1] + x[0:-1, 1:])
 
         # Kernel of centroids y-coordinates
         yc = 0.25 * (y[1:, 0:-1] + y[1:, 1:] + y[0:-1, 0:-1] + y[0:-1, 1:])
 
         return xc, yc
+
+
+    def get_centroid(self):
+        # Kernel of centroids x-coordinates
+        x = 0.25 * (self.nodes.x[1:, 0:-1] +
+                    self.nodes.x[1:, 1:] +
+                    self.nodes.x[0:-1, 0:-1] +
+                    self.nodes.x[0:-1, 1:])
+
+        # Kernel of centroids x-coordinates
+        y = 0.25 * (self.nodes.y[1:, 0:-1] +
+                    self.nodes.y[1:, 1:] +
+                    self.nodes.y[0:-1, 0:-1] +
+                    self.nodes.y[0:-1, 1:])
+
+        return x, y
+
+
+    def compute_centroid(self):
+
+        if isinstance(self.nodes, GridLocation):
+            self.x, self.y = self.get_centroid()
+        else:
+            raise AttributeError('Attribute nodes of class Mesh is not of type GridLocation.')
 
 
     def east_face_length(self):

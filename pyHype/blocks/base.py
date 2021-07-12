@@ -280,10 +280,29 @@ class QuadBlock:
         plt.gca().add_collection(
             LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
-        plt.scatter(self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y, color='red', marker='x', s=15)
+        plt.scatter(self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y, color='red', marker='o', s=15)
+        segs1 = np.stack((self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
+
         plt.scatter(self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y, color='red', marker='x', s=15)
+        segs1 = np.stack((self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
+
         plt.scatter(self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y, color='red', marker='x', s=15)
+        segs1 = np.stack((self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
+
         plt.scatter(self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y, color='red', marker='x', s=15)
+        segs1 = np.stack((self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
 
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
@@ -322,94 +341,6 @@ class QuadBlock:
             return 0
         else:
             return np.arctan((pt1[0] - pt2[0]) / (pt2[1] - pt1[1]))
-
-    def get_centroid_corners(self,
-                             s1: GhostBlock,
-                             s1idx1: [int],
-                             s1idx2: [int],
-                             s2: GhostBlock,
-                             s2idx1: [int],
-                             s2idx2: [int],
-                             idxcorner: [int]
-                             ) -> [np.ndarray]:
-        """
-        Calculates the coordinates of any of the four corner cells. It does this by calculating the linear equation
-        of the line that passes through the nodes closest to the domain in either ghost block, then calculates the
-        intersection of those lines. This intersection point is the most outwards corner of that cell (Refer to
-        pyHype/fvm/base.py for a further description of the mesh anatomy). Once the intersetion is calculated, it is
-        used to compute the cenroid of that particular cell.
-
-        For example, considering the north-east corner of the mesh (labeled X):
-
-        (North Ghost block nodes)
-            .....o.........o
-
-
-
-        ... -----O---------X            o     (East Ghost block nodes)
-                 |         |            .
-                 |         |            .
-                 |         |            .
-        ... -----O---------O            o
-                 |         |            .
-                 |         |            .
-                 .         .
-                 .         .
-
-        The intersection that is computed is labelled I, and the resulting centroid is labelled c:
-
-            .....o.........o------------I
-                                        |
-                                 c      |
-                                        |
-        ... -----O---------X            o
-                 |         |            .
-                 |         |            .
-                 |         |            .
-        ... -----O---------O            o
-                 |         |            .
-                 |         |            .
-                 .         .
-                 .         .
-
-        The centroid allows the construction of the cell around node X.
-
-
-        Parameters:
-            - s1: Reference to the side 1 ghost block
-            - s1idx1: Indices of the first point used for the construction of the linear equation of side 1
-            - s1idx2: Indices of the second point used for the construction of the linear equation of side 1
-            - s2: Reference to the side 2 ghost block
-            - s1idx1: Indices of the first point used for the construction of the linear equation of side 2
-            - s1idx2: Indices of the second point used for the construction of the linear equation of side 2
-            - idxcorner: Indices of the mesh corner
-
-        Returns:
-            - xc: centroid x coordinate
-            - yc: centroid y coordinate
-        """
-
-        # Get parameters for side 1 linear equation
-        m1 = (s1.y[s1idx1] - s1.y[s1idx2]) / (s1.x[s1idx1] - s1.x[s1idx2] + 1e-8)
-        b1 = s1.y[s1idx1] - m1 * s1.x[s1idx1]
-
-        # Get parameters for side 2 linear equation
-        m2 = (s2.y[s2idx1] - s2.y[s2idx2]) / (s2.x[s2idx1] - s2.x[s2idx2] + 1e-8)
-        b2 = s2.y[s2idx1] - m2 * s2.x[s2idx1]
-
-        # Check for infinity slope
-        if math.isinf(m1): m1 = 1e10
-        elif math.isinf(m2): m2 = 1e10
-
-        # Calculate coordinates of cell corner
-        x = (b2 - b1) / (m1 - m2 + 1e-8)
-        y = m1 * x + b1
-
-        # Calculate corner cell centroid coordinates
-        xc = 0.25 * (self.mesh.x[idxcorner] + s1.x[s1idx1] + s2.x[s2idx1] + x)
-        yc = 0.25 * (self.mesh.y[idxcorner] + s1.y[s1idx1] + s2.y[s2idx1] + y)
-
-        return xc, yc
 
     def _index_in_west_ghost_block(self, x, y):
         return x < 0 and 0 <= y <= self.mesh.ny
