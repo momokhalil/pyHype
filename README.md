@@ -1,4 +1,5 @@
-![Alt Text](/logo.png){:height="50%" width="50%"}
+![Alt Text](/logo.png)
+<img src="/logo.png" width="100" height="100">
 
 # [pyHype](https://github.com/momokhalil/pyHype): Computational Fluid Dynamics in Python
 
