@@ -365,9 +365,9 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate to allign with cell faces
         utils.rotate(refBLK.mesh.get_east_face_angle(), _east_ghost)
-        utils.rotate(refBLK.mesh.get_west_face_angle(), _west_ghost)
+        utils.rotate(refBLK.mesh.get_west_face_angle() - np.pi, _west_ghost)
         utils.rotate(refBLK.mesh.faceE.theta, stateE)
-        utils.rotate(refBLK.mesh.faceW.theta + np.pi, stateW)
+        utils.rotate(refBLK.mesh.faceW.theta - np.pi, stateW)
 
         # Iterate over all rows in block
         for row in range(self.ny):
@@ -392,7 +392,7 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate flux back to local frame
         utils.unrotate(refBLK.mesh.faceE.theta, self.Flux_E)
-        utils.unrotate(refBLK.mesh.faceW.theta, self.Flux_W)
+        utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux_W)
 
         # --------------------------------------------------------------------------------------------------------------
         # Calculate y-direction Flux
@@ -403,9 +403,9 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate to allign with cell faces
         utils.rotate(refBLK.mesh.get_north_face_angle(), _north_ghost)
-        utils.rotate(refBLK.mesh.get_south_face_angle(), _south_ghost)
+        utils.rotate(refBLK.mesh.get_south_face_angle() - np.pi, _south_ghost)
         utils.rotate(refBLK.mesh.faceN.theta, stateN)
-        utils.rotate(refBLK.mesh.faceS.theta, stateS)
+        utils.rotate(refBLK.mesh.faceS.theta - np.pi, stateS)
 
         # Iterate over all columns in block
         for col in range(self.nx):
@@ -430,4 +430,4 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate flux back to global frame
         utils.unrotate(refBLK.mesh.faceN.theta, self.Flux_N)
-        utils.unrotate(refBLK.mesh.faceS.theta + np.pi, self.Flux_S)
+        utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux_S)

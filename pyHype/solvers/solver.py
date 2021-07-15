@@ -313,8 +313,8 @@ class Euler2D:
             # THIS IS FOR DEBUGGING PURPOSES ONLY
             if self.inputs.realplot:
                 if self.numTimeStep % 2 == 0:
-                    self.realplot.contourf(self._blocks[1].mesh.x,
-                                           self._blocks[1].mesh.y,
+                    self.realplot.contourf(self._blocks[1].mesh.x[:, :, 0],
+                                           self._blocks[1].mesh.y[:, :, 0],
                                            self._blocks[1].state.rho,
                                            40, cmap='magma')
                     plt.show()
