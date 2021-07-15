@@ -100,6 +100,8 @@ class Euler2D:
         nx = settings['nx']
         # Number of nodes in y-direction per block
         ny = settings['ny']
+        # Number of ghost cells
+        nghost = settings['nghost']
 
         # --------------------------------------------------------------------------------------------------------------
         # Create dictionary that describes each block in mesh
@@ -107,7 +109,7 @@ class Euler2D:
         # Get function that creates the dictionary of block description dictionaries.
         _mesh_func = meshes.DEFINED_MESHES[mesh_name]
         # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
-        _mesh_dict = _mesh_func(nx=nx, ny=ny)
+        _mesh_dict = _mesh_func(nx=nx, ny=ny, nghost=nghost)
         # Initialise dictionary to store a BlockDescription for each block in the mesh
         _mesh_inputs = {}
         # Create BlockDescription for each block in the mesh
@@ -307,16 +309,17 @@ class Euler2D:
             # print('update block')
             self._blocks.update(dt)
 
-            #self.write_output_nodes('./test_sim/test_sim_U_' + str(self.numTimeStep), self._blocks.blocks[1].state.U)
-
+            ############################################################################################################
+            # THIS IS FOR DEBUGGING PURPOSES ONLY
             if self.inputs.realplot:
                 if self.numTimeStep % 2 == 0:
-                    self.realplot.contourf(self._blocks.blocks[1].mesh.x,
-                                           self._blocks.blocks[1].mesh.y,
-                                           self._blocks.blocks[1].state.rho,
+                    self.realplot.contourf(self._blocks[1].mesh.x[:, :, 0],
+                                           self._blocks[1].mesh.y[:, :, 0],
+                                           self._blocks[1].state.rho,
                                            40, cmap='magma')
                     plt.show()
                     plt.pause(0.001)
+            ############################################################################################################
 
             self.t += dt
 

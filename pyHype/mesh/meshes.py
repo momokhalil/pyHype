@@ -17,7 +17,7 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 # Meshes
-def simple_mesh(nx, ny):
+def simple_mesh(nx, ny, nghost):
     block1 = {'nBLK': 1,
               'NE': [5, 5],
               'NW': [0, 5],
@@ -26,6 +26,7 @@ def simple_mesh(nx, ny):
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
+              'nghost': nghost,
               'NeighborE': 4,
               'NeighborW': 0,
               'NeighborN': 2,
@@ -43,6 +44,7 @@ def simple_mesh(nx, ny):
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
+              'nghost': nghost,
               'NeighborE': 3,
               'NeighborW': 0,
               'NeighborN': 0,
@@ -60,6 +62,7 @@ def simple_mesh(nx, ny):
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
+              'nghost': nghost,
               'NeighborE': 0,
               'NeighborW': 2,
               'NeighborN': 0,
@@ -77,6 +80,7 @@ def simple_mesh(nx, ny):
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
+              'nghost': nghost,
               'NeighborE': 0,
               'NeighborW': 1,
               'NeighborN': 3,
@@ -92,13 +96,14 @@ def simple_mesh(nx, ny):
             4: block4}
 
 
-def one_mesh(nx, ny):
+def one_mesh(nx, ny, nghost):
     block1 = {'nBLK': 1,
-              'NW': [0, 10], 'NE': [10, 10],
-              'SW': [0, 0], 'SE': [10, 0],
+              'NW': [0, 5], 'NE': [5, 5],
+              'SW': [0, 0], 'SE': [5, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
+              'nghost': nghost,
               'NeighborE': 0,
               'NeighborW': 0,
               'NeighborN': 0,
@@ -111,13 +116,14 @@ def one_mesh(nx, ny):
     return {1: block1}
 
 
-def chamber(nx, ny):
+def chamber(nx, ny, nghost):
     block1 = {'nBLK': 1,
               'NW': [0, 20], 'NE': [10, 20],
               'SW': [0, 0],   'SE': [10, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
+              'nghost': nghost,
               'NeighborE': 0,
               'NeighborW': 0,
               'NeighborN': 0,
@@ -129,13 +135,14 @@ def chamber(nx, ny):
 
     return {1: block1}
 
-def chamber_skewed(nx, ny):
+def chamber_skewed(nx, ny, nghost):
     block1 = {'nBLK': 1,
               'NW': [0, 20], 'NE': [10, 15],
               'SW': [0, -5],   'SE': [10, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
+              'nghost': nghost,
               'NeighborE': 0,
               'NeighborW': 0,
               'NeighborN': 0,
