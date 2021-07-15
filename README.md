@@ -1,4 +1,4 @@
-![Alt Text](/logo.png)
+![Alt Text](/logo.png){:height="50%" width="50%"}
 
 # [pyHype](https://github.com/momokhalil/pyHype): Computational Fluid Dynamics in Python
 
