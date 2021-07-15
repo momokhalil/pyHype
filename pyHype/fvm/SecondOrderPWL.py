@@ -38,8 +38,6 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         else:
             super().__init__(inputs, global_nBLK)
 
-            #self.Ux = ConservativeState(inputs=self.inputs, nx=self.nx + 2, ny=1)
-            #self.Uy = ConservativeState(inputs=self.inputs, nx=self.ny + 2, ny=1)
 
     @staticmethod
     def high_order_E(refBLK: QuadBlock):
