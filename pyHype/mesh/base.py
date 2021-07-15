@@ -30,6 +30,7 @@ class BlockDescription:
         self.n = blk_input['n']
         self.nx = blk_input['nx']
         self.ny = blk_input['ny']
+        self.nghost = blk_input['nghost']
         self.NeighborE = blk_input['NeighborE']
         self.NeighborW = blk_input['NeighborW']
         self.NeighborN = blk_input['NeighborN']
@@ -169,11 +170,11 @@ class Mesh:
 
         # Set x and y location for all nodes
         for i in range(self.ny + 1):
-            x[i, :] = np.linspace(Wx[i], Ex[i], self.nx + 1)
-            y[i, :] = np.linspace(Wy[i], Ey[i], self.nx + 1)
+            x[i, :] = np.linspace(Wx[i], Ex[i], self.nx + 1).reshape(-1, )
+            y[i, :] = np.linspace(Wy[i], Ey[i], self.nx + 1).reshape(-1, )
 
         # Create nodal location class
-        self.nodes = GridLocation(x, y)
+        self.nodes = GridLocation(x[:, :, np.newaxis], y[:, :, np.newaxis])
 
         # Centroid x and y locations
         self.compute_centroid()
@@ -183,25 +184,25 @@ class Mesh:
 
         # East Face
         self.faceE = CellFace()
-        self.faceE.L = self.east_face_length()[:, :, np.newaxis]
+        self.faceE.L = self.east_face_length()
         self.compute_east_face_midpoint()
         self.compute_east_face_norm()
 
         # West Face
         self.faceW = CellFace()
-        self.faceW.L = self.west_face_length()[:, :, np.newaxis]
+        self.faceW.L = self.west_face_length()
         self.compute_west_face_midpoint()
         self.compute_west_face_norm()
 
         # North Face
         self.faceN = CellFace()
-        self.faceN.L = self.north_face_length()[:, :, np.newaxis]
+        self.faceN.L = self.north_face_length()
         self.compute_north_face_midpoint()
         self.compute_north_face_norm()
 
         # South Face
         self.faceS = CellFace()
-        self.faceS.L = self.south_face_length()[:, :, np.newaxis]
+        self.faceS.L = self.south_face_length()
         self.compute_south_face_midpoint()
         self.compute_south_face_norm()
 
@@ -236,7 +237,7 @@ class Mesh:
 
         den = self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]
         num = self.nodes.x[:-1, :-1] - self.nodes.x[1:, :-1]
-        theta = np.where(den != 0, np.arctan(num / den), 0)
+        theta = np.where(den != 0, np.arctan(num / den), 0) + np.pi
         xnorm = np.cos(theta)
         ynorm = np.sin(theta)
 
@@ -274,7 +275,7 @@ class Mesh:
 
         den = self.nodes.x[:-1, 1:] - self.nodes.x[:-1, :-1]
         num = self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]
-        theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
+        theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2) + np.pi
         xnorm = np.cos(theta)
         ynorm = np.sin(theta)
 
@@ -333,7 +334,7 @@ class Mesh:
         p1 = (s - s1) * (s - s2) * (s - s3) * (s - s4)
         p2 = s1 * s2 * s3 * s4
 
-        self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))[:, :, np.newaxis]
+        self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
 
 
     @staticmethod
@@ -370,58 +371,53 @@ class Mesh:
         else:
             raise AttributeError('Attribute nodes of class Mesh is not of type GridLocation.')
 
+    # Face Lengths
 
     def east_face_length(self):
         return np.sqrt(((self.nodes.x[1:, 1:] - self.nodes.x[:-1, 1:]) ** 2 +
                         (self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]) ** 2))
 
-
     def west_face_length(self):
         return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[:-1, :-1]) ** 2 +
                         (self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]) ** 2))
-
 
     def north_face_length(self):
         return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[1:, 1:]) ** 2 +
                         (self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]) ** 2))
 
-
     def south_face_length(self):
         return np.sqrt(((self.nodes.x[:-1, :-1] - self.nodes.x[:-1, 1:]) ** 2 +
                         (self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]) ** 2))
 
+    # Face Midpoints
 
     def get_east_face_midpoint(self):
 
         x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[:-1, 1:])
         y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[:-1, 1:])
 
-        return x[:, :, np.newaxis], y[:, :, np.newaxis]
-
+        return x, y
 
     def get_west_face_midpoint(self):
 
         x = 0.5 * (self.nodes.x[1:, :-1] + self.nodes.x[:-1, :-1])
         y = 0.5 * (self.nodes.y[1:, :-1] + self.nodes.y[:-1, :-1])
 
-        return x[:, :, np.newaxis], y[:, :, np.newaxis]
-
+        return x, y
 
     def get_north_face_midpoint(self):
 
         x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[1:, :-1])
         y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[1:, :-1])
 
-        return x[:, :, np.newaxis], y[:, :, np.newaxis]
-
+        return x, y
 
     def get_south_face_midpoint(self):
 
         x = 0.5 * (self.nodes.x[:-1, 1:] + self.nodes.x[:-1, :-1])
         y = 0.5 * (self.nodes.y[:-1, 1:] + self.nodes.y[:-1, :-1])
 
-        return x[:, :, np.newaxis], y[:, :, np.newaxis]
-
+        return x, y
 
     def compute_east_face_midpoint(self):
 
@@ -438,6 +434,26 @@ class Mesh:
     def compute_south_face_midpoint(self):
 
         self.faceS.xmid, self.faceS.ymid = self.get_south_face_midpoint()
+
+    # Face Angles
+
+    def get_east_face_angle(self):
+
+        return self.faceE.theta[:, -1, None, :]
+
+    def get_west_face_angle(self):
+
+        return self.faceW.theta[:, 0, None, :] - np.pi
+
+    def get_north_face_angle(self):
+
+        return self.faceN.theta[-1, None, :, :]
+
+    def get_south_face_angle(self):
+
+        return self.faceS.theta[0, None, :, :] - np.pi
+
+    # Plotting
 
     def plot(self):
 

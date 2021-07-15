@@ -15,5 +15,5 @@ limitations under the License.
 """
 
 from .base import QuadBlock
-from .boundary import GhostBlock
-from .boundary import GhostBlockEast, GhostBlockWest, GhostBlockNorth, GhostBlockSouth
+from .ghost import GhostBlock
+from .ghost import GhostBlockEast, GhostBlockWest, GhostBlockNorth, GhostBlockSouth

@@ -153,8 +153,10 @@ class MUSCLFiniteVolumeMethod:
         self.global_nBLK = global_nBLK
 
         # Initialize x and y direction flux
-        self.Flux_EW = np.empty((self.ny, self.nx + 1, 4))
-        self.Flux_NS = np.empty((self.ny + 1, self.nx, 4))
+        self.Flux_E = np.empty((self.ny, self.nx, 4))
+        self.Flux_W = np.empty((self.ny, self.nx, 4))
+        self.Flux_N = np.empty((self.ny, self.nx, 4))
+        self.Flux_S = np.empty((self.ny, self.nx, 4))
 
         # Initialize left and right conservative states
         self.UL = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
@@ -317,7 +319,7 @@ class MUSCLFiniteVolumeMethod:
         pass
 
 
-    def get_residual(self, refBLK):
+    def dUdt(self, refBLK):
         """
         Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
         applying the semi-discrete Godunov method:
@@ -355,21 +357,42 @@ class MUSCLFiniteVolumeMethod:
         self.UL.reset(shape=(1, self.nx + 1, 4))
         self.UR.reset(shape=(1, self.nx + 1, 4))
 
+        # Copy all ghost cell values that will be used for the flux calculations
+        _east_ghost = refBLK.ghost.W.col_copy(0)
+        _west_ghost = refBLK.ghost.W.col_copy(-1)
+        _north_ghost = refBLK.ghost.N.row_copy(0)
+        _south_ghost = refBLK.ghost.S.row_copy(-1)
+
         # Rotate to allign with cell faces
-        utils.rotate(refBLK.mesh.thetax, stateE, stateW)
+        utils.rotate(refBLK.mesh.get_east_face_angle(), _east_ghost)
+        utils.rotate(refBLK.mesh.get_west_face_angle(), _west_ghost)
+        utils.rotate(refBLK.mesh.faceE.theta, stateE)
+        utils.rotate(refBLK.mesh.faceW.theta + np.pi, stateW)
 
         # Iterate over all rows in block
         for row in range(self.ny):
 
             # Set vectors based on left and right states
-            self.UL.from_conservative_state_vector(stateE[row:row+1, :, :])
-            self.UR.from_conservative_state_vector(stateW[row:row+1, :, :])
+            stateL = np.concatenate((_east_ghost[row:row+1, :, :],
+                                     stateE[row:row+1, :, :]), axis=1)
 
-            # Calculate face-normal-flux at each cell interface
-            self.Flux_EW[row, :, :] = self.flux_function_X.compute_flux(self.UL, self.UR)
+            stateR = np.concatenate((stateW[row:row+1, :, :],
+                                     _west_ghost[row:row+1, :, :]), axis=1)
+
+            self.UL.from_conservative_state_vector(stateL)
+            self.UR.from_conservative_state_vector(stateR)
+
+            # Calculate face-normal-flux at each cell east-west interface
+            flux_EW = self.flux_function_X.compute_flux(self.UL, self.UR)
+
+            # Set east face flux
+            self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
+            # Set west face flux
+            self.Flux_W[row, :, :] = flux_EW[:, :-1, :]
 
         # Rotate flux back to local frame
-        utils.unrotate(refBLK.mesh.thetax, self.Flux_EW)
+        utils.unrotate(refBLK.mesh.faceE.theta, self.Flux_E)
+        utils.unrotate(refBLK.mesh.faceW.theta, self.Flux_W)
 
         # --------------------------------------------------------------------------------------------------------------
         # Calculate y-direction Flux
@@ -379,21 +402,32 @@ class MUSCLFiniteVolumeMethod:
         self.UR.reset(shape=(1, self.ny + 1, 4))
 
         # Rotate to allign with cell faces
-        utils.rotate(refBLK.mesh.thetay[:, np.newaxis], stateN, stateS)
-
-        # Transpose North and South states
-        stateN = stateN.transpose((1, 0, 2))
-        stateS = stateS.transpose((1, 0, 2))
+        utils.rotate(refBLK.mesh.get_north_face_angle(), _north_ghost)
+        utils.rotate(refBLK.mesh.get_south_face_angle(), _south_ghost)
+        utils.rotate(refBLK.mesh.faceN.theta, stateN)
+        utils.rotate(refBLK.mesh.faceS.theta, stateS)
 
         # Iterate over all columns in block
         for col in range(self.nx):
 
             # Set vectors based on left and right states
-            self.UL.from_conservative_state_vector(stateN[col:col + 1, :, :])
-            self.UR.from_conservative_state_vector(stateS[col:col + 1, :, :])
+            stateL = np.concatenate((_south_ghost[:, col:col + 1, :],
+                                     stateN[:, col:col + 1, :]), axis=0)
 
-            # Calculate face-normal-flux at each cell interface
-            self.Flux_NS[:, col, :] = self.flux_function_Y.compute_flux(self.UL, self.UR).reshape(-1, 4)
+            stateR = np.concatenate((stateS[:, col:col + 1, :],
+                                     _north_ghost[:, col:col + 1, :]), axis=0)
+
+            self.UL.from_conservative_state_vector(stateL.transpose((1, 0, 2)))
+            self.UR.from_conservative_state_vector(stateR.transpose((1, 0, 2)))
+
+            # Calculate face-normal-flux at each cell east-west interface
+            flux_NS = self.flux_function_Y.compute_flux(self.UL, self.UR).reshape(-1, 4)
+
+            # Set east face flux
+            self.Flux_N[:, col, :] = flux_NS[1:, :]
+            # Set west face flux
+            self.Flux_S[:, col, :] = flux_NS[:-1, :]
 
         # Rotate flux back to global frame
-        utils.unrotate(refBLK.mesh.thetay[:, np.newaxis], self.Flux_NS)
+        utils.unrotate(refBLK.mesh.faceN.theta, self.Flux_N)
+        utils.unrotate(refBLK.mesh.faceS.theta + np.pi, self.Flux_S)

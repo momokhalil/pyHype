@@ -13,8 +13,8 @@ settings = {'problem_type':             'implosion',
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
             'R':                        287.0,
-            'nx':                       10,
-            'ny':                       10,
+            'nx':                       8,
+            'ny':                       8,
             'nghost':                   1,
             'mesh_name':                'one_mesh'
             }

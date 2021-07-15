@@ -68,23 +68,25 @@ class GreenGauss:
         E, W, N, S = self.face_contribution(interfaceEW, interfaceNS, refBLK)
 
         # Compute dUdx
-        refBLK.gradx = (E * refBLK.mesh.E_norm_x +
-                        W * refBLK.mesh.W_norm_x +
-                        N * refBLK.mesh.N_norm_x +
-                        S * refBLK.mesh.S_norm_x
+        refBLK.gradx = (E * refBLK.mesh.faceE.xnorm +
+                        W * refBLK.mesh.faceW.xnorm +
+                        N * refBLK.mesh.faceN.xnorm +
+                        S * refBLK.mesh.faceS.xnorm
                         ) / refBLK.mesh.A
 
         # Compute dUdy
-        refBLK.grady = (E * refBLK.mesh.E_norm_y +
-                        W * refBLK.mesh.W_norm_y +
-                        N * refBLK.mesh.N_norm_y +
-                        S * refBLK.mesh.S_norm_y
+        refBLK.grady = (E * refBLK.mesh.faceE.ynorm +
+                        W * refBLK.mesh.faceW.ynorm +
+                        N * refBLK.mesh.faceN.ynorm +
+                        S * refBLK.mesh.faceS.ynorm
                         ) / refBLK.mesh.A
+
 
     @staticmethod
     def face_contribution(interfaceEW, interfaceNS, refBLK):
-        E = interfaceEW[:, 1:, :] * refBLK.mesh.E_face_L
-        W = interfaceEW[:, :-1, :] * refBLK.mesh.W_face_L
-        N = interfaceNS[1:, :, :] * refBLK.mesh.N_face_L
-        S = interfaceNS[:-1, :, :] * refBLK.mesh.S_face_L
+        E = interfaceEW[:, 1:, :] * refBLK.mesh.faceE.L
+        W = interfaceEW[:, :-1, :] * refBLK.mesh.faceW.L
+        N = interfaceNS[1:, :, :] * refBLK.mesh.faceN.L
+        S = interfaceNS[:-1, :, :] * refBLK.mesh.faceS.L
+
         return E, W, N, S

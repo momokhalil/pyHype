@@ -17,10 +17,11 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+from typing import Union
 
 
-def rotate(theta: float,
-           *arrays: np.ndarray,
+def rotate(theta: Union[float, np.ndarray],
+           *arrays: Union[np.ndarray, list[np.ndarray]],
            ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees counterclockwise.
@@ -42,6 +43,11 @@ def rotate(theta: float,
     y' = y cos(theta) - x sin(theta)
     """
 
+    if np.ndim(theta) == 3:
+        theta = theta[:, :, 0]
+    elif np.ndim(theta) > 3:
+        raise RuntimeError('theta cannot have more than 3 dimensions.')
+
     for array in arrays:
 
         u = array[:, :, 1] * np.cos(theta) + array[:, :, 2] * np.sin(theta)
@@ -52,7 +58,7 @@ def rotate(theta: float,
 
 
 def unrotate(theta: float,
-             *arrays: np.ndarray,
+             *arrays: Union[np.ndarray, list[np.ndarray]],
              ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees clockwise. Basically the
@@ -73,6 +79,11 @@ def unrotate(theta: float,
     x = x' cos(theta) - y' sin(theta)
     y = y' cos(theta) + x' sin(theta)
     """
+
+    if np.ndim(theta) == 3:
+        theta = theta[:, :, 0]
+    elif np.ndim(theta) > 3:
+        raise RuntimeError('theta cannot have more than 3 dimensions.')
 
     for array in arrays:
         u = array[:, :, 1] * np.cos(theta) - array[:, :, 2] * np.sin(theta)

@@ -43,7 +43,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         # Iterate across num_stages
         for stage in range(self.num_stages):
             # Get residual for current stage
-            _stage_residuals[stage] = refBLK.get_residual()
+            _stage_residuals[stage] = refBLK.dUdt()
             # Copy U into intermediate stage
             _intermediate_state = U
             # Add stage contributions to current stage according to the method's Butcher tableau

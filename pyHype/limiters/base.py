@@ -13,11 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
+
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
 from abc import abstractmethod
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from pyHype.blocks.base import QuadBlock
 
 
 class SlopeLimiter:
@@ -26,14 +33,14 @@ class SlopeLimiter:
 
     def get_slope(self,
                   state: np.ndarray,
-                  UE: np.ndarray = None,
-                  UW: np.ndarray = None,
-                  UN: np.ndarray = None,
-                  US: np.ndarray = None,
-                  quadE: np.ndarray = None,
-                  quadW: np.ndarray = None,
-                  quadN: np.ndarray = None,
-                  quadS: np.ndarray = None,
+                  ghostE: np.ndarray,
+                  ghostW: np.ndarray,
+                  ghostN: np.ndarray,
+                  ghostS: np.ndarray,
+                  quadE: np.ndarray,
+                  quadW: np.ndarray,
+                  quadN: np.ndarray,
+                  quadS: np.ndarray,
                   ) -> [np.ndarray]:
 
         # initialise slopes
@@ -43,25 +50,30 @@ class SlopeLimiter:
         sS = np.ones_like(state)
 
         # u_max for interior cells
+        _east = np.concatenate((state[:, 1:], ghostE), axis=1)
+        _west = np.concatenate((ghostW, state[:, :-1]), axis=1)
+        _north = np.concatenate((state[1:, :], ghostN), axis=0)
+        _south = np.concatenate((ghostS, state[:-1, :]), axis=0)
+
         u_max = np.maximum(state,
-                           np.maximum(np.maximum(UE[:, :-1, :], UW[:, 1:, :]),
-                                      np.maximum(UN[:-1, :, :], US[1:, :, :]))
+                           np.maximum(np.maximum(_east, _west),
+                                      np.maximum(_north, _south))
                            )
 
         # u_min for interior cells
         u_min = np.minimum(state,
-                           np.minimum(np.minimum(UE[:, :-1, :], UW[:, 1:, :]),
-                                      np.minimum(UN[:-1, :, :], US[1:, :, :]))
+                           np.minimum(np.minimum(_east, _west),
+                                      np.minimum(_north, _south))
                            )
 
         # Difference between largest/smallest value and average value
         dmax, dmin = u_max - state, u_min - state
 
         # Difference between quadrature points and average value
-        dE = quadE[:, 1:, :] - state
-        dW = quadW[:, :-1, :] - state
-        dN = quadN[1:, :, :] - state
-        dS = quadS[:-1, :, :] - state
+        dE = quadE - state
+        dW = quadW - state
+        dN = quadN - state
+        dS = quadS - state
 
         # Calculate slopes for each face
 
@@ -85,10 +97,10 @@ class SlopeLimiter:
 
     def limit(self,
               state: np.ndarray,
-              UE: np.ndarray = None,
-              UW: np.ndarray = None,
-              UN: np.ndarray = None,
-              US: np.ndarray = None,
+              ghostE: np.ndarray,
+              ghostW: np.ndarray,
+              ghostN: np.ndarray,
+              ghostS: np.ndarray,
               quadE: np.ndarray = None,
               quadW: np.ndarray = None,
               quadN: np.ndarray = None,
@@ -96,7 +108,9 @@ class SlopeLimiter:
               ) -> np.ndarray:
 
         # Calculate values needed to build slopes
-        sE, sW, sN, sS = self.get_slope(state, UE, UW, UN, US, quadE, quadW, quadN, quadS)
+        sE, sW, sN, sS = self.get_slope(state,
+                                        ghostE, ghostW, ghostN, ghostS,
+                                        quadE, quadW, quadN, quadS)
 
         # Get phi
         phiE = self._limiter_func(sE)

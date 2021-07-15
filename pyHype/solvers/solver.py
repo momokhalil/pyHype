@@ -100,6 +100,8 @@ class Euler2D:
         nx = settings['nx']
         # Number of nodes in y-direction per block
         ny = settings['ny']
+        # Number of ghost cells
+        nghost = settings['nghost']
 
         # --------------------------------------------------------------------------------------------------------------
         # Create dictionary that describes each block in mesh
@@ -107,7 +109,7 @@ class Euler2D:
         # Get function that creates the dictionary of block description dictionaries.
         _mesh_func = meshes.DEFINED_MESHES[mesh_name]
         # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
-        _mesh_dict = _mesh_func(nx=nx, ny=ny)
+        _mesh_dict = _mesh_func(nx=nx, ny=ny, nghost=nghost)
         # Initialise dictionary to store a BlockDescription for each block in the mesh
         _mesh_inputs = {}
         # Create BlockDescription for each block in the mesh

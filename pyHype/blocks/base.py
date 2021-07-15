@@ -13,11 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
-import math
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -30,16 +31,20 @@ from pyHype.fvm import SecondOrderPWL
 from pyHype.states.states import ConservativeState
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 
-from pyHype.blocks.boundary import GhostBlockEast, \
-    GhostBlockWest, GhostBlockSouth, GhostBlockNorth, GhostBlock
+from pyHype.blocks.ghost import GhostBlock,                         \
+                                GhostBlockEast, GhostBlockWest,     \
+                                GhostBlockSouth, GhostBlockNorth
+
+if TYPE_CHECKING:
+    from pyHype.solvers.solver import ProblemInput
 
 
 class Neighbors:
     def __init__(self,
-                 E: 'QuadBlock' = None,
-                 W: 'QuadBlock' = None,
-                 N: 'QuadBlock' = None,
-                 S: 'QuadBlock' = None
+                 E: QuadBlock = None,
+                 W: QuadBlock = None,
+                 N: QuadBlock = None,
+                 S: QuadBlock = None
                  ) -> None:
         """
         A class designed to hold references to each Block's neighbors.
@@ -59,10 +64,10 @@ class Neighbors:
 
 class GhostBlockContainer:
     def __init__(self,
-                 E: 'GhostBlock' = None,
-                 W: 'GhostBlock' = None,
-                 N: 'GhostBlock' = None,
-                 S: 'GhostBlock' = None
+                 E: GhostBlock = None,
+                 W: GhostBlock = None,
+                 N: GhostBlock = None,
+                 S: GhostBlock = None
                  ) -> None:
         """
         A class designed to hold references to each Block's ghost blocks.
@@ -116,19 +121,19 @@ class Blocks:
 
     def __getitem__(self,
                     blknum: int
-                    ) -> 'QuadBlock':
+                    ) -> QuadBlock:
 
         return self.blocks[blknum]
 
     def add(self,
-            block: 'QuadBlock'
+            block: QuadBlock
             ) -> None:
 
         self.blocks[block.global_nBLK] = block
 
     def get(self,
             block: int
-            ) -> 'QuadBlock':
+            ) -> QuadBlock:
 
         return self.blocks[block]
 
@@ -179,7 +184,7 @@ class Blocks:
 # QuadBlock Class Definition
 class QuadBlock:
     def __init__(self,
-                 inputs,
+                 inputs: ProblemInput,
                  block_data: BlockDescription
                  ) -> None:
 
@@ -260,19 +265,19 @@ class QuadBlock:
                                          N=GhostBlockNorth(self.inputs, BCtype=block_data.BCTypeN, refBLK=self),
                                          S=GhostBlockSouth(self.inputs, BCtype=block_data.BCTypeS, refBLK=self))
 
-        self.plot()
+        #self.plot()
 
 
     def plot(self):
-        plt.scatter(self.mesh.nodes.x, self.mesh.nodes.y, color='black', s=15)
-        plt.scatter(self.mesh.x, self.mesh.y, color='mediumslateblue', s=15)
+        plt.scatter(self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0], color='black', s=10)
+        plt.scatter(self.mesh.x[:, :, 0], self.mesh.y[:, :, 0], color='mediumslateblue', s=10, alpha=0.5)
 
-        segs1 = np.stack((self.mesh.nodes.x, self.mesh.nodes.y), axis=2)
+        segs1 = np.stack((self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0]), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
-        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
+        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1, alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1, alpha=0.5))
 
-        segs1 = np.stack((self.mesh.x, self.mesh.y), axis=2)
+        segs1 = np.stack((self.mesh.x[:, :, 0], self.mesh.y[:, :, 0]), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
 
         plt.gca().add_collection(
@@ -280,29 +285,57 @@ class QuadBlock:
         plt.gca().add_collection(
             LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
-        plt.scatter(self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y, color='red', marker='o', s=15)
+        # --------------------------------------------------------------------------------------------------------------
+        plt.scatter(self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y, color='red', marker='o', s=10)
         segs1 = np.stack((self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
         plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
         plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
 
-        plt.scatter(self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y, color='red', marker='x', s=15)
+        plt.scatter(self.ghost.E.mesh.x, self.ghost.E.mesh.y, color='red', marker='o', s=10, alpha=0.2)
+        segs1 = np.stack((self.ghost.E.mesh.x, self.ghost.E.mesh.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
+
+        # --------------------------------------------------------------------------------------------------------------
+        plt.scatter(self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y, color='red', marker='o', s=10)
         segs1 = np.stack((self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
         plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
         plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
 
-        plt.scatter(self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y, color='red', marker='x', s=15)
+        plt.scatter(self.ghost.W.mesh.x, self.ghost.W.mesh.y, color='red', marker='o', s=10, alpha=0.2)
+        segs1 = np.stack((self.ghost.W.mesh.x, self.ghost.W.mesh.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
+
+        # --------------------------------------------------------------------------------------------------------------
+        plt.scatter(self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y, color='red', marker='o', s=10)
         segs1 = np.stack((self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
         plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
         plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
 
-        plt.scatter(self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y, color='red', marker='x', s=15)
+        plt.scatter(self.ghost.N.mesh.x, self.ghost.N.mesh.y, color='red', marker='o', s=10, alpha=0.2)
+        segs1 = np.stack((self.ghost.N.mesh.x, self.ghost.N.mesh.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
+
+        # --------------------------------------------------------------------------------------------------------------
+        plt.scatter(self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y, color='red', marker='o', s=10)
         segs1 = np.stack((self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y), axis=2)
         segs2 = segs1.transpose((1, 0, 2))
         plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
         plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
+
+        plt.scatter(self.ghost.S.mesh.x, self.ghost.S.mesh.y, color='red', marker='o', s=10, alpha=0.2)
+        segs1 = np.stack((self.ghost.S.mesh.x, self.ghost.S.mesh.y), axis=2)
+        segs2 = segs1.transpose((1, 0, 2))
+        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
+        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
 
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
@@ -358,10 +391,10 @@ class QuadBlock:
     # Grid methods
 
     # Build connectivity with neighbor blocks
-    def connect(self, NeighborE: 'QuadBlock',
-                      NeighborW: 'QuadBlock',
-                      NeighborN: 'QuadBlock',
-                      NeighborS: 'QuadBlock') -> None:
+    def connect(self, NeighborE: QuadBlock,
+                      NeighborW: QuadBlock,
+                      NeighborN: QuadBlock,
+                      NeighborS: QuadBlock) -> None:
 
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS)
 
@@ -725,6 +758,18 @@ class QuadBlock:
                                self.ghost.N[None, 0, index, None, :]),
                                axis=1)
 
+    def row_copy(self, index: int) -> np.ndarray:
+        return self.row(index).copy()
+
+    def col_copy(self, index: int) -> np.ndarray:
+        return self.col(index).copy()
+
+    def fullrow_copy(self, index: int) -> np.ndarray:
+        return self.fullrow(index).copy()
+
+    def fullcol_copy(self, index: int) -> np.ndarray:
+        return self.fullrow(index).copy()
+
     def get_interface_values(self, reconstruction_type: str = None):
 
         if self.inputs.interface_interpolation == 'arithmetic_average':
@@ -738,6 +783,7 @@ class QuadBlock:
         # Concatenate mesh state and ghost block states
         if reconstruction_type == 'Primitive':
             _W = self.state.to_primitive_vector()
+
             catx = np.concatenate((self.ghost.W.state.to_primitive_vector(),
                                    _W,
                                    self.ghost.E.state.to_primitive_vector()),
@@ -749,6 +795,7 @@ class QuadBlock:
                                   axis=0)
 
         elif reconstruction_type == 'Conservative' or not reconstruction_type:
+
             catx = np.concatenate((self.ghost.W.state.U,
                                    self.state.U,
                                    self.ghost.E.state.U),
@@ -789,8 +836,8 @@ class QuadBlock:
     def get_flux(self) -> None:
         self.fvm.get_flux(self)
 
-    def get_residual(self) -> None:
-        return self.fvm.get_residual(self)
+    def dUdt(self) -> None:
+        return self.fvm.dUdt(self)
 
     def set_BC(self) -> None:
         self.ghost.E.set_BC()
