@@ -137,8 +137,8 @@ def chamber(nx, ny, nghost):
 
 def chamber_skewed(nx, ny, nghost):
     block1 = {'nBLK': 1,
-              'NW': [0, 20], 'NE': [10, 15],
-              'SW': [0, -5],   'SE': [10, 0],
+              'NW': [2, 10], 'NE': [8, 10],
+              'SW': [-5, 0], 'SE': [15, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,

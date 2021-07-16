@@ -145,14 +145,7 @@ class GhostBlockEast(GhostBlock):
         # Get wall angle
         wall_angle = self.refBLK.mesh.get_east_face_angle()
         # Rotate state to allign with wall
-        """for i in range(self.refBLK.mesh.nghost):
-            print(state[:, i, None])
-            utils.rotate(wall_angle, state[:, i, None])
-
-        states = [state[:, i, None] for i in range(self.nghost)]
-        utils.rotate(wall_angle, *states)"""
-        # Rotate state to allign with wall
-        map(utils.rotate, wall_angle, [state[:, i, None] for i in range(self.nghost)])
+        utils.rotate(wall_angle, state)
         # Reflect normal velocity
         state[:, :, 1] *= -1
         # Update state
@@ -209,15 +202,10 @@ class GhostBlockWest(GhostBlock):
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_west_ghost()
-        """utils.rotate(self.refBLK.mesh.thetax[0], state)
-        state[:, :, 1] *= -1
-        self.state.update(state)"""
         # Get wall angle
         wall_angle = self.refBLK.mesh.get_west_face_angle()
         # Rotate state to allign with wall
-        """for i in range(self.nghost):
-            utils.rotate(wall_angle, state[:, i, None])"""
-        map(utils.rotate, wall_angle, [state[:, i, None] for i in range(self.nghost)])
+        utils.rotate(wall_angle, state)
         # Reflect normal velocity
         state[:, :, 1] *= -1
         # Update state
@@ -274,13 +262,15 @@ class GhostBlockNorth(GhostBlock):
         self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
+        # Get state from interior domain
         state = self.refBLK.get_north_ghost()
-        wall_angle = np.pi / 2 - self.refBLK.mesh.get_north_face_angle()
-
-        map(utils.rotate, wall_angle, [state[i, :, None] for i in range(self.nghost)])
-
-        #utils.rotate(np.pi / 2 - self.refBLK.mesh.thetay[-1], state)
+        # Get wall angle
+        wall_angle = self.refBLK.mesh.get_north_face_angle()
+        # Rotate state to allign with wall
+        utils.rotate(wall_angle - np.pi/2, state)
+        # Reflect normal velocity
         state[:, :, 2] *= -1
+        # Update state
         self.state.update(state)
 
 
@@ -332,13 +322,13 @@ class GhostBlockSouth(GhostBlock):
         self.state.set_vars_from_state()
 
     def set_BC_reflection(self):
+        # Get state from interior domain
         state = self.refBLK.get_south_ghost()
-        #utils.rotate(np.pi / 2 - self.refBLK.mesh.thetay[0], state)
-
-        wall_angle = np.pi / 2 - self.refBLK.mesh.get_south_face_angle()
-
-        map(utils.rotate, wall_angle, [state[i, :, None] for i in range(self.nghost)])
-
-
+        # Get wall angle
+        wall_angle = self.refBLK.mesh.get_south_face_angle()
+        # Rotate state to allign with wall
+        utils.rotate(wall_angle - np.pi/2, state)
+        # Reflect normal velocity
         state[:, :, 2] *= -1
+        # Update state
         self.state.update(state)

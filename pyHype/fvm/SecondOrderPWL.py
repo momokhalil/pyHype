@@ -51,7 +51,7 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
     def high_order_W(refBLK: QuadBlock):
 
         high_ord_W = refBLK.gradx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
-                     + refBLK.grady * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
+                   + refBLK.grady * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
 
         return high_ord_W
 

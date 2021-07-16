@@ -468,7 +468,7 @@ class QuadBlock:
                                    ........................
         """
 
-        return self.state.U[:, -(self.mesh.nghost + 1):-1, :].copy()
+        return self.state.U[:, -self.mesh.nghost:, :].copy()
 
     def get_west_ghost(self) -> np.ndarray:
         """
@@ -540,7 +540,7 @@ class QuadBlock:
                         .......................
         """
 
-        return self.state.U[:, 1:(self.mesh.nghost + 1), :].copy()
+        return self.state.U[:, :self.mesh.nghost, :].copy()
 
     def get_north_ghost(self) -> np.ndarray:
         """
@@ -611,7 +611,7 @@ class QuadBlock:
                   O----------O----------O----------O----------O
         """
 
-        return self.state.U[-(self.mesh.nghost + 1):-1, :, :].copy()
+        return self.state.U[-self.mesh.nghost:, :, :].copy()
 
     def get_south_ghost(self) -> np.ndarray:
         """
@@ -682,7 +682,7 @@ class QuadBlock:
                   O----------O----------O----------O----------O
         """
 
-        return self.state.U[1:(self.mesh.nghost + 1), :, :].copy()
+        return self.state.U[:self.mesh.nghost, :, :].copy()
 
     def get_east_edge(self) -> np.ndarray:
         """

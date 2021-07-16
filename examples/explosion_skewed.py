@@ -14,7 +14,7 @@ settings = {'problem_type':             'explosion',
             'a_inf':                    343.0,
             'R':                        287.0,
             'nx':                       100,
-            'ny':                       200,
+            'ny':                       50,
             'nghost':                   1,
             'mesh_name':                'chamber_skewed'
             }

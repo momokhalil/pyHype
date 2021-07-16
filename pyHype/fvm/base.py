@@ -358,14 +358,14 @@ class MUSCLFiniteVolumeMethod:
         self.UR.reset(shape=(1, self.nx + 1, 4))
 
         # Copy all ghost cell values that will be used for the flux calculations
-        _east_ghost = refBLK.ghost.W.col_copy(0)
+        _east_ghost = refBLK.ghost.E.col_copy(0)
         _west_ghost = refBLK.ghost.W.col_copy(-1)
         _north_ghost = refBLK.ghost.N.row_copy(0)
         _south_ghost = refBLK.ghost.S.row_copy(-1)
 
         # Rotate to allign with cell faces
         utils.rotate(refBLK.mesh.get_east_face_angle(), _east_ghost)
-        utils.rotate(refBLK.mesh.get_west_face_angle() - np.pi, _west_ghost)
+        utils.rotate(refBLK.mesh.get_west_face_angle(), _west_ghost)
         utils.rotate(refBLK.mesh.faceE.theta, stateE)
         utils.rotate(refBLK.mesh.faceW.theta - np.pi, stateW)
 
@@ -373,11 +373,11 @@ class MUSCLFiniteVolumeMethod:
         for row in range(self.ny):
 
             # Set vectors based on left and right states
-            stateL = np.concatenate((_east_ghost[row:row+1, :, :],
+            stateL = np.concatenate((_west_ghost[row:row+1, :, :],
                                      stateE[row:row+1, :, :]), axis=1)
 
             stateR = np.concatenate((stateW[row:row+1, :, :],
-                                     _west_ghost[row:row+1, :, :]), axis=1)
+                                     _east_ghost[row:row+1, :, :]), axis=1)
 
             self.UL.from_conservative_state_vector(stateL)
             self.UR.from_conservative_state_vector(stateR)
@@ -403,7 +403,7 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate to allign with cell faces
         utils.rotate(refBLK.mesh.get_north_face_angle(), _north_ghost)
-        utils.rotate(refBLK.mesh.get_south_face_angle() - np.pi, _south_ghost)
+        utils.rotate(refBLK.mesh.get_south_face_angle(), _south_ghost)
         utils.rotate(refBLK.mesh.faceN.theta, stateN)
         utils.rotate(refBLK.mesh.faceS.theta - np.pi, stateS)
 
