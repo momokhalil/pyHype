@@ -14,6 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .base import QuadBlock
+from .QuadBlock import QuadBlock
 from .ghost import GhostBlock
 from .ghost import GhostBlockEast, GhostBlockWest, GhostBlockNorth, GhostBlockSouth

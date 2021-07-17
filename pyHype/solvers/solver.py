@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
@@ -26,6 +28,12 @@ from pyHype import execution_prints
 from pyHype.blocks.base import Blocks
 from pyHype.mesh import meshes
 from pyHype.mesh.base import BlockDescription
+
+from typing import TYPE_CHECKING
+from typing import Iterable
+
+if TYPE_CHECKING:
+    from pyHype.blocks.QuadBlock import QuadBlock
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -146,7 +154,7 @@ class Euler2D:
         self.plot = None
 
     @property
-    def blocks(self):
+    def blocks(self) -> Iterable[QuadBlock]:
         return self._blocks.blocks.values()
 
     def set_IC(self):
@@ -190,6 +198,37 @@ class Euler2D:
                             block.state.U[i, j, :] = QL
                 block.state.non_dim()
 
+        elif problem_type == 'one_step_shock':
+
+            # High pressure zone
+            rhoL = 1.1742
+            pL = 101100.0
+            uL = 150.0
+            vL = 0.0
+            eL = pL / (g - 1)
+
+            # Low pressure zone
+            rhoR = 1.1742
+            pR = 101100.0
+            uR = 150.0
+            vR = 0.0
+            eR = pR / (g - 1)
+
+            # Create state vectors
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL])
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR])
+
+            # Fill state vector in each block
+            for block in self.blocks:
+                for i in range(ny):
+                    for j in range(nx):
+                        if block.mesh.x[i, j] <= 1:
+                            block.state.U[i, j, :] = QL
+                        else:
+                            block.state.U[i, j, :] = QR
+                block.state.set_vars_from_state()
+                block.state.non_dim()
+
         elif problem_type == 'implosion':
 
             # High pressure zone
@@ -218,6 +257,7 @@ class Euler2D:
                             block.state.U[i, j, :] = QR
                         else:
                             block.state.U[i, j, :] = QL
+                block.state.set_vars_from_state()
                 block.state.non_dim()
 
         elif problem_type == 'explosion':
@@ -248,6 +288,41 @@ class Euler2D:
                             block.state.U[i, j, :] = QL
                         else:
                             block.state.U[i, j, :] = QR
+                block.state.set_vars_from_state()
+                block.state.non_dim()
+
+        elif problem_type == 'explosion_trapezoid':
+
+            # High pressure zone
+            rhoL = 4.6968
+            pL = 404400.0
+            uL = 0.0
+            vL = 0.0
+            eL = pL / (g - 1) + rhoL * (uL**2 + vL**2) / 2
+
+            # Low pressure zone
+            rhoR = 1.1742
+            pR = 101100.0
+            uR = 0.00
+            vR = 0.0
+            eR = pR / (g - 1) + rhoR * (uR**2 + vR**2) / 2
+
+            # Create state vectors
+            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL])
+            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR])
+
+            # Fill state vector in each block
+            for block in self.blocks:
+                for i in range(ny):
+                    for j in range(nx):
+                        if (-0.8 <= block.mesh.x[i, j] <= -0.2 and -0.8 <= block.mesh.y[i, j] <= -0.2) or \
+                           (0.2 <= block.mesh.x[i, j] <= 0.8 and 0.2 <= block.mesh.y[i, j] <= 0.8) or \
+                           (-0.8 <= block.mesh.x[i, j] <= -0.2 and 0.2 <= block.mesh.y[i, j] <= 0.8) or \
+                           (0.2 <= block.mesh.x[i, j] <= 0.8 and -0.8 <= block.mesh.y[i, j] <= -0.2):
+                            block.state.U[i, j, :] = QL
+                        else:
+                            block.state.U[i, j, :] = QR
+                block.state.set_vars_from_state()
                 block.state.non_dim()
 
     def set_BC(self):
@@ -313,10 +388,17 @@ class Euler2D:
             # THIS IS FOR DEBUGGING PURPOSES ONLY
             if self.inputs.realplot:
                 if self.numTimeStep % 1 == 0:
-                    self.realplot.contourf(self._blocks[1].mesh.x[:, :, 0],
-                                           self._blocks[1].mesh.y[:, :, 0],
-                                           self._blocks[1].state.rho,
-                                           20, cmap='magma')
+
+                    max_ = max([np.max(block.state.rho) for block in self.blocks])
+                    min_ = min([np.min(block.state.rho) for block in self.blocks])
+
+                    for block in self.blocks:
+                        """U = block.get_nodal_solution(interpolation='cell_average',
+                                                     formulation='conservative')"""
+                        self.realplot.contourf(block.mesh.x[:, :, 0],
+                                               block.mesh.y[:, :, 0],
+                                               block.state.rho,
+                                               20, cmap='magma', vmax=max_, vmin=min_)
                     plt.show()
                     plt.pause(0.001)
             ############################################################################################################

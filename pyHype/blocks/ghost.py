@@ -56,6 +56,8 @@ class GhostBlock:
             self.set_BC = self.set_BC_outflow
         elif self.BCtype == 'Reflection':
             self.set_BC = self.set_BC_reflection
+        elif self.BCtype == 'Slipwall':
+            self.set_BC = self.set_BC_slipwall
 
 
     def __getitem__(self, index):
@@ -83,6 +85,10 @@ class GhostBlock:
 
     @abstractmethod
     def set_BC_reflection(self):
+        pass
+
+    @abstractmethod
+    def set_BC_slipwall(self):
         pass
 
 
@@ -132,12 +138,10 @@ class GhostBlockEast(GhostBlock):
 
 
     def set_BC_none(self):
-        self.state.U = self.refBLK.neighbors.E.get_west_ghost()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.neighbors.E.get_west_ghost())
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.refBLK.get_east_edge()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.get_east_ghost())
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -148,6 +152,18 @@ class GhostBlockEast(GhostBlock):
         utils.rotate(wall_angle, state)
         # Reflect normal velocity
         state[:, :, 1] *= -1
+        # Update state
+        self.state.update(state)
+
+    def set_BC_slipwall(self):
+        # Get state from interior domain
+        state = self.refBLK.get_east_ghost()
+        # Get wall angle
+        wall_angle = self.refBLK.mesh.get_east_face_angle()
+        # Rotate state to allign with wall
+        utils.rotate(wall_angle, state)
+        # Reflect normal velocity
+        state[:, :, 1] = 0
         # Update state
         self.state.update(state)
 
@@ -197,7 +213,7 @@ class GhostBlockWest(GhostBlock):
         self.state.update(self.refBLK.neighbors.W.get_east_ghost())
 
     def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_west_edge())
+        self.state.update(self.refBLK.get_west_ghost())
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -208,6 +224,18 @@ class GhostBlockWest(GhostBlock):
         utils.rotate(wall_angle, state)
         # Reflect normal velocity
         state[:, :, 1] *= -1
+        # Update state
+        self.state.update(state)
+
+    def set_BC_slipwall(self):
+        # Get state from interior domain
+        state = self.refBLK.get_west_ghost()
+        # Get wall angle
+        wall_angle = self.refBLK.mesh.get_west_face_angle()
+        # Rotate state to allign with wall
+        utils.rotate(wall_angle, state)
+        # Reflect normal velocity
+        state[:, :, 1] = 0
         # Update state
         self.state.update(state)
 
@@ -254,12 +282,10 @@ class GhostBlockNorth(GhostBlock):
 
 
     def set_BC_none(self):
-        self.state.U = self.refBLK.neighbors.N.get_south_ghost()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.neighbors.N.get_south_ghost())
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.refBLK.get_north_edge()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.get_north_ghost())
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -270,6 +296,18 @@ class GhostBlockNorth(GhostBlock):
         utils.rotate(wall_angle - np.pi/2, state)
         # Reflect normal velocity
         state[:, :, 2] *= -1
+        # Update state
+        self.state.update(state)
+
+    def set_BC_slipwall(self):
+        # Get state from interior domain
+        state = self.refBLK.get_north_ghost()
+        # Get wall angle
+        wall_angle = self.refBLK.mesh.get_north_face_angle()
+        # Rotate state to allign with wall
+        utils.rotate(wall_angle - np.pi/2, state)
+        # Reflect normal velocity
+        state[:, :, 2] = 0
         # Update state
         self.state.update(state)
 
@@ -314,12 +352,10 @@ class GhostBlockSouth(GhostBlock):
 
 
     def set_BC_none(self):
-        self.state.U = self.refBLK.neighbors.S.get_north_ghost()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.neighbors.S.get_north_ghost())
 
     def set_BC_outflow(self):
-        self.state.U[:, :, :] = self.refBLK.get_south_edge()
-        self.state.set_vars_from_state()
+        self.state.update(self.refBLK.get_south_ghost())
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -330,5 +366,17 @@ class GhostBlockSouth(GhostBlock):
         utils.rotate(wall_angle - np.pi/2, state)
         # Reflect normal velocity
         state[:, :, 2] *= -1
+        # Update state
+        self.state.update(state)
+
+    def set_BC_slipwall(self):
+        # Get state from interior domain
+        state = self.refBLK.get_south_ghost()
+        # Get wall angle
+        wall_angle = self.refBLK.mesh.get_south_face_angle()
+        # Rotate state to allign with wall
+        utils.rotate(wall_angle - np.pi/2, state)
+        # Reflect normal velocity
+        state[:, :, 2] = 0
         # Update state
         self.state.update(state)

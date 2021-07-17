@@ -72,9 +72,20 @@ class QuadBlock:
         self.nS                 = NormalVector(self.thetaS)
         self.nN                 = NormalVector(self.thetaN)
 
-        # Gradient
-        self.gradx              = np.zeros_like(self.mesh.x)
-        self.grady              = np.zeros_like(self.mesh.y)
+        # Conservative Gradient
+        if self.inputs.reconstruction_type == 'conservative':
+            self.dUdx               = np.zeros_like(self.mesh.x)
+            self.dUdy               = np.zeros_like(self.mesh.y)
+            self.dWdx               = None
+            self.dWdy               = None
+        # Primitive Gradient
+        elif self.inputs.reconstruction_type == 'primitive':
+            self.dWdx               = np.zeros_like(self.mesh.x)
+            self.dWdy               = np.zeros_like(self.mesh.y)
+            self.dUdx               = None
+            self.dUdy               = None
+        else:
+            raise ValueError('Reconstruction type is not defined.')
 
         # Set finite volume method
         fvm = self.inputs.fvm
@@ -118,6 +129,10 @@ class QuadBlock:
                                          N=GhostBlockNorth(self.inputs, BCtype=block_data.BCTypeN, refBLK=self),
                                          S=GhostBlockSouth(self.inputs, BCtype=block_data.BCTypeS, refBLK=self))
 
+    @property
+    def reconstruction_type(self):
+        return self.inputs.reconstruction_type
+
     ####################################################################################################################
     # DEBUGGING
 
@@ -138,59 +153,6 @@ class QuadBlock:
         plt.gca().add_collection(
             LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
-        # --------------------------------------------------------------------------------------------------------------
-        plt.scatter(self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y, color='red', marker='o', s=10)
-        segs1 = np.stack((self.ghost.E.mesh.nodes.x, self.ghost.E.mesh.nodes.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
-
-        plt.scatter(self.ghost.E.mesh.x, self.ghost.E.mesh.y, color='red', marker='o', s=10, alpha=0.2)
-        segs1 = np.stack((self.ghost.E.mesh.x, self.ghost.E.mesh.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-
-        # --------------------------------------------------------------------------------------------------------------
-        plt.scatter(self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y, color='red', marker='o', s=10)
-        segs1 = np.stack((self.ghost.W.mesh.nodes.x, self.ghost.W.mesh.nodes.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
-
-        plt.scatter(self.ghost.W.mesh.x, self.ghost.W.mesh.y, color='red', marker='o', s=10, alpha=0.2)
-        segs1 = np.stack((self.ghost.W.mesh.x, self.ghost.W.mesh.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-
-        # --------------------------------------------------------------------------------------------------------------
-        plt.scatter(self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y, color='red', marker='o', s=10)
-        segs1 = np.stack((self.ghost.N.mesh.nodes.x, self.ghost.N.mesh.nodes.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
-
-        plt.scatter(self.ghost.N.mesh.x, self.ghost.N.mesh.y, color='red', marker='o', s=10, alpha=0.2)
-        segs1 = np.stack((self.ghost.N.mesh.x, self.ghost.N.mesh.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-
-        # --------------------------------------------------------------------------------------------------------------
-        plt.scatter(self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y, color='red', marker='o', s=10)
-        segs1 = np.stack((self.ghost.S.mesh.nodes.x, self.ghost.S.mesh.nodes.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, alpha=0.5))
-
-        plt.scatter(self.ghost.S.mesh.x, self.ghost.S.mesh.y, color='red', marker='o', s=10, alpha=0.2)
-        segs1 = np.stack((self.ghost.S.mesh.x, self.ghost.S.mesh.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-        plt.gca().add_collection(LineCollection(segs2, colors='red', linewidths=1, linestyles='--', alpha=0.2))
-
-        plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
 
         ####################################################################################################################
@@ -212,6 +174,8 @@ class QuadBlock:
         return self.fvm.Flux_S
 
     def __getitem__(self, index):
+
+        # Extract variables
         y, x, var = index
 
         if self._index_in_west_ghost_block(x, y):
@@ -225,6 +189,18 @@ class QuadBlock:
         else:
             raise ValueError('Incorrect indexing')
 
+    def _index_in_west_ghost_block(self, x, y):
+        return x < 0 and 0 <= y <= self.mesh.ny
+
+    def _index_in_east_ghost_block(self, x, y):
+        return x > self.mesh.nx and 0 <= y <= self.mesh.ny
+
+    def _index_in_south_ghost_block(self, x, y):
+        return y < 0 and 0 <= x <= self.mesh.nx
+
+    def _index_in_north_ghost_block(self, x, y):
+        return y > self.mesh.ny and 0 <= x <= self.mesh.nx
+
     @staticmethod
     def _get_side_length(pt1, pt2):
         return np.sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
@@ -237,18 +213,6 @@ class QuadBlock:
             return 0
         else:
             return np.arctan((pt1[0] - pt2[0]) / (pt2[1] - pt1[1]))
-
-    def _index_in_west_ghost_block(self, x, y):
-        return x < 0 and 0 <= y <= self.mesh.ny
-
-    def _index_in_east_ghost_block(self, x, y):
-        return x > self.mesh.nx and 0 <= y <= self.mesh.ny
-
-    def _index_in_south_ghost_block(self, x, y):
-        return y < 0 and 0 <= x <= self.mesh.nx
-
-    def _index_in_north_ghost_block(self, x, y):
-        return y > self.mesh.ny and 0 <= x <= self.mesh.nx
 
     # ------------------------------------------------------------------------------------------------------------------
     # Grid methods
@@ -644,7 +608,7 @@ class QuadBlock:
     def get_interface_values_arithmetic(self, reconstruction_type: str = None) -> [np.ndarray]:
 
         # Concatenate mesh state and ghost block states
-        if reconstruction_type == 'Primitive':
+        if reconstruction_type == 'primitive':
             _W = self.state.to_primitive_vector()
 
             catx = np.concatenate((self.ghost.W.state.to_primitive_vector(),
@@ -657,7 +621,7 @@ class QuadBlock:
                                    self.ghost.S.state.to_primitive_vector()),
                                   axis=0)
 
-        elif reconstruction_type == 'Conservative' or not reconstruction_type:
+        elif reconstruction_type == 'conservative' or not reconstruction_type:
 
             catx = np.concatenate((self.ghost.W.state.U,
                                    self.state.U,
@@ -857,3 +821,71 @@ class QuadBlock:
         """
 
         return self.grady[:, :, -1, None]
+
+
+    def get_nodal_solution(self,
+                           interpolation: str = 'piecewise_linear',
+                           formulation: str = 'primitive',
+                           ) -> np.ndarray:
+
+        if interpolation == 'piecewise_linear':
+
+            if formulation == 'primitive':
+                return self._get_nodal_solution_piecewise_linear_primitive()
+            elif formulation == 'conservative':
+                return self._get_nodal_solution_piecewise_linear_conservative()
+            else:
+                raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
+
+        elif interpolation == 'cell_average':
+
+            if formulation == 'primitive':
+                return self._get_nodal_solution_cell_average_primitive()
+            elif formulation == 'conservative':
+                return self._get_nodal_solution_cell_average_conservative()
+            else:
+                raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
+
+        else:
+            raise ValueError('Interpolation method ' + str(interpolation) + 'has not been specialized.')
+
+
+    def _get_nodal_solution_piecewise_linear_primitive(self) -> np.ndarray:
+        pass
+
+
+    def _get_nodal_solution_piecewise_linear_conservative(self) -> np.ndarray:
+        pass
+
+
+    def _get_nodal_solution_cell_average_primitive(self) -> np.ndarray:
+        pass
+
+
+    def _get_nodal_solution_cell_average_conservative(self) -> np.ndarray:
+
+        # Initialize solution array
+        U = np.zeros((self.inputs.ny + 1, self.inputs.nx + 1, 4))
+
+        # Set corners
+        U[0, 0, :] = self.state.U[0, 0, :]
+        U[0, -1, :] = self.state.U[0, -1, :]
+        U[-1, 0, :] = self.state.U[-1, 0, :]
+        U[-1, -1, :] = self.state.U[-1, -1, :]
+
+        # East edge
+        U[1:-1, -1, :] = 0.5 * (self.state.U[1:, -1, :] + self.state.U[:-1, -1, :])
+        # West edge
+        U[1:-1, 0, :] = 0.5 * (self.state.U[1:, 0, :] + self.state.U[:-1, 0, :])
+        # North edge
+        U[-1, 1:-1, :] = 0.5 * (self.state.U[-1, 1:, :] + self.state.U[-1, :-1, :])
+        # South edge
+        U[0, 1:-1, :] = 0.5 * (self.state.U[0, 1:, :] + self.state.U[0, :-1, :])
+
+        # Kernel
+        U[1:-1, 1:-1, :] = 0.25 * (self.state.U[1:, 1:, :] +
+                                   self.state.U[:-1, :-1, :] +
+                                   self.state.U[1:, :-1, :] +
+                                   self.state.U[:-1, 1:, :])
+
+        return U

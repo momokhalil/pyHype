@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 import numpy as np
 from pyHype.fvm.base import MUSCLFiniteVolumeMethod
-from pyHype.states import ConservativeState
 
 
 np.set_printoptions(precision=3)
@@ -42,34 +41,50 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
     @staticmethod
     def high_order_E(refBLK: QuadBlock):
 
-        high_ord_E = refBLK.gradx * (refBLK.mesh.faceE.xmid - refBLK.mesh.x) \
-                   + refBLK.grady * (refBLK.mesh.faceE.ymid - refBLK.mesh.y)
-
-        return high_ord_E
+        if refBLK.reconstruction_type == 'primitive':
+            return refBLK.dWdx * (refBLK.mesh.faceE.xmid - refBLK.mesh.x) \
+                 + refBLK.dWdy * (refBLK.mesh.faceE.ymid - refBLK.mesh.y)
+        elif refBLK.reconstruction_type == 'conservative':
+            return refBLK.dUdx * (refBLK.mesh.faceE.xmid - refBLK.mesh.x) \
+                 + refBLK.dUdy * (refBLK.mesh.faceE.ymid - refBLK.mesh.y)
+        else:
+            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
 
     @staticmethod
     def high_order_W(refBLK: QuadBlock):
 
-        high_ord_W = refBLK.gradx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
-                   + refBLK.grady * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
-
-        return high_ord_W
+        if refBLK.reconstruction_type == 'primitive':
+            return refBLK.dWdx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
+                 + refBLK.dWdy * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
+        elif refBLK.reconstruction_type == 'conservative':
+            return refBLK.dUdx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
+                 + refBLK.dUdy * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
+        else:
+            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
 
     @staticmethod
     def high_order_N(refBLK: QuadBlock):
 
-        high_ord_N = refBLK.gradx * (refBLK.mesh.faceN.xmid - refBLK.mesh.x) \
-                   + refBLK.grady * (refBLK.mesh.faceN.ymid - refBLK.mesh.y)
-
-        return high_ord_N
+        if refBLK.reconstruction_type == 'primitive':
+            return refBLK.dWdx * (refBLK.mesh.faceN.xmid - refBLK.mesh.x) \
+                 + refBLK.dWdy * (refBLK.mesh.faceN.ymid - refBLK.mesh.y)
+        elif refBLK.reconstruction_type == 'conservative':
+            return refBLK.dUdx * (refBLK.mesh.faceN.xmid - refBLK.mesh.x) \
+                 + refBLK.dUdy * (refBLK.mesh.faceN.ymid - refBLK.mesh.y)
+        else:
+            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
 
     @staticmethod
     def high_order_S(refBLK: QuadBlock):
 
-        high_ord_S = refBLK.gradx * (refBLK.mesh.faceS.xmid - refBLK.mesh.x) \
-                   + refBLK.grady * (refBLK.mesh.faceS.ymid - refBLK.mesh.y)
-
-        return high_ord_S
+        if refBLK.reconstruction_type == 'primitive':
+            return refBLK.dWdx * (refBLK.mesh.faceS.xmid - refBLK.mesh.x) \
+                 + refBLK.dWdy * (refBLK.mesh.faceS.ymid - refBLK.mesh.y)
+        elif refBLK.reconstruction_type == 'conservative':
+            return refBLK.dUdx * (refBLK.mesh.faceS.xmid - refBLK.mesh.x) \
+                 + refBLK.dUdy * (refBLK.mesh.faceS.ymid - refBLK.mesh.y)
+        else:
+            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
 
     def reconstruct_state(self,
                           refBLK: QuadBlock,
@@ -121,3 +136,5 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
                          refBLK: QuadBlock
                          ) -> np.ndarray:
         return -self.Flux_S * refBLK.mesh.faceS.L
+
+

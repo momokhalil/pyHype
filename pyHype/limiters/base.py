@@ -22,11 +22,6 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numpy as np
 from abc import abstractmethod
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from pyHype.blocks.base import QuadBlock
-
-
 class SlopeLimiter:
     def __init__(self, inputs):
         self.inputs = inputs
@@ -67,7 +62,8 @@ class SlopeLimiter:
                            )
 
         # Difference between largest/smallest value and average value
-        dmax, dmin = u_max - state, u_min - state
+        dmax = u_max - state
+        dmin = u_min - state
 
         # Difference between quadrature points and average value
         dE = quadE - state

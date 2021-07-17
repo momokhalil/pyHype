@@ -21,6 +21,7 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
 
+import pyHype.blocks.QuadBlock as Qb
 from pyHype.blocks.ghost import GhostBlock
 
 if TYPE_CHECKING:
@@ -119,12 +120,6 @@ class Blocks:
 
         self.blocks[block.global_nBLK] = block
 
-    def get(self,
-            block: int
-            ) -> QuadBlock:
-
-        return self.blocks[block]
-
     def update(self,
                dt: float
                ) -> None:
@@ -144,7 +139,7 @@ class Blocks:
         mesh_inputs = self.inputs.mesh_inputs
 
         for BLK_data in mesh_inputs.values():
-            self.add(QuadBlock(self.inputs, BLK_data))
+            self.add(Qb.QuadBlock(self.inputs, BLK_data))
 
         self.number_of_blocks = len(self.blocks)
 
