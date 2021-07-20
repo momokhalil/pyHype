@@ -140,6 +140,8 @@ class Euler2D:
 
         # Simulation time
         self.t = 0
+        # Time step
+        self.dt = 0
         # Number of time steps
         self.numTimeStep = 0
         # CFL number
@@ -328,20 +330,21 @@ class Euler2D:
     def set_BC(self):
         self._blocks.set_BC()
 
-    def dt(self):
-        dt = 1000000
-        for block in self.blocks:
-            a = block.state.a()
+    def get_dt(self):
+        """
+        Return the time step for all blocks handled by this process based on the CFL condition.
 
-            t1 = block.mesh.dx[:, :, 0] / (np.absolute(block.state.u()) + a)
-            t2 = block.mesh.dy[:, :, 0] / (np.absolute(block.state.v()) + a)
+        Parameters:
+            - None
 
-            dt_ = self.CFL * min(t1.min(), t2.min())
+        Returns:
+            - dt (np.float): Float representing the value of the time step
+        """
 
-            if dt_ < dt:
-                dt = dt_
+        return min([block.get_dt() for block in self.blocks])
 
-        return dt
+    def increment_time(self):
+        self.t += self.dt
 
     def solve(self):
 
@@ -378,11 +381,11 @@ class Euler2D:
 
             print(self.t)
 
-            dt = self.dt()
+            self.dt = self.get_dt()
             self.numTimeStep += 1
 
             # print('update block')
-            self._blocks.update(dt)
+            self._blocks.update(self.dt)
 
             ############################################################################################################
             # THIS IS FOR DEBUGGING PURPOSES ONLY
@@ -403,7 +406,8 @@ class Euler2D:
                     plt.pause(0.001)
             ############################################################################################################
 
-            self.t += dt
+            # Increment simulation time
+            self.increment_time()
 
         if self.inputs.profile:
             profiler.disable()

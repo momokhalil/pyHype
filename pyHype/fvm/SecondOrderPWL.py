@@ -40,51 +40,33 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
     @staticmethod
     def high_order_E(refBLK: QuadBlock):
+        """
+        Compute the high order term used for the state reconstruction at the east quadrature point.
 
-        if refBLK.reconstruction_type == 'primitive':
-            return refBLK.dWdx * (refBLK.mesh.faceE.xmid - refBLK.mesh.x) \
-                 + refBLK.dWdy * (refBLK.mesh.faceE.ymid - refBLK.mesh.y)
-        elif refBLK.reconstruction_type == 'conservative':
-            return refBLK.dUdx * (refBLK.mesh.faceE.xmid - refBLK.mesh.x) \
-                 + refBLK.dUdy * (refBLK.mesh.faceE.ymid - refBLK.mesh.y)
-        else:
-            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
+        Parameters:
+            - refBLK (QuadBlock): Block whos state needs to be reconstructed.
+        """
+
+        return refBLK.gradx * (refBLK.mesh.faceE.xmid - refBLK.mesh.x) \
+             + refBLK.grady * (refBLK.mesh.faceE.ymid - refBLK.mesh.y)
 
     @staticmethod
     def high_order_W(refBLK: QuadBlock):
 
-        if refBLK.reconstruction_type == 'primitive':
-            return refBLK.dWdx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
-                 + refBLK.dWdy * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
-        elif refBLK.reconstruction_type == 'conservative':
-            return refBLK.dUdx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
-                 + refBLK.dUdy * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
-        else:
-            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
+        return refBLK.gradx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
+             + refBLK.grady * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
 
     @staticmethod
     def high_order_N(refBLK: QuadBlock):
 
-        if refBLK.reconstruction_type == 'primitive':
-            return refBLK.dWdx * (refBLK.mesh.faceN.xmid - refBLK.mesh.x) \
-                 + refBLK.dWdy * (refBLK.mesh.faceN.ymid - refBLK.mesh.y)
-        elif refBLK.reconstruction_type == 'conservative':
-            return refBLK.dUdx * (refBLK.mesh.faceN.xmid - refBLK.mesh.x) \
-                 + refBLK.dUdy * (refBLK.mesh.faceN.ymid - refBLK.mesh.y)
-        else:
-            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
+        return refBLK.gradx * (refBLK.mesh.faceN.xmid - refBLK.mesh.x) \
+             + refBLK.grady * (refBLK.mesh.faceN.ymid - refBLK.mesh.y)
 
     @staticmethod
     def high_order_S(refBLK: QuadBlock):
 
-        if refBLK.reconstruction_type == 'primitive':
-            return refBLK.dWdx * (refBLK.mesh.faceS.xmid - refBLK.mesh.x) \
-                 + refBLK.dWdy * (refBLK.mesh.faceS.ymid - refBLK.mesh.y)
-        elif refBLK.reconstruction_type == 'conservative':
-            return refBLK.dUdx * (refBLK.mesh.faceS.xmid - refBLK.mesh.x) \
-                 + refBLK.dUdy * (refBLK.mesh.faceS.ymid - refBLK.mesh.y)
-        else:
-            raise ValueError('Reconstruction type ' + str(refBLK.reconstruction_type) + ' is not defined.')
+        return refBLK.gradx * (refBLK.mesh.faceS.xmid - refBLK.mesh.x) \
+             + refBLK.grady * (refBLK.mesh.faceS.ymid - refBLK.mesh.y)
 
     def reconstruct_state(self,
                           refBLK: QuadBlock,

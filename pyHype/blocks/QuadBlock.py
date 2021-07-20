@@ -129,49 +129,238 @@ class QuadBlock:
                                          N=GhostBlockNorth(self.inputs, BCtype=block_data.BCTypeN, refBLK=self),
                                          S=GhostBlockSouth(self.inputs, BCtype=block_data.BCTypeS, refBLK=self))
 
+        # is block cartesian
+        self.is_cartesian = self.is_cartesian()
+
+    def is_cartesian(self) -> bool:
+        """
+        Return boolen value that indicates if the block is alligned with the cartesian axes.
+
+        Parameters:
+            - None
+
+        Return:
+            - _is_cartesian (bool): Boolean that is True if the block is cartesian and False if it isnt
+        """
+
+        _is_cartesian = (self.mesh.vertices.NE[1] == self.mesh.vertices.NW[1]) and \
+                        (self.mesh.vertices.SE[1] == self.mesh.vertices.SW[1]) and \
+                        (self.mesh.vertices.SE[0] == self.mesh.vertices.NE[0]) and \
+                        (self.mesh.vertices.SW[0] == self.mesh.vertices.NW[0])
+
+        return _is_cartesian
+
     @property
     def reconstruction_type(self):
+        """
+        Returns the reconstruction type used in the finite volume method.
+
+        Parameters:
+            - None
+
+        Return:
+            - (str): the reconstruction type
+        """
+
         return self.inputs.reconstruction_type
 
-    ####################################################################################################################
-    # DEBUGGING
-
     def plot(self):
-        plt.scatter(self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0], color='black', s=10)
-        plt.scatter(self.mesh.x[:, :, 0], self.mesh.y[:, :, 0], color='mediumslateblue', s=10, alpha=0.5)
+        """
+        # FOR DEBUGGING
 
-        segs1 = np.stack((self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0]), axis=2)
+        Plot mesh. Plots the nodes and cell center locations and connect them.
+
+        Parameters:
+            - None
+
+        Returns:
+            - None
+        """
+
+        # Create scatter plots for nodes and cell centers
+        plt.scatter(self.mesh.nodes.x[:, :, 0],
+                    self.mesh.nodes.y[:, :, 0],
+                    color='black',
+                    s=10)
+        plt.scatter(self.mesh.x[:, :, 0],
+                    self.mesh.y[:, :, 0],
+                    color='mediumslateblue',
+                    s=10,
+                    alpha=0.5)
+
+        # Create nodes mesh for LineCollection
+        segs1 = np.stack((self.mesh.nodes.x[:, :, 0],
+                          self.mesh.nodes.y[:, :, 0]),
+                         axis=2)
         segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1, alpha=0.5))
 
-        segs1 = np.stack((self.mesh.x[:, :, 0], self.mesh.y[:, :, 0]), axis=2)
+        # Create LineCollection for nodes
+        plt.gca().add_collection(LineCollection(segs1,
+                                                colors='black',
+                                                linewidths=1,
+                                                alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2,
+                                                colors='black',
+                                                linewidths=1,
+                                                alpha=0.5))
+
+        # Create cell center mesh for LineCollection
+        segs1 = np.stack((self.mesh.x[:, :, 0],
+                          self.mesh.y[:, :, 0]),
+                         axis=2)
         segs2 = segs1.transpose((1, 0, 2))
 
-        plt.gca().add_collection(
-            LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(
-            LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+        # Create LineCollection for cell centers
+        plt.gca().add_collection(LineCollection(segs1,
+                                                colors='mediumslateblue',
+                                                linestyles='--',
+                                                linewidths=1,
+                                                alpha=0.5))
+        plt.gca().add_collection(LineCollection(segs2,
+                                                colors='mediumslateblue',
+                                                linestyles='--',
+                                                linewidths=1,
+                                                alpha=0.5))
 
+        # Show Plot
         plt.show()
 
-        ####################################################################################################################
+        # Close plot
+        plt.close()
 
     @property
     def Flux_E(self):
+        """
+        Returns the flux arrays for the east face. Retrieves the arrays from the finite-volume-method class.
+
+        Parameters:
+            - None
+
+        Return:
+            - (np.ndarray): Numpy array containing the flux values for the east face.
+        """
+
         return self.fvm.Flux_E
 
     @property
     def Flux_W(self):
+        """
+        Returns the flux arrays for the west face. Retrieves the arrays from the finite-volume-method class.
+
+        Parameters:
+            - None
+
+        Return:
+            - (np.ndarray): Numpy array containing the flux values for the west face.
+        """
         return self.fvm.Flux_W
 
     @property
     def Flux_N(self):
+        """
+        Returns the flux arrays for the north face. Retrieves the arrays from the finite-volume-method class.
+
+        Parameters:
+            - None
+
+        Return:
+            - (np.ndarray): Numpy array containing the flux values for the north face.
+        """
+
         return self.fvm.Flux_N
 
     @property
     def Flux_S(self):
+        """
+        Returns the flux arrays for the south face. Retrieves the arrays from the finite-volume-method class.
+
+        Parameters:
+            - None
+
+        Return:
+            - (np.ndarray): Numpy array containing the flux values for the south face.
+        """
+
         return self.fvm.Flux_S
+
+    @property
+    def gradx(self):
+        """
+        Returns the x-direction gradients based on the reconstruction type. For example, if the reconstruction type is
+        primitive, this will return self.dWdx.
+
+        Parameters:
+            - None
+
+        Return:
+            - (np.ndarray): Values of the x-direction gradients.
+        """
+
+        if self.reconstruction_type == 'primitive':
+            return self.dWdx
+        elif self.reconstruction_type == 'conservative':
+            return self.dUdx
+        else:
+            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
+
+    @property
+    def grady(self):
+        """
+        Returns the y-direction gradients based on the reconstruction type. For example, if the reconstruction type is
+        primitive, this will return self.dWdy.
+
+        Parameters:
+            - None
+
+        Return:
+            - (np.ndarray): Values of the y-direction gradients.
+        """
+        if self.reconstruction_type == 'primitive':
+            return self.dWdy
+        elif self.reconstruction_type == 'conservative':
+            return self.dUdy
+        else:
+            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
+
+    @gradx.setter
+    def gradx(self, gradx):
+        """
+        Sets the x-direction gradients based on the reconstruction type. For example, if the reconstruction type is
+        primitive, this will set the self.dWdx attribute.
+
+        Parameters:
+            - (np.ndarray): Values of the x-direction gradients.
+
+        Return:
+            - None
+        """
+
+        if self.reconstruction_type == 'primitive':
+            self.dWdx = gradx
+        elif self.reconstruction_type == 'conservative':
+            self.dUdx = gradx
+        else:
+            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
+
+    @grady.setter
+    def grady(self, grady):
+        """
+        Sets the y-direction gradients based on the reconstruction type. For example, if the reconstruction type is
+        primitive, this will set the self.dWdy attribute.
+
+        Parameters:
+            - (np.ndarray): Values of the y-direction gradients.
+
+        Return:
+            - None
+        """
+
+        if self.reconstruction_type == 'primitive':
+            self.dWdy = grady
+        elif self.reconstruction_type == 'conservative':
+            self.dUdy = grady
+        else:
+            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
 
     def __getitem__(self, index):
 
@@ -215,15 +404,51 @@ class QuadBlock:
             return np.arctan((pt1[0] - pt2[0]) / (pt2[1] - pt1[1]))
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Time stepping methods
+
+    def get_dt(self) -> np.float:
+        """
+        Return the time step for this block based on the CFL condition.
+
+        Parameters:
+            - None
+
+        Returns:
+            - dt (np.float): Float representing the value of the time step
+        """
+
+        # Speed of sound
+        a = self.state.a()
+        # Calculate dt using the CFL condition
+        dt = self.inputs.CFL * np.amin(np.minimum(self.mesh.dx[:, :, 0] / (np.absolute(self.state.u()) + a),
+                                                  self.mesh.dy[:, :, 0] / (np.absolute(self.state.v()) + a)))
+        return dt
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Grid methods
 
-    # Build connectivity with neighbor blocks
-    def connect(self, NeighborE: QuadBlock,
+    def connect(self,
+                NeighborE: QuadBlock,
                 NeighborW: QuadBlock,
                 NeighborN: QuadBlock,
-                NeighborS: QuadBlock) -> None:
+                NeighborS: QuadBlock,
+                NeighborNE: QuadBlock,
+                NeighborNW: QuadBlock,
+                NeighborSE: QuadBlock,
+                NeighborSW: QuadBlock,
+                ) -> None:
+        """
+        Create the Neighbors class used to set references to the neighbor blocks in each direction.
 
-        self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS)
+        Parameters:
+            - None
+
+        Return:
+            - None
+        """
+
+        self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS,
+                                   NE=NeighborNE, NW=NeighborNW, SE=NeighborSE, SW=NeighborSW)
 
     def get_east_ghost(self) -> np.ndarray:
         """
@@ -567,40 +792,146 @@ class QuadBlock:
 
         return self.state.U[0:1, :, :].copy()
 
-    def row(self, index: int) -> np.ndarray:
-        return self.state.U[index:(index + 1), :, :]
+    def row(self,
+            index: int
+            ) -> np.ndarray:
+        """
+        Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
+        most-bottom row of the mesh will be returned.
 
-    def col(self, index: int) -> np.ndarray:
+        Parameters:
+            - index (int): The index that reperesents which row needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
+        """
+
+        return self.state.U[index, None, :, :]
+
+    def fullrow(self,
+                index: int
+                ) -> np.ndarray:
+        """
+        Return the solution stored in the index-th full row of the mesh. A full row is defined as the row plus the ghost
+        cells on either side of the column.
+
+        Parameters:
+            - index (int): The index that reperesents which full row needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the solution at the index-th full row being returned.
+        """
+
+        return np.concatenate((self.ghost.W[index, None, :, :],
+                               self.row(index),
+                               self.ghost.E[index, None, :, :]),
+                              axis=1)
+
+    def col(self,
+            index: int
+            ) -> np.ndarray:
+        """
+        Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
+        left-most column of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which column needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
+        """
+
         return self.state.U[None, :, index, :]
 
-    def fullrow(self, index: int) -> np.ndarray:
-        return np.concatenate((self.ghost.W[index, None, :],
-                               self.row(index),
-                               self.ghost.E[index, None, :]),
-                              axis=1)
+    def fullcol(self,
+                index: int
+                ) -> np.ndarray:
+        """
+        Return the solution stored in the index-th full column of the mesh. A full column is defined as the row plus the
+        ghost cells on either side of the column.
 
-    def fullcol(self, index: int) -> np.ndarray:
-        return np.concatenate((self.ghost.S[None, 0, index, None, :],
+        Parameters:
+            - index (int): The index that reperesents which full column needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the solution at the index-th full column being returned.
+        """
+
+        return np.concatenate((self.ghost.S[:, index, None, :],
                                self.col(index),
-                               self.ghost.N[None, 0, index, None, :]),
+                               self.ghost.N[:, index, None, :]),
                               axis=1)
 
-    def row_copy(self, index: int) -> np.ndarray:
+    def row_copy(self,
+                 index: int
+                 ) -> np.ndarray:
+        """
+        Return the a copy of the solution stored in the index-th row of the mesh. For example, if index is 0, then the
+        state at the most-bottom row of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which row needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the copy of the solution at the index-th row being returned.
+        """
+
         return self.row(index).copy()
 
-    def col_copy(self, index: int) -> np.ndarray:
+    def col_copy(self,
+                 index: int
+                 ) -> np.ndarray:
+        """
+        Return the a copy of the solution stored in the index-th column of the mesh. For example, if index is 0, then
+        the state at the most-bottom column of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which column needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the copy of the solution at the index-th column being returned.
+        """
+
         return self.col(index).copy()
 
-    def fullrow_copy(self, index: int) -> np.ndarray:
+    def fullrow_copy(self,
+                     index: int
+                     ) -> np.ndarray:
+        """
+        Return the a copy of the solution stored in the index-th full-row of the mesh. For example, if index is 0,
+        then the state at the most-bottom row of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which full-row needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the copy of the solution at the index-th full-row being
+            returned.
+        """
+
         return self.fullrow(index).copy()
 
-    def fullcol_copy(self, index: int) -> np.ndarray:
+    def fullcol_copy(self,
+                     index: int
+                     ) -> np.ndarray:
+        """
+        Return the a copy of the solution stored in the index-th full-column of the mesh. For example, if index is 0,
+        then the state at the most-bottom column of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which full-column needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the copy of the solution at the index-th full-column being
+            returned.
+        """
+
         return self.fullrow(index).copy()
 
-    def get_interface_values(self, reconstruction_type: str = None):
+    def get_interface_values(self) -> [np.ndarray]:
 
         if self.inputs.interface_interpolation == 'arithmetic_average':
-            interfaceEW, interfaceNS = self.get_interface_values_arithmetic(reconstruction_type)
+            interfaceEW, interfaceNS = self.get_interface_values_arithmetic()
             return interfaceEW, interfaceNS
         else:
             raise ValueError('Interface Interpolation method is not defined.')
@@ -608,7 +939,8 @@ class QuadBlock:
     def get_interface_values_arithmetic(self, reconstruction_type: str = None) -> [np.ndarray]:
 
         # Concatenate mesh state and ghost block states
-        if reconstruction_type == 'primitive':
+        if self.reconstruction_type == 'primitive':
+
             _W = self.state.to_primitive_vector()
 
             catx = np.concatenate((self.ghost.W.state.to_primitive_vector(),
@@ -621,7 +953,7 @@ class QuadBlock:
                                    self.ghost.S.state.to_primitive_vector()),
                                   axis=0)
 
-        elif reconstruction_type == 'conservative' or not reconstruction_type:
+        elif self.reconstruction_type == 'conservative' or not reconstruction_type:
 
             catx = np.concatenate((self.ghost.W.state.U,
                                    self.state.U,
@@ -661,12 +993,44 @@ class QuadBlock:
         self._time_integrator(self, dt)
 
     def get_flux(self) -> None:
+        """
+        Calls the get_flux() method from the Block's finite-volume-method to compute the flux at each cell wall.
+
+        Parameters:
+            - None
+
+        Returns:
+            - None
+        """
+
         self.fvm.get_flux(self)
 
     def dUdt(self) -> None:
+        """
+        Calls the dUdt() method from the Block's finite-volume-method to compute the residuals used for the time
+        marching scheme.
+
+        Parameters:
+            - None
+
+        Returns:
+            - None
+        """
+
         return self.fvm.dUdt(self)
 
     def set_BC(self) -> None:
+        """
+        Calls the set_BC() method for each ghost block connected to this block. This sets the boundary condition on
+        each side.corner of the block.
+
+        Parameters:
+            - None
+
+        Returns:
+            - None
+        """
+
         self.ghost.E.set_BC()
         self.ghost.W.set_BC()
         self.ghost.N.set_BC()
@@ -868,9 +1232,17 @@ class QuadBlock:
         U = np.zeros((self.inputs.ny + 1, self.inputs.nx + 1, 4))
 
         # Set corners
+
+        # South-West
         U[0, 0, :] = self.state.U[0, 0, :]
+
+        # North-West
         U[0, -1, :] = self.state.U[0, -1, :]
+
+        # South-East
         U[-1, 0, :] = self.state.U[-1, 0, :]
+
+        # North-East
         U[-1, -1, :] = self.state.U[-1, -1, :]
 
         # East edge
@@ -889,3 +1261,9 @@ class QuadBlock:
                                    self.state.U[:-1, 1:, :])
 
         return U
+
+class QuadBlockAdaptiveUniform(QuadBlock):
+    pass
+
+class QuadBlockAdaptiveNonUniform(QuadBlock):
+    pass

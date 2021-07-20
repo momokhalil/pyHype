@@ -3,7 +3,7 @@ from pyHype.solvers import solver
 # Solver settings
 settings = {'problem_type':             'explosion',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'Conservative',
+            'reconstruction_type':      'conservative',
             'upwind_mode':              'primitive',
             'CFL':                      0.4,
             't_final':                  0.05,
@@ -13,8 +13,8 @@ settings = {'problem_type':             'explosion',
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
             'R':                        287.0,
-            'nx':                       50,
-            'ny':                       100,
+            'nx':                       500,
+            'ny':                       1000,
             'nghost':                   1,
             'mesh_name':                'chamber'}
 

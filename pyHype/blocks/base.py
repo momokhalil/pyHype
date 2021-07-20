@@ -33,7 +33,11 @@ class Neighbors:
                  E: QuadBlock = None,
                  W: QuadBlock = None,
                  N: QuadBlock = None,
-                 S: QuadBlock = None
+                 S: QuadBlock = None,
+                 NE: QuadBlock = None,
+                 NW: QuadBlock = None,
+                 SE: QuadBlock = None,
+                 SW: QuadBlock = None
                  ) -> None:
         """
         A class designed to hold references to each Block's neighbors.
@@ -43,12 +47,20 @@ class Neighbors:
             - W: Reference to the west neighbor
             - N: Reference to the north neighbor
             - S: Reference to the south neighbor
+            - NE: Reference to the north-east neighbor
+            - NW: Reference to the north-west neighbor
+            - SE: Reference to the south-east neighbor
+            - SW: Reference to the south-west neighbor
         """
 
         self.E = E
         self.W = W
         self.N = N
         self.S = S
+        self.NE = NE
+        self.NW = NW
+        self.SE = SE
+        self.SW = SW
 
 
 class GhostBlockContainer:
@@ -102,10 +114,16 @@ class Blocks:
                  inputs
                  ) -> None:
 
+        # Set inputs
         self.inputs = inputs
-        self.number_of_blocks = None
+        # Number of blocks
+        self.num_BLK = None
+        # Blocks dictionary
         self.blocks = {}
+        # cpu handling this list of blocks
+        self.cpu = None
 
+        # Build blocks
         self.build()
 
     def __getitem__(self,
@@ -131,28 +149,28 @@ class Blocks:
         for block in self.blocks.values():
             block.set_BC()
 
-    def update_BC(self) -> None:
-        for block in self.blocks.values():
-            block.update_BC()
-
     def build(self) -> None:
         mesh_inputs = self.inputs.mesh_inputs
 
         for BLK_data in mesh_inputs.values():
             self.add(Qb.QuadBlock(self.inputs, BLK_data))
 
-        self.number_of_blocks = len(self.blocks)
+        self.num_BLK = len(self.blocks)
 
         for global_nBLK, block in self.blocks.items():
-            Neighbor_E_idx = mesh_inputs.get(block.global_nBLK).NeighborE
-            Neighbor_W_idx = mesh_inputs.get(block.global_nBLK).NeighborW
-            Neighbor_N_idx = mesh_inputs.get(block.global_nBLK).NeighborN
-            Neighbor_S_idx = mesh_inputs.get(block.global_nBLK).NeighborS
+            Neighbor_E_n = mesh_inputs.get(block.global_nBLK).NeighborE
+            Neighbor_W_n = mesh_inputs.get(block.global_nBLK).NeighborW
+            Neighbor_N_n = mesh_inputs.get(block.global_nBLK).NeighborN
+            Neighbor_S_n = mesh_inputs.get(block.global_nBLK).NeighborS
 
-            block.connect(NeighborE=self.blocks[Neighbor_E_idx] if Neighbor_E_idx != 0 else None,
-                          NeighborW=self.blocks[Neighbor_W_idx] if Neighbor_W_idx != 0 else None,
-                          NeighborN=self.blocks[Neighbor_N_idx] if Neighbor_N_idx != 0 else None,
-                          NeighborS=self.blocks[Neighbor_S_idx] if Neighbor_S_idx != 0 else None)
+            block.connect(NeighborE=self.blocks[Neighbor_E_n] if Neighbor_E_n else None,
+                          NeighborW=self.blocks[Neighbor_W_n] if Neighbor_W_n else None,
+                          NeighborN=self.blocks[Neighbor_N_n] if Neighbor_N_n else None,
+                          NeighborS=self.blocks[Neighbor_S_n] if Neighbor_S_n else None,
+                          NeighborNE = None,
+                          NeighborNW = None,
+                          NeighborSE = None,
+                          NeighborSW = None)
 
     def print_connectivity(self) -> None:
         for _, block in self.blocks.items():

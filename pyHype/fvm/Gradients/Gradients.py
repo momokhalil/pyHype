@@ -62,7 +62,7 @@ class GreenGauss:
     def green_gauss(self, refBLK):
 
         # Concatenate mesh state and ghost block states
-        interfaceEW, interfaceNS = refBLK.get_interface_values(self.inputs.reconstruction_type)
+        interfaceEW, interfaceNS = refBLK.get_interface_values()
 
         # Get each face's contribution to dUdx
         E, W, N, S = self.face_contribution(interfaceEW, interfaceNS, refBLK)
