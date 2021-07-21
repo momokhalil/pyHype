@@ -256,8 +256,8 @@ def chamber(nx, ny, nghost):
 def chamber_skewed(nx, ny, nghost):
 
     block1 = {'nBLK': 1,
-              'NW': [-2.5, 0.5], 'NE': [-1, 1],
-              'SW': [-2.5, -0.5], 'SE': [-1, -1],
+              'NW': [-2.5, 1.5], 'NE': [-1, 1],
+              'SW': [-2.5, 0.0], 'SE': [-1, -1],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
@@ -288,8 +288,8 @@ def chamber_skewed(nx, ny, nghost):
               'BCTypeS': 'Reflection'}
 
     block3 = {'nBLK': 3,
-              'NW': [1, 1], 'NE': [2.5, 0.5],
-              'SW': [1, -1], 'SE': [2.5, -0.5],
+              'NW': [1, 1], 'NE': [2.5, 0.0],
+              'SW': [1, -1], 'SE': [2.5, -1.5],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,

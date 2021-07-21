@@ -13,8 +13,8 @@ settings = {'problem_type':             'explosion_trapezoid',
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
             'R':                        287.0,
-            'nx':                       40,
-            'ny':                       40,
+            'nx':                       100,
+            'ny':                       100,
             'nghost':                   1,
             'mesh_name':                'chamber_skewed'
             }

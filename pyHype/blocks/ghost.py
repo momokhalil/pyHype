@@ -37,8 +37,9 @@ class GhostBlock:
                  BCtype: str,
                  refBLK: QuadBlock):
 
-        self.BCtype = BCtype
         self.inputs = inputs
+        self.BCtype = BCtype
+
         self.nx = inputs.nx
         self.ny = inputs.ny
         self.nghost = inputs.nghost
@@ -59,20 +60,63 @@ class GhostBlock:
         elif self.BCtype == 'Slipwall':
             self.set_BC = self.set_BC_slipwall
 
-
     def __getitem__(self, index):
         return self.state.U[index]
 
     def row(self, index: int) -> np.ndarray:
+        """
+        Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
+        most-bottom row of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which row needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
+        """
+
         return self.state.U[None, index, :, :]
 
     def col(self, index: int) -> np.ndarray:
+        """
+        Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
+        left-most column of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which column needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
+        """
+
         return self.state.U[:, None, index, :]
 
     def row_copy(self, index: int) -> np.ndarray:
+        """
+        Return the a copy of the solution stored in the index-th row of the mesh. For example, if index is 0, then the
+        state at the most-bottom row of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which row needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the copy of the solution at the index-th row being returned.
+        """
+
         return self.row(index).copy()
 
     def col_copy(self, index: int) -> np.ndarray:
+        """
+        Return the a copy of the solution stored in the index-th column of the mesh. For example, if index is 0, then
+        the state at the most-bottom column of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which column needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the copy of the solution at the index-th column being returned.
+        """
+
         return self.col(index).copy()
 
     @abstractmethod
@@ -98,9 +142,9 @@ class GhostBlockEast(GhostBlock):
     """
 
     def __init__(self,
-                 inputs,
-                 BCtype,
-                 refBLK):
+                 inputs: ProblemInput,
+                 BCtype: str,
+                 refBLK: QuadBlock):
 
         # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
@@ -136,7 +180,6 @@ class GhostBlockEast(GhostBlock):
                          nx=inputs.nghost,
                          ny=self.refBLK.ny)
 
-
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.E.get_west_ghost())
 
@@ -170,9 +213,9 @@ class GhostBlockEast(GhostBlock):
 
 class GhostBlockWest(GhostBlock):
     def __init__(self,
-                 inputs,
-                 BCtype,
-                 refBLK):
+                 inputs: ProblemInput,
+                 BCtype: str,
+                 refBLK: QuadBlock):
 
         # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
@@ -208,7 +251,6 @@ class GhostBlockWest(GhostBlock):
                          nx=inputs.nghost,
                          ny=self.refBLK.ny)
 
-
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.W.get_east_ghost())
 
@@ -242,9 +284,9 @@ class GhostBlockWest(GhostBlock):
 
 class GhostBlockNorth(GhostBlock):
     def __init__(self,
-                 inputs,
-                 BCtype,
-                 refBLK):
+                 inputs: ProblemInput,
+                 BCtype: str,
+                 refBLK: QuadBlock):
 
         # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
@@ -280,7 +322,6 @@ class GhostBlockNorth(GhostBlock):
                          nx=self.refBLK.ny,
                          ny=inputs.nghost)
 
-
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.N.get_south_ghost())
 
@@ -314,9 +355,9 @@ class GhostBlockNorth(GhostBlock):
 
 class GhostBlockSouth(GhostBlock):
     def __init__(self,
-                 inputs,
-                 BCtype,
-                 refBLK):
+                 inputs: ProblemInput,
+                 BCtype: str,
+                 refBLK: QuadBlock):
 
         # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
@@ -349,7 +390,6 @@ class GhostBlockSouth(GhostBlock):
                          SW=(SWx, SWy),
                          nx=self.refBLK.ny,
                          ny=inputs.nghost)
-
 
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.S.get_north_ghost())
