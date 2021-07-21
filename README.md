@@ -55,9 +55,11 @@ exp.solve()
 ## Current work
 1. Compile gradient and reconstruction calculations with numba
 2. Integrate PyTecPlot to use for writing solution files and plotting
-3. Implement riemann-invariant boundary conditions
-4. Create a fully documented simple example to explain usage
-5. Documentation!!
+3. Implement riemann-invariant-based boundary conditions
+4. Implement subsonic and supersonic inlet and outlet boundary conditions
+5. Implement connectivity algorithms for calculating block connectivity and neighbor-finding
+6. Create a fully documented simple example to explain usage
+7. Documentation!!
 
 ## Major future work
 1. Use MPI to distrubute computation to multiple processors
