@@ -6,9 +6,9 @@ pyHype is a Python framework for developing parallelized Computational Fluid Dyn
 
 The core idea behind pyHype is flexibility and modularity. pyHype offers a plug-n-play approach to CFD software, where every component of the CFD pipeline is modelled as a class with a set interface that allows it to communicate and interact with other components. This enables easy development of new components, since the developer does not have to worry about interfacing with other components. For example, if a developer is interested in developing a new approximate riemann solver technique, they only need to provide the implementation of the `FluxFunction` abstract class, without having to worry about how the rest of the code works in detail.
 
-**NEW**: Geometry not alligned with the cartesian axes is now supported!
-**COMING UP**: Examples of simulations on various airfoil geometries, and a presentation of the newly added mesh optimization techniques.
-**COMING UP**: Examples of simulations on multi-block meshes.
+**NEW**: Geometry not alligned with the cartesian axes is now supported!\
+**COMING UP**: Examples of simulations on various airfoil geometries, and a presentation of the newly added mesh optimization techniques.\
+**COMING UP**: Examples of simulations on multi-block meshes.\
 
 ## Explosion Simulation
 Here is an example of an explosion simulation performed on one block. The simulation was performed with the following: 
