@@ -6,7 +6,9 @@ pyHype is a Python framework for developing parallelized Computational Fluid Dyn
 
 The core idea behind pyHype is flexibility and modularity. pyHype offers a plug-n-play approach to CFD software, where every component of the CFD pipeline is modelled as a class with a set interface that allows it to communicate and interact with other components. This enables easy development of new components, since the developer does not have to worry about interfacing with other components. For example, if a developer is interested in developing a new approximate riemann solver technique, they only need to provide the implementation of the `FluxFunction` abstract class, without having to worry about how the rest of the code works in detail.
 
-**NEW**: Geometry not alligned with the cartesian axes is now supported! Example coming soon.
+**NEW**: Geometry not alligned with the cartesian axes is now supported!
+**COMING UP**: Examples of simulations on various airfoil geometries, and a presentation of the newly added mesh optimization techniques.
+**COMING UP**: Examples of simulations on multi-block meshes.
 
 ## Explosion Simulation
 Here is an example of an explosion simulation performed on one block. The simulation was performed with the following: 
@@ -53,13 +55,14 @@ exp.solve()
 ![alt text](/explosion.gif)
 
 ## Current work
-1. Compile gradient and reconstruction calculations with numba
-2. Integrate PyTecPlot to use for writing solution files and plotting
-3. Implement riemann-invariant-based boundary conditions
-4. Implement subsonic and supersonic inlet and outlet boundary conditions
-5. Implement connectivity algorithms for calculating block connectivity and neighbor-finding
-6. Create a fully documented simple example to explain usage
-7. Documentation!!
+1. Integrate airfoil meshing and mesh optimization using elliptic PDEs
+2. Compile gradient and reconstruction calculations with numba
+3. Integrate PyTecPlot to use for writing solution files and plotting
+4. Implement riemann-invariant-based boundary conditions
+5. Implement subsonic and supersonic inlet and outlet boundary conditions
+6. Implement connectivity algorithms for calculating block connectivity and neighbor-finding
+7. Create a fully documented simple example to explain usage
+8. Documentation!!
 
 ## Major future work
 1. Use MPI to distrubute computation to multiple processors
