@@ -8,7 +8,7 @@ The core idea behind pyHype is flexibility and modularity. pyHype offers a plug-
 
 **NEW**: Geometry not alligned with the cartesian axes is now supported!\
 **COMING UP**: Examples of simulations on various airfoil geometries, and a presentation of the newly added mesh optimization techniques.\
-**COMING UP**: Examples of simulations on multi-block meshes.\
+**COMING UP**: Examples of simulations on multi-block meshes.
 
 ## Explosion Simulation
 Here is an example of an explosion simulation performed on one block. The simulation was performed with the following: 
