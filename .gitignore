@@ -5,3 +5,5 @@
 *.html
 *.css
 *.jinja2
+*.nbc
+*.nbi
