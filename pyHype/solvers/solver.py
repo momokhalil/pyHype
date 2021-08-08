@@ -30,6 +30,8 @@ from pyHype.mesh import meshes
 from pyHype.mesh.base import BlockDescription
 import pyHype.solvers.initial_conditions.initial_conditions as ic
 
+from abc import abstractmethod
+
 from typing import TYPE_CHECKING
 from typing import Iterable
 
@@ -101,7 +103,7 @@ class ProblemInput:
                 raise KeyError(key + ' not found in inputs.')
 
 
-class Euler2D:
+class Solver:
     def __init__(self,
                  fvm:           str = 'SecondOrderPWL',
                  gradient:      str = 'GreenGauss',
@@ -122,6 +124,9 @@ class Euler2D:
         ny = settings['ny']
         # Number of ghost cells
         nghost = settings['nghost']
+
+        # save original input dict
+        self._settings_dict = settings
 
         # --------------------------------------------------------------------------------------------------------------
         # Create dictionary that describes each block in mesh
@@ -145,7 +150,7 @@ class Euler2D:
         print('Date and time: ', datetime.today())
 
         # Create Blocks
-        self._blocks = Blocks(self.inputs)
+        self._blocks = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Initialise attributes
@@ -167,9 +172,109 @@ class Euler2D:
         # Plot
         self.plot = None
 
+    @abstractmethod
+    def set_IC(self):
+        pass
+
+    @abstractmethod
+    def set_BC(self):
+        pass
+
     @property
     def blocks(self) -> Iterable[QuadBlock]:
         return self._blocks.blocks.values()
+
+    def get_dt(self):
+        """
+        Return the time step for all blocks handled by this process based on the CFL condition.
+
+        Parameters:
+            - None
+
+        Returns:
+            - dt (np.float): Float representing the value of the time step
+        """
+        _dt = min([block.get_dt() for block in self.blocks])
+        return self.t_final - self.t if self.t_final - self.t < _dt else _dt
+
+
+    def increment_time(self):
+        self.t += self.dt
+
+    @staticmethod
+    def write_output_nodes(filename: str, array: np.ndarray):
+        np.save(file=filename, arr=array)
+
+    def write_solution(self):
+        if self.inputs.write_solution_mode == 'every_n_timesteps':
+            if self.numTimeStep % self.inputs.write_every_n_timesteps == 0:
+                for block in self.blocks:
+                    self.write_output_nodes('./' + self.inputs.write_solution_name
+                                                 + '_' + str(self.numTimeStep)
+                                                 + '_blk_' + str(block.global_nBLK),
+                                            block.state.U)
+
+    def real_plot(self):
+        if self.numTimeStep % 10 == 0:
+            _v = [block.state.Ma() for block in self.blocks]
+            max_ = max([np.max(v) for v in _v])
+            min_ = min([np.min(v) for v in _v])
+
+            for block in self.blocks:
+                self.realplot.contourf(block.mesh.x[:, :, 0],
+                                       block.mesh.y[:, :, 0],
+                                       block.state.Ma(),
+                                       30,
+                                       cmap='magma_r',
+                                       vmax=max_,
+                                       vmin=min_)
+
+            self.realplot.set_aspect('equal')
+            plt.show()
+            plt.pause(0.001)
+
+    def build_real_plot(self):
+        plt.ion()
+        self.realfig, self.realplot = plt.subplots(1)
+
+        blks = [blk for blk in self.inputs.mesh_inputs.values()]
+
+        sw_x = min([blk.SW[0] for blk in blks])
+        nw_x = min([blk.NW[0] for blk in blks])
+        sw_y = min([blk.SW[1] for blk in blks])
+        se_y = min([blk.SE[1] for blk in blks])
+
+        se_x = max([blk.SE[0] for blk in blks])
+        ne_x = max([blk.NE[0] for blk in blks])
+        nw_y = max([blk.NW[1] for blk in blks])
+        ne_y = max([blk.NE[1] for blk in blks])
+
+        W = max(se_x, ne_x) - min(sw_x, nw_x)
+        L = max(nw_y, ne_y) - min(sw_y, se_y)
+
+        pl = 8
+
+        self.realplot.figure.set_size_inches(pl / (L / W), pl)
+
+class Euler2D(Solver):
+    def __init__(self,
+                 fvm:           str = 'SecondOrderPWL',
+                 gradient:      str = 'GreenGauss',
+                 flux_function: str = 'Roe',
+                 limiter:       str = 'Venkatakrishnan',
+                 integrator:    str = 'RK2',
+                 settings:      dict = None
+                 ) -> None:
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Store mesh features required to create block descriptions
+
+        super().__init__(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
+                                   integrator=integrator, settings=settings)
+
+        # Create Blocks
+        self._blocks = Blocks(self.inputs)
+
 
     def set_IC(self):
 
@@ -203,26 +308,15 @@ class Euler2D:
     def set_BC(self):
         self._blocks.set_BC()
 
-    def get_dt(self):
-        """
-        Return the time step for all blocks handled by this process based on the CFL condition.
-
-        Parameters:
-            - None
-
-        Returns:
-            - dt (np.float): Float representing the value of the time step
-        """
-
-        return min([block.get_dt() for block in self.blocks])
-
-    def increment_time(self):
-        self.t += self.dt
-
     def solve(self):
-
         print()
         print('----------------------------------------------------------------------------------------')
+        print('Problem Details:')
+        print()
+        for k, v in self._settings_dict.items():
+            print('\t' + f"{(str(k) + ': '):<40} {str(v)}")
+
+        print()
         print('Setting Initial Conditions')
         self.set_IC()
 
@@ -237,36 +331,7 @@ class Euler2D:
         plt.show(block=True)"""
 
         if self.inputs.realplot:
-            plt.ion()
-            self.realfig, self.realplot = plt.subplots(1)
-
-            blks = [blk for blk in self.inputs.mesh_inputs.values()]
-
-            sw_x = min([blk.SW[0] for blk in blks])
-            nw_x = min([blk.NW[0] for blk in blks])
-
-            se_x = max([blk.SE[0] for blk in blks])
-            ne_x = max([blk.NE[0] for blk in blks])
-
-            sw_y = min([blk.SW[1] for blk in blks])
-            se_y = min([blk.SE[1] for blk in blks])
-
-            nw_y = max([blk.NW[1] for blk in blks])
-            ne_y = max([blk.NE[1] for blk in blks])
-
-            ymax = max(nw_y, ne_y)
-            ymin = min(sw_y, se_y)
-
-            xmax = max(se_x, ne_x)
-            xmin = min(sw_x, nw_x)
-
-            W = xmax - xmin
-            L = ymax - ymin
-
-            a = L/W
-            pl = 5
-
-            self.realplot.figure.set_size_inches(pl/a, pl)
+            self.build_real_plot()
 
         if self.inputs.profile:
             print('Enable profiler')
@@ -275,15 +340,21 @@ class Euler2D:
         else:
             profiler = None
 
-        for block in self.blocks:
-            self.write_output_nodes('./mesh_blk_x_' + str(block.global_nBLK), block.mesh.x)
-            self.write_output_nodes('./mesh_blk_y_' + str(block.global_nBLK), block.mesh.y)
+        if self.inputs.write_solution:
+            for block in self.blocks:
+                self.write_output_nodes('./mesh_blk_x_' + str(block.global_nBLK), block.mesh.x)
+                self.write_output_nodes('./mesh_blk_y_' + str(block.global_nBLK), block.mesh.y)
 
 
         print('Start simulation')
         while self.t < self.t_final:
 
-            print(self.t / self.inputs.a_inf)
+            if self.numTimeStep % 50 == 0:
+                print()
+                print('Simulation time: ' + str(self.t / self.inputs.a_inf))
+                print('Timestep number: ' + str(self.numTimeStep))
+            else:
+                print('.', end='')
 
             self.dt = self.get_dt()
 
@@ -293,45 +364,27 @@ class Euler2D:
             ############################################################################################################
             # THIS IS FOR DEBUGGING PURPOSES ONLY
             if self.inputs.write_solution:
-                if self.inputs.write_solution_mode == 'every_n_timesteps':
-                    if self.numTimeStep % self.inputs.write_every_n_timesteps == 0:
-                        for block in self.blocks:
-                            self.write_output_nodes('./' + self.inputs.write_solution_name
-                                                         + '_' + str(self.numTimeStep)
-                                                         + '_blk_' + str(block.global_nBLK),
-                                                    block.state.U)
+                self.write_solution()
 
             if self.inputs.realplot:
-                if self.numTimeStep % 10 == 0:
-                    _v = [block.state.Ma() for block in self.blocks]
-                    max_ = max([np.max(v) for v in _v])
-                    min_ = min([np.min(v) for v in _v])
-
-                    for block in self.blocks:
-                        self.realplot.contourf(block.mesh.x[:, :, 0],
-                                               block.mesh.y[:, :, 0],
-                                               block.state.Ma(),
-                                               30,
-                                               cmap='magma_r',
-                                               vmax=max_,
-                                               vmin=min_)
-
-                    self.realplot.set_aspect('equal')
-                    plt.show()
-                    plt.pause(0.001)
+                self.real_plot()
             ############################################################################################################
 
             # Increment simulation time
             self.increment_time()
             self.numTimeStep += 1
 
+        print()
+        print()
+        print('Simulation time: ' + str(self.t / self.inputs.a_inf))
+        print('Timestep number: ' + str(self.numTimeStep))
+        print()
+        print('End of simulation')
+        print('Date and time: ', datetime.today())
+        print('----------------------------------------------------------------------------------------')
+        print()
+
         if self.inputs.profile:
             profiler.disable()
             self.profile_data = pstats.Stats(profiler)
             self.profile_data.sort_stats('tottime').print_stats()
-
-        print('Date and time: ', datetime.today())
-
-    @staticmethod
-    def write_output_nodes(filename: str, array: np.ndarray):
-        np.save(file=filename, arr=array)

@@ -733,7 +733,6 @@ class RoePrimitiveState(PrimitiveState):
 
         # Set state vector and variables from *Roe* averages
         self.from_primitive_state_vars(rho, u, v, p)
-        #self.a_ = np.sqrt(self.g * p / rho)
 
     def roe_state_from_conservative_states(self,
                                            UL: ConservativeState,

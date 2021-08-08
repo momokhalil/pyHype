@@ -116,22 +116,6 @@ class XDIR_EIGENSYSTEM_INDICES:
         Lc_d0_p3_i = self.get_indices(nx, [0])
         Lc_d0_p3_j = self.get_indices(nx, [3])
 
-        """Lc_d0_i = np.arange(0, 4 * (nx + 1), 1)
-        Lc_d0_i = np.delete(Lc_d0_i, slice(3, None, 4))
-        Lc_d0_j = Lc_d0_i
-        Lc_d0_m1_i = A_d0_m1_i
-        Lc_d0_m1_j = A_d0_m1_j
-        Lc_d0_m2_i = Rc_d0_p2_j
-        Lc_d0_m2_j = Rc_d0_p2_i
-        Lc_d0_m3_i = A_d0_m3_i
-        Lc_d0_m3_j = A_d0_m3_j
-        Lc_d0_p1_i = Rc_d0_p1_i
-        Lc_d0_p1_j = Rc_d0_p1_j
-        Lc_d0_p2_i = A_d0_m2_j
-        Lc_d0_p2_j = A_d0_m2_i
-        Lc_d0_p3_i = A_d0_m3_j
-        Lc_d0_p3_j = A_d0_m3_i"""
-
         self.Lci = np.hstack((Lc_d0_m3_i, Lc_d0_m2_i, Lc_d0_m1_i,
                               Lc_d0_i,
                               Lc_d0_p1_i, Lc_d0_p2_i, Lc_d0_p3_i))
