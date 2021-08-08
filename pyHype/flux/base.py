@@ -18,7 +18,9 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
 from abc import abstractmethod
+import numba as nb
 from pyHype.states.states import PrimitiveState, RoePrimitiveState
+from profilehooks import profile
 
 
 class FluxFunction:
@@ -80,6 +82,14 @@ class FluxFunction:
         # Roe fast and slow wavespeeds
         Roe_p, Roe_m = self.wavespeeds_x(Wroe)
 
+        # Perform the harten correction using the JITed implementation
+        _harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m)
+
+        return Roe_p, Roe_m
+
+    @staticmethod
+    def _harten_correction_NUMPY(R_p, R_m, L_p, L_m, Roe_p, Roe_m):
+
         # Theta parameters for determining where to apply the correction
         theta_p = 2 * (R_p - L_p)
         theta_m = 2 * (R_m - L_m)
@@ -99,6 +109,38 @@ class FluxFunction:
 
         return Roe_p, Roe_m
 
+
     @abstractmethod
     def compute_flux(self, UL, UR):
         pass
+
+
+@nb.njit(cache=True)
+def _harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m):
+    """
+    Performs the harten correction on a given array of Roe wavespeeds, using the given theta indicator computed using
+    Left and Right wavespeeds. The correction is applied in place due to the mutability of numpy arrays.
+
+    Parameters:
+        - Roe (np.ndarray): Numpy array holding the Roe wavespeeds which need to be corrected.
+        - theta (np.ndarray): Numpy array holding the theta indicator used for determining if a correction is needed
+    """
+
+    # Get the shape of the array for correction
+    n = Roe_p.shape[0]
+    m = Roe_p.shape[1]
+
+    # Loop through array
+    for i in range(n):
+        for j in range(m):
+            # Save plus and minus thetas
+            _tp = 2 * (R_p[i, j] - L_p[i, j])
+            _tm = 2 * (R_m[i, j] - L_m[i, j])
+            # Correct for zero or below zero values
+            _tp = 1e-8 if _tp <= 0 else _tp
+            _tm = 1e-8 if _tm <= 0 else _tm
+            # Apply correction
+            if np.absolute(Roe_p[i, j]) < _tp:
+                Roe_p[i, j] = 0.5 * ((Roe_p[i, j] ** 2) / _tp + _tp)
+            if np.absolute(Roe_m[i, j]) < _tm:
+                Roe_m[i, j] = 0.5 * ((Roe_m[i, j] ** 2) / _tm + _tm)

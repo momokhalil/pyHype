@@ -59,6 +59,12 @@ class GhostBlock:
             self.set_BC = self.set_BC_reflection
         elif self.BCtype == 'Slipwall':
             self.set_BC = self.set_BC_slipwall
+        elif self.BCtype == 'InletSupersonic':
+            self.set_BC = self.set_BC_inlet_supersonic
+        elif self.BCtype == 'InletSubsonic':
+            self.set_BC = self.set_BC_inlet_subsonic
+        else:
+            raise ValueError('Boundary Condition type ' + str(self.BCtype) + ' has not been specialized.')
 
     def __getitem__(self, index):
         return self.state.U[index]
@@ -133,6 +139,14 @@ class GhostBlock:
 
     @abstractmethod
     def set_BC_slipwall(self):
+        pass
+
+    @abstractmethod
+    def set_BC_inlet_supersonic(self):
+        pass
+
+    @abstractmethod
+    def set_BC_inlet_subsonic(self):
         pass
 
 
@@ -210,6 +224,12 @@ class GhostBlockEast(GhostBlock):
         # Update state
         self.state.update(state)
 
+    def set_BC_inlet_supersonic(self):
+        pass
+
+    def set_BC_inlet_subsonic(self):
+        pass
+
 
 class GhostBlockWest(GhostBlock):
     def __init__(self,
@@ -279,6 +299,32 @@ class GhostBlockWest(GhostBlock):
         # Reflect normal velocity
         state[:, :, 1] = 0
         # Update state
+        self.state.update(state)
+
+    def set_BC_inlet_supersonic(self):
+        state = np.zeros_like(self.refBLK.get_west_ghost())
+        rho = 1
+        u = 2.0
+        v = 0
+        p = 1 / self.inputs.gamma
+        state[:, :, 0] = rho
+        state[:, :, 1] = rho * u
+        state[:, :, 2] = rho * v
+        state[:, :, 3] = p / (self.inputs.gamma - 1) + 0.5 * (u ** 2 + v ** 2) * rho
+
+        self.state.update(state)
+
+    def set_BC_inlet_subsonic(self):
+        state = np.zeros_like(self.refBLK.get_west_ghost())
+        rho = 1
+        u = 0.5
+        v = 0
+        p = 1 / self.inputs.gamma
+        state[:, :, 0] = rho
+        state[:, :, 1] = rho * u
+        state[:, :, 2] = rho * v
+        state[:, :, 3] = p / (self.inputs.gamma - 1) + 0.5 * (u ** 2 + v ** 2) * rho
+
         self.state.update(state)
 
 
@@ -352,6 +398,12 @@ class GhostBlockNorth(GhostBlock):
         # Update state
         self.state.update(state)
 
+    def set_BC_inlet_supersonic(self):
+        pass
+
+    def set_BC_inlet_subsonic(self):
+        pass
+
 
 class GhostBlockSouth(GhostBlock):
     def __init__(self,
@@ -420,3 +472,9 @@ class GhostBlockSouth(GhostBlock):
         state[:, :, 2] = 0
         # Update state
         self.state.update(state)
+
+    def set_BC_inlet_supersonic(self):
+        pass
+
+    def set_BC_inlet_subsonic(self):
+        pass

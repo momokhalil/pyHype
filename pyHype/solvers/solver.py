@@ -28,6 +28,7 @@ from pyHype import execution_prints
 from pyHype.blocks.base import Blocks
 from pyHype.mesh import meshes
 from pyHype.mesh.base import BlockDescription
+import pyHype.solvers.initial_conditions.initial_conditions as ic
 
 from typing import TYPE_CHECKING
 from typing import Iterable
@@ -40,9 +41,20 @@ np.set_printoptions(threshold=sys.maxsize)
 
 __REQUIRED__ = ['problem_type', 'realplot', 't_final', 'CFL',
                 'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'nghost', 'mesh_name', 'profile',
-                'interface_interpolation', 'reconstruction_type']
+                'interface_interpolation', 'reconstruction_type', 'write_solution']
 
-__OPTIONAL__ = ['alpha', 'write_time', 'upwind_mode']
+__OPTIONAL__ = ['alpha', 'write_time', 'upwind_mode', 'write_every_n_timesteps', 'write_solution_mode',
+                'write_solution_name']
+
+_DEFINED_IC_ = ['explosion',
+                'implosion',
+                'shockbox',
+                'supersonic_flood',
+                'supersonic_rest',
+                'subsonic_flood',
+                'subsonic_rest',
+                'explosion_trapezoid'
+                ]
 
 
 class ProblemInput:
@@ -74,13 +86,13 @@ class ProblemInput:
         for req_name in __REQUIRED__:
             self.__setattr__(req_name, settings[req_name])
 
-        self.n = settings['nx'] * settings['ny']
-        self.mesh_inputs = mesh_inputs
-
         # OPTIONAL
         for opt_name in __OPTIONAL__:
             if opt_name in settings.keys():
                 self.__setattr__(opt_name, settings[opt_name])
+
+        self.n = settings['nx'] * settings['ny']
+        self.mesh_inputs = mesh_inputs
 
     @staticmethod
     def _check_input_settings(input_dict: dict) -> None:
@@ -151,7 +163,7 @@ class Euler2D:
         # Profiler results
         self.profile_data = None
         # Real-time plot
-        self.realplot = None
+        self.realfig, self.realplot = None, None
         # Plot
         self.plot = None
 
@@ -161,171 +173,32 @@ class Euler2D:
 
     def set_IC(self):
 
-        problem_type = self.inputs.problem_type
-        g = self.inputs.gamma
-        ny = self.inputs.ny
-        nx = self.inputs.nx
+        if self.inputs.problem_type not in _DEFINED_IC_:
+            raise ValueError('Initial condition of type ' + str(self.inputs.problem_type) + ' has not been specialized.'
+                             ' Please make sure it is defined in ./initial_conditions/initial_conditions.py and added'
+                             'to the list of defined ICs in _DEFINED_IC_ on top of this file.')
+        else:
 
-        print('    Initial condition type: ', problem_type)
+            problem_type = self.inputs.problem_type
 
-        if problem_type == 'shockbox':
+            print('    Initial condition type: ', problem_type)
 
-            # High pressure zone
-            rhoL = 4.6968
-            pL = 404400.0
-            uL = 0.0
-            vL = 0.0
-            eL = pL / (g - 1)
-
-            # Low pressure zone
-            rhoR = 1.1742
-            pR = 101100.0
-            uR = 0.0
-            vR = 0.0
-            eR = pR / (g - 1)
-
-            # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
-
-            # Fill state vector in each block
-            for block in self.blocks:
-                for i in range(ny):
-                    for j in range(nx):
-                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
-                            block.state.U[i, j, :] = QR
-                        elif block.mesh.x[i, j] > 5 and block.mesh.y[i, j] > 5:
-                            block.state.U[i, j, :] = QR
-                        else:
-                            block.state.U[i, j, :] = QL
-                block.state.non_dim()
-
-        elif problem_type == 'one_step_shock':
-
-            # High pressure zone
-            rhoL = 1.1742
-            pL = 101100.0
-            uL = 150.0
-            vL = 0.0
-            eL = pL / (g - 1)
-
-            # Low pressure zone
-            rhoR = 1.1742
-            pR = 101100.0
-            uR = 150.0
-            vR = 0.0
-            eR = pR / (g - 1)
-
-            # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL])
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR])
-
-            # Fill state vector in each block
-            for block in self.blocks:
-                for i in range(ny):
-                    for j in range(nx):
-                        if block.mesh.x[i, j] <= 1:
-                            block.state.U[i, j, :] = QL
-                        else:
-                            block.state.U[i, j, :] = QR
-                block.state.set_vars_from_state()
-                block.state.non_dim()
-
-        elif problem_type == 'implosion':
-
-            # High pressure zone
-            rhoL = 4.6968
-            pL = 404400.0
-            uL = 0.00
-            vL = 0.0
-            eL = pL / (g - 1)
-
-            # Low pressure zone
-            rhoR = 1.1742
-            pR = 101100.0
-            uR = 0.00
-            vR = 0.0
-            eR = pR / (g - 1)
-
-            # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
-
-            # Fill state vector in each block
-            for block in self.blocks:
-                for i in range(ny):
-                    for j in range(nx):
-                        if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
-                            block.state.U[i, j, :] = QR
-                        else:
-                            block.state.U[i, j, :] = QL
-                block.state.set_vars_from_state()
-                block.state.non_dim()
-
-        elif problem_type == 'explosion':
-
-            # High pressure zone
-            rhoL = 4.6968
-            pL = 404400.0
-            uL = 0.0
-            vL = 0.0
-            eL = pL / (g - 1) + rhoL * (uL**2 + vL**2) / 2
-
-            # Low pressure zone
-            rhoR = 1.1742
-            pR = 101100.0
-            uR = 0.00
-            vR = 0.0
-            eR = pR / (g - 1) + rhoR * (uR**2 + vR**2) / 2
-
-            # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL])
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR])
-
-            # Fill state vector in each block
-            for block in self.blocks:
-                for i in range(ny):
-                    for j in range(nx):
-                        if 3 <= block.mesh.x[i, j] <= 7 and 3 <= block.mesh.y[i, j] <= 7:
-                            block.state.U[i, j, :] = QL
-                        else:
-                            block.state.U[i, j, :] = QR
-                block.state.set_vars_from_state()
-                block.state.non_dim()
-
-        elif problem_type == 'explosion_trapezoid':
-
-            # High pressure zone
-            rhoL = 4.6968
-            pL = 404400.0
-            uL = 0.0
-            vL = 0.0
-            eL = pL / (g - 1) + rhoL * (uL**2 + vL**2) / 2
-
-            # Low pressure zone
-            rhoR = 1.1742
-            pR = 101100.0
-            uR = 0.00
-            vR = 0.0
-            eR = pR / (g - 1) + rhoR * (uR**2 + vR**2) / 2
-
-            # Create state vectors
-            QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL])
-            QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR])
-
-            # Fill state vector in each block
-            for block in self.blocks:
-                for i in range(ny):
-                    for j in range(nx):
-                        if (-0.8 <= block.mesh.x[i, j] <= -0.2 and -0.8 <= block.mesh.y[i, j] <= -0.2) or \
-                           (0.2 <= block.mesh.x[i, j] <= 0.8 and 0.2 <= block.mesh.y[i, j] <= 0.8) or \
-                           (-0.8 <= block.mesh.x[i, j] <= -0.2 and 0.2 <= block.mesh.y[i, j] <= 0.8) or \
-                           (0.2 <= block.mesh.x[i, j] <= 0.8 and -0.8 <= block.mesh.y[i, j] <= -0.2):
-                            block.state.U[i, j, :] = QL
-                        else:
-                            block.state.U[i, j, :] = QR
-                block.state.set_vars_from_state()
-                block.state.non_dim()
+            if problem_type == 'implosion':
+                _set_IC = ic.implosion(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'explosion':
+                _set_IC = ic.explosion(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'shockbox':
+                _set_IC = ic.shockbox(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'supersonic_flood':
+                _set_IC = ic.supersonic_flood(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'supersonic_rest':
+                _set_IC = ic.supersonic_rest(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'subsonic_flood':
+                _set_IC = ic.subsonic_flood(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'subsonic_rest':
+                _set_IC = ic.subsonic_rest(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'explosion_trapezoid':
+                _set_IC = ic.explosion_trapezoid(self.blocks, g=self.inputs.gamma)
 
     def set_BC(self):
         self._blocks.set_BC()
@@ -358,15 +231,41 @@ class Euler2D:
         print('Setting Boundary Conditions')
         self.set_BC()
 
+        """fig, ax = plt.subplots(1)
+        for block in self.blocks:
+            block.plot(ax=ax)
+        plt.show(block=True)"""
+
         if self.inputs.realplot:
             plt.ion()
-            self.realplot = plt.axes()
-            w = max(self.inputs.mesh_inputs[1].SE[0] - self.inputs.mesh_inputs[1].SW[0],
-                    self.inputs.mesh_inputs[1].NE[0] - self.inputs.mesh_inputs[1].NW[0])
-            l = max(self.inputs.mesh_inputs[1].SE[1] - self.inputs.mesh_inputs[1].NE[1],
-                    self.inputs.mesh_inputs[1].NW[1] - self.inputs.mesh_inputs[1].SW[1])
-            a = l/w
-            pl = 10
+            self.realfig, self.realplot = plt.subplots(1)
+
+            blks = [blk for blk in self.inputs.mesh_inputs.values()]
+
+            sw_x = min([blk.SW[0] for blk in blks])
+            nw_x = min([blk.NW[0] for blk in blks])
+
+            se_x = max([blk.SE[0] for blk in blks])
+            ne_x = max([blk.NE[0] for blk in blks])
+
+            sw_y = min([blk.SW[1] for blk in blks])
+            se_y = min([blk.SE[1] for blk in blks])
+
+            nw_y = max([blk.NW[1] for blk in blks])
+            ne_y = max([blk.NE[1] for blk in blks])
+
+            ymax = max(nw_y, ne_y)
+            ymin = min(sw_y, se_y)
+
+            xmax = max(se_x, ne_x)
+            xmin = min(sw_x, nw_x)
+
+            W = xmax - xmin
+            L = ymax - ymin
+
+            a = L/W
+            pl = 5
+
             self.realplot.figure.set_size_inches(pl/a, pl)
 
         if self.inputs.profile:
@@ -376,38 +275,55 @@ class Euler2D:
         else:
             profiler = None
 
+        for block in self.blocks:
+            self.write_output_nodes('./mesh_blk_x_' + str(block.global_nBLK), block.mesh.x)
+            self.write_output_nodes('./mesh_blk_y_' + str(block.global_nBLK), block.mesh.y)
+
+
         print('Start simulation')
         while self.t < self.t_final:
 
-            print(self.t)
+            print(self.t / self.inputs.a_inf)
 
             self.dt = self.get_dt()
-            self.numTimeStep += 1
 
             # print('update block')
             self._blocks.update(self.dt)
 
             ############################################################################################################
             # THIS IS FOR DEBUGGING PURPOSES ONLY
-            if self.inputs.realplot:
-                if self.numTimeStep % 1 == 0:
+            if self.inputs.write_solution:
+                if self.inputs.write_solution_mode == 'every_n_timesteps':
+                    if self.numTimeStep % self.inputs.write_every_n_timesteps == 0:
+                        for block in self.blocks:
+                            self.write_output_nodes('./' + self.inputs.write_solution_name
+                                                         + '_' + str(self.numTimeStep)
+                                                         + '_blk_' + str(block.global_nBLK),
+                                                    block.state.U)
 
-                    max_ = max([np.max(block.state.rho) for block in self.blocks])
-                    min_ = min([np.min(block.state.rho) for block in self.blocks])
+            if self.inputs.realplot:
+                if self.numTimeStep % 10 == 0:
+                    _v = [block.state.Ma() for block in self.blocks]
+                    max_ = max([np.max(v) for v in _v])
+                    min_ = min([np.min(v) for v in _v])
 
                     for block in self.blocks:
-                        """U = block.get_nodal_solution(interpolation='cell_average',
-                                                     formulation='conservative')"""
                         self.realplot.contourf(block.mesh.x[:, :, 0],
                                                block.mesh.y[:, :, 0],
-                                               block.state.rho,
-                                               20, cmap='magma', vmax=max_, vmin=min_)
+                                               block.state.Ma(),
+                                               30,
+                                               cmap='magma_r',
+                                               vmax=max_,
+                                               vmin=min_)
+
+                    self.realplot.set_aspect('equal')
                     plt.show()
                     plt.pause(0.001)
             ############################################################################################################
 
             # Increment simulation time
             self.increment_time()
+            self.numTimeStep += 1
 
         if self.inputs.profile:
             profiler.disable()

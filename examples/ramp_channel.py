@@ -6,17 +6,17 @@ settings = {'problem_type':             'supersonic_flood',
             'reconstruction_type':      'conservative',
             'upwind_mode':              'primitive',
             'CFL':                      0.4,
-            't_final':                  5.0,
+            't_final':                  10.0,
             'realplot':                 True,
             'profile':                  False,
             'gamma':                    1.4,
             'rho_inf':                  1.0,
             'a_inf':                    1.0,
             'R':                        287.0,
-            'nx':                       100,
+            'nx':                       50,
             'ny':                       50,
             'nghost':                   1,
-            'mesh_name':                'ramp_two_block'}
+            'mesh_name':                'ramp_channel'}
 
 # Create solver
 exp = solver.Euler2D(fvm='SecondOrderPWL',

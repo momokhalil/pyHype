@@ -58,36 +58,65 @@ class XDIR_EIGENSYSTEM_VECTORS:
 class XDIR_EIGENSYSTEM_INDICES:
     def __init__(self, nx):
 
-        A_d0_i = np.arange(0, 4 * (nx + 1), 1)
-        A_d0_i = np.delete(A_d0_i, slice(0, None, 4))
-        A_d0_j = A_d0_i
-        A_d0_m1_i = A_d0_i
-        A_d0_m1_j = A_d0_j - 1
-        A_d0_m2_i = A_d0_i
-        A_d0_m2_i = np.delete(A_d0_m2_i, slice(0, None, 3))
-        A_d0_m2_j = A_d0_m2_i - 2
-        A_d0_m3_i = np.arange(3, 4 * (nx + 1), 4)
-        A_d0_m3_j = A_d0_m3_i - 3
-        A_d0_p1_i = A_d0_m2_j
-        A_d0_p1_j = A_d0_m2_i - 1
-        A_d0_p2_i = np.arange(1, 4 * (nx + 1), 4)
-        A_d0_p2_j = np.arange(3, 4 * (nx + 1), 4)
+        # Flux Jacobian indices
+        A_d0_i = self.get_indices(nx, [1, 2, 3])
+        A_d0_j = self.get_indices(nx, [1, 2, 3])
+        A_d0_m1_i = self.get_indices(nx, [1, 2, 3])
+        A_d0_m1_j = self.get_indices(nx, [0, 1, 2])
+        A_d0_m2_i = self.get_indices(nx, [2, 3])
+        A_d0_m2_j = self.get_indices(nx, [0, 1])
+        A_d0_m3_i = self.get_indices(nx, [3])
+        A_d0_m3_j = self.get_indices(nx, [0])
+        A_d0_p1_i = self.get_indices(nx, [0, 1])
+        A_d0_p1_j = self.get_indices(nx, [1, 2])
+        A_d0_p2_i = self.get_indices(nx, [1])
+        A_d0_p2_j = self.get_indices(nx, [3])
 
-        Rc_d0_i = np.arange(0, 4 * (nx + 1), 1)
-        Rc_d0_j = Rc_d0_i
-        Rc_d0_m1_i = A_d0_m1_i
-        Rc_d0_m1_j = A_d0_m1_j
-        Rc_d0_m2_i = A_d0_m2_i
-        Rc_d0_m2_j = A_d0_m2_j
-        Rc_d0_m3_i = A_d0_m3_i
-        Rc_d0_m3_j = A_d0_m3_j
-        Rc_d0_p1_i = Rc_d0_i
-        Rc_d0_p1_i = np.delete(Rc_d0_p1_i, slice(3, None, 4))
-        Rc_d0_p1_j = Rc_d0_p1_i + 1
-        Rc_d0_p2_i = np.arange(0, 4 * (nx + 1), 4)
-        Rc_d0_p2_j = np.arange(2, 4 * (nx + 1), 4)
+        self.Ai = np.hstack((A_d0_m3_i, A_d0_m2_i, A_d0_m1_i,
+                             A_d0_i,
+                             A_d0_p1_i, A_d0_p2_i))
+        self.Aj = np.hstack((A_d0_m3_j, A_d0_m2_j, A_d0_m1_j,
+                             A_d0_j,
+                             A_d0_p1_j, A_d0_p2_j))
 
-        Lc_d0_i = np.arange(0, 4 * (nx + 1), 1)
+        # Right Eigenvector conservative formulation indices
+        Rc_d0_i = self.get_indices(nx, [0, 1, 2, 3])
+        Rc_d0_j = self.get_indices(nx, [0, 1, 2, 3])
+        Rc_d0_m1_i = self.get_indices(nx, [1, 2, 3])
+        Rc_d0_m1_j = self.get_indices(nx, [0, 1, 2])
+        Rc_d0_m2_i = self.get_indices(nx, [2, 3])
+        Rc_d0_m2_j = self.get_indices(nx, [0, 1])
+        Rc_d0_m3_i = self.get_indices(nx, [3])
+        Rc_d0_m3_j = self.get_indices(nx, [0])
+        Rc_d0_p1_i = self.get_indices(nx, [0, 1, 2])
+        Rc_d0_p1_j = self.get_indices(nx, [1, 2, 3])
+        Rc_d0_p2_i = self.get_indices(nx, [0])
+        Rc_d0_p2_j = self.get_indices(nx, [2])
+
+        self.Rci = np.hstack((Rc_d0_m3_i, Rc_d0_m2_i, Rc_d0_m1_i,
+                              Rc_d0_i,
+                              Rc_d0_p1_i, Rc_d0_p2_i))
+        self.Rcj = np.hstack((Rc_d0_m3_j, Rc_d0_m2_j, Rc_d0_m1_j,
+                              Rc_d0_j,
+                              Rc_d0_p1_j, Rc_d0_p2_j))
+
+        # Left Eigenvector conservative formulation indices
+        Lc_d0_i = self.get_indices(nx, [0, 1, 2])
+        Lc_d0_j = self.get_indices(nx, [0, 1, 2])
+        Lc_d0_m1_i = self.get_indices(nx, [1, 2, 3])
+        Lc_d0_m1_j = self.get_indices(nx, [0, 1, 2])
+        Lc_d0_m2_i = self.get_indices(nx, [2])
+        Lc_d0_m2_j = self.get_indices(nx, [0])
+        Lc_d0_m3_i = self.get_indices(nx, [3])
+        Lc_d0_m3_j = self.get_indices(nx, [0])
+        Lc_d0_p1_i = self.get_indices(nx, [0, 1, 2])
+        Lc_d0_p1_j = self.get_indices(nx, [1, 2, 3])
+        Lc_d0_p2_i = self.get_indices(nx, [0, 1])
+        Lc_d0_p2_j = self.get_indices(nx, [2, 3])
+        Lc_d0_p3_i = self.get_indices(nx, [0])
+        Lc_d0_p3_j = self.get_indices(nx, [3])
+
+        """Lc_d0_i = np.arange(0, 4 * (nx + 1), 1)
         Lc_d0_i = np.delete(Lc_d0_i, slice(3, None, 4))
         Lc_d0_j = Lc_d0_i
         Lc_d0_m1_i = A_d0_m1_i
@@ -101,28 +130,39 @@ class XDIR_EIGENSYSTEM_INDICES:
         Lc_d0_p2_i = A_d0_m2_j
         Lc_d0_p2_j = A_d0_m2_i
         Lc_d0_p3_i = A_d0_m3_j
-        Lc_d0_p3_j = A_d0_m3_i
+        Lc_d0_p3_j = A_d0_m3_i"""
 
-        Lp_d0_m1_i = np.delete(np.arange(1, 4 * (nx + 1), 1), slice(3, None, 4))
-        Lp_d0_m1_j = Lp_d0_m1_i - 1
-        Lp_d0_p1_i = np.delete(np.arange(0, 4 * (nx + 1), 1), slice(3, None, 4))
-        Lp_d0_p1_i = np.delete(Lp_d0_p1_i, slice(1, None, 3))
-        Lp_d0_p1_j = Lp_d0_p1_i + 1
-        Lp_d0_p2_i = np.arange(1, 4 * (nx + 1), 4)
-        Lp_d0_p2_j = Lp_d0_p2_i + 2
-        Lp_d0_p3_i = np.arange(0, 4 * (nx + 1), 4)
-        Lp_d0_p3_j = np.arange(3, 4 * (nx + 1), 4)
+        self.Lci = np.hstack((Lc_d0_m3_i, Lc_d0_m2_i, Lc_d0_m1_i,
+                              Lc_d0_i,
+                              Lc_d0_p1_i, Lc_d0_p2_i, Lc_d0_p3_i))
+        self.Lcj = np.hstack((Lc_d0_m3_j, Lc_d0_m2_j, Lc_d0_m1_j,
+                              Lc_d0_j,
+                              Lc_d0_p1_j, Lc_d0_p2_j, Lc_d0_p3_j))
 
+        # Left Eigenvector primitive formulation indices
+        Lp_d0_m1_i = self.get_indices(nx, [1, 2, 3])
+        Lp_d0_m1_j = self.get_indices(nx, [0, 1, 2])
+        Lp_d0_p1_i = self.get_indices(nx, [0, 2])
+        Lp_d0_p1_j = self.get_indices(nx, [1, 3])
+        Lp_d0_p2_i = self.get_indices(nx, [1])
+        Lp_d0_p2_j = self.get_indices(nx, [3])
+        Lp_d0_p3_i = self.get_indices(nx, [0])
+        Lp_d0_p3_j = self.get_indices(nx, [3])
+
+        self.Lpi = np.hstack((Lp_d0_m1_i,
+                              Lp_d0_p1_i, Lp_d0_p2_i, Lp_d0_p3_i))
+        self.Lpj = np.hstack((Lp_d0_m1_j,
+                              Lp_d0_p1_j, Lp_d0_p2_j, Lp_d0_p3_j))
+
+        # Eigenvalues indices
         L_d_i = np.arange(0, 4 * (nx + 1), 1)
         L_d_j = np.arange(0, 4 * (nx + 1), 1)
 
-        self.Ai = np.hstack((A_d0_m3_i, A_d0_m2_i, A_d0_m1_i, A_d0_i, A_d0_p1_i, A_d0_p2_i))
-        self.Aj = np.hstack((A_d0_m3_j, A_d0_m2_j, A_d0_m1_j, A_d0_j, A_d0_p1_j, A_d0_p2_j))
-        self.Rci = np.hstack((Rc_d0_m3_i, Rc_d0_m2_i, Rc_d0_m1_i, Rc_d0_i, Rc_d0_p1_i, Rc_d0_p2_i))
-        self.Rcj = np.hstack((Rc_d0_m3_j, Rc_d0_m2_j, Rc_d0_m1_j, Rc_d0_j, Rc_d0_p1_j, Rc_d0_p2_j))
-        self.Lci = np.hstack((Lc_d0_m3_i, Lc_d0_m2_i, Lc_d0_m1_i, Lc_d0_i, Lc_d0_p1_i, Lc_d0_p2_i, Lc_d0_p3_i))
-        self.Lcj = np.hstack((Lc_d0_m3_j, Lc_d0_m2_j, Lc_d0_m1_j, Lc_d0_j, Lc_d0_p1_j, Lc_d0_p2_j, Lc_d0_p3_j))
-        self.Lpi = np.hstack((Lp_d0_m1_i, Lp_d0_p1_i, Lp_d0_p2_i, Lp_d0_p3_i))
-        self.Lpj = np.hstack((Lp_d0_m1_j, Lp_d0_p1_j, Lp_d0_p2_j, Lp_d0_p3_j))
         self.Li = L_d_i
         self.Lj = L_d_j
+
+
+    @staticmethod
+    def get_indices(size: int, num: list):
+
+        return np.concatenate([np.arange(n, 4 * (size + 1), 4, dtype=np.int) for n in num])

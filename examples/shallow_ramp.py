@@ -13,10 +13,10 @@ settings = {'problem_type':             'supersonic_flood',
             'rho_inf':                  1.0,
             'a_inf':                    1.0,
             'R':                        287.0,
-            'nx':                       100,
+            'nx':                       50,
             'ny':                       50,
             'nghost':                   1,
-            'mesh_name':                'ramp_two_block'}
+            'mesh_name':                'shallow_ramp_two_block'}
 
 # Create solver
 exp = solver.Euler2D(fvm='SecondOrderPWL',

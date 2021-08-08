@@ -364,10 +364,11 @@ class MUSCLFiniteVolumeMethod:
         _south_ghost = refBLK.ghost.S.row_copy(-1)
 
         # Rotate to allign with cell faces
-        utils.rotate(refBLK.mesh.get_east_face_angle(), _east_ghost)
-        utils.rotate(refBLK.mesh.get_west_face_angle(), _west_ghost)
-        utils.rotate(refBLK.mesh.faceE.theta, stateE)
-        utils.rotate(refBLK.mesh.faceW.theta - np.pi, stateW)
+        if not refBLK.is_cartesian:
+            utils.rotate(refBLK.mesh.get_east_face_angle(), _east_ghost)
+            utils.rotate(refBLK.mesh.get_west_face_angle(), _west_ghost)
+            utils.rotate(refBLK.mesh.faceE.theta, stateE)
+            utils.rotate(refBLK.mesh.faceW.theta - np.pi, stateW)
 
         # Iterate over all rows in block
         for row in range(self.ny):
@@ -391,8 +392,9 @@ class MUSCLFiniteVolumeMethod:
             self.Flux_W[row, :, :] = flux_EW[:, :-1, :]
 
         # Rotate flux back to local frame
-        utils.unrotate(refBLK.mesh.faceE.theta, self.Flux_E)
-        utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux_W)
+        if not refBLK.is_cartesian:
+            utils.unrotate(refBLK.mesh.faceE.theta, self.Flux_E)
+            utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux_W)
 
         # --------------------------------------------------------------------------------------------------------------
         # Calculate y-direction Flux

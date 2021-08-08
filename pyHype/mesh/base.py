@@ -19,7 +19,9 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numpy as np
 from typing import Union
 import matplotlib.pyplot as plt
+import pyHype.mesh.airfoil as airfoil
 from matplotlib.collections import LineCollection
+from matplotlib.pyplot import axes
 
 
 class BlockDescription:
@@ -213,6 +215,38 @@ class Mesh:
         self.dx = self.faceE.xmid - self.faceW.xmid
         self.dy = self.faceN.ymid - self.faceS.ymid
 
+
+    def _get_interior_mesh_transfinite(self,
+                                       x: np.ndarray,
+                                       y: np.ndarray):
+
+        _im = np.linspace(1 / self.ny, (self.ny - 1) / self.ny, self.ny - 2)
+        _jm = np.linspace(1 / self.nx, (self.nx - 1) / self.nx, self.nx - 2)
+
+        jm, im = np.meshgrid(_jm, _im)
+
+        _mi = np.linspace((self.ny - 1) / self.ny, 1 / self.ny, self.ny - 2)
+        _mj = np.linspace((self.nx - 1) / self.nx, 1 / self.nx, self.nx - 2)
+
+        mj, mi = np.meshgrid(_mj, _mi)
+
+        x[1:-1, 1:-1] = self.__get_kernel_transfinite(x, im, jm, mi, mj)
+        x[1:-1, 1:-1] = self.__get_kernel_transfinite(y, im, jm, mi, mj)
+
+        return x, y
+
+    @staticmethod
+    def __get_kernel_transfinite(x: np.ndarray,
+                                 im: np.ndarray,
+                                 jm: np.ndarray,
+                                 mi: np.ndarray,
+                                 mj: np.ndarray,
+                                 ):
+
+        return mi * x[0, 1:-1] + im * x[-1, 1:-1]               \
+             + mj * x[1:-1, 0, None] + jm * x[1:-1, -1, None]   \
+             - mi * mj * x[0, 0] - mi * jm * x[0, -1]           \
+             - im * mj * x[-1, 0]  - im * jm * x[-1, -1]
 
     def get_east_face_norm(self) -> [np.ndarray]:
 
@@ -455,23 +489,42 @@ class Mesh:
 
     # Plotting
 
-    def plot(self):
+    def plot(self, ax: plt.axes = None):
 
-        plt.scatter(self.nodes.x, self.nodes.y, color='black', s=15)
-        plt.scatter(self.x, self.y, color='mediumslateblue', s=15)
+        if ax is not None:
+            ax.scatter(self.nodes.x, self.nodes.y, color='black', s=15)
+            ax.scatter(self.x, self.y, color='mediumslateblue', s=15)
 
-        segs1 = np.stack((self.nodes.x, self.nodes.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
-        plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
-        plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
+            segs1 = np.stack((self.nodes.x, self.nodes.y), axis=2)
 
-        segs1 = np.stack((self.x, self.y), axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
+            segs2 = segs1.transpose((1, 0, 2))
+            plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
+            plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
 
-        plt.gca().add_collection(
-            LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
-        plt.gca().add_collection(
-            LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+            segs1 = np.stack((self.x, self.y), axis=2)
+            segs2 = segs1.transpose((1, 0, 2))
+
+            plt.gca().add_collection(
+                LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+            plt.gca().add_collection(
+                LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+
+        else:
+            plt.scatter(self.nodes.x, self.nodes.y, color='black', s=15)
+            plt.scatter(self.x, self.y, color='mediumslateblue', s=15)
+
+            segs1 = np.stack((self.nodes.x, self.nodes.y), axis=2)
+            segs2 = segs1.transpose((1, 0, 2))
+            plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
+            plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
+
+            segs1 = np.stack((self.x, self.y), axis=2)
+            segs2 = segs1.transpose((1, 0, 2))
+
+            plt.gca().add_collection(
+                LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+            plt.gca().add_collection(
+                LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
 
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
