@@ -208,17 +208,6 @@ class ROE_FLUX_X(FluxFunction):
         gtv = self.gt * Wroe.v
         ghv = self.gh * Wroe.v
 
-        #self.Lc_m1[0::3] = (a2 - ghek) / a2
-        #self.Lc_m1[1::3] = (gtu + a) / ta2
-        #self.Lc_d0[0::3] = (ghek + ua) / ta2
-        #self.Lc_d0[1::3] = self.gh * Wroe.u / a2
-        #self.Lc_d0[2::3] = gtv / ta2
-        #self.Lc_p1[0::3] = (gtu - a) / ta2
-        #self.Lc_p1[1::3] = ghv / a2
-        #self.Lc_p1[2::3] = self.gh / ta2
-        #self.Lc_p2[0::2] = gtv / ta2
-        #self.Lc_p2[1::2] = self.gt / a2
-
         _sz = self.size + 1
 
         self.Lc.data[0  * _sz:1  * _sz] = -Wroe.v
