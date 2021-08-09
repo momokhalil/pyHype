@@ -19,16 +19,12 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import sys
-import pstats
-import cProfile
 import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
 from pyHype import execution_prints
-from pyHype.blocks.base import Blocks
 from pyHype.mesh import meshes
 from pyHype.mesh.base import BlockDescription
-import pyHype.solvers.initial_conditions.initial_conditions as ic
 
 from abc import abstractmethod
 

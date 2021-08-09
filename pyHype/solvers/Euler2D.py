@@ -50,6 +50,18 @@ class Euler2D(Solver):
         # Create Blocks
         self._blocks = Blocks(self.inputs)
 
+    def __str__(self):
+        __str = '\tA Solver of type Euler2D for solving the 2D Euler\n ' \
+                '\tequations on structured grids using the Finite Volume Method.\n\n' \
+                '\tSolver Details:\n' + \
+                '\t--------------\n' + \
+                '\t' + f"{'Finite Volume Method: ':<35} {self.inputs.fvm}" + '\n' + \
+                '\t' + f"{'Gradient Method: ':<35} {self.inputs.gradient}" + '\n' + \
+                '\t' + f"{'Flux Function: ':<35} {self.inputs.flux_function}" + '\n' + \
+                '\t' + f"{'Limiter: ':<35} {self.inputs.limiter}" + '\n' + \
+                '\t' + f"{'Time Integrator: ':<35} {self.inputs.integrator}" + '\n'
+        return __str
+
 
     def set_IC(self):
 
@@ -84,12 +96,15 @@ class Euler2D(Solver):
         self._blocks.set_BC()
 
     def solve(self):
-        print()
-        print('----------------------------------------------------------------------------------------')
-        print('Problem Details:')
-        print()
+        print('\nProblem Details: \n'
+              '--------------\n')
         for k, v in self._settings_dict.items():
             print('\t' + f"{(str(k) + ': '):<40} {str(v)}")
+
+        print('\nSolver Description:\n'
+              '--------------------\n')
+        print(str(self))
+
 
         print()
         print('Setting Initial Conditions')

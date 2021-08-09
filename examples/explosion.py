@@ -1,4 +1,4 @@
-from pyHype.solvers import solver
+from pyHype.solvers import Euler2D
 
 # Solver settings
 settings = {'problem_type':             'explosion',
@@ -23,12 +23,12 @@ settings = {'problem_type':             'explosion',
             'mesh_name':                'chamber'}
 
 # Create solver
-exp = solver.Euler2D(fvm='SecondOrderPWL',
-                     gradient='GreenGauss',
-                     flux_function='Roe',
-                     limiter='Venkatakrishnan',
-                     integrator='RK2',
-                     settings=settings)
+exp = Euler2D(fvm='SecondOrderPWL',
+              gradient='GreenGauss',
+              flux_function='Roe',
+              limiter='Venkatakrishnan',
+              integrator='RK2',
+              settings=settings)
 
 # Solve
 exp.solve()

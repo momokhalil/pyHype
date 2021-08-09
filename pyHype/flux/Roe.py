@@ -116,43 +116,47 @@ class ROE_FLUX_X(FluxFunction):
 
         Parameters:
             - Wroe (RoePrimitiveState): Roe primitive state object, contains the roe average state calculated using
-            - ghek (np.ndarray): gamma_hat * ek, where ek is the kinetic energy = 0.5 * (v^2 + u^2)
-            - H (np.ndarray): Total enthalpy
-            - uv (np.ndarray): u velocity * v velocity
-            - u2 (np.ndarray): u velocity squared
-            - ghv (np.ndarray): gamma_hat * v velocity
+            - Ek (np.ndarray): (Optional) Kinetic energy = 0.5 * (v^2 + u^2)
+            - H (np.ndarray): (Optional) Total enthalpy
+            - uv (np.ndarray): (Optional) u velocity * v velocity
+            - u2 (np.ndarray): (Optional) u velocity squared
+            - ghv (np.ndarray): (Optional) gamma_hat * v velocity
 
         Returns:
             - N.A
         """
 
-        if not ghv:
+        # Compute optional parameters if they are not passed.
+        if ghv is None:
             ghv = self.gh * Wroe.v
-
-        u2 = Wroe.u ** 2
-
-        if not uv:
+        if uv is None:
             uv = Wroe.u * Wroe.v
-
         if Ek is None:
-            ghek = self.gh * 0.5 * (Wroe.u ** 2 + Wroe.v ** 2)
-        else:
-            ghek = self.gh * Ek
-
+            Ek = 0.5 * (Wroe.u ** 2 + Wroe.v ** 2)
         if H is None:
             H = Wroe.H()
 
+        u2 = Wroe.u ** 2
+        ghek = self.gh * Ek
+
         _sz = self.size + 1
 
-        self.A.data[0 * _sz:1  * _sz] = Wroe.u * (ghek - H)
-        self.A.data[1 * _sz:2  * _sz] = -uv
-        self.A.data[2 * _sz:3 * _sz] = H - self.gh * u2
-        self.A.data[3 * _sz:4  * _sz] = ghek - u2
-        self.A.data[4 * _sz:5 * _sz] = Wroe.v
-        self.A.data[5 * _sz:6 * _sz] = -self.gh * uv
-        self.A.data[6 * _sz:7  * _sz] = self.gb * Wroe.u
-        self.A.data[7 * _sz:8 * _sz] = Wroe.u
-        self.A.data[8 * _sz:9 * _sz] = self.g * Wroe.u
+        # Fill the data attribute of the sparse matrix along each subdiagonal and the diagonal
+
+        # -3 subdiagonal entries
+        self.A.data[0  * _sz:1  * _sz] = Wroe.u * (ghek - H)
+        # -2 subdiagonal entries
+        self.A.data[1  * _sz:2  * _sz] = -uv
+        self.A.data[2  * _sz:3  * _sz] = H - self.gh * u2
+        # -1 subdiagonal entries
+        self.A.data[3  * _sz:4  * _sz] = ghek - u2
+        self.A.data[4  * _sz:5  * _sz] = Wroe.v
+        self.A.data[5  * _sz:6  * _sz] = -self.gh * uv
+        # diagonal entries
+        self.A.data[6  * _sz:7  * _sz] = self.gb * Wroe.u
+        self.A.data[7  * _sz:8  * _sz] = Wroe.u
+        self.A.data[8  * _sz:9  * _sz] = self.g * Wroe.u
+        # +1 subdiagonal entries
         self.A.data[10 * _sz:11 * _sz] = -ghv
 
 
@@ -168,22 +172,25 @@ class ROE_FLUX_X(FluxFunction):
 
         if ua is None:
             ua = Wroe.u * a
-
         if Ek is None:
             Ek = 0.5 * (Wroe.u ** 2 + Wroe.v ** 2)
 
         _sz = self.size + 1
 
+        # -3 subdiagonal entries
         self.Rc.data[0 * _sz:1 * _sz] = H - ua
+        # -2 subdiagonal entries
         self.Rc.data[1 * _sz:2 * _sz] = Wroe.v
         self.Rc.data[2 * _sz:3 * _sz] = Ek
+        # -1 subdiagonal entries
         self.Rc.data[3 * _sz:4 * _sz] = Lm
         self.Rc.data[4 * _sz:5 * _sz] = Wroe.v
         self.Rc.data[5 * _sz:6 * _sz] = H + ua
+        # diagonal entries
         self.Rc.data[7 * _sz:8 * _sz] = Wroe.u
         self.Rc.data[8 * _sz:9 * _sz] = Wroe.v
         self.Rc.data[9 * _sz:10 * _sz] = Wroe.v
-
+        # +1 subdiagonal entries
         self.Rc.data[11 * _sz:12 * _sz] = Lp
 
 
@@ -195,33 +202,37 @@ class ROE_FLUX_X(FluxFunction):
                    ) -> None:
 
         if Ek is None:
-            ghek = self.gh * 0.5 * (Wroe.u ** 2 + Wroe.v ** 2)
-        else:
-            ghek = self.gh * Ek
-
+            Ek = 0.5 * (Wroe.u ** 2 + Wroe.v ** 2)
         if ua is None:
             ua = Wroe.u * a
 
         a2 = a ** 2
         ta2 = a2 * 2
+        ghek = self.gh * Ek
         gtu = self.gt * Wroe.u
         gtv = self.gt * Wroe.v
-        ghv = self.gh * Wroe.v
 
         _sz = self.size + 1
 
+        # -3 subdiagonal entries
         self.Lc.data[0  * _sz:1  * _sz] = -Wroe.v
+        # -2 subdiagonal entries
         self.Lc.data[1  * _sz:2  * _sz] = (ghek - ua) / ta2
+        # -1 subdiagonal entries
         self.Lc.data[2  * _sz:3  * _sz] = (a2 - ghek) / a2
         self.Lc.data[3 * _sz:4 * _sz] = (gtu + a) / ta2
+        # diagonal entries
         self.Lc.data[5  * _sz:6  * _sz] = (ghek + ua) / ta2
         self.Lc.data[6 * _sz:7 * _sz] = self.gh * Wroe.u / a2
         self.Lc.data[7 * _sz:8 * _sz] = gtv / ta2
+        # +1 subdiagonal entries
         self.Lc.data[8  * _sz:9 * _sz] = (gtu - a) / ta2
-        self.Lc.data[9 * _sz:10 * _sz] = ghv / a2
+        self.Lc.data[9 * _sz:10 * _sz] = self.gh * Wroe.v / a2
         self.Lc.data[10 * _sz:11 * _sz] = self.gh / ta2
+        # +2 subdiagonal entries
         self.Lc.data[11 * _sz:12 * _sz] = gtv / ta2
         self.Lc.data[12 * _sz:13 * _sz] = self.gt / a2
+        # +3 subdiagonal entries
         self.Lc.data[13 * _sz:14 * _sz] = self.gh / ta2
 
 
@@ -233,8 +244,11 @@ class ROE_FLUX_X(FluxFunction):
         ap2 = Wroe.rho * a / 2
         _sz = self.size + 1
 
+        # -1 subdiagonal entries
         self.Lp.data[1 * _sz:2 * _sz] = ap2
+        # +1 subdiagonal entries
         self.Lp.data[3 * _sz:4 * _sz] = -ap2
+        # +2 subdiagonal entries
         self.Lp.data[5 * _sz:6 * _sz] = -1 / (a ** 2)
 
 
@@ -243,10 +257,12 @@ class ROE_FLUX_X(FluxFunction):
                             Lp: np.ndarray,
                             Lm: np.ndarray):
 
-        self.lam[0::4] = Lm
-        self.lam[1::4] = Wroe.u
-        self.lam[2::4] = Lp
-        self.lam[3::4] = Wroe.u
+        _sz = self.size + 1
+
+        self.lam[0  * _sz:1  * _sz] = Lm
+        self.lam[1  * _sz:2  * _sz] = Wroe.u
+        self.lam[2  * _sz:3  * _sz] = Lp
+        self.lam[3  * _sz:4  * _sz] = Wroe.u
 
         self.Lambda.data = self.lam
 
