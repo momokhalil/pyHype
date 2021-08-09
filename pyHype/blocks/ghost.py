@@ -20,16 +20,27 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
 from abc import abstractmethod
-from pyHype.states import ConservativeState
 from pyHype.utils import utils
 from pyHype.mesh.base import Mesh
 from typing import TYPE_CHECKING
-
+from pyHype.states import ConservativeState
 
 if TYPE_CHECKING:
-    from pyHype.solvers.solver import ProblemInput
+    from pyHype.solvers.base import ProblemInput
     from pyHype.blocks.base import QuadBlock
 
+_DEFINED_BC_ = ['explosion',
+                'implosion',
+                'shockbox',
+                'supersonic_flood',
+                'supersonic_rest',
+                'subsonic_flood',
+                'subsonic_rest',
+                'explosion_trapezoid'
+                ]
+
+def is_defined_BC(name: str):
+    return True if name in _DEFINED_BC_ else False
 
 class GhostBlock:
     def __init__(self,

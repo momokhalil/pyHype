@@ -26,7 +26,7 @@ from datetime import datetime
 from pyHype.blocks.base import Blocks
 import pyHype.solvers.initial_conditions.initial_conditions as ic
 
-from pyHype.solvers.base import Solver, _DEFINED_IC_
+from pyHype.solvers.base import Solver
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -48,32 +48,34 @@ class Euler2D(Solver):
                                    integrator=integrator, settings=settings)
 
         # Create Blocks
+        print('\t>>> Building solution blocks')
         self._blocks = Blocks(self.inputs)
 
+        print('\n\tSolver Details:\n')
+        print(str(self))
+
+        print('\n\tFinished setting up solver')
+
     def __str__(self):
-        __str = '\tA Solver of type Euler2D for solving the 2D Euler\n ' \
+        __str = '\tA Solver of type Euler2D for solving the 2D Euler\n' \
                 '\tequations on structured grids using the Finite Volume Method.\n\n' \
-                '\tSolver Details:\n' + \
-                '\t--------------\n' + \
-                '\t' + f"{'Finite Volume Method: ':<35} {self.inputs.fvm}" + '\n' + \
-                '\t' + f"{'Gradient Method: ':<35} {self.inputs.gradient}" + '\n' + \
-                '\t' + f"{'Flux Function: ':<35} {self.inputs.flux_function}" + '\n' + \
-                '\t' + f"{'Limiter: ':<35} {self.inputs.limiter}" + '\n' + \
-                '\t' + f"{'Time Integrator: ':<35} {self.inputs.integrator}" + '\n'
+                '\t' + f"{'Finite Volume Method: ':<40} {self.inputs.fvm}" + '\n' + \
+                '\t' + f"{'Gradient Method: ':<40} {self.inputs.gradient}" + '\n' + \
+                '\t' + f"{'Flux Function: ':<40} {self.inputs.flux_function}" + '\n' + \
+                '\t' + f"{'Limiter: ':<40} {self.inputs.limiter}" + '\n' + \
+                '\t' + f"{'Time Integrator: ':<40} {self.inputs.integrator}"
         return __str
 
 
     def set_IC(self):
 
-        if self.inputs.problem_type not in _DEFINED_IC_:
+        if not ic.is_defined_IC(self.inputs.problem_type):
             raise ValueError('Initial condition of type ' + str(self.inputs.problem_type) + ' has not been specialized.'
-                             ' Please make sure it is defined in ./initial_conditions/initial_conditions.py and added'
+                             ' Please make sure it is defined in ./initial_conditions/initial_conditions.py and added '
                              'to the list of defined ICs in _DEFINED_IC_ on top of this file.')
         else:
 
             problem_type = self.inputs.problem_type
-
-            print('    Initial condition type: ', problem_type)
 
             if problem_type == 'implosion':
                 _set_IC = ic.implosion(self.blocks, g=self.inputs.gamma)
@@ -96,23 +98,17 @@ class Euler2D(Solver):
         self._blocks.set_BC()
 
     def solve(self):
-        print('\nProblem Details: \n'
-              '--------------\n')
+        print('\n------------------------------ Initializing Solution Process ---------------------------------')
+
+        print('\nProblem Details: \n')
         for k, v in self._settings_dict.items():
             print('\t' + f"{(str(k) + ': '):<40} {str(v)}")
 
-        print('\nSolver Description:\n'
-              '--------------------\n')
-        print(str(self))
-
-
         print()
-        print('Setting Initial Conditions')
+        print('\t>>> Setting Initial Conditions')
         self.set_IC()
 
-        print()
-        print('----------------------------------------------------------------------------------------')
-        print('Setting Boundary Conditions')
+        print('\t>>> Setting Boundary Conditions')
         self.set_BC()
 
         """fig, ax = plt.subplots(1)
@@ -121,24 +117,26 @@ class Euler2D(Solver):
         plt.show(block=True)"""
 
         if self.inputs.realplot:
+            print('\t>>> Building Real-Time Plot')
             self.build_real_plot()
 
         if self.inputs.profile:
-            print('Enable profiler')
+            print('\t>>> Enabling Profiler')
             profiler = cProfile.Profile()
             profiler.enable()
         else:
             profiler = None
 
         if self.inputs.write_solution:
+            print('\t>>> Writing Mesh to File')
             for block in self.blocks:
                 self.write_output_nodes('./mesh_blk_x_' + str(block.global_nBLK), block.mesh.x)
                 self.write_output_nodes('./mesh_blk_y_' + str(block.global_nBLK), block.mesh.y)
 
+        print('\n------------------------------------- Start Simulation ---------------------------------------\n')
+        print('Date and time: ', datetime.today())
 
-        print('Start simulation')
         while self.t < self.t_final:
-
             if self.numTimeStep % 50 == 0:
                 print()
                 print('Simulation time: ' + str(self.t / self.inputs.a_inf))
@@ -146,8 +144,8 @@ class Euler2D(Solver):
             else:
                 print('.', end='')
 
+            # Get time step
             self.dt = self.get_dt()
-
             # print('update block')
             self._blocks.update(self.dt)
 

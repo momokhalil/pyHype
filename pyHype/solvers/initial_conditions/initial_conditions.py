@@ -16,6 +16,18 @@ limitations under the License.
 
 import numpy as np
 
+_DEFINED_IC_ = ['explosion',
+                'implosion',
+                'shockbox',
+                'supersonic_flood',
+                'supersonic_rest',
+                'subsonic_flood',
+                'subsonic_rest',
+                'explosion_trapezoid'
+                ]
+
+def is_defined_IC(name: str):
+    return True if name in _DEFINED_IC_ else False
 
 def explosion(blocks, **kwargs):
 

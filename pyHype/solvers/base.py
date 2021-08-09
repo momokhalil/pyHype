@@ -43,16 +43,6 @@ __REQUIRED__ = ['problem_type', 'realplot', 't_final', 'CFL',
 __OPTIONAL__ = ['alpha', 'write_time', 'upwind_mode', 'write_every_n_timesteps', 'write_solution_mode',
                 'write_solution_name']
 
-_DEFINED_IC_ = ['explosion',
-                'implosion',
-                'shockbox',
-                'supersonic_flood',
-                'supersonic_rest',
-                'subsonic_flood',
-                'subsonic_rest',
-                'explosion_trapezoid'
-                ]
-
 
 class ProblemInput:
     def __init__(self,
@@ -111,7 +101,12 @@ class Solver:
         # --------------------------------------------------------------------------------------------------------------
         # Store mesh features required to create block descriptions
 
+        print(execution_prints.pyhype)
+        print(execution_prints.lice)
+        print('\n------------------------------------ Setting-Up Solver ---------------------------------------\n')
+
         # Mesh name
+        print('\t>>> Gathering Mesh Information')
         mesh_name = settings['mesh_name']
         # Number of nodes in x-direction per block
         nx = settings['nx']
@@ -125,7 +120,7 @@ class Solver:
 
         # --------------------------------------------------------------------------------------------------------------
         # Create dictionary that describes each block in mesh
-
+        print('\t>>> Building Mesh Descriptors')
         # Get function that creates the dictionary of block description dictionaries.
         _mesh_func = meshes.DEFINED_MESHES[mesh_name]
         # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
@@ -135,14 +130,19 @@ class Solver:
         # Create BlockDescription for each block in the mesh
         for blk, blkData in _mesh_dict.items():
             _mesh_inputs[blk] = BlockDescription(blkData)
+
+        print('\t>>> Checking all boundary condition types')
+        self._all_BC_types = []
+        _bc_type_names = ['BCTypeE', 'BCTypeW', 'BCTypeN', 'BCTypeS']
+        for blk, blkdata in _mesh_dict.items():
+            for bc_name in _bc_type_names:
+                if blkdata[bc_name] not in self._all_BC_types:
+                    self._all_BC_types.append(blkdata[bc_name])
+
         # Create ProblemInput to store inputs and mesh description
+        print('\t>>> Building Settings Descriptors')
         self.inputs = ProblemInput(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
                                    integrator=integrator, settings=settings, mesh_inputs=_mesh_inputs)
-
-        print(execution_prints.pyhype)
-        print(execution_prints.lice)
-        print(execution_prints.began_solving + self.inputs.problem_type)
-        print('Date and time: ', datetime.today())
 
         # Create Blocks
         self._blocks = None
@@ -150,6 +150,7 @@ class Solver:
         # --------------------------------------------------------------------------------------------------------------
         # Initialise attributes
 
+        print('\t>>> Initializing basic solution attributes')
         # Simulation time
         self.t = 0
         # Time step
