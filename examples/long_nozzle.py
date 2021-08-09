@@ -1,4 +1,4 @@
-from pyHype.solvers.Euler2D import Euler2D
+from pyHype.solvers import Euler2D
 
 # Solver settings
 settings = {'problem_type':             'subsonic_flood',
