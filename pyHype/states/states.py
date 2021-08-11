@@ -314,15 +314,15 @@ class PrimitiveState(State):
     def H(self,
           Ek: np.ndarray = None
           ) -> np.ndarray:
-        """if Ek is None:
+        if Ek is None:
             return self.H_JIT(self.q0, self.q1, self.q2, self.q3, self.g_over_gm)
         else:
-            return self.H_given_Ek_JIT(self.q0, self.q3, Ek, self.g_over_gm)"""
+            return self.H_given_Ek_JIT(self.q0, self.q3, Ek, self.g_over_gm)
 
-        if Ek is None:
+        """if Ek is None:
             return self.g_over_gm * self.q3 / self.q0 + self.Ek_JIT(self.q1, self.q2)
         else:
-            return self.g_over_gm * self.q3 / self.q0 + Ek
+            return self.g_over_gm * self.q3 / self.q0 + Ek"""
 
     @staticmethod
     @nb.njit(cache=True)
@@ -364,8 +364,8 @@ class PrimitiveState(State):
         return _H
 
     def a(self) -> np.ndarray:
-        return np.sqrt(self.g * self.q3 / self.q0)
-        #return self.a_JIT(self.q3, self.q0, self.g)
+        #return np.sqrt(self.g * self.q3 / self.q0)
+        return self.a_JIT(self.q3, self.q0, self.g)
 
     @staticmethod
     @nb.njit(cache=True)

@@ -388,8 +388,10 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate to allign with cell faces
         if refBLK.is_cartesian:
+            # If block is cartesian, rotate by 90 degrees CCW (implemented as array swaps for efficiency)
             utils.rotate90(stateN, stateS, _north_ghost, _south_ghost)
         else:
+            # If not, rotate by the given angle using the standard rotation matrix
             utils.rotate(refBLK.mesh.get_north_face_angle(), _north_ghost)
             utils.rotate(refBLK.mesh.get_south_face_angle(), _south_ghost)
             utils.rotate(refBLK.mesh.faceN.theta, stateN)
@@ -412,8 +414,10 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate flux back to global frame
         if refBLK.is_cartesian:
+            # If block is cartesian, rotate by 90 degrees CW (implemented as array swaps for efficiency)
             utils.unrotate90(self.Flux_N, self.Flux_S)
         else:
+            # If not, rotate by the given angle using the standard rotation matrix
             utils.unrotate(refBLK.mesh.faceN.theta, self.Flux_N)
             utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux_S)
 
