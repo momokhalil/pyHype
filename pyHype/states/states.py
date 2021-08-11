@@ -379,6 +379,9 @@ class PrimitiveState(State):
                 _a[i, j] = np.sqrt(g * p[i, j] / rho[i, j])
         return _a
 
+    def e(self):
+        return self.q3 / (self.g - 1) + self.ek()
+
     def V(self) -> np.ndarray:
         return np.sqrt(self.q1 * self.q1 + self.q2 * self.q2)
 
@@ -405,6 +408,20 @@ class PrimitiveState(State):
 
         # Set variables from non-dimensionalized W
         self.set_vars_from_state()
+
+
+    def F(self) -> np.ndarray:
+        F = np.zeros_like(self.W)
+
+        u = self.u
+        ru = self.rho * u
+
+        F[:, :, 0] = self.rho * self.u
+        F[:, :, 1] = ru * u + self.p
+        F[:, :, 2] = ru * self.v
+        F[:, :, 3] = u * (self.e() + self.p)
+
+        return F
 
 
 class ConservativeState(State):
@@ -724,7 +741,6 @@ class ConservativeState(State):
                           rv * self.u(),
                           rv * v + p,
                           v * (self.e + p)))
-
 
 class RoePrimitiveState(PrimitiveState):
     """

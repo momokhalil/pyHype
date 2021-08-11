@@ -23,7 +23,6 @@ from scipy.sparse import coo_matrix as coo
 from pyHype.flux.base import FluxFunction
 from pyHype.states.states import RoePrimitiveState, ConservativeState, PrimitiveState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_VECTORS
-
 from profilehooks import profile
 
 
@@ -276,7 +275,7 @@ class ROE_FLUX_X(FluxFunction):
         H = Wroe.H(Ek)
 
         # Flux Jacobian
-        self.compute_flux_jacobian(Wroe, Ek, H)
+        self.compute_flux_jacobian(Wroe, Ek=Ek, H=H)
         # Right eigenvectors
         self.compute_Rc(Wroe, a, H, Lm, Lp, Ek=Ek)
         # Left eigenvectors
@@ -366,8 +365,7 @@ class ROE_FLUX_X(FluxFunction):
         Wroe = RoePrimitiveState(self.inputs, WL, WR)
 
         # Compute non-dissipative flux term
-        UpL = (UL + UR).flatten()
-        nondis = 0.5 * self.A.dot(UpL).reshape(1, -1, 4)
+        nondis = 0.5 * (WL.F() + WR.F())
 
         # Compute dissipative upwind flux term
         if self.inputs.upwind_mode == 'conservative':

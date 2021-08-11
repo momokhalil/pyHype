@@ -4,7 +4,7 @@ from pyHype.solvers import Euler2D
 settings = {'problem_type':             'explosion',
             'interface_interpolation':  'arithmetic_average',
             'reconstruction_type':      'conservative',
-            'upwind_mode':              'conservative',
+            'upwind_mode':              'primitive',
             'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
             'write_solution_name':      'nozzle',
