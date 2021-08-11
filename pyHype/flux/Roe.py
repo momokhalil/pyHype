@@ -309,8 +309,8 @@ class ROE_FLUX_X(FluxFunction):
 
 
     def compute_flux(self,
-                     UL: ConservativeState,
-                     UR: ConservativeState
+                     UL: [ConservativeState, np.ndarray],
+                     UR: [ConservativeState, np.ndarray]
                      ) -> np.ndarray:
         """
         Computes the flux using the Roe approximate riemann solver. First, the Roe average state is computed based on
@@ -377,6 +377,7 @@ class ROE_FLUX_X(FluxFunction):
 
         return nondis - upwind
 
+
     def get_upwind_flux_conservative(self,
                                      Wroe: RoePrimitiveState,
                                      WL: PrimitiveState,
@@ -392,7 +393,10 @@ class ROE_FLUX_X(FluxFunction):
         self.Lambda.data = np.absolute(self.Lambda.data)
 
         # Dissipative upwind term
-        return 0.5 * (self.Rc.dot(self.Lambda.dot(self.Lc.dot(dU)))).reshape(1, -1, 4)
+        return 0.5 * (self.Rc *
+                      (self.Lambda *
+                       (self.Lc * dU))
+                      ).reshape(1, -1, 4)
 
 
     def get_upwind_flux_primitive(self,
@@ -408,4 +412,7 @@ class ROE_FLUX_X(FluxFunction):
         self.Lambda.data = np.absolute(self.Lambda.data)
 
         # Dissipative upwind term
-        return 0.5 * (self.Rc.dot(self.Lambda.dot(self.Lp.dot(dW)))).reshape(1, -1, 4)
+        return 0.5 * (self.Rc *
+                      (self.Lambda *
+                       (self.Lp * dW))
+                      ).reshape(1, -1, 4)

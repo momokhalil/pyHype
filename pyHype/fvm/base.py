@@ -365,11 +365,9 @@ class MUSCLFiniteVolumeMethod:
         # Iterate over all rows in block
         for row in range(self.ny):
             # Get state on left side of cell interface
-            stateL = np.concatenate((_ghostW[row, None, :, :], stateE[row, None, :, :]),
-                                    axis=1)
+            stateL = np.concatenate((_ghostW[row, None, :, :], stateE[row, None, :, :]), axis=1)
             # Get state on right side of cell interface
-            stateR = np.concatenate((stateW[row, None, :, :], _ghostE[row, None, :, :]),
-                                    axis=1)
+            stateR = np.concatenate((stateW[row, None, :, :], _ghostE[row, None, :, :]), axis=1)
             # Get cell interface flux
             flux_EW = self.flux_function_X.compute_flux(stateL, stateR)
             # Set east face flux
@@ -398,11 +396,9 @@ class MUSCLFiniteVolumeMethod:
         # Iterate over all columns in block
         for col in range(self.nx):
             # Get state on left side of cell interface
-            stateL = np.concatenate((_ghostS[:, col, None, :], stateN[:, col, None, :]),
-                                    axis=0).transpose((1, 0, 2))
+            stateL = np.concatenate((_ghostS[:, col, None, :], stateN[:, col, None, :]), axis=0).transpose((1, 0, 2))
             # Get state on right side of cell interface
-            stateR = np.concatenate((stateS[:, col, None, :], _ghostS[:, col, None, :]),
-                                    axis=0).transpose((1, 0, 2))
+            stateR = np.concatenate((stateS[:, col, None, :], _ghostS[:, col, None, :]), axis=0).transpose((1, 0, 2))
             # Calculate face-normal-flux at each cell east-west interface
             flux_NS = self.flux_function_Y.compute_flux(stateL, stateR).reshape(-1, 4)
             # Set east face flux
