@@ -347,29 +347,28 @@ class MUSCLFiniteVolumeMethod:
         # Get reconstructed quadrature points
         stateE, stateW, stateN, stateS = self.reconstruct(refBLK)
 
-        # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
 
         # Copy all ghost cell values that will be used for the flux calculations
-        _east_ghost = refBLK.ghost.E.col_copy(0)
-        _west_ghost = refBLK.ghost.W.col_copy(-1)
-        _north_ghost = refBLK.ghost.N.row_copy(0)
-        _south_ghost = refBLK.ghost.S.row_copy(-1)
+        _ghostE = refBLK.ghost.E.col_copy(0)
+        _ghostW = refBLK.ghost.W.col_copy(-1)
+        _ghostN = refBLK.ghost.N.row_copy(0)
+        _ghostS = refBLK.ghost.S.row_copy(-1)
 
         # Rotate to allign with cell faces
         if not refBLK.is_cartesian:
-            utils.rotate(refBLK.mesh.get_east_face_angle(), _east_ghost)
-            utils.rotate(refBLK.mesh.get_west_face_angle(), _west_ghost)
+            utils.rotate(refBLK.mesh.get_east_face_angle(), _ghostE)
+            utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
             utils.rotate(refBLK.mesh.faceE.theta, stateE)
             utils.rotate(refBLK.mesh.faceW.theta - np.pi, stateW)
 
         # Iterate over all rows in block
         for row in range(self.ny):
             # Get state on left side of cell interface
-            stateL = np.concatenate((_west_ghost[row:row+1, :, :], stateE[row:row+1, :, :]),
+            stateL = np.concatenate((_ghostW[row, None, :, :], stateE[row, None, :, :]),
                                     axis=1)
             # Get state on right side of cell interface
-            stateR = np.concatenate((stateW[row:row+1, :, :], _east_ghost[row:row+1, :, :]),
+            stateR = np.concatenate((stateW[row, None, :, :], _ghostE[row, None, :, :]),
                                     axis=1)
             # Get cell interface flux
             flux_EW = self.flux_function_X.compute_flux(stateL, stateR)
@@ -383,27 +382,26 @@ class MUSCLFiniteVolumeMethod:
             utils.unrotate(refBLK.mesh.faceE.theta, self.Flux_E)
             utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux_W)
 
-        # --------------------------------------------------------------------------------------------------------------
         # Calculate y-direction Flux
 
         # Rotate to allign with cell faces
         if refBLK.is_cartesian:
             # If block is cartesian, rotate by 90 degrees CCW (implemented as array swaps for efficiency)
-            utils.rotate90(stateN, stateS, _north_ghost, _south_ghost)
+            utils.rotate90(stateN, stateS, _ghostN, _ghostS)
         else:
             # If not, rotate by the given angle using the standard rotation matrix
-            utils.rotate(refBLK.mesh.get_north_face_angle(), _north_ghost)
-            utils.rotate(refBLK.mesh.get_south_face_angle(), _south_ghost)
+            utils.rotate(refBLK.mesh.get_north_face_angle(), _ghostN)
+            utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
             utils.rotate(refBLK.mesh.faceN.theta, stateN)
             utils.rotate(refBLK.mesh.faceS.theta - np.pi, stateS)
 
         # Iterate over all columns in block
         for col in range(self.nx):
             # Get state on left side of cell interface
-            stateL = np.concatenate((_south_ghost[:, col:col+1, :], stateN[:, col:col+1, :]),
+            stateL = np.concatenate((_ghostS[:, col, None, :], stateN[:, col, None, :]),
                                     axis=0).transpose((1, 0, 2))
             # Get state on right side of cell interface
-            stateR = np.concatenate((stateS[:, col:col+1, :], _north_ghost[:, col:col+1, :]),
+            stateR = np.concatenate((stateS[:, col, None, :], _ghostS[:, col, None, :]),
                                     axis=0).transpose((1, 0, 2))
             # Calculate face-normal-flux at each cell east-west interface
             flux_NS = self.flux_function_Y.compute_flux(stateL, stateR).reshape(-1, 4)

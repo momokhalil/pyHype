@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
@@ -410,18 +412,37 @@ class PrimitiveState(State):
         self.set_vars_from_state()
 
 
-    def F(self) -> np.ndarray:
+    def F(self,
+          U: ConservativeState = None,
+          U_vector: np.ndarray = None) -> np.ndarray:
+
         F = np.zeros_like(self.W)
 
-        u = self.u
-        ru = self.rho * u
+        if U is not None:
+            F[:, :, 0] = U.rhou
+            F[:, :, 1] = U.rhou * self.u + self.p
+            F[:, :, 2] = U.rhou * self.v
+            F[:, :, 3] = self.u * (U.e + self.p)
+            return F
 
-        F[:, :, 0] = self.rho * self.u
-        F[:, :, 1] = ru * u + self.p
-        F[:, :, 2] = ru * self.v
-        F[:, :, 3] = u * (self.e() + self.p)
+        elif U_vector is not None:
+            ru = U_vector[:, :, ConservativeState.RHOU_IDX]
+            e = U_vector[:, :, ConservativeState.E_IDX]
 
-        return F
+            F[:, :, 0] = ru
+            F[:, :, 1] = ru * self.u + self.p
+            F[:, :, 2] = ru * self.v
+            F[:, :, 3] = self.u * (e + self.p)
+            return F
+
+        else:
+            ru = self.rho * self.u
+
+            F[:, :, 0] = self.rho * self.u
+            F[:, :, 1] = ru * self.u + self.p
+            F[:, :, 2] = ru * self.v
+            F[:, :, 3] = self.u * (self.e() + self.p)
+            return F
 
 
 class ConservativeState(State):

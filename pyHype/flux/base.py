@@ -126,13 +126,9 @@ def _harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m):
         - theta (np.ndarray): Numpy array holding the theta indicator used for determining if a correction is needed
     """
 
-    # Get the shape of the array for correction
-    n = Roe_p.shape[0]
-    m = Roe_p.shape[1]
-
     # Loop through array
-    for i in range(n):
-        for j in range(m):
+    for i in range(Roe_p.shape[0]):
+        for j in range(Roe_p.shape[1]):
             # Save plus and minus thetas
             _tp = 2 * (R_p[i, j] - L_p[i, j])
             _tm = 2 * (R_m[i, j] - L_m[i, j])

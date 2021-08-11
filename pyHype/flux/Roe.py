@@ -365,26 +365,25 @@ class ROE_FLUX_X(FluxFunction):
         Wroe = RoePrimitiveState(self.inputs, WL, WR)
 
         # Compute non-dissipative flux term
-        nondis = 0.5 * (WL.F() + WR.F())
+        nondis = 0.5 * (WL.F(U_vector=UL) + WR.F(U_vector=UR))
 
         # Compute dissipative upwind flux term
         if self.inputs.upwind_mode == 'conservative':
-            upwind = self.get_upwind_conservative(Wroe, WL, WR, UL, UR)
+            upwind = self.get_upwind_flux_conservative(Wroe, WL, WR, UL, UR)
         elif self.inputs.upwind_mode == 'primitive':
-            upwind = self.get_upwind_primitive(Wroe, WL, WR)
+            upwind = self.get_upwind_flux_primitive(Wroe, WL, WR)
         else:
             raise ValueError('Must specify type of upwinding')
 
         return nondis - upwind
 
-
-    def get_upwind_conservative(self,
-                                Wroe: RoePrimitiveState,
-                                WL: PrimitiveState,
-                                WR: PrimitiveState,
-                                UL: ConservativeState = None,
-                                UR: ConservativeState = None,
-                                ) -> np.ndarray:
+    def get_upwind_flux_conservative(self,
+                                     Wroe: RoePrimitiveState,
+                                     WL: PrimitiveState,
+                                     WR: PrimitiveState,
+                                     UL: ConservativeState = None,
+                                     UR: ConservativeState = None,
+                                     ) -> np.ndarray:
         # Diagonalize
         self.diagonalize_conservative(Wroe, WL, WR)
         # Conservative state jump
@@ -396,11 +395,11 @@ class ROE_FLUX_X(FluxFunction):
         return 0.5 * (self.Rc.dot(self.Lambda.dot(self.Lc.dot(dU)))).reshape(1, -1, 4)
 
 
-    def get_upwind_primitive(self,
-                             Wroe: RoePrimitiveState,
-                             WL: PrimitiveState,
-                             WR: PrimitiveState,
-                             ) -> np.ndarray:
+    def get_upwind_flux_primitive(self,
+                                  Wroe: RoePrimitiveState,
+                                  WL: PrimitiveState,
+                                  WR: PrimitiveState,
+                                  ) -> np.ndarray:
         # Diagonalize
         self.diagonalize_primitive(Wroe, WL, WR)
         # Primitive state jump
