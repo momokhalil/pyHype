@@ -32,7 +32,7 @@ from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKu
 from pyHype.blocks.ghost import GhostBlockEast, GhostBlockWest, GhostBlockSouth, GhostBlockNorth
 
 if TYPE_CHECKING:
-    from pyHype.solvers.solver import ProblemInput
+    from pyHype.solvers.base import ProblemInput
 
 # QuadBlock Class Definition
 class QuadBlock:

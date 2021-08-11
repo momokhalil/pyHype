@@ -120,13 +120,6 @@ class Euler2D(Solver):
             print('\t>>> Building Real-Time Plot')
             self.build_real_plot()
 
-        if self.inputs.profile:
-            print('\t>>> Enabling Profiler')
-            profiler = cProfile.Profile()
-            profiler.enable()
-        else:
-            profiler = None
-
         if self.inputs.write_solution:
             print('\t>>> Writing Mesh to File')
             for block in self.blocks:
@@ -135,6 +128,13 @@ class Euler2D(Solver):
 
         print('\n------------------------------------- Start Simulation ---------------------------------------\n')
         print('Date and time: ', datetime.today())
+
+        if self.inputs.profile:
+            print('\t>>> Enabling Profiler')
+            profiler = cProfile.Profile()
+            profiler.enable()
+        else:
+            profiler = None
 
         while self.t < self.t_final:
             if self.numTimeStep % 50 == 0:

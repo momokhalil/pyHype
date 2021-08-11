@@ -48,7 +48,7 @@ class FluxFunction:
         # Check if PrimitiveState
         if isinstance(W, PrimitiveState):
             # Speed of sound
-            a = W.a()
+            a = W.a_JIT(W.q3, W.q0, W.g)
             # Compute wavespeeds
             slow, fast = W.u - a, W.u + a
             return slow, fast

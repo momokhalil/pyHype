@@ -57,6 +57,35 @@ def rotate(theta: Union[float, np.ndarray],
         array[:, :, 2] = v
 
 
+def rotate90(*arrays: Union[np.ndarray]) -> None:
+    """
+    Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by ninety degrees counterclockwise.
+    The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
+
+                         - = y  ,  * = x'
+                                *
+                                |
+                                *
+                                |
+                                *
+                                |
+                                * <------
+                                | theta |
+                                *       |
+    y' ************************* --------------------------- x
+
+    x' = y
+    y' = -x
+    """
+
+    for array in arrays:
+
+        u = array[:, :, 2].copy()
+        v = -array[:, :, 1].copy()
+
+        array[:, :, 1], array[:, :, 2] = u, v
+
+
 def unrotate(theta: float,
              *arrays: Union[np.ndarray, list[np.ndarray]],
              ) -> None:
@@ -91,6 +120,32 @@ def unrotate(theta: float,
 
         array[:, :, 1] = u
         array[:, :, 2] = v
+
+def unrotate90(*arrays: Union[np.ndarray]) -> None:
+    """
+    Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by ninety degrees clockwise.
+    The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
+
+                         - = y  ,  * = x'
+                                *
+                                |
+                                *
+                                |
+                                *
+                                |
+                        ------> *
+                        | theta |
+                        |       *
+    y' ************************* --------------------------- x
+
+    x = -y'
+    y = x'
+    """
+
+    for array in arrays:
+        u = -array[:, :, 2].copy()
+        v = array[:, :, 1].copy()
+        array[:, :, 1], array[:, :, 2] = u, v
 
 
 def reflect_point(x1: float,

@@ -96,8 +96,6 @@ class ROE_FLUX_X(FluxFunction):
 
         self.size = size
 
-
-
     def compute_flux_jacobian(self,
                               Wroe: RoePrimitiveState,
                               Ek: np.ndarray = None,
@@ -259,12 +257,11 @@ class ROE_FLUX_X(FluxFunction):
 
         _sz = self.size + 1
 
-        self.lam[0  * _sz:1  * _sz] = Lm
-        self.lam[1  * _sz:2  * _sz] = Wroe.u
-        self.lam[2  * _sz:3  * _sz] = Lp
-        self.lam[3  * _sz:4  * _sz] = Wroe.u
+        self.Lambda.data[0  * _sz:1  * _sz] = Lm
+        self.Lambda.data[1  * _sz:2  * _sz] = Wroe.u
+        self.Lambda.data[2  * _sz:3  * _sz] = Lp
+        self.Lambda.data[3  * _sz:4  * _sz] = Wroe.u
 
-        self.Lambda.data = self.lam
 
     def diagonalize_primitive(self, Wroe, WL, WR):
 
@@ -351,8 +348,19 @@ class ROE_FLUX_X(FluxFunction):
         """
 
         # Create Left and Right PrimitiveStates
-        WL = UL.to_primitive_state()
-        WR = UR.to_primitive_state()
+        if isinstance(UL, ConservativeState):
+            WL = UL.to_primitive_state()
+        elif isinstance(UL, np.ndarray):
+            WL = PrimitiveState(self.inputs, U_vector=UL)
+        else:
+            raise ValueError('Parameter UL must be of type ConservativeState or np.ndarray')
+
+        if isinstance(UR, ConservativeState):
+            WR = UR.to_primitive_state()
+        elif isinstance(UR, np.ndarray):
+            WR = PrimitiveState(self.inputs, U_vector=UR)
+        else:
+            raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
 
         # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR)

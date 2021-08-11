@@ -21,7 +21,6 @@ from typing import Union
 import matplotlib.pyplot as plt
 import pyHype.mesh.airfoil as airfoil
 from matplotlib.collections import LineCollection
-from matplotlib.pyplot import axes
 
 
 class BlockDescription:

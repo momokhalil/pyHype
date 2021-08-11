@@ -211,17 +211,17 @@ class Solver:
                                             block.state.U)
 
     def real_plot(self):
-        if self.numTimeStep % 10 == 0:
-            _v = [block.state.Ma() for block in self.blocks]
+        if self.numTimeStep % 5 == 0:
+            _v = [block.state.rho for block in self.blocks]
             max_ = max([np.max(v) for v in _v])
             min_ = min([np.min(v) for v in _v])
 
             for block in self.blocks:
                 self.realplot.contourf(block.mesh.x[:, :, 0],
                                        block.mesh.y[:, :, 0],
-                                       block.state.Ma(),
-                                       30,
-                                       cmap='magma_r',
+                                       block.state.rho,
+                                       50,
+                                       cmap='magma',
                                        vmax=max_,
                                        vmin=min_)
 

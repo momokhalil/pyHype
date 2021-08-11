@@ -340,9 +340,6 @@ class MUSCLFiniteVolumeMethod:
 
 
     def get_flux(self, refBLK):
-        """
-        Compute the flux at each cell face by sweeping through rows and columns of the domain.
-        """
 
         # Compute x and y direction gradients
         self.gradient(refBLK)
@@ -352,10 +349,6 @@ class MUSCLFiniteVolumeMethod:
 
         # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
-
-        # Reset U vector holder sizes to ensure compatible with number of cells in x-direction
-        self.UL.reset(shape=(1, self.nx + 1, 4))
-        self.UR.reset(shape=(1, self.nx + 1, 4))
 
         # Copy all ghost cell values that will be used for the flux calculations
         _east_ghost = refBLK.ghost.E.col_copy(0)
@@ -372,20 +365,14 @@ class MUSCLFiniteVolumeMethod:
 
         # Iterate over all rows in block
         for row in range(self.ny):
-
-            # Set vectors based on left and right states
-            stateL = np.concatenate((_west_ghost[row:row+1, :, :],
-                                     stateE[row:row+1, :, :]), axis=1)
-
-            stateR = np.concatenate((stateW[row:row+1, :, :],
-                                     _east_ghost[row:row+1, :, :]), axis=1)
-
-            self.UL.from_conservative_state_vector(stateL)
-            self.UR.from_conservative_state_vector(stateR)
-
-            # Calculate face-normal-flux at each cell east-west interface
-            flux_EW = self.flux_function_X.compute_flux(self.UL, self.UR)
-
+            # Get state on left side of cell interface
+            stateL = np.concatenate((_west_ghost[row:row+1, :, :], stateE[row:row+1, :, :]),
+                                    axis=1)
+            # Get state on right side of cell interface
+            stateR = np.concatenate((stateW[row:row+1, :, :], _east_ghost[row:row+1, :, :]),
+                                    axis=1)
+            # Get cell interface flux
+            flux_EW = self.flux_function_X.compute_flux(stateL, stateR)
             # Set east face flux
             self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
             # Set west face flux
@@ -399,37 +386,34 @@ class MUSCLFiniteVolumeMethod:
         # --------------------------------------------------------------------------------------------------------------
         # Calculate y-direction Flux
 
-        # Reset U vector holder sizes to ensure compatible with number of cells in y-direction
-        self.UL.reset(shape=(1, self.ny + 1, 4))
-        self.UR.reset(shape=(1, self.ny + 1, 4))
-
         # Rotate to allign with cell faces
-        utils.rotate(refBLK.mesh.get_north_face_angle(), _north_ghost)
-        utils.rotate(refBLK.mesh.get_south_face_angle(), _south_ghost)
-        utils.rotate(refBLK.mesh.faceN.theta, stateN)
-        utils.rotate(refBLK.mesh.faceS.theta - np.pi, stateS)
+        if refBLK.is_cartesian:
+            utils.rotate90(stateN, stateS, _north_ghost, _south_ghost)
+        else:
+            utils.rotate(refBLK.mesh.get_north_face_angle(), _north_ghost)
+            utils.rotate(refBLK.mesh.get_south_face_angle(), _south_ghost)
+            utils.rotate(refBLK.mesh.faceN.theta, stateN)
+            utils.rotate(refBLK.mesh.faceS.theta - np.pi, stateS)
 
         # Iterate over all columns in block
         for col in range(self.nx):
-
-            # Set vectors based on left and right states
-            stateL = np.concatenate((_south_ghost[:, col:col + 1, :],
-                                     stateN[:, col:col + 1, :]), axis=0)
-
-            stateR = np.concatenate((stateS[:, col:col + 1, :],
-                                     _north_ghost[:, col:col + 1, :]), axis=0)
-
-            self.UL.from_conservative_state_vector(stateL.transpose((1, 0, 2)))
-            self.UR.from_conservative_state_vector(stateR.transpose((1, 0, 2)))
-
+            # Get state on left side of cell interface
+            stateL = np.concatenate((_south_ghost[:, col:col+1, :], stateN[:, col:col+1, :]),
+                                    axis=0).transpose((1, 0, 2))
+            # Get state on right side of cell interface
+            stateR = np.concatenate((stateS[:, col:col+1, :], _north_ghost[:, col:col+1, :]),
+                                    axis=0).transpose((1, 0, 2))
             # Calculate face-normal-flux at each cell east-west interface
-            flux_NS = self.flux_function_Y.compute_flux(self.UL, self.UR).reshape(-1, 4)
-
+            flux_NS = self.flux_function_Y.compute_flux(stateL, stateR).reshape(-1, 4)
             # Set east face flux
             self.Flux_N[:, col, :] = flux_NS[1:, :]
             # Set west face flux
             self.Flux_S[:, col, :] = flux_NS[:-1, :]
 
         # Rotate flux back to global frame
-        utils.unrotate(refBLK.mesh.faceN.theta, self.Flux_N)
-        utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux_S)
+        if refBLK.is_cartesian:
+            utils.unrotate90(self.Flux_N, self.Flux_S)
+        else:
+            utils.unrotate(refBLK.mesh.faceN.theta, self.Flux_N)
+            utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux_S)
+

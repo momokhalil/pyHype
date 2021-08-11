@@ -69,6 +69,7 @@ class XDIR_EIGENSYSTEM_INDICES:
         # Eigenvalues indices
         self._get_eigenvalue_indices(nx)
 
+
     def _get_flux_jacobian_indices(self, nx):
         """
         Build the i and j indices for the flux jacobian sparse matrix construction. The flux jacobian matrix for each

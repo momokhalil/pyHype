@@ -58,7 +58,6 @@ class GhostBlock:
 
         self.state = None
         self.theta = None
-
         self.mesh = None
 
         # Assign the BCset method to avoid checking type everytime
