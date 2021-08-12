@@ -17,7 +17,6 @@ import os
 
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
-import time
 import numpy as np
 from scipy.sparse import coo_matrix as coo
 from pyHype.flux.base import FluxFunction
@@ -275,7 +274,7 @@ class ROE_FLUX_X(FluxFunction):
         H = Wroe.H(Ek)
 
         # Flux Jacobian
-        self.compute_flux_jacobian(Wroe, Ek=Ek, H=H)
+        # self.compute_flux_jacobian(Wroe, Ek=Ek, H=H)
         # Right eigenvectors
         self.compute_Rc(Wroe, a, H, Lm, Lp, Ek=Ek)
         # Left eigenvectors
@@ -299,7 +298,7 @@ class ROE_FLUX_X(FluxFunction):
         ua = Wroe.u * a
 
         # Flux Jacobian
-        self.compute_flux_jacobian(Wroe, Ek, H)
+        # self.compute_flux_jacobian(Wroe, Ek, H)
         # Right eigenvectors
         self.compute_Rc(Wroe, a, H, Lm, Lp, Ek=Ek, ua=ua)
         # Left eigenvectors

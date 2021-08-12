@@ -113,7 +113,7 @@ def step_three_block(nx, ny, nghost):
               'NeighborN': 2,
               'NeighborS': None,
               'BCTypeE': 'Reflection',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'None',
               'BCTypeS': 'Reflection'}
 
@@ -131,7 +131,7 @@ def step_three_block(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': 1,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'None'}
 
@@ -148,7 +148,7 @@ def step_three_block(nx, ny, nghost):
               'NeighborW': 2,
               'NeighborN': None,
               'NeighborS': None,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}
@@ -170,7 +170,7 @@ def ramp_six_block(nx, ny, nghost):
               'NeighborN': 2,
               'NeighborS': None,
               'BCTypeE': 'Slipwall',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'None',
               'BCTypeS': 'Slipwall'}
 
@@ -186,7 +186,7 @@ def ramp_six_block(nx, ny, nghost):
               'NeighborN': 3,
               'NeighborS': 1,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'None',
               'BCTypeS': 'None'}
 
@@ -202,7 +202,7 @@ def ramp_six_block(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': 2,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'Slipwall',
               'BCTypeS': 'None'}
 
@@ -217,7 +217,7 @@ def ramp_six_block(nx, ny, nghost):
               'NeighborW': 3,
               'NeighborN': None,
               'NeighborS': 5,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
               'BCTypeN': 'Slipwall',
               'BCTypeS': 'None'}
@@ -233,7 +233,7 @@ def ramp_six_block(nx, ny, nghost):
               'NeighborW': 2,
               'NeighborN': 4,
               'NeighborS': None,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
               'BCTypeN': 'None',
               'BCTypeS': 'Slipwall'}
@@ -257,7 +257,7 @@ def ramp_two_block(nx, ny, nghost):
               'NeighborN': 2,
               'NeighborS': None,
               'BCTypeE': 'Slipwall',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'None',
               'BCTypeS': 'Slipwall'}
 
@@ -272,9 +272,9 @@ def ramp_two_block(nx, ny, nghost):
               'NeighborW': None,
               'NeighborN': None,
               'NeighborS': 1,
-              'BCTypeE': 'Outflow',
-              'BCTypeW': 'InletSupersonic',
-              'BCTypeN': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'None'}
 
     return {1: block1,
@@ -293,7 +293,7 @@ def shallow_ramp_four_block(nx, ny, nghost):
               'NeighborN': 2,
               'NeighborS': None,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'None',
               'BCTypeS': 'Slipwall'}
 
@@ -309,8 +309,8 @@ def shallow_ramp_four_block(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': 1,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
-              'BCTypeN': 'Outflow',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'None'}
 
     block3 = {'nBLK': 3,
@@ -324,9 +324,9 @@ def shallow_ramp_four_block(nx, ny, nghost):
               'NeighborW': 2,
               'NeighborN': None,
               'NeighborS': 4,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
-              'BCTypeN': 'Outflow',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'None'}
 
     block4 = {'nBLK': 4,
@@ -340,7 +340,7 @@ def shallow_ramp_four_block(nx, ny, nghost):
               'NeighborW': 1,
               'NeighborN': 3,
               'NeighborS': None,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
               'BCTypeN': 'None',
               'BCTypeS': 'Slipwall'}
@@ -364,8 +364,8 @@ def shallow_ramp_two_block(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': None,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
-              'BCTypeN': 'Outflow',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'Reflection'}
 
     block2 = {'nBLK': 2,
@@ -379,9 +379,9 @@ def shallow_ramp_two_block(nx, ny, nghost):
               'NeighborW': 1,
               'NeighborN': None,
               'NeighborS': None,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
-              'BCTypeN': 'Outflow',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'Reflection'}
 
     return {1: block1,
@@ -401,8 +401,8 @@ def shallow_ramp_multiangle_three_block(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': None,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
-              'BCTypeN': 'Outflow',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'Reflection'}
 
     block2 = {'nBLK': 2,
@@ -418,7 +418,7 @@ def shallow_ramp_multiangle_three_block(nx, ny, nghost):
               'NeighborS': None,
               'BCTypeE': 'None',
               'BCTypeW': 'None',
-              'BCTypeN': 'Outflow',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'Reflection'}
 
     block3 = {'nBLK': 3,
@@ -432,9 +432,9 @@ def shallow_ramp_multiangle_three_block(nx, ny, nghost):
               'NeighborW': 2,
               'NeighborN': None,
               'NeighborS': None,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
-              'BCTypeN': 'Outflow',
+              'BCTypeN': 'OutletDirichlet',
               'BCTypeS': 'Reflection'}
 
     return {1: block1,
@@ -456,7 +456,7 @@ def ramp_channel(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': None,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}
 
@@ -535,7 +535,7 @@ def ramp_channel(nx, ny, nghost):
               'NeighborW': 5,
               'NeighborN': None,
               'NeighborS': None,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}
@@ -552,7 +552,7 @@ def ramp_channel(nx, ny, nghost):
               'NeighborN': 1,
               'NeighborS': None,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}"""
 
@@ -615,7 +615,7 @@ def ramp_channel(nx, ny, nghost):
                'NeighborW': 9,
                'NeighborN': None,
                'NeighborS': None,
-               'BCTypeE': 'Outflow',
+               'BCTypeE': 'OutletDirichlet',
                'BCTypeW': 'None',
                'BCTypeN': 'Reflection',
                'BCTypeS': 'Reflection'}
@@ -641,7 +641,7 @@ def long_nozzle(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': None,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSubsonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}
 
@@ -784,7 +784,7 @@ def long_nozzle(nx, ny, nghost):
                'NeighborW': 9,
                'NeighborN': None,
                'NeighborS': None,
-               'BCTypeE': 'Outflow',
+               'BCTypeE': 'OutletDirichlet',
                'BCTypeW': 'None',
                'BCTypeN': 'Reflection',
                'BCTypeS': 'Reflection'}
@@ -814,7 +814,7 @@ def ramjet(nx, ny, nghost):
               'NeighborN': None,
               'NeighborS': None,
               'BCTypeE': 'None',
-              'BCTypeW': 'InletSupersonic',
+              'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}
 
@@ -941,7 +941,7 @@ def ramjet(nx, ny, nghost):
               'NeighborW': 8,
               'NeighborN': None,
               'NeighborS': None,
-              'BCTypeE': 'Outflow',
+              'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
               'BCTypeN': 'Reflection',
               'BCTypeS': 'Reflection'}

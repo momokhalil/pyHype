@@ -39,6 +39,7 @@ _DEFINED_BC_ = ['explosion',
                 'explosion_trapezoid'
                 ]
 
+
 def is_defined_BC(name: str):
     return True if name in _DEFINED_BC_ else False
 
@@ -60,19 +61,24 @@ class GhostBlock:
         self.theta = None
         self.mesh = None
 
+        self._set_once = False
+
         # Assign the BCset method to avoid checking type everytime
         if self.BCtype == 'None':
             self.set_BC = self.set_BC_none
-        elif self.BCtype == 'Outflow':
-            self.set_BC = self.set_BC_outflow
         elif self.BCtype == 'Reflection':
             self.set_BC = self.set_BC_reflection
         elif self.BCtype == 'Slipwall':
             self.set_BC = self.set_BC_slipwall
-        elif self.BCtype == 'InletSupersonic':
-            self.set_BC = self.set_BC_inlet_supersonic
-        elif self.BCtype == 'InletSubsonic':
-            self.set_BC = self.set_BC_inlet_subsonic
+        elif self.BCtype == 'InletDirichlet':
+            self._set_once = True
+            self.set_BC = self.set_BC_inlet_dirichlet
+        elif self.BCtype == 'InletRiemann':
+            self.set_BC = self.set_BC_inlet_riemann
+        elif self.BCtype == 'OutletDirichlet':
+            self.set_BC = self.set_BC_outlet_dirichlet
+        elif self.BCtype == 'OutletRiemann':
+            self.set_BC = self.set_BC_outlet_riemann
         else:
             raise ValueError('Boundary Condition type ' + str(self.BCtype) + ' has not been specialized.')
 
@@ -140,7 +146,11 @@ class GhostBlock:
         pass
 
     @abstractmethod
-    def set_BC_outflow(self):
+    def set_BC_outlet_dirichlet(self):
+        pass
+
+    @abstractmethod
+    def set_BC_outlet_riemann(self):
         pass
 
     @abstractmethod
@@ -152,11 +162,11 @@ class GhostBlock:
         pass
 
     @abstractmethod
-    def set_BC_inlet_supersonic(self):
+    def set_BC_inlet_dirichlet(self):
         pass
 
     @abstractmethod
-    def set_BC_inlet_subsonic(self):
+    def set_BC_inlet_riemann(self):
         pass
 
 
@@ -207,9 +217,6 @@ class GhostBlockEast(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.E.get_west_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_east_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_east_ghost()
@@ -234,10 +241,16 @@ class GhostBlockEast(GhostBlock):
         # Update state
         self.state.update(state)
 
-    def set_BC_inlet_supersonic(self):
+    def set_BC_inlet_dirichlet(self):
         pass
 
-    def set_BC_inlet_subsonic(self):
+    def set_BC_inlet_riemann(self):
+        pass
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_east_ghost())
+
+    def set_BC_outlet_riemann(self):
         pass
 
 
@@ -284,9 +297,6 @@ class GhostBlockWest(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.W.get_east_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_west_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_west_ghost()
@@ -311,31 +321,39 @@ class GhostBlockWest(GhostBlock):
         # Update state
         self.state.update(state)
 
-    def set_BC_inlet_supersonic(self):
-        state = np.zeros_like(self.refBLK.get_west_ghost())
+    def set_BC_inlet_dirichlet(self):
+
         rho = 1
         u = 2.0
         v = 0
         p = 1 / self.inputs.gamma
-        state[:, :, 0] = rho
-        state[:, :, 1] = rho * u
-        state[:, :, 2] = rho * v
-        state[:, :, 3] = p / (self.inputs.gamma - 1) + 0.5 * (u ** 2 + v ** 2) * rho
 
-        self.state.update(state)
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * v
+        self.state.U[:, :, self.state.E_IDX] = p / (self.inputs.gamma - 1) + 0.5 * rho * (u * u + v * v)
 
-    def set_BC_inlet_subsonic(self):
-        state = np.zeros_like(self.refBLK.get_west_ghost())
+        self.state.set_vars_from_state()
+
+    def set_BC_inlet_riemann(self):
+
         rho = 1
         u = 0.5
         v = 0
         p = 1 / self.inputs.gamma
-        state[:, :, 0] = rho
-        state[:, :, 1] = rho * u
-        state[:, :, 2] = rho * v
-        state[:, :, 3] = p / (self.inputs.gamma - 1) + 0.5 * (u ** 2 + v ** 2) * rho
 
-        self.state.update(state)
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * v
+        self.state.U[:, :, self.state.E_IDX] = p / (self.inputs.gamma - 1) + 0.5 * (u * u + v * v) * rho
+
+        self.state.set_vars_from_state()
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_west_ghost())
+
+    def set_BC_outlet_riemann(self):
+        pass
 
 
 class GhostBlockNorth(GhostBlock):
@@ -381,9 +399,6 @@ class GhostBlockNorth(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.N.get_south_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_north_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_north_ghost()
@@ -408,10 +423,16 @@ class GhostBlockNorth(GhostBlock):
         # Update state
         self.state.update(state)
 
-    def set_BC_inlet_supersonic(self):
+    def set_BC_inlet_dirichlet(self):
         pass
 
-    def set_BC_inlet_subsonic(self):
+    def set_BC_inlet_riemann(self):
+        pass
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_north_ghost())
+
+    def set_BC_outlet_riemann(self):
         pass
 
 
@@ -456,9 +477,6 @@ class GhostBlockSouth(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.S.get_north_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_south_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_south_ghost()
@@ -483,8 +501,14 @@ class GhostBlockSouth(GhostBlock):
         # Update state
         self.state.update(state)
 
-    def set_BC_inlet_supersonic(self):
+    def set_BC_inlet_dirichlet(self):
         pass
 
-    def set_BC_inlet_subsonic(self):
+    def set_BC_inlet_riemann(self):
+        pass
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_south_ghost())
+
+    def set_BC_outlet_riemann(self):
         pass

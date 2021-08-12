@@ -24,6 +24,8 @@ from pyHype.states.base import State
 from pyHype.input.input_file_builder import ProblemInput
 import pyHype.states._cstate_jit_funcs as _cjf
 from profilehooks import profile
+from typing import Callable
+import functools
 
 class PrimitiveState(State):
     """
@@ -297,7 +299,19 @@ class PrimitiveState(State):
         return U
 
     def ek(self) -> np.ndarray:
-        return self.Ek_JIT(self.q1, self.q2) * self.q0
+        return self.ek_JIT(self.q0, self.q1, self.q2)
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def ek_JIT(rho: np.ndarray,
+               u: np.ndarray,
+               v: np.ndarray,
+               ) -> np.ndarray:
+        _Ek = np.zeros_like(u)
+        for i in range(u.shape[0]):
+            for j in range(u.shape[1]):
+                _Ek[i, j] = 0.5 * rho[i, j] * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
+        return _Ek
 
     def Ek(self) -> np.ndarray:
         return self.Ek_JIT(self.q1, self.q2)
@@ -836,14 +850,15 @@ class RoePrimitiveState(PrimitiveState):
         sqRhoRL = sqRhoL + sqRhoR
 
         # Compute *Roe* average quantities
-        rho     = np.sqrt(WL.q0 * WR.q0)
-        u       = (WL.q1 * sqRhoL + WR.q1 * sqRhoR) / sqRhoRL
-        v       = (WL.q2 * sqRhoL + WR.q2 * sqRhoR) / sqRhoRL
-        H       = (WL.H() * sqRhoL + WR.H() * sqRhoR) / sqRhoRL
-        p       = (self.g - 1) / self.g * rho * (H - 0.5 * (u * u + v * v))
+        self.q0 = np.sqrt(WL.q0 * WR.q0)
+        self.q1 = (WL.q1 * sqRhoL + WR.q1 * sqRhoR) / sqRhoRL
+        self.q2 = (WL.q2 * sqRhoL + WR.q2 * sqRhoR) / sqRhoRL
+        e       = (WL.e() * sqRhoL + WR.e() * sqRhoR) / sqRhoRL
+        self.q3 = (self.g - 1) * (e - self.ek())
 
         # Set state vector and variables from *Roe* averages
-        self.from_primitive_state_vars(rho, u, v, p, copy=False)
+        self.set_state_from_vars()
+
 
     def roe_state_from_conservative_states(self,
                                            UL: ConservativeState,
