@@ -7,6 +7,7 @@ pyHype is a Python framework for developing parallelized Computational Fluid Dyn
 The core idea behind pyHype is flexibility and modularity. pyHype offers a plug-n-play approach to CFD software, where every component of the CFD pipeline is modelled as a class with a set interface that allows it to communicate and interact with other components. This enables easy development of new components, since the developer does not have to worry about interfacing with other components. For example, if a developer is interested in developing a new approximate riemann solver technique, they only need to provide the implementation of the `FluxFunction` abstract class, without having to worry about how the rest of the code works in detail.
 
 **NEW**: Geometry not alligned with the cartesian axes is now supported!\
+**NEW**: 40% efficiency improvement!\
 **COMING UP**: Examples of simulations on various airfoil geometries, and a presentation of the newly added mesh optimization techniques.\
 **COMING UP**: Examples of simulations on multi-block meshes.
 
@@ -23,17 +24,21 @@ Here is an example of an explosion simulation performed on one block. The simula
 The example in given in the file [examples/explosion.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion.py). The file is as follows:
 
 ```python
-from pyHype.solvers import solver
+from pyHype.solvers import Euler2D
 
 # Solver settings
 settings = {'problem_type':             'explosion',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'Conservative',
-            'CFL':                      0.4,
+            'reconstruction_type':      'conservative',
+            'upwind_mode':              'primitive',
+            'write_solution':           False,
+            'write_solution_mode':      'every_n_timesteps',
+            'write_solution_name':      'nozzle',
+            'write_every_n_timesteps':  40,
+            'CFL':                      0.8,
             't_final':                  0.07,
-            'realplot':                 True,
-            'makeplot':                 False,
-            'time_it':                  False,
+            'realplot':                 False,
+            'profile':                  True,
             'gamma':                    1.4,
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
@@ -41,12 +46,16 @@ settings = {'problem_type':             'explosion',
             'nx':                       600,
             'ny':                       1200,
             'nghost':                   1,
-            'mesh_name':                'chamber',
-            'profile':                  False}
+            'mesh_name':                'chamber'
+            }
 
 # Create solver
-exp = solver.Euler2D(fvm='SecondOrderPWL', gradient='GreenGauss', flux_function='Roe',
-                     limiter='Venkatakrishnan', integrator='RK2', settings=settings)
+exp = Euler2D(fvm='SecondOrderPWL',
+              gradient='GreenGauss',
+              flux_function='Roe',
+              limiter='Venkatakrishnan',
+              integrator='RK4',
+              settings=settings)
 
 # Solve
 exp.solve()
