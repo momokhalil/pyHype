@@ -20,16 +20,27 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
 from abc import abstractmethod
-from pyHype.states import ConservativeState
 from pyHype.utils import utils
 from pyHype.mesh.base import Mesh
 from typing import TYPE_CHECKING
-
+from pyHype.states import ConservativeState
 
 if TYPE_CHECKING:
-    from pyHype.solvers.solver import ProblemInput
+    from pyHype.solvers.base import ProblemInput
     from pyHype.blocks.base import QuadBlock
 
+_DEFINED_BC_ = ['None',
+                'Reflection',
+                'Slipwall',
+                'InletDirichlet',
+                'InletRiemann',
+                'OutletDirichlet',
+                'OuletRiemann'
+                ]
+
+
+def is_defined_BC(name: str):
+    return True if name in _DEFINED_BC_ else False
 
 class GhostBlock:
     def __init__(self,
@@ -37,94 +48,119 @@ class GhostBlock:
                  BCtype: str,
                  refBLK: QuadBlock):
 
+        # Set inputs
         self.inputs = inputs
+        # Set BC type
         self.BCtype = BCtype
-
+        # Set number of cells
         self.nx = inputs.nx
         self.ny = inputs.ny
+        # Set number of ghost cells
         self.nghost = inputs.nghost
+        # Set reference block
         self.refBLK = refBLK
 
+        # State attribute (set to None)
         self.state = None
+        # Mesh attribute (set to None)
+        self.mesh = None
+        # Angle of boudndary (deprecated, will be removed soon)
         self.theta = None
 
-        self.mesh = None
-
         # Assign the BCset method to avoid checking type everytime
-        if self.BCtype == 'None':
-            self.set_BC = self.set_BC_none
-        elif self.BCtype == 'Outflow':
-            self.set_BC = self.set_BC_outflow
-        elif self.BCtype == 'Reflection':
-            self.set_BC = self.set_BC_reflection
-        elif self.BCtype == 'Slipwall':
-            self.set_BC = self.set_BC_slipwall
+        if self.BCtype in _DEFINED_BC_:
+            if self.BCtype == 'None':
+                self.set_BC = self.set_BC_none
+            elif self.BCtype == 'Reflection':
+                self.set_BC = self.set_BC_reflection
+            elif self.BCtype == 'Slipwall':
+                self.set_BC = self.set_BC_slipwall
+            elif self.BCtype == 'InletDirichlet':
+                self._inlet_realizability_check()
+                self.set_BC = self.set_BC_inlet_dirichlet
+            elif self.BCtype == 'InletRiemann':
+                self._inlet_realizability_check()
+                self.set_BC = self.set_BC_inlet_riemann
+            elif self.BCtype == 'OutletDirichlet':
+                self.set_BC = self.set_BC_outlet_dirichlet
+            elif self.BCtype == 'OutletRiemann':
+                self.set_BC = self.set_BC_outlet_riemann
+        else:
+            raise ValueError('Boundary Condition type ' + str(self.BCtype) + ' has not been specialized.')
+
+    def _inlet_realizability_check(self):
+        """
+        Realizability check for inlet conditions. Ensures positive density and pressure/energy. Raises ValueError if
+        not realizable and TypeError if not float or int.
+
+        Parameters:
+            - N/A
+
+        Returns:
+            - N/A
+        """
+
+        # Realizability/Type check for density
+        if self.inputs.BC_inlet_west_rho <= 0:
+            raise ValueError('Inlet density is less than or equal to zero and thus non-physical.')
+        elif not isinstance(self.inputs.BC_inlet_west_rho, (int, float)):
+            raise TypeError('Inlet density is not of type int or float.')
+
+        # Realizability/Type check for pressure
+        if self.inputs.BC_inlet_west_p <= 0:
+            raise ValueError('Inlet pressure is less than or equal to zero and thus non-physical.')
+        elif not isinstance(self.inputs.BC_inlet_west_p, (int, float)):
+            raise TypeError('Inlet pressure is not of type int or float.')
 
     def __getitem__(self, index):
         return self.state.U[index]
 
-    def row(self, index: int) -> np.ndarray:
+    def row(self,
+            index: int,
+            copy: bool = False
+            ) -> np.ndarray:
         """
         Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
         most-bottom row of the mesh will be returned.
 
         Parameters:
             - index (int): The index that reperesents which row needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
-            - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
+            - _row (np.ndarray): The numpy array containing the solution at the index-th row being returned.
         """
+        _row = self.state.U[None, index, :, :]
+        return _row.copy() if copy else _row
 
-        return self.state.U[None, index, :, :]
-
-    def col(self, index: int) -> np.ndarray:
+    def col(self,
+            index: int,
+            copy: bool = False
+            ) -> np.ndarray:
         """
         Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
         left-most column of the mesh will be returned.
 
         Parameters:
             - index (int): The index that reperesents which column needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
         """
-
-        return self.state.U[:, None, index, :]
-
-    def row_copy(self, index: int) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th row of the mesh. For example, if index is 0, then the
-        state at the most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which row needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th row being returned.
-        """
-
-        return self.row(index).copy()
-
-    def col_copy(self, index: int) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th column of the mesh. For example, if index is 0, then
-        the state at the most-bottom column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which column needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th column being returned.
-        """
-
-        return self.col(index).copy()
+        _col = self.state.U[:, None, index, :]
+        return _col.copy() if copy else _col
 
     @abstractmethod
     def set_BC_none(self):
         pass
 
     @abstractmethod
-    def set_BC_outflow(self):
+    def set_BC_outlet_dirichlet(self):
+        pass
+
+    @abstractmethod
+    def set_BC_outlet_riemann(self):
         pass
 
     @abstractmethod
@@ -133,6 +169,14 @@ class GhostBlock:
 
     @abstractmethod
     def set_BC_slipwall(self):
+        pass
+
+    @abstractmethod
+    def set_BC_inlet_dirichlet(self):
+        pass
+
+    @abstractmethod
+    def set_BC_inlet_riemann(self):
         pass
 
 
@@ -148,10 +192,8 @@ class GhostBlockEast(GhostBlock):
 
         # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
-
         # Construct ConservativeState class to represent the solution on the mesh
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
-
         # Set geometric angle
         self.theta = refBLK.thetaE
 
@@ -183,9 +225,6 @@ class GhostBlockEast(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.E.get_west_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_east_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_east_ghost()
@@ -209,6 +248,26 @@ class GhostBlockEast(GhostBlock):
         state[:, :, 1] = 0
         # Update state
         self.state.update(state)
+
+    def set_BC_inlet_dirichlet(self):
+        rho = self.inputs.BC_inlet_east_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_east_u ** 2 + self.inputs.BC_inlet_east_v ** 2)
+
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_east_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_east_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_east_p / (self.inputs.gamma - 1) + ek
+
+        self.state.set_vars_from_state()
+
+    def set_BC_inlet_riemann(self):
+        pass
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_east_ghost())
+
+    def set_BC_outlet_riemann(self):
+        pass
 
 
 class GhostBlockWest(GhostBlock):
@@ -254,9 +313,6 @@ class GhostBlockWest(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.W.get_east_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_west_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_west_ghost()
@@ -280,6 +336,27 @@ class GhostBlockWest(GhostBlock):
         state[:, :, 1] = 0
         # Update state
         self.state.update(state)
+
+    def set_BC_inlet_dirichlet(self):
+
+        rho = self.inputs.BC_inlet_west_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_west_u ** 2 + self.inputs.BC_inlet_west_v ** 2)
+
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_west_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_west_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_west_p / (self.inputs.gamma - 1) + ek
+
+        self.state.set_vars_from_state()
+
+    def set_BC_inlet_riemann(self):
+        pass
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_west_ghost())
+
+    def set_BC_outlet_riemann(self):
+        pass
 
 
 class GhostBlockNorth(GhostBlock):
@@ -325,9 +402,6 @@ class GhostBlockNorth(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.N.get_south_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_north_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_north_ghost()
@@ -351,6 +425,26 @@ class GhostBlockNorth(GhostBlock):
         state[:, :, 2] = 0
         # Update state
         self.state.update(state)
+
+    def set_BC_inlet_dirichlet(self):
+        rho = self.inputs.BC_inlet_north_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_north_u ** 2 + self.inputs.BC_inlet_north_v ** 2)
+
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_north_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_north_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_north_p / (self.inputs.gamma - 1) + ek
+
+        self.state.set_vars_from_state()
+
+    def set_BC_inlet_riemann(self):
+        pass
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_north_ghost())
+
+    def set_BC_outlet_riemann(self):
+        pass
 
 
 class GhostBlockSouth(GhostBlock):
@@ -394,9 +488,6 @@ class GhostBlockSouth(GhostBlock):
     def set_BC_none(self):
         self.state.update(self.refBLK.neighbors.S.get_north_ghost())
 
-    def set_BC_outflow(self):
-        self.state.update(self.refBLK.get_south_ghost())
-
     def set_BC_reflection(self):
         # Get state from interior domain
         state = self.refBLK.get_south_ghost()
@@ -420,3 +511,23 @@ class GhostBlockSouth(GhostBlock):
         state[:, :, 2] = 0
         # Update state
         self.state.update(state)
+
+    def set_BC_inlet_dirichlet(self):
+        rho = self.inputs.BC_inlet_south_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_south_u ** 2 + self.inputs.BC_inlet_south_v ** 2)
+
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_south_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_south_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_south_p / (self.inputs.gamma - 1) + ek
+
+        self.state.set_vars_from_state()
+
+    def set_BC_inlet_riemann(self):
+        pass
+
+    def set_BC_outlet_dirichlet(self):
+        self.state.update(self.refBLK.get_south_ghost())
+
+    def set_BC_outlet_riemann(self):
+        pass

@@ -1,7 +1,7 @@
 from pyHype.solvers import Euler2D
 
 # Solver settings
-settings = {'problem_type':             'explosion',
+settings = {'problem_type':             'subsonic_flood',
             'interface_interpolation':  'arithmetic_average',
             'reconstruction_type':      'conservative',
             'upwind_mode':              'primitive',
@@ -15,12 +15,16 @@ settings = {'problem_type':             'explosion',
             'profile':                  True,
             'gamma':                    1.4,
             'rho_inf':                  1.0,
-            'a_inf':                    343.0,
+            'a_inf':                    1.0,
             'R':                        287.0,
             'nx':                       70,
-            'ny':                       140,
+            'ny':                       70,
             'nghost':                   1,
-            'mesh_name':                'chamber'
+            'mesh_name':                'long_nozzle',
+            'BC_inlet_west_rho':        1.0,
+            'BC_inlet_west_u':          2.0,
+            'BC_inlet_west_v':          0.0,
+            'BC_inlet_west_p':          1 / 1.4,
             }
 
 # Create solver
