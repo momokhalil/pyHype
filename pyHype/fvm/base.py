@@ -240,7 +240,7 @@ class MUSCLFiniteVolumeMethod:
 
         # Primitive reconstruction
         if self.inputs.reconstruction_type == 'Primitive':
-            return self.reconstruct_primitive(refBLK)
+            return self.reconstruct_state_primitive(refBLK)
 
         # Conservative reconstruction (by default)
         else:
@@ -249,9 +249,9 @@ class MUSCLFiniteVolumeMethod:
                                           refBLK.ghost.N.state.U, refBLK.ghost.S.state.U)
 
 
-    def reconstruct_primitive(self,
-                              refBLK,
-                              ) -> [np.ndarray]:
+    def reconstruct_state_primitive(self,
+                                    refBLK,
+                                    ) -> [np.ndarray]:
         """
         Primitive reconstruction implementation. Simply convert the input ConservativeState into PrimitiveState and
         call the reconstruct_state implementation.
@@ -345,7 +345,7 @@ class MUSCLFiniteVolumeMethod:
         self.gradient(refBLK)
 
         # Get reconstructed quadrature points
-        stateE, stateW, stateN, stateS = self.reconstruct(refBLK)
+        _stateE, _stateW, _stateN, _stateS = self.reconstruct(refBLK)
 
         # Calculate x-direction Flux
 
@@ -357,19 +357,20 @@ class MUSCLFiniteVolumeMethod:
 
         # Rotate to allign with cell faces
         if not refBLK.is_cartesian:
+            utils.rotate(refBLK.mesh.faceE.theta, _stateE)
+            utils.rotate(refBLK.mesh.faceW.theta - np.pi, _stateW)
             utils.rotate(refBLK.mesh.get_east_face_angle(), _ghostE)
             utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
-            utils.rotate(refBLK.mesh.faceE.theta, stateE)
-            utils.rotate(refBLK.mesh.faceW.theta - np.pi, stateW)
 
         # Iterate over all rows in block
         for row in range(self.ny):
-            # Get state on left side of cell interface
-            stateL = np.concatenate((_ghostW[row, None, :, :], stateE[row, None, :, :]), axis=1)
-            # Get state on right side of cell interface
-            stateR = np.concatenate((stateW[row, None, :, :], _ghostE[row, None, :, :]), axis=1)
+            # Get state for currect row
+            _state = np.concatenate((_ghostW[row, None, :, :],
+                                     _stateE[row, None, :, :],
+                                     _ghostE[row, None, :, :]), axis=1)
             # Get cell interface flux
-            flux_EW = self.flux_function_X.compute_flux(stateL, stateR)
+            flux_EW = self.flux_function_X.compute_flux(UL=_state[:, :-1, :],
+                                                        UR=_state[:, 1:, :])
             # Set east face flux
             self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
             # Set west face flux
@@ -385,22 +386,24 @@ class MUSCLFiniteVolumeMethod:
         # Rotate to allign with cell faces
         if refBLK.is_cartesian:
             # If block is cartesian, rotate by 90 degrees CCW (implemented as array swaps for efficiency)
-            utils.rotate90(stateN, stateS, _ghostN, _ghostS)
+            utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
         else:
             # If not, rotate by the given angle using the standard rotation matrix
+            utils.rotate(refBLK.mesh.faceN.theta, _stateN)
+            utils.rotate(refBLK.mesh.faceS.theta - np.pi, _stateS)
             utils.rotate(refBLK.mesh.get_north_face_angle(), _ghostN)
             utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
-            utils.rotate(refBLK.mesh.faceN.theta, stateN)
-            utils.rotate(refBLK.mesh.faceS.theta - np.pi, stateS)
 
         # Iterate over all columns in block
         for col in range(self.nx):
-            # Get state on left side of cell interface
-            stateL = np.concatenate((_ghostS[:, col, None, :], stateN[:, col, None, :]), axis=0).transpose((1, 0, 2))
-            # Get state on right side of cell interface
-            stateR = np.concatenate((stateS[:, col, None, :], _ghostS[:, col, None, :]), axis=0).transpose((1, 0, 2))
+            # Get state for currect column
+            _state = np.concatenate((_ghostS[:, col, None, :],
+                                     _stateN[:, col, None, :],
+                                     _ghostS[:, col, None, :]), axis=0)
             # Calculate face-normal-flux at each cell east-west interface
-            flux_NS = self.flux_function_Y.compute_flux(stateL, stateR).reshape(-1, 4)
+            flux_NS = self.flux_function_Y.compute_flux(UL=_state[:-1, :, :].transpose((1, 0, 2)),
+                                                        UR=_state[1:, :, :].transpose((1, 0, 2))
+                                                        ).reshape(-1, 4)
             # Set east face flux
             self.Flux_N[:, col, :] = flux_NS[1:, :]
             # Set west face flux
