@@ -36,15 +36,14 @@ if TYPE_CHECKING:
 
 np.set_printoptions(threshold=sys.maxsize)
 
-__REQUIRED__ = ['problem_type', 'realplot', 't_final', 'CFL',
-                'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny', 'nghost', 'mesh_name', 'profile',
-                'interface_interpolation', 'reconstruction_type', 'write_solution']
-
-__OPTIONAL__ = ['alpha', 'write_time', 'upwind_mode', 'write_every_n_timesteps', 'write_solution_mode',
-                'write_solution_name']
-
 
 class ProblemInput:
+    __REQUIRED__ = ['problem_type', 'realplot', 't_final', 'CFL',
+                    'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny',
+                    'nghost', 'mesh_name', 'profile',
+                    'interface_interpolation', 'reconstruction_type',
+                    'write_solution']
+
     def __init__(self,
                  fvm: str,
                  gradient: str,
@@ -68,22 +67,16 @@ class ProblemInput:
         self.flux_function = flux_function
         self.limiter = limiter
         self.integrator = integrator
-
-        # General parameters
-        for req_name in __REQUIRED__:
-            self.__setattr__(req_name, settings[req_name])
-
-        # OPTIONAL
-        for opt_name in __OPTIONAL__:
-            if opt_name in settings.keys():
-                self.__setattr__(opt_name, settings[opt_name])
-
         self.n = settings['nx'] * settings['ny']
         self.mesh_inputs = mesh_inputs
 
-    @staticmethod
-    def _check_input_settings(input_dict: dict) -> None:
-        for key in __REQUIRED__:
+        # Set all input parameters
+        for key, val in settings.items():
+            self.__setattr__(key, val)
+
+
+    def _check_input_settings(self, input_dict: dict) -> None:
+        for key in self.__REQUIRED__:
             if key not in input_dict.keys():
                 raise KeyError(key + ' not found in inputs.')
 
@@ -108,12 +101,6 @@ class Solver:
         # Mesh name
         print('\t>>> Gathering Mesh Information')
         mesh_name = settings['mesh_name']
-        # Number of nodes in x-direction per block
-        nx = settings['nx']
-        # Number of nodes in y-direction per block
-        ny = settings['ny']
-        # Number of ghost cells
-        nghost = settings['nghost']
 
         # save original input dict
         self._settings_dict = settings
@@ -124,17 +111,14 @@ class Solver:
         # Get function that creates the dictionary of block description dictionaries.
         _mesh_func = meshes.DEFINED_MESHES[mesh_name]
         # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
-        _mesh_dict = _mesh_func(nx=nx, ny=ny, nghost=nghost)
-        # Initialise dictionary to store a BlockDescription for each block in the mesh
-        _mesh_inputs = {}
+        _mesh_dict = _mesh_func(nx=settings['nx'], ny=settings['ny'], nghost=settings['nghost'])
         # Create BlockDescription for each block in the mesh
-        for blk, blkData in _mesh_dict.items():
-            _mesh_inputs[blk] = BlockDescription(blkData)
+        _mesh_inputs = {blk: BlockDescription(blkData) for (blk, blkData) in _mesh_dict.items()}
 
         print('\t>>> Checking all boundary condition types')
-        self._all_BC_types = []
         _bc_type_names = ['BCTypeE', 'BCTypeW', 'BCTypeN', 'BCTypeS']
-        for blk, blkdata in _mesh_dict.items():
+        self._all_BC_types = []
+        for blkdata in _mesh_dict.values():
             for bc_name in _bc_type_names:
                 if blkdata[bc_name] not in self._all_BC_types:
                     self._all_BC_types.append(blkdata[bc_name])

@@ -20,7 +20,8 @@ settings = {'problem_type':             'explosion',
             'nx':                       70,
             'ny':                       140,
             'nghost':                   1,
-            'mesh_name':                'chamber'}
+            'mesh_name':                'chamber'
+            }
 
 # Create solver
 exp = Euler2D(fvm='SecondOrderPWL',

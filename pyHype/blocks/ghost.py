@@ -29,14 +29,13 @@ if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
     from pyHype.blocks.base import QuadBlock
 
-_DEFINED_BC_ = ['explosion',
-                'implosion',
-                'shockbox',
-                'supersonic_flood',
-                'supersonic_rest',
-                'subsonic_flood',
-                'subsonic_rest',
-                'explosion_trapezoid'
+_DEFINED_BC_ = ['None',
+                'Reflection',
+                'Slipwall',
+                'InletDirichlet',
+                'InletRiemann',
+                'OutletDirichlet',
+                'OuletRiemann'
                 ]
 
 
@@ -49,38 +48,69 @@ class GhostBlock:
                  BCtype: str,
                  refBLK: QuadBlock):
 
+        # Set inputs
         self.inputs = inputs
+        # Set BC type
         self.BCtype = BCtype
-
+        # Set number of cells
         self.nx = inputs.nx
         self.ny = inputs.ny
+        # Set number of ghost cells
         self.nghost = inputs.nghost
+        # Set reference block
         self.refBLK = refBLK
 
+        # State attribute (set to None)
         self.state = None
-        self.theta = None
+        # Mesh attribute (set to None)
         self.mesh = None
-
-        self._set_once = False
+        # Angle of boudndary (deprecated, will be removed soon)
+        self.theta = None
 
         # Assign the BCset method to avoid checking type everytime
-        if self.BCtype == 'None':
-            self.set_BC = self.set_BC_none
-        elif self.BCtype == 'Reflection':
-            self.set_BC = self.set_BC_reflection
-        elif self.BCtype == 'Slipwall':
-            self.set_BC = self.set_BC_slipwall
-        elif self.BCtype == 'InletDirichlet':
-            self._set_once = True
-            self.set_BC = self.set_BC_inlet_dirichlet
-        elif self.BCtype == 'InletRiemann':
-            self.set_BC = self.set_BC_inlet_riemann
-        elif self.BCtype == 'OutletDirichlet':
-            self.set_BC = self.set_BC_outlet_dirichlet
-        elif self.BCtype == 'OutletRiemann':
-            self.set_BC = self.set_BC_outlet_riemann
+        if self.BCtype in _DEFINED_BC_:
+            if self.BCtype == 'None':
+                self.set_BC = self.set_BC_none
+            elif self.BCtype == 'Reflection':
+                self.set_BC = self.set_BC_reflection
+            elif self.BCtype == 'Slipwall':
+                self.set_BC = self.set_BC_slipwall
+            elif self.BCtype == 'InletDirichlet':
+                self._inlet_realizability_check()
+                self.set_BC = self.set_BC_inlet_dirichlet
+            elif self.BCtype == 'InletRiemann':
+                self._inlet_realizability_check()
+                self.set_BC = self.set_BC_inlet_riemann
+            elif self.BCtype == 'OutletDirichlet':
+                self.set_BC = self.set_BC_outlet_dirichlet
+            elif self.BCtype == 'OutletRiemann':
+                self.set_BC = self.set_BC_outlet_riemann
         else:
             raise ValueError('Boundary Condition type ' + str(self.BCtype) + ' has not been specialized.')
+
+    def _inlet_realizability_check(self):
+        """
+        Realizability check for inlet conditions. Ensures positive density and pressure/energy. Raises ValueError if
+        not realizable and TypeError if not float or int.
+
+        Parameters:
+            - N/A
+
+        Returns:
+            - N/A
+        """
+
+        # Realizability/Type check for density
+        if self.inputs.BC_inlet_west_rho <= 0:
+            raise ValueError('Inlet density is less than or equal to zero and thus non-physical.')
+        elif not isinstance(self.inputs.BC_inlet_west_rho, (int, float)):
+            raise TypeError('Inlet density is not of type int or float.')
+
+        # Realizability/Type check for pressure
+        if self.inputs.BC_inlet_west_p <= 0:
+            raise ValueError('Inlet pressure is less than or equal to zero and thus non-physical.')
+        elif not isinstance(self.inputs.BC_inlet_west_p, (int, float)):
+            raise TypeError('Inlet pressure is not of type int or float.')
 
     def __getitem__(self, index):
         return self.state.U[index]
@@ -182,10 +212,8 @@ class GhostBlockEast(GhostBlock):
 
         # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
-
         # Construct ConservativeState class to represent the solution on the mesh
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
-
         # Set geometric angle
         self.theta = refBLK.thetaE
 
@@ -242,7 +270,15 @@ class GhostBlockEast(GhostBlock):
         self.state.update(state)
 
     def set_BC_inlet_dirichlet(self):
-        pass
+        rho = self.inputs.BC_inlet_east_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_east_u ** 2 + self.inputs.BC_inlet_east_v ** 2)
+
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_east_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_east_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_east_p / (self.inputs.gamma - 1) + ek
+
+        self.state.set_vars_from_state()
 
     def set_BC_inlet_riemann(self):
         pass
@@ -323,31 +359,18 @@ class GhostBlockWest(GhostBlock):
 
     def set_BC_inlet_dirichlet(self):
 
-        rho = 1
-        u = 2.0
-        v = 0
-        p = 1 / self.inputs.gamma
+        rho = self.inputs.BC_inlet_west_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_west_u ** 2 + self.inputs.BC_inlet_west_v ** 2)
 
         self.state.U[:, :, self.state.RHO_IDX] = rho
-        self.state.U[:, :, self.state.RHOU_IDX] = rho * u
-        self.state.U[:, :, self.state.RHOV_IDX] = rho * v
-        self.state.U[:, :, self.state.E_IDX] = p / (self.inputs.gamma - 1) + 0.5 * rho * (u * u + v * v)
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_west_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_west_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_west_p / (self.inputs.gamma - 1) + ek
 
         self.state.set_vars_from_state()
 
     def set_BC_inlet_riemann(self):
-
-        rho = 1
-        u = 0.5
-        v = 0
-        p = 1 / self.inputs.gamma
-
-        self.state.U[:, :, self.state.RHO_IDX] = rho
-        self.state.U[:, :, self.state.RHOU_IDX] = rho * u
-        self.state.U[:, :, self.state.RHOV_IDX] = rho * v
-        self.state.U[:, :, self.state.E_IDX] = p / (self.inputs.gamma - 1) + 0.5 * (u * u + v * v) * rho
-
-        self.state.set_vars_from_state()
+        pass
 
     def set_BC_outlet_dirichlet(self):
         self.state.update(self.refBLK.get_west_ghost())
@@ -424,7 +447,15 @@ class GhostBlockNorth(GhostBlock):
         self.state.update(state)
 
     def set_BC_inlet_dirichlet(self):
-        pass
+        rho = self.inputs.BC_inlet_north_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_north_u ** 2 + self.inputs.BC_inlet_north_v ** 2)
+
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_north_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_north_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_north_p / (self.inputs.gamma - 1) + ek
+
+        self.state.set_vars_from_state()
 
     def set_BC_inlet_riemann(self):
         pass
@@ -502,7 +533,15 @@ class GhostBlockSouth(GhostBlock):
         self.state.update(state)
 
     def set_BC_inlet_dirichlet(self):
-        pass
+        rho = self.inputs.BC_inlet_south_rho
+        ek = 0.5 * rho * (self.inputs.BC_inlet_south_u ** 2 + self.inputs.BC_inlet_south_v ** 2)
+
+        self.state.U[:, :, self.state.RHO_IDX] = rho
+        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_south_u
+        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_south_v
+        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_south_p / (self.inputs.gamma - 1) + ek
+
+        self.state.set_vars_from_state()
 
     def set_BC_inlet_riemann(self):
         pass
