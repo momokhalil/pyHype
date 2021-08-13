@@ -805,7 +805,8 @@ class QuadBlock:
         return self.state.U[0:1, :, :].copy()
 
     def row(self,
-            index: int
+            index: int,
+            copy: bool = False
             ) -> np.ndarray:
         """
         Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
@@ -813,15 +814,17 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which row needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
         """
-
-        return self.state.U[index, None, :, :]
+        _row = self.state.U[index, None, :, :]
+        return _row.copy() if copy else _row
 
     def fullrow(self,
-                index: int
+                index: int,
+                copy: bool = False
                 ) -> np.ndarray:
         """
         Return the solution stored in the index-th full row of the mesh. A full row is defined as the row plus the ghost
@@ -829,18 +832,20 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which full row needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th full row being returned.
         """
-
-        return np.concatenate((self.ghost.W[index, None, :, :],
-                               self.row(index),
-                               self.ghost.E[index, None, :, :]),
-                              axis=1)
+        _fullrow = np.concatenate((self.ghost.W[index, None, :, :],
+                                   self.row(index),
+                                   self.ghost.E[index, None, :, :]),
+                                  axis=1)
+        return _fullrow.copy() if copy else _fullrow
 
     def col(self,
-            index: int
+            index: int,
+            copy: bool = False
             ) -> np.ndarray:
         """
         Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
@@ -848,15 +853,17 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which column needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
         """
-
-        return self.state.U[None, :, index, :]
+        _col = self.state.U[None, :, index, :]
+        return _col.copy() if copy else _col
 
     def fullcol(self,
-                index: int
+                index: int,
+                copy: bool = False
                 ) -> np.ndarray:
         """
         Return the solution stored in the index-th full column of the mesh. A full column is defined as the row plus the
@@ -864,81 +871,16 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which full column needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th full column being returned.
         """
-
-        return np.concatenate((self.ghost.S[:, index, None, :],
-                               self.col(index),
-                               self.ghost.N[:, index, None, :]),
-                              axis=1)
-
-    def row_copy(self,
-                 index: int
-                 ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th row of the mesh. For example, if index is 0, then the
-        state at the most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which row needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th row being returned.
-        """
-
-        return self.row(index).copy()
-
-    def col_copy(self,
-                 index: int
-                 ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th column of the mesh. For example, if index is 0, then
-        the state at the most-bottom column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which column needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th column being returned.
-        """
-
-        return self.col(index).copy()
-
-    def fullrow_copy(self,
-                     index: int
-                     ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th full-row of the mesh. For example, if index is 0,
-        then the state at the most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which full-row needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th full-row being
-            returned.
-        """
-
-        return self.fullrow(index).copy()
-
-    def fullcol_copy(self,
-                     index: int
-                     ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th full-column of the mesh. For example, if index is 0,
-        then the state at the most-bottom column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which full-column needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th full-column being
-            returned.
-        """
-
-        return self.fullrow(index).copy()
+        _fullcol = np.concatenate((self.ghost.S[:, index, None, :],
+                                   self.col(index),
+                                   self.ghost.N[:, index, None, :]),
+                                  axis=1)
+        return _fullcol.copy() if copy else _fullcol
 
     def get_interface_values(self) -> [np.ndarray]:
 

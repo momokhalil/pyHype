@@ -350,10 +350,10 @@ class MUSCLFiniteVolumeMethod:
         # Calculate x-direction Flux
 
         # Copy all ghost cell values that will be used for the flux calculations
-        _ghostE = refBLK.ghost.E.col_copy(0)
-        _ghostW = refBLK.ghost.W.col_copy(-1)
-        _ghostN = refBLK.ghost.N.row_copy(0)
-        _ghostS = refBLK.ghost.S.row_copy(-1)
+        _ghostE = refBLK.ghost.E.col(0, copy=True)
+        _ghostW = refBLK.ghost.W.col(-1, copy=True)
+        _ghostN = refBLK.ghost.N.row(0, copy=True)
+        _ghostS = refBLK.ghost.S.row(-1, copy=True)
 
         # Rotate to allign with cell faces
         if not refBLK.is_cartesian:

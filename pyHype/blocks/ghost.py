@@ -115,61 +115,41 @@ class GhostBlock:
     def __getitem__(self, index):
         return self.state.U[index]
 
-    def row(self, index: int) -> np.ndarray:
+    def row(self,
+            index: int,
+            copy: bool = False
+            ) -> np.ndarray:
         """
         Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
         most-bottom row of the mesh will be returned.
 
         Parameters:
             - index (int): The index that reperesents which row needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
-            - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
+            - _row (np.ndarray): The numpy array containing the solution at the index-th row being returned.
         """
+        _row = self.state.U[None, index, :, :]
+        return _row.copy() if copy else _row
 
-        return self.state.U[None, index, :, :]
-
-    def col(self, index: int) -> np.ndarray:
+    def col(self,
+            index: int,
+            copy: bool = False
+            ) -> np.ndarray:
         """
         Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
         left-most column of the mesh will be returned.
 
         Parameters:
             - index (int): The index that reperesents which column needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
         """
-
-        return self.state.U[:, None, index, :]
-
-    def row_copy(self, index: int) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th row of the mesh. For example, if index is 0, then the
-        state at the most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which row needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th row being returned.
-        """
-
-        return self.row(index).copy()
-
-    def col_copy(self, index: int) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th column of the mesh. For example, if index is 0, then
-        the state at the most-bottom column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which column needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th column being returned.
-        """
-
-        return self.col(index).copy()
+        _col = self.state.U[:, None, index, :]
+        return _col.copy() if copy else _col
 
     @abstractmethod
     def set_BC_none(self):
