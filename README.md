@@ -63,6 +63,64 @@ exp.solve()
 ```
 ![alt text](/explosion.gif)
 
+
+## Supersonic Simulation
+Here is an example of supersonic ramjet simulation performed on 9 blocks. The simulation was performed with the following: 
+- Mach 2 flow
+- 300 x 300 cell blocks
+- Roe approximate riemann solver
+- Venkatakrishnan flux limiter
+- Piecewise-Linear second order reconstruction
+- Green-Gauss gradient method
+- RK2 time stepping with CFL=0.4
+- Reflection boundary conditions for top and bottom walls
+- Dirichlet input and output boundary conditions
+
+The example in given in the file [examples/ramjet/ramjet.py](https://github.com/momokhalil/pyHype/blob/main/examples/ramjet/ramjet.py). The file is as follows:
+
+```
+
+from pyHype.solvers import Euler2D
+
+# Solver settings
+settings = {'problem_type':             'supersonic_flood',
+            'interface_interpolation':  'arithmetic_average',
+            'reconstruction_type':      'conservative',
+            'upwind_mode':              'primitive',
+            'write_solution':           True,
+            'write_solution_mode':      'every_n_timesteps',
+            'write_solution_name':      'ramjet',
+            'write_every_n_timesteps':  40,
+            'CFL':                      0.4,
+            't_final':                  10.0,
+            'realplot':                 False,
+            'profile':                  False,
+            'gamma':                    1.4,
+            'rho_inf':                  1.0,
+            'a_inf':                    1.0,
+            'R':                        287.0,
+            'nx':                       300,
+            'ny':                       300,
+            'nghost':                   1,
+            'mesh_name':                'ramjet',
+            'BC_inlet_west_rho':        1.0,
+            'BC_inlet_west_u':          2.0,
+            'BC_inlet_west_v':          0.0,
+            'BC_inlet_west_p':          1 / 1.4,
+            }
+
+# Create solver
+exp = Euler2D(fvm='SecondOrderPWL',
+              gradient='GreenGauss',
+              flux_function='Roe',
+              limiter='Venkatakrishnan',
+              integrator='RK2',
+              settings=settings)
+# Solve
+exp.solve()
+```
+![alt text](/ramjet.png)
+
 ## Current work
 1. Integrate airfoil meshing and mesh optimization using elliptic PDEs
 2. Compile gradient and reconstruction calculations with numba
