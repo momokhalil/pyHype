@@ -78,8 +78,7 @@ Here is an example of supersonic ramjet simulation performed on 9 blocks. The si
 
 The example in given in the file [examples/ramjet/ramjet.py](https://github.com/momokhalil/pyHype/blob/main/examples/ramjet/ramjet.py). The file is as follows:
 
-```
-
+```python
 from pyHype.solvers import Euler2D
 
 # Solver settings
