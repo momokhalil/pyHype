@@ -21,6 +21,7 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyHype.blocks.base import QuadBlock
+    from pyHype.mesh.base import Mesh, CellFace
 
 import numpy as np
 from pyHype.fvm.base import MUSCLFiniteVolumeMethod
@@ -37,36 +38,21 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         else:
             super().__init__(inputs, global_nBLK)
 
-
     @staticmethod
-    def high_order_E(refBLK: QuadBlock):
+    def high_order_term(refBLK: QuadBlock,
+                        face: CellFace):
         """
-        Compute the high order term used for the state reconstruction at the east quadrature point.
+        Compute the high order term used for the state reconstruction at the quadrature point on a specified face.
 
         Parameters:
-            - refBLK (QuadBlock): Block whos state needs to be reconstructed.
+            - refBLK (QuadBlock): QuadBlock class that stores all data related to the block of interest
+            - face (Cellface): CellFace class that stores the mesh data for the face of interest
+
+        Returns:
+            - high_ord (np.ndarray): High order term
         """
 
-        return refBLK.gradx * (refBLK.mesh.faceE.xmid - refBLK.mesh.x) \
-             + refBLK.grady * (refBLK.mesh.faceE.ymid - refBLK.mesh.y)
-
-    @staticmethod
-    def high_order_W(refBLK: QuadBlock):
-
-        return refBLK.gradx * (refBLK.mesh.faceW.xmid - refBLK.mesh.x) \
-             + refBLK.grady * (refBLK.mesh.faceW.ymid - refBLK.mesh.y)
-
-    @staticmethod
-    def high_order_N(refBLK: QuadBlock):
-
-        return refBLK.gradx * (refBLK.mesh.faceN.xmid - refBLK.mesh.x) \
-             + refBLK.grady * (refBLK.mesh.faceN.ymid - refBLK.mesh.y)
-
-    @staticmethod
-    def high_order_S(refBLK: QuadBlock):
-
-        return refBLK.gradx * (refBLK.mesh.faceS.xmid - refBLK.mesh.x) \
-             + refBLK.grady * (refBLK.mesh.faceS.ymid - refBLK.mesh.y)
+        return refBLK.gradx * (face.xmid - refBLK.mesh.x) + refBLK.grady * (face.ymid - refBLK.mesh.y)
 
     def reconstruct_state(self,
                           refBLK: QuadBlock,
@@ -78,14 +64,13 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
                           ) -> [np.ndarray]:
 
         # High order terms for each cell face
-        high_ord_E = self.high_order_E(refBLK)
-        high_ord_W = self.high_order_W(refBLK)
-        high_ord_N = self.high_order_N(refBLK)
-        high_ord_S = self.high_order_S(refBLK)
+        high_ord_E = self.high_order_term(refBLK, refBLK.mesh.faceE)
+        high_ord_W = self.high_order_term(refBLK, refBLK.mesh.faceW)
+        high_ord_N = self.high_order_term(refBLK, refBLK.mesh.faceN)
+        high_ord_S = self.high_order_term(refBLK, refBLK.mesh.faceS)
 
         # Compute slope limiter
-        phi = self.flux_limiter.limit(state,
-                                      ghostE, ghostW, ghostN, ghostS,
+        phi = self.flux_limiter.limit(state, ghostE, ghostW, ghostN, ghostS,
                                       quadE=state + high_ord_E,
                                       quadW=state + high_ord_W,
                                       quadN=state + high_ord_N,

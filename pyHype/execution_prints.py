@@ -30,14 +30,14 @@ A Python framework for developing parallelized Computational Fluid Dynamics soft
 the hyperbolic 2D Euler equations on distributed, multi-block structured grids.'
 
 lice = '''
-*************************************************************************
-*                                                                       *
-*   Copyright 2021 Mohamed Khalil.                                      *
-*                                                                       *
-*   Licensed under the Apache License, Version 2.0 (the "License");     *
-*   you may not use this file except in compliance with the License.    *
-*                                                                       *
-*************************************************************************\n'''
+**********************************************************************************************
+*                                                                                            *
+*                               Copyright 2021 Mohamed Khalil                                *
+*                                                                                            *
+*               Licensed under the Apache License, Version 2.0 (the "License");              *
+*               you may not use this file except in compliance with the License.             *
+*                                                                                            *
+**********************************************************************************************\n'''
 
 
 began_solving = 'Beginning solution to specified problem of type: '

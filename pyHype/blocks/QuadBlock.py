@@ -32,7 +32,7 @@ from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKu
 from pyHype.blocks.ghost import GhostBlockEast, GhostBlockWest, GhostBlockSouth, GhostBlockNorth
 
 if TYPE_CHECKING:
-    from pyHype.solvers.solver import ProblemInput
+    from pyHype.solvers.base import ProblemInput
 
 # QuadBlock Class Definition
 class QuadBlock:
@@ -130,9 +130,10 @@ class QuadBlock:
                                          S=GhostBlockSouth(self.inputs, BCtype=block_data.BCTypeS, refBLK=self))
 
         # is block cartesian
-        self.is_cartesian = self.is_cartesian()
+        self.is_cartesian = self._is_cartesian()
 
-    def is_cartesian(self) -> bool:
+
+    def _is_cartesian(self) -> bool:
         """
         Return boolen value that indicates if the block is alligned with the cartesian axes.
 
@@ -164,7 +165,9 @@ class QuadBlock:
 
         return self.inputs.reconstruction_type
 
-    def plot(self):
+    def plot(self,
+             ax: plt.axes = None,
+             show_cell_centre: bool = False):
         """
         # FOR DEBUGGING
 
@@ -177,16 +180,16 @@ class QuadBlock:
             - None
         """
 
-        # Create scatter plots for nodes and cell centers
-        plt.scatter(self.mesh.nodes.x[:, :, 0],
+        _show = True if ax is None else False
+
+        if not ax:
+            fig, ax = plt.subplots(1, 1)
+
+        # Create scatter plots for nodes
+        ax.scatter(self.mesh.nodes.x[:, :, 0],
                     self.mesh.nodes.y[:, :, 0],
                     color='black',
-                    s=10)
-        plt.scatter(self.mesh.x[:, :, 0],
-                    self.mesh.y[:, :, 0],
-                    color='mediumslateblue',
-                    s=10,
-                    alpha=0.5)
+                    s=0)
 
         # Create nodes mesh for LineCollection
         segs1 = np.stack((self.mesh.nodes.x[:, :, 0],
@@ -195,38 +198,47 @@ class QuadBlock:
         segs2 = segs1.transpose((1, 0, 2))
 
         # Create LineCollection for nodes
-        plt.gca().add_collection(LineCollection(segs1,
+        ax.add_collection(LineCollection(segs1,
                                                 colors='black',
                                                 linewidths=1,
                                                 alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2,
+        ax.add_collection(LineCollection(segs2,
                                                 colors='black',
                                                 linewidths=1,
                                                 alpha=0.5))
 
-        # Create cell center mesh for LineCollection
-        segs1 = np.stack((self.mesh.x[:, :, 0],
-                          self.mesh.y[:, :, 0]),
-                         axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
+        if show_cell_centre:
 
-        # Create LineCollection for cell centers
-        plt.gca().add_collection(LineCollection(segs1,
-                                                colors='mediumslateblue',
-                                                linestyles='--',
-                                                linewidths=1,
-                                                alpha=0.5))
-        plt.gca().add_collection(LineCollection(segs2,
-                                                colors='mediumslateblue',
-                                                linestyles='--',
-                                                linewidths=1,
-                                                alpha=0.5))
+            # Create scatter plots cell centers
+            ax.scatter(self.mesh.x[:, :, 0],
+                       self.mesh.y[:, :, 0],
+                       color='mediumslateblue',
+                       s=0,
+                       alpha=0.5)
 
-        # Show Plot
-        plt.show()
+            # Create cell center mesh for LineCollection
+            segs1 = np.stack((self.mesh.x[:, :, 0],
+                              self.mesh.y[:, :, 0]),
+                             axis=2)
+            segs2 = segs1.transpose((1, 0, 2))
 
-        # Close plot
-        plt.close()
+            # Create LineCollection for cell centers
+            ax.add_collection(LineCollection(segs1,
+                                                    colors='mediumslateblue',
+                                                    linestyles='--',
+                                                    linewidths=1,
+                                                    alpha=0.5))
+            ax.add_collection(LineCollection(segs2,
+                                                    colors='mediumslateblue',
+                                                    linestyles='--',
+                                                    linewidths=1,
+                                                    alpha=0.5))
+        if _show:
+            # Show Plot
+            plt.show()
+
+            # Close plot
+            plt.close()
 
     @property
     def Flux_E(self):
@@ -793,7 +805,8 @@ class QuadBlock:
         return self.state.U[0:1, :, :].copy()
 
     def row(self,
-            index: int
+            index: int,
+            copy: bool = False
             ) -> np.ndarray:
         """
         Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
@@ -801,15 +814,17 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which row needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
         """
-
-        return self.state.U[index, None, :, :]
+        _row = self.state.U[index, None, :, :]
+        return _row.copy() if copy else _row
 
     def fullrow(self,
-                index: int
+                index: int,
+                copy: bool = False
                 ) -> np.ndarray:
         """
         Return the solution stored in the index-th full row of the mesh. A full row is defined as the row plus the ghost
@@ -817,18 +832,20 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which full row needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th full row being returned.
         """
-
-        return np.concatenate((self.ghost.W[index, None, :, :],
-                               self.row(index),
-                               self.ghost.E[index, None, :, :]),
-                              axis=1)
+        _fullrow = np.concatenate((self.ghost.W[index, None, :, :],
+                                   self.row(index),
+                                   self.ghost.E[index, None, :, :]),
+                                  axis=1)
+        return _fullrow.copy() if copy else _fullrow
 
     def col(self,
-            index: int
+            index: int,
+            copy: bool = False
             ) -> np.ndarray:
         """
         Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
@@ -836,15 +853,17 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which column needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
         """
-
-        return self.state.U[None, :, index, :]
+        _col = self.state.U[None, :, index, :]
+        return _col.copy() if copy else _col
 
     def fullcol(self,
-                index: int
+                index: int,
+                copy: bool = False
                 ) -> np.ndarray:
         """
         Return the solution stored in the index-th full column of the mesh. A full column is defined as the row plus the
@@ -852,81 +871,16 @@ class QuadBlock:
 
         Parameters:
             - index (int): The index that reperesents which full column needs to be returned.
+            - copy (bool): To copy the numpy array pr return a view
 
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th full column being returned.
         """
-
-        return np.concatenate((self.ghost.S[:, index, None, :],
-                               self.col(index),
-                               self.ghost.N[:, index, None, :]),
-                              axis=1)
-
-    def row_copy(self,
-                 index: int
-                 ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th row of the mesh. For example, if index is 0, then the
-        state at the most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which row needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th row being returned.
-        """
-
-        return self.row(index).copy()
-
-    def col_copy(self,
-                 index: int
-                 ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th column of the mesh. For example, if index is 0, then
-        the state at the most-bottom column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which column needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th column being returned.
-        """
-
-        return self.col(index).copy()
-
-    def fullrow_copy(self,
-                     index: int
-                     ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th full-row of the mesh. For example, if index is 0,
-        then the state at the most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which full-row needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th full-row being
-            returned.
-        """
-
-        return self.fullrow(index).copy()
-
-    def fullcol_copy(self,
-                     index: int
-                     ) -> np.ndarray:
-        """
-        Return the a copy of the solution stored in the index-th full-column of the mesh. For example, if index is 0,
-        then the state at the most-bottom column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which full-column needs to be returned.
-
-        Return:
-            - (np.ndarray): The numpy array containing the copy of the solution at the index-th full-column being
-            returned.
-        """
-
-        return self.fullrow(index).copy()
+        _fullcol = np.concatenate((self.ghost.S[:, index, None, :],
+                                   self.col(index),
+                                   self.ghost.N[:, index, None, :]),
+                                  axis=1)
+        return _fullcol.copy() if copy else _fullcol
 
     def get_interface_values(self) -> [np.ndarray]:
 
@@ -1250,9 +1204,23 @@ class QuadBlock:
         # West edge
         U[1:-1, 0, :] = 0.5 * (self.state.U[1:, 0, :] + self.state.U[:-1, 0, :])
         # North edge
-        U[-1, 1:-1, :] = 0.5 * (self.state.U[-1, 1:, :] + self.state.U[-1, :-1, :])
+        if self.neighbors.N:
+            U[-1, 1:-1, :] = 0.25 * (self.state.U[-1, 1:, :] +
+                                     self.state.U[-1, :-1, :] +
+                                     self.neighbors.N.state.U[0, 1:, :] +
+                                     self.neighbors.N.state.U[0, :-1, :])
+        else:
+            U[-1, 1:-1, :] = 0.5 * (self.state.U[-1, 1:, :] +
+                                     self.state.U[-1, :-1, :])
         # South edge
-        U[0, 1:-1, :] = 0.5 * (self.state.U[0, 1:, :] + self.state.U[0, :-1, :])
+        if self.neighbors.S:
+            U[0, 1:-1, :] = 0.25 * (self.state.U[0, 1:, :] +
+                                    self.state.U[0, :-1, :] +
+                                    self.neighbors.S.state.U[-1, 1:, :] +
+                                    self.neighbors.S.state.U[-1, :-1, :])
+        else:
+            U[0, 1:-1, :] = 0.5 * (self.state.U[0, 1:, :] +
+                                   self.state.U[0, :-1, :])
 
         # Kernel
         U[1:-1, 1:-1, :] = 0.25 * (self.state.U[1:, 1:, :] +

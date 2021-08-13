@@ -60,6 +60,8 @@ class State:
         self.q2 = np.zeros((ny, nx, 1))
         self.q3 = np.zeros((ny, nx, 1))
 
+        self.g_over_gm = self.g / (self.g - 1)
+
 
     def set_vars_from_state(self):
         """
