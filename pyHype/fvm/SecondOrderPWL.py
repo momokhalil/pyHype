@@ -19,9 +19,10 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pyHype.blocks.base import QuadBlock
-    from pyHype.mesh.base import Mesh, CellFace
+    from pyHype.mesh.base import CellFace
 
 import numpy as np
 from pyHype.fvm.base import MUSCLFiniteVolumeMethod
@@ -55,12 +56,7 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         return refBLK.gradx * (face.xmid - refBLK.mesh.x) + refBLK.grady * (face.ymid - refBLK.mesh.y)
 
     def reconstruct_state(self,
-                          refBLK: QuadBlock,
-                          state: np.ndarray,
-                          ghostE: np.ndarray,
-                          ghostW: np.ndarray,
-                          ghostN: np.ndarray,
-                          ghostS: np.ndarray
+                          refBLK: QuadBlock
                           ) -> [np.ndarray]:
 
         # High order terms for each cell face
@@ -70,17 +66,17 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         high_ord_S = self.high_order_term(refBLK, refBLK.mesh.faceS)
 
         # Compute slope limiter
-        phi = self.flux_limiter.limit(state, ghostE, ghostW, ghostN, ghostS,
-                                      quadE=state + high_ord_E,
-                                      quadW=state + high_ord_W,
-                                      quadN=state + high_ord_N,
-                                      quadS=state + high_ord_S)
+        phi = self.flux_limiter.limit(refBLK,
+                                      quadE=refBLK.state + high_ord_E,
+                                      quadW=refBLK.state + high_ord_W,
+                                      quadN=refBLK.state + high_ord_N,
+                                      quadS=refBLK.state + high_ord_S)
 
         # Compute limited values at quadrature points
-        stateE = state + phi * high_ord_E
-        stateW = state + phi * high_ord_W
-        stateN = state + phi * high_ord_N
-        stateS = state + phi * high_ord_S
+        stateE = refBLK.state + phi * high_ord_E
+        stateW = refBLK.state + phi * high_ord_W
+        stateN = refBLK.state + phi * high_ord_N
+        stateS = refBLK.state + phi * high_ord_S
 
         return stateE, stateW, stateN, stateS
 

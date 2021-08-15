@@ -19,7 +19,7 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numpy as np
 from abc import abstractmethod
 import numba as nb
-from pyHype.states.states import PrimitiveState, RoePrimitiveState
+from pyHype.states.states import ConservativeState, PrimitiveState, RoePrimitiveState
 from profilehooks import profile
 
 
@@ -111,7 +111,12 @@ class FluxFunction:
 
 
     @abstractmethod
-    def compute_flux(self, UL, UR):
+    def compute_flux(self,
+                     UL: [ConservativeState, np.ndarray] = None,
+                     UR: [ConservativeState, np.ndarray] = None,
+                     WL: [PrimitiveState, np.ndarray] = None,
+                     WR: [PrimitiveState, np.ndarray] = None
+                     ):
         pass
 
 

@@ -23,42 +23,52 @@ import numpy as np
 from abc import abstractmethod
 import numba as nb
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyHype.blocks.QuadBlock import QuadBlock
+
 class SlopeLimiter:
     def __init__(self, inputs):
         self.inputs = inputs
 
     def get_slope(self,
-                  state: np.ndarray,
-                  ghostE: np.ndarray,
-                  ghostW: np.ndarray,
-                  ghostN: np.ndarray,
-                  ghostS: np.ndarray,
+                  refBLK: QuadBlock,
                   quadE: np.ndarray,
                   quadW: np.ndarray,
                   quadN: np.ndarray,
                   quadS: np.ndarray,
                   ) -> [np.ndarray]:
 
+        _state = refBLK.state.Q
         # initialise slopes
-        sE = np.ones_like(state)
-        sW = np.ones_like(state)
-        sN = np.ones_like(state)
-        sS = np.ones_like(state)
+        sE = np.ones_like(_state)
+        sW = np.ones_like(_state)
+        sN = np.ones_like(_state)
+        sS = np.ones_like(_state)
 
         # u_max for interior cells
-        _EW = np.concatenate((ghostW, state, ghostE), axis=1)
-        _NS = np.concatenate((ghostS, state, ghostN), axis=0)
-        _vals = (state, _EW[:, :-2], _EW[:, 2:], _NS[:-2, :], _NS[2:, :])
+        _EW = np.concatenate((refBLK.ghost.W.state.Q,
+                              _state,
+                              refBLK.ghost.E.state.Q),
+                             axis=1)
+
+        _NS = np.concatenate((refBLK.ghost.S.state.Q,
+                              _state,
+                              refBLK.ghost.N.state.Q),
+                             axis=0)
+
+        _vals = (_state, _EW[:, :-2], _EW[:, 2:], _NS[:-2, :], _NS[2:, :])
 
         # Difference between largest/smallest value and average value
-        dmax = np.maximum.reduce(_vals) - state
-        dmin = np.minimum.reduce(_vals) - state
+        dmax = np.maximum.reduce(_vals) - _state
+        dmin = np.minimum.reduce(_vals) - _state
 
         # Difference between quadrature points and average value
-        dE = quadE - state
-        dW = quadW - state
-        dN = quadN - state
-        dS = quadS - state
+        dE = quadE - _state
+        dW = quadW - _state
+        dN = quadN - _state
+        dS = quadS - _state
 
         # Calculate slopes for each face
 
@@ -85,11 +95,7 @@ class SlopeLimiter:
         return sE, sW, sN, sS
 
     def limit(self,
-              state: np.ndarray,
-              ghostE: np.ndarray,
-              ghostW: np.ndarray,
-              ghostN: np.ndarray,
-              ghostS: np.ndarray,
+              refBLK: QuadBlock,
               quadE: np.ndarray = None,
               quadW: np.ndarray = None,
               quadN: np.ndarray = None,
@@ -97,9 +103,7 @@ class SlopeLimiter:
               ) -> np.ndarray:
 
         # Calculate values needed to build slopes
-        sE, sW, sN, sS = self.get_slope(state,
-                                        ghostE, ghostW, ghostN, ghostS,
-                                        quadE, quadW, quadN, quadS)
+        sE, sW, sN, sS = self.get_slope(refBLK, quadE, quadW, quadN, quadS)
 
         # Minimum limiter value
         phi = np.minimum.reduce((self._limiter_func(sE),

@@ -130,7 +130,7 @@ class GhostBlock:
         Return:
             - _row (np.ndarray): The numpy array containing the solution at the index-th row being returned.
         """
-        _row = self.state.U[None, index, :, :]
+        _row = self.state.Q[None, index, :, :]
         return _row.copy() if copy else _row
 
     def col(self,
@@ -148,7 +148,7 @@ class GhostBlock:
         Return:
             - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
         """
-        _col = self.state.U[:, None, index, :]
+        _col = self.state.Q[:, None, index, :]
         return _col.copy() if copy else _col
 
     @abstractmethod

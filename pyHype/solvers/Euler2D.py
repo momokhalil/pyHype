@@ -137,12 +137,12 @@ class Euler2D(Solver):
             profiler = None
 
         while self.t < self.t_final:
-            if self.numTimeStep % 50 == 0:
+            """if self.numTimeStep % 50 == 0:
                 print()
                 print('Simulation time: ' + str(self.t / self.inputs.a_inf))
                 print('Timestep number: ' + str(self.numTimeStep))
             else:
-                print('.', end='')
+                print('.', end='')"""
 
             # Get time step
             self.dt = self.get_dt()

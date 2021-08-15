@@ -26,10 +26,13 @@ from matplotlib.collections import LineCollection
 
 from pyHype.fvm import SecondOrderPWL
 from pyHype.mesh.base import BlockDescription, Mesh
-from pyHype.states.states import ConservativeState
+from pyHype.states.states import ConservativeState, PrimitiveState
 from pyHype.blocks.base import NormalVector, GhostBlockContainer, Neighbors
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 from pyHype.blocks.ghost import GhostBlockEast, GhostBlockWest, GhostBlockSouth, GhostBlockNorth
+
+from copy import deepcopy
+from copy import copy as cpy
 
 if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
@@ -42,6 +45,7 @@ class QuadBlock:
                  ) -> None:
 
         self.inputs             = inputs
+        self.block_data         = block_data
         self.mesh               = Mesh(inputs, block_data)
         self.state              = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
         self.global_nBLK        = block_data.nBLK
@@ -164,6 +168,50 @@ class QuadBlock:
         """
 
         return self.inputs.reconstruction_type
+
+    def scopy(self):
+        _cpy = cpy(self)
+        _cpy.ghost = cpy(self.ghost)
+        _cpy.ghost.E = cpy(self.ghost.E)
+        _cpy.ghost.W = cpy(self.ghost.W)
+        _cpy.ghost.N = cpy(self.ghost.N)
+        _cpy.ghost.S = cpy(self.ghost.S)
+        return _cpy
+
+    def dcopy(self):
+        return deepcopy(self)
+
+    def to_primitive(self, copy: bool = True) -> QuadBlock:
+        _to_conv = self.scopy() if copy else self
+        self._to_primitive(_to_conv)
+        return _to_conv
+
+    def to_conservative(self, copy: bool = True) -> QuadBlock:
+        _to_conv = self.scopy() if copy else self
+        self._to_conservative(_to_conv)
+        return _to_conv
+
+    @staticmethod
+    def _to_primitive(block: QuadBlock):
+        _ghost_vals = block.ghost.__dict__.values()
+        if isinstance(block.state, ConservativeState) and \
+           all(map(lambda gBLK: isinstance(gBLK.state, ConservativeState), _ghost_vals)):
+            block.state = block.state.to_primitive_state()
+            for v in _ghost_vals:
+                v.state = v.state.to_primitive_state()
+        else:
+            raise TypeError('Reference block state or ghost block states are not of type ConservativeState')
+
+    @staticmethod
+    def _to_conservative(block: QuadBlock):
+        _ghost_vals = block.ghost.__dict__.values()
+        if isinstance(block.state, PrimitiveState) and \
+           all(map(lambda gBLK: isinstance(gBLK.state, PrimitiveState), _ghost_vals)):
+            block.state = block.state.to_conservative_state()
+            for v in _ghost_vals:
+                v.state = v.state.to_conservative_state()
+        else:
+            raise TypeError('Reference block state or ghost block states are not of type PrimitiveState')
 
     def plot(self,
              ax: plt.axes = None,
@@ -890,37 +938,17 @@ class QuadBlock:
         else:
             raise ValueError('Interface Interpolation method is not defined.')
 
-    def get_interface_values_arithmetic(self, reconstruction_type: str = None) -> [np.ndarray]:
+    def get_interface_values_arithmetic(self) -> [np.ndarray]:
 
-        # Concatenate mesh state and ghost block states
-        if self.reconstruction_type == 'primitive':
+        catx = np.concatenate((self.ghost.W.state.Q,
+                                self.state.Q,
+                                self.ghost.E.state.Q),
+                                axis=1)
 
-            _W = self.state.to_primitive_vector()
-
-            catx = np.concatenate((self.ghost.W.state.to_primitive_vector(),
-                                   _W,
-                                   self.ghost.E.state.to_primitive_vector()),
-                                  axis=1)
-
-            caty = np.concatenate((self.ghost.N.state.to_primitive_vector(),
-                                   _W,
-                                   self.ghost.S.state.to_primitive_vector()),
-                                  axis=0)
-
-        elif self.reconstruction_type == 'conservative' or not reconstruction_type:
-
-            catx = np.concatenate((self.ghost.W.state.U,
-                                   self.state.U,
-                                   self.ghost.E.state.U),
-                                  axis=1)
-
-            caty = np.concatenate((self.ghost.S.state.U,
-                                   self.state.U,
-                                   self.ghost.N.state.U),
-                                  axis=0)
-
-        else:
-            raise ValueError('Undefined reconstruction type')
+        caty = np.concatenate((self.ghost.S.state.Q,
+                                self.state.Q,
+                                self.ghost.N.state.Q),
+                                axis=0)
 
         # Compute arithmetic mean
         interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])

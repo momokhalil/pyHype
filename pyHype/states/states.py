@@ -280,6 +280,12 @@ class PrimitiveState(State):
 
         # Set W components appropriately
         self.set_state_from_vars()
+        
+    def from_primitive_to_conservative(self, ar: np.ndarray):
+        ar[:, :, 0], ar[:, :, 1], ar[:, :, 2], ar[:, :, 3] = \
+         ar[:, :, 0], ar[:, :, 1] * ar[:, :, 0], ar[:, :, 2] * ar[:, :, 0], \
+         ar[:, :, 3] / (self.g - 1) + self.ek_JIT(ar[:, :, 0], ar[:, :, 1], ar[:, :, 2])
+        return ar
 
     def to_conservative_state(self) -> 'ConservativeState':
         """
@@ -776,6 +782,7 @@ class ConservativeState(State):
                           rv * self.u(),
                           rv * v + p,
                           v * (self.e + p)))
+
 
 class RoePrimitiveState(PrimitiveState):
     """

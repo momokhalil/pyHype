@@ -3,7 +3,7 @@ from pyHype.solvers import Euler2D
 # Solver settings
 settings = {'problem_type':             'explosion',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'conservative',
+            'reconstruction_type':      'primitive',
             'upwind_mode':              'primitive',
             'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
