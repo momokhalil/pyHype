@@ -13,19 +13,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+import numba as nb
 from abc import abstractmethod
 
 from pyHype.limiters import limiters
-from pyHype.states.states import ConservativeState
+from pyHype.states.states import State, ConservativeState
 from pyHype.flux.Roe import ROE_FLUX_X
 from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
 from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
 import pyHype.fvm.Gradients as Grads
 import pyHype.utils.utils as utils
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyHype.blocks.QuadBlock import QuadBlock
+    from pyHype.blocks.base import GhostBlockContainer
+    from pyHype.mesh.base import Mesh
 
 
 __DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
@@ -239,57 +248,24 @@ class MUSCLFiniteVolumeMethod:
         # Select correct reconstruction type and return left and right reconstructed conservative states
 
         # Primitive reconstruction
-        if self.inputs.reconstruction_type == 'Primitive':
-            return self.reconstruct_state_primitive(refBLK)
+        if self.inputs.reconstruction_type == 'primitive':
+            _to_recon = refBLK.to_primitive(copy=True)
+        else:
+            _to_recon = refBLK
+
+        # Get gradients
+        self.gradient(_to_recon)
+
+        # Reconstruct state
+        _stateE, _stateW, _stateN, _stateS = self.reconstruct_state(_to_recon)
 
         # Conservative reconstruction (by default)
-        else:
-            return self.reconstruct_state(refBLK, refBLK.state.U,
-                                          refBLK.ghost.E.state.U, refBLK.ghost.W.state.U,
-                                          refBLK.ghost.N.state.U, refBLK.ghost.S.state.U)
-
-
-    def reconstruct_state_primitive(self,
-                                    refBLK,
-                                    ) -> [np.ndarray]:
-        """
-        Primitive reconstruction implementation. Simply convert the input ConservativeState into PrimitiveState and
-        call the reconstruct_state implementation.
-
-        Parameters:
-            - U: Input ConservativeState for reconstruction.
-
-        Return:
-            - stateL: Left reconstructed conservative state
-            - stateR: Right reconstructed conservative state
-        """
-
-        _state          = refBLK.state.to_primitive_vector()
-        _state_E_ghost  = refBLK.ghost.E.state.to_primitive_vector()
-        _state_W_ghost  = refBLK.ghost.W.state.to_primitive_vector()
-        _state_N_ghost  = refBLK.ghost.N.state.to_primitive_vector()
-        _state_S_ghost  = refBLK.ghost.S.state.to_primitive_vector()
-
-        stateE, stateW, stateN, stateS = self.reconstruct_state(refBLK, _state,
-                                                                _state_E_ghost, _state_W_ghost,
-                                                                _state_N_ghost, _state_S_ghost)
-
-        _state_E = ConservativeState(inputs=self.inputs, W_vector=stateE).U
-        _state_W = ConservativeState(inputs=self.inputs, W_vector=stateW).U
-        _state_N = ConservativeState(inputs=self.inputs, W_vector=stateN).U
-        _state_S = ConservativeState(inputs=self.inputs, W_vector=stateS).U
-
-        return _state_E, _state_W, _state_N, _state_S
+        return _stateE, _stateW, _stateN, _stateS, _to_recon
 
 
     @abstractmethod
     def reconstruct_state(self,
-                          refBLK,
-                          state: np.ndarray,
-                          ghostE: np.ndarray,
-                          ghostW: np.ndarray,
-                          ghostN: np.ndarray,
-                          ghostS: np.ndarray
+                          refBLK: QuadBlock
                           ) -> [np.ndarray]:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
@@ -341,26 +317,23 @@ class MUSCLFiniteVolumeMethod:
 
     def get_flux(self, refBLK):
 
-        # Compute x and y direction gradients
-        self.gradient(refBLK)
-
         # Get reconstructed quadrature points
-        _stateE, _stateW, _stateN, _stateS = self.reconstruct(refBLK)
+        _stateE, _stateW, _stateN, _stateS, _to_recon = self.reconstruct(refBLK)
 
         # Calculate x-direction Flux
 
         # Copy all ghost cell values that will be used for the flux calculations
-        _ghostE = refBLK.ghost.E.col(0, copy=True)
-        _ghostW = refBLK.ghost.W.col(-1, copy=True)
-        _ghostN = refBLK.ghost.N.row(0, copy=True)
-        _ghostS = refBLK.ghost.S.row(-1, copy=True)
+        _ghostE = _to_recon.ghost.E.col(0, copy=True)
+        _ghostW = _to_recon.ghost.W.col(-1, copy=True)
+        _ghostN = _to_recon.ghost.N.row(0, copy=True)
+        _ghostS = _to_recon.ghost.S.row(-1, copy=True)
 
         # Rotate to allign with cell faces
-        if not refBLK.is_cartesian:
-            utils.rotate(refBLK.mesh.faceE.theta, _stateE)
-            utils.rotate(refBLK.mesh.faceW.theta - np.pi, _stateW)
-            utils.rotate(refBLK.mesh.get_east_face_angle(), _ghostE)
-            utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
+        if not _to_recon.is_cartesian:
+            utils.rotate(_to_recon.mesh.faceE.theta, _stateE)
+            utils.rotate(_to_recon.mesh.faceW.theta - np.pi, _stateW)
+            utils.rotate(_to_recon.mesh.get_east_face_angle(), _ghostE)
+            utils.rotate(_to_recon.mesh.get_west_face_angle(), _ghostW)
 
         # Iterate over all rows in block
         for row in range(self.ny):
@@ -369,30 +342,30 @@ class MUSCLFiniteVolumeMethod:
                                      _stateE[row, None, :, :],
                                      _ghostE[row, None, :, :]), axis=1)
             # Get cell interface flux
-            flux_EW = self.flux_function_X.compute_flux(UL=_state[:, :-1, :],
-                                                        UR=_state[:, 1:, :])
+            flux_EW = self.flux_function_X.compute_flux(WL=_state[:, :-1, :],
+                                                        WR=_state[:, 1:, :])
             # Set east face flux
             self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
             # Set west face flux
             self.Flux_W[row, :, :] = flux_EW[:, :-1, :]
 
         # Rotate flux back to local frame
-        if not refBLK.is_cartesian:
-            utils.unrotate(refBLK.mesh.faceE.theta, self.Flux_E)
-            utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux_W)
+        if not _to_recon.is_cartesian:
+            utils.unrotate(_to_recon.mesh.faceE.theta, self.Flux_E)
+            utils.unrotate(_to_recon.mesh.faceW.theta - np.pi, self.Flux_W)
 
         # Calculate y-direction Flux
 
         # Rotate to allign with cell faces
-        if refBLK.is_cartesian:
+        if _to_recon.is_cartesian:
             # If block is cartesian, rotate by 90 degrees CCW (implemented as array swaps for efficiency)
             utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
         else:
             # If not, rotate by the given angle using the standard rotation matrix
-            utils.rotate(refBLK.mesh.faceN.theta, _stateN)
-            utils.rotate(refBLK.mesh.faceS.theta - np.pi, _stateS)
-            utils.rotate(refBLK.mesh.get_north_face_angle(), _ghostN)
-            utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
+            utils.rotate(_to_recon.mesh.faceN.theta, _stateN)
+            utils.rotate(_to_recon.mesh.faceS.theta - np.pi, _stateS)
+            utils.rotate(_to_recon.mesh.get_north_face_angle(), _ghostN)
+            utils.rotate(_to_recon.mesh.get_south_face_angle(), _ghostS)
 
         # Iterate over all columns in block
         for col in range(self.nx):
@@ -401,8 +374,8 @@ class MUSCLFiniteVolumeMethod:
                                      _stateN[:, col, None, :],
                                      _ghostS[:, col, None, :]), axis=0)
             # Calculate face-normal-flux at each cell east-west interface
-            flux_NS = self.flux_function_Y.compute_flux(UL=_state[:-1, :, :].transpose((1, 0, 2)),
-                                                        UR=_state[1:, :, :].transpose((1, 0, 2))
+            flux_NS = self.flux_function_Y.compute_flux(WL=_state[:-1, :, :].transpose((1, 0, 2)),
+                                                        WR=_state[1:, :, :].transpose((1, 0, 2))
                                                         ).reshape(-1, 4)
             # Set east face flux
             self.Flux_N[:, col, :] = flux_NS[1:, :]
@@ -415,6 +388,6 @@ class MUSCLFiniteVolumeMethod:
             utils.unrotate90(self.Flux_N, self.Flux_S)
         else:
             # If not, rotate by the given angle using the standard rotation matrix
-            utils.unrotate(refBLK.mesh.faceN.theta, self.Flux_N)
-            utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux_S)
+            utils.unrotate(_to_recon.mesh.faceN.theta, self.Flux_N)
+            utils.unrotate(_to_recon.mesh.faceS.theta - np.pi, self.Flux_S)
 

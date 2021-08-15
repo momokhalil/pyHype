@@ -23,6 +23,7 @@ import numpy as np
 
 import pyHype.blocks.QuadBlock as Qb
 from pyHype.blocks.ghost import GhostBlock
+from copy import copy
 
 if TYPE_CHECKING:
     from pyHype.blocks.QuadBlock import QuadBlock

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
@@ -62,6 +64,17 @@ class State:
 
         self.g_over_gm = self.g / (self.g - 1)
 
+    def scopy(self):
+        return self
+
+    def dcopy(self):
+        _copy = State(self.inputs, self.nx, self.ny)
+        _copy.Q = self.Q.copy()
+
+        _copy.q0 = self.q0.copy()
+        _copy.q1 = self.q1.copy()
+        _copy.q2 = self.q2.copy()
+        _copy.q3 = self.q3.copy()
 
     def set_vars_from_state(self):
         """
@@ -89,12 +102,32 @@ class State:
         return self.Q[index]
 
     # Overload __add__ method to return the sum of self and other's state vectors
-    def __add__(self, other: 'State') -> np.ndarray:
-        return self.Q + other.Q
+    def __add__(self, other: [State, np.ndarray]) -> np.ndarray:
+        if isinstance(other, State):
+            return self.Q + other.Q
+        elif isinstance(other, np.ndarray):
+            return self.Q + other
+
+    # Overload __radd__ method to return the sum of self and other's state vectors
+    def __radd__(self, other: [State, np.ndarray]) -> np.ndarray:
+        if isinstance(other, State):
+            return other.Q + self.Q
+        elif isinstance(other, np.ndarray):
+            return other + self.Q
 
     # Overload __sub__ method to return the difference between self and other's state vectors
-    def __sub__(self, other: 'State') -> np.ndarray:
-        return self.Q - other.Q
+    def __sub__(self, other: State) -> np.ndarray:
+        if isinstance(other, State):
+            return self.Q - other.Q
+        elif isinstance(other, np.ndarray):
+            return self.Q - other
+
+    # Overload __rsub__ method to return the sum of self and other's state vectors
+    def __rsub__(self, other: [State, np.ndarray]) -> np.ndarray:
+        if isinstance(other, State):
+            return other.Q - self.Q
+        elif isinstance(other, np.ndarray):
+            return other - self.Q
 
     def reset(self, shape: [int] = None):
 
