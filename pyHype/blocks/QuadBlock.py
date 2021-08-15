@@ -933,8 +933,8 @@ class QuadBlock:
     def get_interface_values(self) -> [np.ndarray]:
 
         if self.inputs.interface_interpolation == 'arithmetic_average':
-            interfaceEW, interfaceNS = self.get_interface_values_arithmetic()
-            return interfaceEW, interfaceNS
+            interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values_arithmetic()
+            return interfaceE, interfaceW, interfaceN, interfaceS
         else:
             raise ValueError('Interface Interpolation method is not defined.')
 
@@ -954,7 +954,7 @@ class QuadBlock:
         interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
         interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
 
-        return interfaceEW, interfaceNS
+        return interfaceEW[:, 1:, :], interfaceEW[:, :-1, :], interfaceNS[1:, :, :], interfaceNS[:-1, :, :]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
