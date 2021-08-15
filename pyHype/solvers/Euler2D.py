@@ -130,19 +130,18 @@ class Euler2D(Solver):
         print('Date and time: ', datetime.today())
 
         if self.inputs.profile:
-            print('\t>>> Enabling Profiler')
+            print('\n>>> Enabling Profiler')
             profiler = cProfile.Profile()
             profiler.enable()
         else:
             profiler = None
 
         while self.t < self.t_final:
-            """if self.numTimeStep % 50 == 0:
-                print()
-                print('Simulation time: ' + str(self.t / self.inputs.a_inf))
+            if self.numTimeStep % 50 == 0:
+                print('\nSimulation time: ' + str(self.t / self.inputs.a_inf))
                 print('Timestep number: ' + str(self.numTimeStep))
             else:
-                print('.', end='')"""
+                print('.', end='')
 
             # Get time step
             self.dt = self.get_dt()

@@ -40,24 +40,20 @@ class SlopeLimiter:
                   quadS: np.ndarray,
                   ) -> [np.ndarray]:
 
+        # State
         _state = refBLK.state.Q
-        # initialise slopes
-        sE = np.ones_like(_state)
-        sW = np.ones_like(_state)
-        sN = np.ones_like(_state)
-        sS = np.ones_like(_state)
 
         # u_max for interior cells
         _EW = np.concatenate((refBLK.ghost.W.state.Q,
                               _state,
                               refBLK.ghost.E.state.Q),
                              axis=1)
-
+        # u_min for interior cells
         _NS = np.concatenate((refBLK.ghost.S.state.Q,
                               _state,
                               refBLK.ghost.N.state.Q),
                              axis=0)
-
+        # Values for min/max evaluation
         _vals = (_state, _EW[:, :-2], _EW[:, 2:], _NS[:-2, :], _NS[2:, :])
 
         # Difference between largest/smallest value and average value
@@ -71,26 +67,10 @@ class SlopeLimiter:
         dS = quadS - _state
 
         # Calculate slopes for each face
-
-        # East face
-        sE = np.where(dE > 0, self._compute_slope(dmax, dE), sE)
-        sE = np.where(dE < 0, self._compute_slope(dmin, dE), sE)
-        #sE = _compute_slope(dmax, dmin, dE)
-
-        # West face
-        sW = np.where(dW > 0, self._compute_slope(dmax, dW), sW)
-        sW = np.where(dW < 0, self._compute_slope(dmin, dW), sW)
-        #sW = _compute_slope(dmax, dmin, dW)
-
-        # North face
-        sN = np.where(dN > 0, self._compute_slope(dmax, dN), sN)
-        sN = np.where(dN < 0, self._compute_slope(dmin, dN), sN)
-        #sN = _compute_slope(dmax, dmin, dN)
-
-        # South face
-        sS = np.where(dS > 0, self._compute_slope(dmax, dS), sS)
-        sS = np.where(dS < 0, self._compute_slope(dmin, dS), sS)
-        #sS = _compute_slope(dmax, dmin, dS)
+        sE = self._compute_slope(dmax, dmin, dE)
+        sW = self._compute_slope(dmax, dmin, dW)
+        sN = self._compute_slope(dmax, dmin, dN)
+        sS = self._compute_slope(dmax, dmin, dS)
 
         return sE, sW, sN, sS
 
@@ -114,19 +94,19 @@ class SlopeLimiter:
         return np.where(phi < 0, 0, phi)
 
     @staticmethod
-    def _compute_slope(diffminmax: np.ndarray,
-                       diffquad: np.ndarray
-                       ) -> np.ndarray:
-        return diffminmax / (diffquad + 1e-8)
+    @nb.njit(cache=True)
+    def _compute_slope(dmax, dmin, dU):
+        _s = np.ones_like(dU)
+        for i in range(dU.shape[0]):
+            for j in range(dU.shape[1]):
+                for v in range(4):
+                    if dU[i, j, v] > 0:
+                        _s[i, j, v] = dmax[i, j, v] / (dU[i, j, v] + 1e-8)
+                    elif dU[i, j, v] < 0:
+                        _s[i, j, v] = dmin[i, j, v] / (dU[i, j, v] + 1e-8)
+        return _s
 
     @staticmethod
     @abstractmethod
     def _limiter_func(slope: np.ndarray) -> np.ndarray:
         pass
-
-@nb.vectorize(nopython=True)
-def _compute_slope(dmax, dmin, dU):
-    if dU > 0:      return dmax / (dU + 1e-8)
-    elif dU < 0:    return dmin / (dU + 1e-8)
-    else:           return 1
-

@@ -13,13 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
-import numpy as np
-from pyHype.states import ConservativeState, PrimitiveState
 from pyHype.input.input_file_builder import ProblemInput
 from pyHype.fvm.Gradients.least_squares import least_squares_9_point
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyHype.blocks.QuadBlock import QuadBlock
 
 
 class Gradient:
@@ -56,16 +61,20 @@ class GreenGauss:
     def __init__(self, inputs: ProblemInput):
         self.inputs = inputs
 
-    def __call__(self, refBLK):
+    def __call__(self, refBLK: QuadBlock) -> None:
         return self.green_gauss(refBLK)
 
-    def green_gauss(self, refBLK):
+    @staticmethod
+    def green_gauss(refBLK: QuadBlock) -> None:
 
         # Concatenate mesh state and ghost block states
-        interfaceEW, interfaceNS = refBLK.get_interface_values()
+        interfaceE, interfaceW, interfaceN, interfaceS = refBLK.get_interface_values()
 
         # Get each face's contribution to dUdx
-        E, W, N, S = self.face_contribution(interfaceEW, interfaceNS, refBLK)
+        E = interfaceE * refBLK.mesh.faceE.L
+        W = interfaceW * refBLK.mesh.faceW.L
+        N = interfaceN * refBLK.mesh.faceN.L
+        S = interfaceS * refBLK.mesh.faceS.L
 
         # Compute dUdx
         refBLK.gradx = (E * refBLK.mesh.faceE.xnorm +
@@ -80,13 +89,3 @@ class GreenGauss:
                         N * refBLK.mesh.faceN.ynorm +
                         S * refBLK.mesh.faceS.ynorm
                         ) / refBLK.mesh.A
-
-
-    @staticmethod
-    def face_contribution(interfaceEW, interfaceNS, refBLK):
-        E = interfaceEW[:, 1:, :] * refBLK.mesh.faceE.L
-        W = interfaceEW[:, :-1, :] * refBLK.mesh.faceW.L
-        N = interfaceNS[1:, :, :] * refBLK.mesh.faceN.L
-        S = interfaceNS[:-1, :, :] * refBLK.mesh.faceS.L
-
-        return E, W, N, S
