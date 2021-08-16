@@ -30,10 +30,14 @@ import functools
 
 def cache(func: Callable):
     @functools.wraps(func)
-    def _wrapper(self):
-        if func.__name__ not in self._cache.keys():
-            self._cache[func.__name__] = func(self)
-        return self._cache[func.__name__]
+    def _wrapper(self, *args):
+        if func.__name__ not in self.cache.keys():
+            #print('Caching ' + func.__name__ + ' in ' + str(self.__class__))
+            self.cache[func.__name__] = func(self, *args)
+            return self.cache[func.__name__]
+        else:
+            #print('Using cached ' + func.__name__ + ' in ' + str(self.__class__))
+            return self.cache[func.__name__]
     return _wrapper
 
 class PrimitiveState(State):
@@ -313,6 +317,7 @@ class PrimitiveState(State):
 
         return U
 
+    @cache
     def ek(self) -> np.ndarray:
         return self.ek_JIT(self.q0, self.q1, self.q2)
 
@@ -329,12 +334,9 @@ class PrimitiveState(State):
                 _Ek[i, j] = 0.5 * rho[i, j] * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _Ek
 
+    @cache
     def Ek(self) -> np.ndarray:
-        if 'Ek' in self._cache.keys():
-            return self._cache['Ek']
-        else:
-            self._cache['Ek'] = self.Ek_JIT(self.q1, self.q2)
-            return self._cache['Ek']
+        return self.Ek_JIT(self.q1, self.q2)
 
     @staticmethod
     @nb.njit(cache=True)
@@ -347,6 +349,7 @@ class PrimitiveState(State):
                 _Ek[i, j] = 0.5 * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _Ek
 
+    @cache
     def H(self,
           Ek: np.ndarray = None
           ) -> np.ndarray:
@@ -399,6 +402,7 @@ class PrimitiveState(State):
                 _H[i, j] = gm * p[i, j] / rho[i, j] + 0.5 * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _H
 
+    @cache
     def a(self) -> np.ndarray:
         #return np.sqrt(self.g * self.q3 / self.q0)
         return self.a_JIT(self.q3, self.q0, self.g)
