@@ -66,10 +66,10 @@ class State:
         self.g_over_gm = self.g / (self.g - 1)
 
         # Cache for storing calculated qunatities to avoid recalculation
-        self._cache = {}
+        self.cache = {}
 
     def clear_cache(self) -> None:
-        self._cache.clear()
+        self.cache.clear()
 
     def scopy(self):
         return self

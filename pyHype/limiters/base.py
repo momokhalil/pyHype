@@ -67,10 +67,7 @@ class SlopeLimiter:
         dS = quadS - _state
 
         # Calculate slopes for each face
-        sE = self.__compute_slope(dmax, dmin, dE)
-        sW = self.__compute_slope(dmax, dmin, dW)
-        sN = self.__compute_slope(dmax, dmin, dN)
-        sS = self.__compute_slope(dmax, dmin, dS)
+        sE, sW, sN, sS = self._compute_slope(dmax, dmin, (dE, dW, dN, dS))
 
         return sE, sW, sN, sS
 
@@ -95,21 +92,19 @@ class SlopeLimiter:
 
     @staticmethod
     @nb.njit(cache=True)
-    def _compute_slope(dmax, dmin, dU):
-        _s = np.ones_like(dU)
-        for i in range(dU.shape[0]):
-            for j in range(dU.shape[1]):
-                for v in range(4):
-                    if dU[i, j, v] > 0:
-                        _s[i, j, v] = dmax[i, j, v] / (dU[i, j, v] + 1e-8)
-                    elif dU[i, j, v] < 0:
-                        _s[i, j, v] = dmin[i, j, v] / (dU[i, j, v] + 1e-8)
-        return _s
-
-    def __compute_slope(self, dmax, dmin, dU):
-        _s = np.ones_like(dU)
-        _s = np.where(dU > 0, dmax / (dU + 1e-8), _s)
-        _s = np.where(dU < 0, dmin / (dU + 1e-8), _s)
+    def _compute_slope(dmax, dmin, dU: tuple):
+        _s = [np.ones_like(_dU) for _dU in dU]
+        n = dU[0].shape[0]
+        m = dU[0].shape[1]
+        v = len(dU)
+        for i in range(n):
+            for j in range(m):
+                for l in range(v):
+                    for v in range(4):
+                        if dU[l][i, j, v] > 0:
+                            _s[l][i, j, v] = dmax[i, j, v] / (dU[l][i, j, v] + 1e-8)
+                        elif dU[l][i, j, v] < 0:
+                            _s[l][i, j, v] = dmin[i, j, v] / (dU[l][i, j, v] + 1e-8)
         return _s
 
     @staticmethod
