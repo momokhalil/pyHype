@@ -56,6 +56,8 @@ class ExplicitRungeKutta(TimeIntegrator):
             refBLK.state.update(_intermediate_state)
             refBLK.set_BC()
 
+            refBLK.state.clear_cache()
+
     @classmethod
     def ExplicitEuler1(cls, inputs):
         """

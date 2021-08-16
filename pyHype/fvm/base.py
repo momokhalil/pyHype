@@ -335,15 +335,14 @@ class MUSCLFiniteVolumeMethod:
             utils.rotate(_to_recon.mesh.get_east_face_angle(), _ghostE)
             utils.rotate(_to_recon.mesh.get_west_face_angle(), _ghostW)
 
+        # Get states on the left and right on EW interfaces
+        _stateL = np.concatenate((_ghostW, _stateE), axis=1)
+        _stateR = np.concatenate((_stateW, _ghostE), axis=1)
+
         # Iterate over all rows in block
         for row in range(self.ny):
-            # Get state for currect row
-            _state = np.concatenate((_ghostW[row, None, :, :],
-                                     _stateE[row, None, :, :],
-                                     _ghostE[row, None, :, :]), axis=1)
             # Get cell interface flux
-            flux_EW = self.flux_function_X.compute_flux(WL=_state[:, :-1, :],
-                                                        WR=_state[:, 1:, :])
+            flux_EW = self.flux_function_X.compute_flux(UL=_stateL[row, None, :, :], UR=_stateR[row, None, :, :])
             # Set east face flux
             self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
             # Set west face flux
@@ -367,16 +366,15 @@ class MUSCLFiniteVolumeMethod:
             utils.rotate(_to_recon.mesh.get_north_face_angle(), _ghostN)
             utils.rotate(_to_recon.mesh.get_south_face_angle(), _ghostS)
 
+        # Get states on the left and right on NS interfaces
+        _stateL = np.concatenate((_ghostS, _stateN), axis=0).transpose((1, 0, 2))
+        _stateR = np.concatenate((_stateS, _ghostN), axis=0).transpose((1, 0, 2))
+
         # Iterate over all columns in block
         for col in range(self.nx):
-            # Get state for currect column
-            _state = np.concatenate((_ghostS[:, col, None, :],
-                                     _stateN[:, col, None, :],
-                                     _ghostS[:, col, None, :]), axis=0)
             # Calculate face-normal-flux at each cell east-west interface
-            flux_NS = self.flux_function_Y.compute_flux(WL=_state[:-1, :, :].transpose((1, 0, 2)),
-                                                        WR=_state[1:, :, :].transpose((1, 0, 2))
-                                                        ).reshape(-1, 4)
+            flux_NS = self.flux_function_Y.compute_flux(UL=_stateL[col, None, :, :],
+                                                        UR=_stateR[col, None, :, :]).reshape(-1, 4)
             # Set east face flux
             self.Flux_N[:, col, :] = flux_NS[1:, :]
             # Set west face flux

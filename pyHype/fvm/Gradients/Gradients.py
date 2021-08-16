@@ -68,13 +68,13 @@ class GreenGauss:
     def green_gauss(refBLK: QuadBlock) -> None:
 
         # Concatenate mesh state and ghost block states
-        interfaceE, interfaceW, interfaceN, interfaceS = refBLK.get_interface_values()
+        interfaceEW, interfaceNS = refBLK.get_interface_values()
 
         # Get each face's contribution to dUdx
-        E = interfaceE * refBLK.mesh.faceE.L
-        W = interfaceW * refBLK.mesh.faceW.L
-        N = interfaceN * refBLK.mesh.faceN.L
-        S = interfaceS * refBLK.mesh.faceS.L
+        E = interfaceEW[:, 1:, :] * refBLK.mesh.faceE.L
+        W = interfaceEW[:, :-1, :] * refBLK.mesh.faceW.L
+        N = interfaceNS[1:, :, :] * refBLK.mesh.faceN.L
+        S = interfaceNS[:-1, :, :] * refBLK.mesh.faceS.L
 
         # Compute dUdx
         refBLK.gradx = (E * refBLK.mesh.faceE.xnorm +

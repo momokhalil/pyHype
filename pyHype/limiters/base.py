@@ -67,10 +67,10 @@ class SlopeLimiter:
         dS = quadS - _state
 
         # Calculate slopes for each face
-        sE = self._compute_slope(dmax, dmin, dE)
-        sW = self._compute_slope(dmax, dmin, dW)
-        sN = self._compute_slope(dmax, dmin, dN)
-        sS = self._compute_slope(dmax, dmin, dS)
+        sE = self.__compute_slope(dmax, dmin, dE)
+        sW = self.__compute_slope(dmax, dmin, dW)
+        sN = self.__compute_slope(dmax, dmin, dN)
+        sS = self.__compute_slope(dmax, dmin, dS)
 
         return sE, sW, sN, sS
 
@@ -104,6 +104,12 @@ class SlopeLimiter:
                         _s[i, j, v] = dmax[i, j, v] / (dU[i, j, v] + 1e-8)
                     elif dU[i, j, v] < 0:
                         _s[i, j, v] = dmin[i, j, v] / (dU[i, j, v] + 1e-8)
+        return _s
+
+    def __compute_slope(self, dmax, dmin, dU):
+        _s = np.ones_like(dU)
+        _s = np.where(dU > 0, dmax / (dU + 1e-8), _s)
+        _s = np.where(dU < 0, dmin / (dU + 1e-8), _s)
         return _s
 
     @staticmethod

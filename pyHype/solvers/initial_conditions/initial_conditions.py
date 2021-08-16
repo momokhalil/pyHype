@@ -99,9 +99,9 @@ def implosion(blocks, **kwargs):
         for i in range(block.mesh.ny):
             for j in range(block.mesh.nx):
                 if block.mesh.x[i, j] <= 3 and block.mesh.y[i, j] <= 3:
-                    block.state.U[i, j, :] = QL
-                else:
                     block.state.U[i, j, :] = QR
+                else:
+                    block.state.U[i, j, :] = QL
 
         block.state.non_dim()
 

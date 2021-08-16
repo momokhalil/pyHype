@@ -41,7 +41,8 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
     @staticmethod
     def high_order_term(refBLK: QuadBlock,
-                        face: CellFace):
+                        face: CellFace
+                        ) -> np.ndarray:
         """
         Compute the high order term used for the state reconstruction at the quadrature point on a specified face.
 
@@ -57,7 +58,21 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
     def reconstruct_state(self,
                           refBLK: QuadBlock
-                          ) -> [np.ndarray]:
+                          ) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Performs a second order accurate, piecewise linear MUSCL type reconstruction by calculatine the high order terms
+        using the first order gradients of the solution variables, limiting the slopes of the reconstruction to
+        ensure monotonicity, and returning the limited second order reconstruction.
+
+        Parameters:
+            - refBLK (QuadBlock): Reference block whose state is to be reconstructed
+
+        Returns:
+            - stateE (np.ndarray): Reconstructed values at the east face midpoints of all cells in the block
+            - stateW (np.ndarray): Reconstructed values at the west face midpoints of all cells in the block
+            - stateN (np.ndarray): Reconstructed values at the north face midpoints of all cells in the block
+            - stateS (np.ndarray): Reconstructed values at the south face midpoints of all cells in the block
+        """
 
         # High order terms for each cell face
         high_ord_E = self.high_order_term(refBLK, refBLK.mesh.faceE)
