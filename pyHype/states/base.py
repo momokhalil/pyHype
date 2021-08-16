@@ -62,7 +62,14 @@ class State:
         self.q2 = np.zeros((ny, nx, 1))
         self.q3 = np.zeros((ny, nx, 1))
 
+        # gamma divided by gamma - 1
         self.g_over_gm = self.g / (self.g - 1)
+
+        # Cache for storing calculated qunatities to avoid recalculation
+        self._cache = {}
+
+    def clear_cache(self) -> None:
+        self._cache.clear()
 
     def scopy(self):
         return self

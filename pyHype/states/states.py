@@ -27,6 +27,15 @@ from profilehooks import profile
 from typing import Callable
 import functools
 
+
+def cache(func: Callable):
+    @functools.wraps(func)
+    def _wrapper(self):
+        if func.__name__ not in self._cache.keys():
+            self._cache[func.__name__] = func(self)
+        return self._cache[func.__name__]
+    return _wrapper
+
 class PrimitiveState(State):
     """
     #Primitive Solution State#
@@ -307,6 +316,7 @@ class PrimitiveState(State):
     def ek(self) -> np.ndarray:
         return self.ek_JIT(self.q0, self.q1, self.q2)
 
+
     @staticmethod
     @nb.njit(cache=True)
     def ek_JIT(rho: np.ndarray,
@@ -320,7 +330,11 @@ class PrimitiveState(State):
         return _Ek
 
     def Ek(self) -> np.ndarray:
-        return self.Ek_JIT(self.q1, self.q2)
+        if 'Ek' in self._cache.keys():
+            return self._cache['Ek']
+        else:
+            self._cache['Ek'] = self.Ek_JIT(self.q1, self.q2)
+            return self._cache['Ek']
 
     @staticmethod
     @nb.njit(cache=True)
