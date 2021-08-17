@@ -25,8 +25,8 @@ from abc import abstractmethod
 from pyHype.limiters import limiters
 from pyHype.states.states import State, ConservativeState
 from pyHype.flux.Roe import ROE_FLUX_X
-from pyHype.flux.HLLE import HLLE_FLUX_X, HLLE_FLUX_Y
-from pyHype.flux.HLLL import HLLL_FLUX_X, HLLL_FLUX_Y
+from pyHype.flux.HLLE import HLLE_FLUX_X
+from pyHype.flux.HLLL import HLLL_FLUX_X
 import pyHype.fvm.Gradients as Grads
 import pyHype.utils.utils as utils
 from typing import TYPE_CHECKING
@@ -183,11 +183,11 @@ class MUSCLFiniteVolumeMethod:
             # HLLE Flux
             elif _flux_func == 'HLLE':
                 self.flux_function_X = HLLE_FLUX_X(self.inputs)
-                self.flux_function_Y = HLLE_FLUX_Y(self.inputs)
+                self.flux_function_Y = HLLE_FLUX_X(self.inputs)
             # HLLL Flux
             elif _flux_func == 'HLLL':
                 self.flux_function_X = HLLL_FLUX_X(self.inputs)
-                self.flux_function_Y = HLLL_FLUX_Y(self.inputs)
+                self.flux_function_Y = HLLL_FLUX_X(self.inputs)
         # None
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Flux function type not specified.')
@@ -315,7 +315,7 @@ class MUSCLFiniteVolumeMethod:
         return -(fluxE + fluxW + fluxN + fluxS) / refBLK.mesh.A
 
 
-    def get_flux(self, refBLK):
+    def get_flux(self, refBLK: QuadBlock):
 
         # Get reconstructed quadrature points
         _stateE, _stateW, _stateN, _stateS, _to_recon = self.reconstruct(refBLK)
@@ -342,7 +342,12 @@ class MUSCLFiniteVolumeMethod:
         # Iterate over all rows in block
         for row in range(self.ny):
             # Get cell interface flux
-            flux_EW = self.flux_function_X.compute_flux(UL=_stateL[row, None, :, :], UR=_stateR[row, None, :, :])
+            if refBLK.reconstruction_type == 'primitive':
+                flux_EW = self.flux_function_X(WL=_stateL[row, None, :, :], 
+                                               WR=_stateR[row, None, :, :])
+            else:
+                flux_EW = self.flux_function_X(UL=_stateL[row, None, :, :],
+                                               UR=_stateR[row, None, :, :])
             # Set east face flux
             self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
             # Set west face flux
@@ -354,7 +359,7 @@ class MUSCLFiniteVolumeMethod:
             utils.unrotate(_to_recon.mesh.faceW.theta - np.pi, self.Flux_W)
 
         # Calculate y-direction Flux
-
+        f = 0.00
         # Rotate to allign with cell faces
         if _to_recon.is_cartesian:
             # If block is cartesian, rotate by 90 degrees CCW (implemented as array swaps for efficiency)
@@ -373,8 +378,14 @@ class MUSCLFiniteVolumeMethod:
         # Iterate over all columns in block
         for col in range(self.nx):
             # Calculate face-normal-flux at each cell east-west interface
-            flux_NS = self.flux_function_Y.compute_flux(UL=_stateL[col, None, :, :],
-                                                        UR=_stateR[col, None, :, :]).reshape(-1, 4)
+            if refBLK.reconstruction_type == 'primitive':
+                flux_NS = self.flux_function_Y(WL=_stateL[col, None, :, :],
+                                               WR=_stateR[col, None, :, :]
+                                               ).reshape(-1, 4)
+            else:
+                flux_NS = self.flux_function_Y(UL=_stateL[col, None, :, :],
+                                               UR=_stateR[col, None, :, :]
+                                               ).reshape(-1, 4)
             # Set east face flux
             self.Flux_N[:, col, :] = flux_NS[1:, :]
             # Set west face flux

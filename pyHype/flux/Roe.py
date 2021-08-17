@@ -22,7 +22,6 @@ from scipy.sparse import coo_matrix as coo
 from pyHype.flux.base import FluxFunction
 from pyHype.states.states import RoePrimitiveState, ConservativeState, PrimitiveState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_VECTORS
-from profilehooks import profile
 
 
 class ROE_FLUX_X(FluxFunction):
@@ -308,10 +307,10 @@ class ROE_FLUX_X(FluxFunction):
 
 
     def compute_flux(self,
+                     WL: PrimitiveState,
+                     WR: PrimitiveState,
                      UL: [ConservativeState, np.ndarray] = None,
                      UR: [ConservativeState, np.ndarray] = None,
-                     WL: [PrimitiveState, np.ndarray] = None,
-                     WR: [PrimitiveState, np.ndarray] = None,
                      ) -> np.ndarray:
         """
         Computes the flux using the Roe approximate riemann solver. First, the Roe average state is computed based on
@@ -346,42 +345,12 @@ class ROE_FLUX_X(FluxFunction):
         to be continued...
 
         """
-        if UL is not None and UR is not None and WL is None and WR is None:
-            # Create Left and Right PrimitiveStates
-            if isinstance(UL, ConservativeState):
-                WL = UL.to_primitive_state()
-            elif isinstance(UL, np.ndarray):
-                WL = PrimitiveState(self.inputs, U_vector=UL)
-            else:
-                raise ValueError('Parameter UL must be of type ConservativeState or np.ndarray')
 
-            if isinstance(UR, ConservativeState):
-                WR = UR.to_primitive_state()
-            elif isinstance(UR, np.ndarray):
-                WR = PrimitiveState(self.inputs, U_vector=UR)
-            else:
-                raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
-
-            # Compute non-dissipative flux term
+        # Compute non-dissipative flux term
+        if UL is not None and UR is not None:
             nondis = 0.5 * (WL.F(U_vector=UL) + WR.F(U_vector=UR))
-
-        elif WL is not None and WR is not None and UL is None and UR is None:
-            # Create Left and Right PrimitiveStates
-            if isinstance(WL, np.ndarray):
-                WL = PrimitiveState(self.inputs, W_vector=WL)
-            else:
-                raise ValueError('Parameter UL must be of type ConservativeState or np.ndarray')
-
-            if isinstance(WR, np.ndarray):
-                WR = PrimitiveState(self.inputs, W_vector=WR)
-            else:
-                raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
-
-            # Compute non-dissipative flux term
-            nondis = 0.5 * (WL.F() + WR.F())
-
         else:
-            raise AttributeError('Only give UL and UR or WL and WR, not combination of U and W')
+            nondis = 0.5 * (WL.F() + WR.F())
 
         # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR)

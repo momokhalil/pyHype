@@ -31,6 +31,44 @@ class FluxFunction:
         self.ny = inputs.ny
         self.n = inputs.n
 
+    def __call__(self,
+                 WL: [PrimitiveState, np.ndarray] = None,
+                 WR: [PrimitiveState, np.ndarray] = None,
+                 UL: [ConservativeState, np.ndarray] = None,
+                 UR: [ConservativeState, np.ndarray] = None,
+                 *args, **kwargs):
+
+        if UL is not None and UR is not None and (WL is None) and (WR is None):
+            # Create Left and Right PrimitiveStates
+            if isinstance(UL, ConservativeState):
+                WL = UL.to_primitive_state()
+            elif isinstance(UL, np.ndarray):
+                WL = PrimitiveState(self.inputs, U_vector=UL)
+            else:
+                raise ValueError('Parameter UL must be of type ConservativeState or np.ndarray')
+
+            if isinstance(UR, ConservativeState):
+                WR = UR.to_primitive_state()
+            elif isinstance(UR, np.ndarray):
+                WR = PrimitiveState(self.inputs, U_vector=UR)
+            else:
+                raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
+
+        elif WL is not None and WR is not None and UL is None and UR is None:
+            # Create Left and Right PrimitiveStates
+            if isinstance(WL, np.ndarray):
+                WL = PrimitiveState(self.inputs, W_vector=WL)
+            else:
+                raise ValueError('Parameter UL must be of type ConservativeState or np.ndarray')
+
+            if isinstance(WR, np.ndarray):
+                WR = PrimitiveState(self.inputs, W_vector=WR)
+            else:
+                raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
+        else:
+            raise AttributeError('Only give UL and UR or WL and WR, not combination of U and W')
+
+        return self.compute_flux(WL, WR, UL, UR)
 
     @staticmethod
     def wavespeeds_x(W: PrimitiveState) -> [np.ndarray]:
@@ -59,7 +97,13 @@ class FluxFunction:
     def harten_correction_x(self,
                             Wroe: RoePrimitiveState,
                             WL: PrimitiveState,
-                            WR: PrimitiveState
+                            WR: PrimitiveState,
+                            Roe_p: np.ndarray = None,
+                            Roe_m: np.ndarray = None,
+                            L_p: np.ndarray = None,
+                            L_m: np.ndarray = None,
+                            R_p: np.ndarray = None,
+                            R_m: np.ndarray = None,
                             ) -> [np.ndarray]:
         """
         Perform the Harten correction to eliminate expansion shocks when using approximate riemann solvers.
@@ -76,12 +120,14 @@ class FluxFunction:
         """
 
         # Right fast and slow wavespeeds
-        R_p, R_m = self.wavespeeds_x(WR)
+        if R_p is None and R_m is None:
+            R_p, R_m = self.wavespeeds_x(WR)
         # Left fast and slow wavespeeds
-        L_p, L_m = self.wavespeeds_x(WL)
+        if L_p is None and L_m is None:
+            L_p, L_m = self.wavespeeds_x(WL)
         # Roe fast and slow wavespeeds
-        Roe_p, Roe_m = self.wavespeeds_x(Wroe)
-
+        if Roe_p is None and Roe_m is None:
+            Roe_p, Roe_m = self.wavespeeds_x(Wroe)
         # Perform the harten correction using the JITed implementation
         _harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m)
 
@@ -113,11 +159,11 @@ class FluxFunction:
 
     @abstractmethod
     def compute_flux(self,
+                     WL: PrimitiveState,
+                     WR: PrimitiveState,
                      UL: [ConservativeState, np.ndarray] = None,
                      UR: [ConservativeState, np.ndarray] = None,
-                     WL: [PrimitiveState, np.ndarray] = None,
-                     WR: [PrimitiveState, np.ndarray] = None
-                     ):
+                     ) -> np.ndarray:
         pass
 
 

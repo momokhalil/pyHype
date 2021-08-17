@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import numba
+import numba as nb
 import numpy as np
 from numba import float32
 from pyHype.flux.base import FluxFunction
@@ -25,13 +25,86 @@ class HLLL_FLUX_X(FluxFunction):
     def __init__(self, inputs):
         super().__init__(inputs)
 
-    def get_flux(self, UL, UR):
-        pass
+    def compute_flux(self,
+                     WL: PrimitiveState,
+                     WR: PrimitiveState,
+                     UL: [ConservativeState, np.ndarray] = None,
+                     UR: [ConservativeState, np.ndarray] = None,
+                     ) -> np.ndarray:
 
+        # Get conservative states
+        UL = WL.to_conservative_state()
+        UR = WR.to_conservative_state()
 
-class HLLL_FLUX_Y(FluxFunction):
-    def __init__(self, inputs):
-        super().__init__(inputs)
+        # Get Roe state
+        Wroe = RoePrimitiveState(self.inputs, WL, WR)
 
-    def get_flux(self, UL, UR):
-        pass
+        # Left and Right wavespeeds
+        L_p, L_m = self.wavespeeds_x(WL)
+        R_p, R_m = self.wavespeeds_x(WR)
+
+        # Harten entropy correction
+        Lp, Lm = self.harten_correction_x(Wroe, WL, WR, L_p=L_p, L_m=L_m, R_p=R_p, R_m=R_m)
+
+        L_plus = np.maximum.reduce((R_m, Lm))[:, :, None]
+        L_minus = np.minimum.reduce((L_p, Lp))[:, :, None]
+
+        # Left and right fluxes
+        FluxR = WR.F(U=UR)
+        FluxL = WL.F(U=UL)
+
+        # Get alhpa
+        _u = Wroe.u[:, :, None]
+        k = Wroe.a()[:, :, None] * (UR - UL)
+        a = 1 - np.linalg.norm(FluxR - FluxR - k, axis=2) / (np.linalg.norm(k, axis=2) + 1e-14)
+        a = np.where(a < 0, 0, a)[:, :, None]
+        b = 1 - (1 - np.maximum(_u / L_plus, _u / L_minus)) * a
+
+        Flux = (L_plus * FluxL - L_minus * FluxR + L_minus * L_plus * b * (UR - UL)) / (L_plus - L_minus)
+        Flux = np.where(L_minus >= 0, FluxL, Flux)
+        Flux = np.where(L_plus <= 0, FluxR, Flux)
+
+        #Flux = self._HLLL_flux_JIT(Wroe.u, Wroe.a(), FluxL, FluxR, UL.U, UR.U, L_minus, L_plus)
+
+        return Flux
+
+    @staticmethod
+    def _HLLL_flux_numpy(Wroe, FL, FR, UL, UR, L_minus, L_plus):
+
+        # Get alhpa
+        _u = Wroe.u[:, :, None]
+        k = Wroe.a()[:, :, None] * (UR - UL)
+        a = 1 - np.linalg.norm(FR - FR - k, axis=2) / (np.linalg.norm(k, axis=2) + 1e-14)
+        a = np.where(a < 0, 0, a)[:, :, None]
+        b = 1 - (1 - np.maximum(_u / L_plus, _u / L_minus)) * a
+
+        # Compute flux
+        Flux = (L_plus * FL - L_minus * FR + L_minus * L_plus * b * (UR - UL)) / (L_plus - L_minus)
+        Flux = np.where(L_minus >= 0, FL, Flux)
+        Flux = np.where(L_plus <= 0, FR, Flux)
+        return Flux
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _HLLL_flux_JIT(u_roe, a_roe, FL, FR, UL, UR, L_minus, L_plus):
+        _flux = np.zeros_like(FL)
+
+        for i in range(_flux.shape[0]):
+            for j in range(_flux.shape[1]):
+                _Lm = L_minus[i, j, 0]
+                _Lp = L_plus[i, j, 0]
+                if _Lm >= 0:
+                    _flux[i, j, :] = FL[i, j, :]
+                elif _Lp <= 0:
+                    _flux[i, j, :] = FR[i, j, :]
+                else:
+                    u = u_roe[i, j]
+                    dU = UR[i, j, :] - UL[i, j, :]
+                    dF = FR[i, j, :] - FL[i, j, :]
+                    alpha = np.maximum(0, 1 - np.linalg.norm(dF - u * dU) / (a_roe[i, j] * np.linalg.norm(dU) + 1e-10))
+
+                    _flux[i, j, :] = (_Lp * FL[i, j, :] -
+                                      _Lm * FR[i, j, :] +
+                                      _Lm * _Lp * (1 - alpha * (1 - np.maximum(u / _Lm, u / _Lp))) * dU) \
+                                     / (_Lp - _Lm)
+        return _flux

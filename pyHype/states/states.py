@@ -317,7 +317,7 @@ class PrimitiveState(State):
 
         return U
 
-    @cache
+    #@cache
     def ek(self) -> np.ndarray:
         return self.ek_JIT(self.q0, self.q1, self.q2)
 
@@ -334,7 +334,7 @@ class PrimitiveState(State):
                 _Ek[i, j] = 0.5 * rho[i, j] * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _Ek
 
-    @cache
+    #@cache
     def Ek(self) -> np.ndarray:
         return self.Ek_JIT(self.q1, self.q2)
 
@@ -349,7 +349,7 @@ class PrimitiveState(State):
                 _Ek[i, j] = 0.5 * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _Ek
 
-    @cache
+    #@cache
     def H(self,
           Ek: np.ndarray = None
           ) -> np.ndarray:
@@ -358,10 +358,6 @@ class PrimitiveState(State):
         else:
             return self.H_given_Ek_JIT(self.q0, self.q3, Ek, self.g_over_gm)
 
-        """if Ek is None:
-            return self.g_over_gm * self.q3 / self.q0 + self.Ek_JIT(self.q1, self.q2)
-        else:
-            return self.g_over_gm * self.q3 / self.q0 + Ek"""
 
     @staticmethod
     @nb.njit(cache=True)
@@ -402,7 +398,7 @@ class PrimitiveState(State):
                 _H[i, j] = gm * p[i, j] / rho[i, j] + 0.5 * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _H
 
-    @cache
+    #@cache
     def a(self) -> np.ndarray:
         #return np.sqrt(self.g * self.q3 / self.q0)
         return self.a_JIT(self.q3, self.q0, self.g)
