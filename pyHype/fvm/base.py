@@ -343,7 +343,7 @@ class MUSCLFiniteVolumeMethod:
         for row in range(self.ny):
             # Get cell interface flux
             if refBLK.reconstruction_type == 'primitive':
-                flux_EW = self.flux_function_X(WL=_stateL[row, None, :, :], 
+                flux_EW = self.flux_function_X(WL=_stateL[row, None, :, :],
                                                WR=_stateR[row, None, :, :])
             else:
                 flux_EW = self.flux_function_X(UL=_stateL[row, None, :, :],
