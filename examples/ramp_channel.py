@@ -20,7 +20,12 @@ settings = {'problem_type':             'supersonic_flood',
             'nx':                       50,
             'ny':                       50,
             'nghost':                   1,
-            'mesh_name':                'ramp_channel'}
+            'mesh_name':                'ramp_channel',
+            'BC_inlet_west_rho': 1.0,
+            'BC_inlet_west_u': 2.0,
+            'BC_inlet_west_v': 0.0,
+            'BC_inlet_west_p': 1 / 1.4,
+            }
 
 # Create solver
 exp = Euler2D(fvm='SecondOrderPWL',
