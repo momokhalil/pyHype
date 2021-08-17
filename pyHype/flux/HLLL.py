@@ -54,17 +54,7 @@ class HLLL_FLUX_X(FluxFunction):
         FluxL = WL.F(U=UL)
 
         # Get alhpa
-        _u = Wroe.u[:, :, None]
-        k = Wroe.a()[:, :, None] * (UR - UL)
-        a = 1 - np.linalg.norm(FluxR - FluxR - k, axis=2) / (np.linalg.norm(k, axis=2) + 1e-14)
-        a = np.where(a < 0, 0, a)[:, :, None]
-        b = 1 - (1 - np.maximum(_u / L_plus, _u / L_minus)) * a
-
-        Flux = (L_plus * FluxL - L_minus * FluxR + L_minus * L_plus * b * (UR - UL)) / (L_plus - L_minus)
-        Flux = np.where(L_minus >= 0, FluxL, Flux)
-        Flux = np.where(L_plus <= 0, FluxR, Flux)
-
-        #Flux = self._HLLL_flux_JIT(Wroe.u, Wroe.a(), FluxL, FluxR, UL.U, UR.U, L_minus, L_plus)
+        Flux = self._HLLL_flux_JIT(Wroe.u, Wroe.a(), FluxL, FluxR, UL.U, UR.U, L_minus, L_plus)
 
         return Flux
 
@@ -88,7 +78,6 @@ class HLLL_FLUX_X(FluxFunction):
     @nb.njit(cache=True)
     def _HLLL_flux_JIT(u_roe, a_roe, FL, FR, UL, UR, L_minus, L_plus):
         _flux = np.zeros_like(FL)
-
         for i in range(_flux.shape[0]):
             for j in range(_flux.shape[1]):
                 _Lm = L_minus[i, j, 0]
@@ -101,10 +90,14 @@ class HLLL_FLUX_X(FluxFunction):
                     u = u_roe[i, j]
                     dU = UR[i, j, :] - UL[i, j, :]
                     dF = FR[i, j, :] - FL[i, j, :]
-                    alpha = np.maximum(0, 1 - np.linalg.norm(dF - u * dU) / (a_roe[i, j] * np.linalg.norm(dU) + 1e-10))
+                    k = a_roe[i, j] * np.linalg.norm(dU)
+
+                    if k < 1e-14:
+                        alpha = 0
+                    else:
+                        alpha = np.maximum(0, 1 - np.linalg.norm(dF - u * dU) / k)
 
                     _flux[i, j, :] = (_Lp * FL[i, j, :] -
                                       _Lm * FR[i, j, :] +
-                                      _Lm * _Lp * (1 - alpha * (1 - np.maximum(u / _Lm, u / _Lp))) * dU) \
-                                     / (_Lp - _Lm)
+                                      _Lm * _Lp * (1 - alpha * (1 - np.maximum(u / _Lm, u / _Lp))) * dU) / (_Lp - _Lm)
         return _flux

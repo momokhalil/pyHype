@@ -1,3 +1,5 @@
+import numpy as np
+
 from pyHype.solvers import Euler2D
 
 # Solver settings
