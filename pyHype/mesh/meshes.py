@@ -256,10 +256,10 @@ def ramp_two_block(nx, ny, nghost):
               'NeighborW': None,
               'NeighborN': 2,
               'NeighborS': None,
-              'BCTypeE': 'Slipwall',
+              'BCTypeE': 'Reflection',
               'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'None',
-              'BCTypeS': 'Slipwall'}
+              'BCTypeS': 'Reflection'}
 
     block2 = {'nBLK': 2,
               'NW': [0, 4], 'NE': [2, 4],

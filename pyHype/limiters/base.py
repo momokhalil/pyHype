@@ -97,8 +97,8 @@ class SlopeLimiter:
     @nb.njit(cache=True)
     def _compute_slope(dmax, dmin, dU):
         _s = np.ones_like(dU)
-        n = dU[0].shape[0]
-        m = dU[0].shape[1]
+        n = dU.shape[0]
+        m = dU.shape[1]
         for i in range(n):
             for j in range(m):
                 for v in range(4):
