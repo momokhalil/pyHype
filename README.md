@@ -63,6 +63,57 @@ exp.solve()
 ```
 ![alt text](/explosion.gif)
 
+## Explosion on non-cartesian, multiblock mesh simulation
+Here is an example of an explosion simulation performed on five blocks. The simulation was performed with the following: 
+- 350 x 350 cells per block
+- HLLL flux function
+- Venkatakrishnan flux limiter
+- Piecewise-Linear second order reconstruction
+- Green-Gauss gradient method
+- Strong-Stability_preserving (SSP)-RK3 time stepping with CFL=0.6
+- Reflection boundary conditions
+
+The example in given in the file [examples/explosion_skewed.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_skewed.py). The file is as follows:
+
+```python
+from pyHype.solvers import Euler2D
+
+# Solver settings
+settings = {'problem_type':             'explosion_3',
+            'interface_interpolation':  'arithmetic_average',
+            'reconstruction_type':      'primitive',
+            'upwind_mode':              'primitive',
+            'write_solution':           True,
+            'write_solution_mode':      'every_n_timesteps',
+            'write_solution_name':      'explosion3',
+            'write_every_n_timesteps':  15,
+            'CFL':                      0.6,
+            't_final':                  0.04,
+            'realplot':                 False,
+            'profile':                  False,
+            'gamma':                    1.4,
+            'rho_inf':                  1.0,
+            'a_inf':                    343.0,
+            'R':                        287.0,
+            'nx':                       350,
+            'ny':                       350,
+            'nghost':                   1,
+            'mesh_name':                'chamber_skewed_2'
+            }
+
+# Create solver
+exp = Euler2D(fvm='SecondOrderPWL',
+              gradient='GreenGauss',
+              flux_function='HLLL',
+              limiter='Venkatakrishnan',
+              integrator='RK3SSP',
+              settings=settings)
+
+# Solve
+exp.solve()
+```
+![alt text](/explosion3.gif)
+
 
 ## Supersonic Simulation
 Here is an example of supersonic ramjet simulation performed on 9 blocks. The simulation was performed with the following: 
