@@ -93,6 +93,8 @@ class Euler2D(Solver):
                 _set_IC = ic.subsonic_rest(self.blocks, g=self.inputs.gamma)
             elif problem_type == 'explosion_trapezoid':
                 _set_IC = ic.explosion_trapezoid(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'explosion_3':
+                _set_IC = ic.explosion_3(self.blocks, g=self.inputs.gamma)
 
     def set_BC(self):
         self._blocks.set_BC()
@@ -145,7 +147,6 @@ class Euler2D(Solver):
 
             # Get time step
             self.dt = self.get_dt()
-            # print('update block')
             self._blocks.update(self.dt)
 
             ############################################################################################################
