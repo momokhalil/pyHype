@@ -70,7 +70,7 @@ Here is an example of an explosion simulation performed on five blocks. The simu
 - Venkatakrishnan flux limiter
 - Piecewise-Linear second order reconstruction
 - Green-Gauss gradient method
-- Strong-Stability_preserving (SSP)-RK3 time stepping with CFL=0.6
+- Strong-Stability-Preserving (SSP)-RK3 time stepping with CFL=0.6
 - Reflection boundary conditions
 
 The example in given in the file [examples/explosion_skewed.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_skewed.py). The file is as follows:
