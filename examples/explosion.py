@@ -1,11 +1,9 @@
-import numpy as np
-
 from pyHype.solvers import Euler2D
 
 # Solver settings
 settings = {'problem_type':             'explosion',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'primitive',
+            'reconstruction_type':      'conservative',
             'upwind_mode':              'primitive',
             'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
@@ -13,7 +11,7 @@ settings = {'problem_type':             'explosion',
             'write_every_n_timesteps':  40,
             'CFL':                      0.4,
             't_final':                  0.05,
-            'realplot':                 True,
+            'realplot':                 False,
             'profile':                  False,
             'gamma':                    1.4,
             'rho_inf':                  1.0,

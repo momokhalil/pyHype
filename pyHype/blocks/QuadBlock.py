@@ -1014,7 +1014,6 @@ class QuadBlock:
         Returns:
             - None
         """
-
         self.ghost.E.set_BC()
         self.ghost.W.set_BC()
         self.ghost.N.set_BC()

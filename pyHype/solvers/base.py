@@ -232,6 +232,6 @@ class Solver:
         W = max(se_x, ne_x) - min(sw_x, nw_x)
         L = max(nw_y, ne_y) - min(sw_y, se_y)
 
-        pl = 8
+        pl = 4
 
         self.realplot.figure.set_size_inches(pl / (L / W), pl)

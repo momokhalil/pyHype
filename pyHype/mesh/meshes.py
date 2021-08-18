@@ -996,6 +996,95 @@ def chamber(nx, ny, nghost):
 
     return {1: block1}
 
+def chamber_skewed_2(nx, ny, nghost):
+
+    block1 = {'nBLK': 1,
+              'NW': [-4.5, 0.0], 'NE': [-3.0, 0.0],
+              'SW': [-5.0, -1.0], 'SE': [-3.0, -1.5],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 2,
+              'NeighborW': None,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'None',
+              'BCTypeW': 'Reflection',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    block2 = {'nBLK': 2,
+              'NW': [-3.0, 0.0], 'NE': [-1.0, 1.0],
+              'SW': [-3.0, -1.5], 'SE': [-1.0, -1.0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 3,
+              'NeighborW': 1,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'None',
+              'BCTypeW': 'None',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    block3 = {'nBLK': 3,
+              'NW': [-1.0, 1.0], 'NE': [1.0, 1.0],
+              'SW': [-1.0, -1.0], 'SE': [1.0, -1.0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 4,
+              'NeighborW': 2,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'None',
+              'BCTypeW': 'None',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    block4 = {'nBLK': 4,
+              'NW': [1.0, 1.0], 'NE': [3, 0.0],
+              'SW': [1.0, -1.0], 'SE': [3, -1.5],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 5,
+              'NeighborW': 3,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'None',
+              'BCTypeW': 'None',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    block5 = {'nBLK': 5,
+              'NW': [3.0, 0.0], 'NE': [4.5, 0.0],
+              'SW': [3.0, -1.5], 'SE': [5.0, -1.0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': None,
+              'NeighborW': 4,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'Reflection',
+              'BCTypeW': 'None',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    return {1: block1,
+            2: block2,
+            3: block3,
+            4: block4,
+            5: block5
+            }
+
 def chamber_skewed(nx, ny, nghost):
 
     block1 = {'nBLK': 1,
@@ -1063,6 +1152,7 @@ DEFINED_MESHES = {'square_ten_by_ten_four_block': square_ten_by_ten_four_block,
                   'ramjet': ramjet,
                   'long_nozzle': long_nozzle,
                   'chamber': chamber,
-                  'chamber_skewed': chamber_skewed}
+                  'chamber_skewed': chamber_skewed,
+                  'chamber_skewed_2': chamber_skewed_2}
 
 

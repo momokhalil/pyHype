@@ -17,6 +17,7 @@ limitations under the License.
 import numpy as np
 
 _DEFINED_IC_ = ['explosion',
+                'explosion_3',
                 'implosion',
                 'shockbox',
                 'supersonic_flood',
@@ -280,10 +281,48 @@ def explosion_trapezoid(blocks, **kwargs):
     for block in blocks:
         for i in range(block.mesh.ny):
             for j in range(block.mesh.ny):
-                if (-0.8 <= block.mesh.x[i, j] <= -0.2 and -0.8 <= block.mesh.y[i, j] <= -0.2) or \
-                        (0.2 <= block.mesh.x[i, j] <= 0.8 and 0.2 <= block.mesh.y[i, j] <= 0.8) or \
-                        (-0.8 <= block.mesh.x[i, j] <= -0.2 and 0.2 <= block.mesh.y[i, j] <= 0.8) or \
-                        (0.2 <= block.mesh.x[i, j] <= 0.8 and -0.8 <= block.mesh.y[i, j] <= -0.2):
+                if (-0.75 <= block.mesh.x[i, j] <= -0.25 and -0.75 <= block.mesh.y[i, j] <= -0.25) or \
+                   ( 0.25 <= block.mesh.x[i, j] <=  0.75 and  0.25 <= block.mesh.y[i, j] <=  0.75) or \
+                   (-0.75 <= block.mesh.x[i, j] <= -0.25 and  0.25 <= block.mesh.y[i, j] <=  0.75) or \
+                   ( 0.25 <= block.mesh.x[i, j] <=  0.75 and -0.75 <= block.mesh.y[i, j] <= -0.25):
+                    block.state.U[i, j, :] = QL
+                else:
+                    block.state.U[i, j, :] = QR
+
+        block.state.non_dim()
+
+def explosion_3(blocks, **kwargs):
+
+    if 'g' not in kwargs.keys():
+        raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
+
+    # Gamma
+    g = kwargs['g']
+
+    # High pressure zone
+    rhoL = 4.6968
+    pL = 404400.0
+    uL = 0.0
+    vL = 0.0
+    eL = pL / (g - 1) + rhoL * (uL ** 2 + vL ** 2) / 2
+
+    # Low pressure zone
+    rhoR = 1.1742
+    pR = 101100.0
+    uR = 0.00
+    vR = 0.0
+    eR = pR / (g - 1) + rhoR * (uR ** 2 + vR ** 2) / 2
+
+    # Create state vectors
+    QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL])
+    QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR])
+
+    # Fill state vector in each block
+    for block in blocks:
+        for i in range(block.mesh.ny):
+            for j in range(block.mesh.ny):
+                if (-0.25 <= block.mesh.x[i, j] <= 0.25 and -0.75 <= block.mesh.y[i, j] <= 0.75) or \
+                   (-0.75 <= block.mesh.x[i, j] <= 0.75 and -0.25 <= block.mesh.y[i, j] <= 0.25):
                     block.state.U[i, j, :] = QL
                 else:
                     block.state.U[i, j, :] = QR
