@@ -92,8 +92,8 @@ class HLLL_FLUX_X(FluxFunction):
                     dF = FR[i, j, :] - FL[i, j, :]
                     k = a_roe[i, j] * np.linalg.norm(dU)
 
-                    if k < 1e-14:
-                        alpha = 0
+                    if k < 1e-16:
+                        alpha = np.maximum(0, 1 - np.linalg.norm(dF - u * dU) / (k+1e-14))
                     else:
                         alpha = np.maximum(0, 1 - np.linalg.norm(dF - u * dU) / k)
 

@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
+import functools
 
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
@@ -109,6 +110,12 @@ class NormalVector:
     def __str__(self):
         return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
 
+def to_all_blocks(func: Callable):
+    @functools.wraps(func)
+    def _wrapper(self, *args):
+        for block in self.blocks.values():
+            func(self, block, *args)
+    return _wrapper
 
 class Blocks:
     def __init__(self,
@@ -130,25 +137,35 @@ class Blocks:
     def __getitem__(self,
                     blknum: int
                     ) -> QuadBlock:
-
         return self.blocks[blknum]
 
     def add(self,
             block: QuadBlock
             ) -> None:
-
         self.blocks[block.global_nBLK] = block
 
-    def update(self,
+    """def update(self,
                dt: float
                ) -> None:
-
         for block in self.blocks.values():
             block.update(dt)
 
     def set_BC(self) -> None:
         for block in self.blocks.values():
-            block.set_BC()
+            block.set_BC()"""
+
+    @to_all_blocks
+    def update(self,
+               block: QuadBlock,
+               dt: float,
+               ) -> None:
+        block.update(dt)
+
+    @to_all_blocks
+    def set_BC(self,
+               block: QuadBlock
+               ) -> None:
+        block.set_BC()
 
     def build(self) -> None:
         mesh_inputs = self.inputs.mesh_inputs
@@ -168,10 +185,10 @@ class Blocks:
                           NeighborW=self.blocks[Neighbor_W_n] if Neighbor_W_n else None,
                           NeighborN=self.blocks[Neighbor_N_n] if Neighbor_N_n else None,
                           NeighborS=self.blocks[Neighbor_S_n] if Neighbor_S_n else None,
-                          NeighborNE = None,
-                          NeighborNW = None,
-                          NeighborSE = None,
-                          NeighborSW = None)
+                          NeighborNE=None,
+                          NeighborNW=None,
+                          NeighborSE=None,
+                          NeighborSW=None)
 
     def print_connectivity(self) -> None:
         for _, block in self.blocks.items():

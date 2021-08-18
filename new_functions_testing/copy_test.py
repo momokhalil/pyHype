@@ -28,4 +28,3 @@ print(a.c.E[0], b.c.E[0], c.c.E[0])
 b.c.E[0] = 5635
 print(a.c.E[0], b.c.E[0], c.c.E[0])
 
-print('AAAAA')
