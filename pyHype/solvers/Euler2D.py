@@ -95,6 +95,8 @@ class Euler2D(Solver):
                 _set_IC = ic.explosion_trapezoid(self.blocks, g=self.inputs.gamma)
             elif problem_type == 'explosion_3':
                 _set_IC = ic.explosion_3(self.blocks, g=self.inputs.gamma)
+            elif problem_type == 'mach_reflection':
+                _set_IC = ic.mach_reflection(self.blocks, g=self.inputs.gamma)
 
     def set_BC(self):
         self._blocks.set_BC()
@@ -137,6 +139,8 @@ class Euler2D(Solver):
             profiler.enable()
         else:
             profiler = None
+
+        #self._blocks.plot_mesh()
 
         while self.t < self.t_final:
             if self.numTimeStep % 50 == 0:

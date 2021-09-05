@@ -17,7 +17,8 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
-from typing import Union
+from typing import Union, Callable
+import functools
 
 
 def rotate(theta: Union[float, np.ndarray],
@@ -168,3 +169,34 @@ def reflect_point(x1: float,
         yp = (2 * m * xr - (1 - m ** 2) * yr + 2 * b) / (1 + m ** 2)
 
         return xp, yp
+
+
+def cache(func: Callable):
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+        instance = args[0]
+        if func.__name__ not in instance.cache.keys():
+            #print(func.__name__, 'NOT IN CACHE')
+            instance.cache[func.__name__] = func(*args, **kwargs)
+            return instance.cache[func.__name__]
+        else:
+            #print(func.__name__, 'IN CACHEEEEEEEEEE')
+            return instance.cache[func.__name__]
+
+    return _wrapper
+
+
+class Cache:
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        return functools.partial(self, instance)
+
+    def __call__(self, *args, **kwargs):
+        instance = args[0]
+
+        if self.func not in instance.cache.keys():
+            instance.cache[self.func] = self.func(*args, **kwargs)
+
+        return instance.cache[self.func]

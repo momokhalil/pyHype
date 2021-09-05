@@ -22,23 +22,9 @@ import numba as nb
 import numpy as np
 from pyHype.states.base import State
 from pyHype.input.input_file_builder import ProblemInput
-import pyHype.states._cstate_jit_funcs as _cjf
-from profilehooks import profile
-from typing import Callable
-import functools
+from pyHype.utils.utils import cache
+from copy import copy as cpy
 
-
-def cache(func: Callable):
-    @functools.wraps(func)
-    def _wrapper(self, *args):
-        if func.__name__ not in self.cache.keys():
-            #print('Caching ' + func.__name__ + ' in ' + str(self.__class__))
-            self.cache[func.__name__] = func(self, *args)
-            return self.cache[func.__name__]
-        else:
-            #print('Using cached ' + func.__name__ + ' in ' + str(self.__class__))
-            return self.cache[func.__name__]
-    return _wrapper
 
 class PrimitiveState(State):
     """
@@ -196,10 +182,11 @@ class PrimitiveState(State):
         **Parameters**                              \n
             U       ConservativeState object        \n
         """
-        self.q0 = U.rho.copy()
-        self.q1 = U.q1 / self.q0
-        self.q2 = U.q2 / self.q0
-        self.q3 = (self.g - 1) * (U.q3 - self.ek())
+        self.q0     = U.q0.copy()
+        self.q1     = U.q1 / self.q0
+        self.q2     = U.q2 / self.q0
+        self.q3     = (self.g - 1) * (U.q3 - self.ek())
+        self.cache  = cpy(U.cache)
 
         self.set_state_from_vars()
 
@@ -210,10 +197,10 @@ class PrimitiveState(State):
         """
 
         """
-        self.q0 = U_vector[:, :, self.RHO_IDX].copy()
-        self.q1 = U_vector[:, :, self.U_IDX] / self.q0
-        self.q2 = U_vector[:, :, self.V_IDX] / self.q0
-        self.q3 = (self.g - 1) * (U_vector[:, :, self.P_IDX] - self.ek())
+        self.q0 = U_vector[:, :, ConservativeState.RHO_IDX].copy()
+        self.q1 = U_vector[:, :, ConservativeState.RHOU_IDX] / self.q0
+        self.q2 = U_vector[:, :, ConservativeState.RHOV_IDX] / self.q0
+        self.q3 = (self.g - 1) * (U_vector[:, :, ConservativeState.E_IDX] - self.ek())
 
         self.set_state_from_vars()
 
@@ -266,7 +253,7 @@ class PrimitiveState(State):
                                   u: np.ndarray,
                                   v: np.ndarray,
                                   p: np.ndarray,
-                                  copy: bool = False,
+                                  copy: bool = True,
                                   ) -> None:
         """
         Populates the primitive state vector and variables W with their appropriate components based on primitive state
@@ -293,12 +280,6 @@ class PrimitiveState(State):
 
         # Set W components appropriately
         self.set_state_from_vars()
-        
-    def from_primitive_to_conservative(self, ar: np.ndarray):
-        ar[:, :, 0], ar[:, :, 1], ar[:, :, 2], ar[:, :, 3] = \
-         ar[:, :, 0], ar[:, :, 1] * ar[:, :, 0], ar[:, :, 2] * ar[:, :, 0], \
-         ar[:, :, 3] / (self.g - 1) + self.ek_JIT(ar[:, :, 0], ar[:, :, 1], ar[:, :, 2])
-        return ar
 
     def to_conservative_state(self) -> 'ConservativeState':
         """
@@ -308,7 +289,7 @@ class PrimitiveState(State):
 
     def to_conservative_vector(self) -> np.ndarray:
 
-        U = np.zeros_like(self.W)
+        U = np.zeros_like(self.W, dtype=float)
 
         U[:, :, ConservativeState.RHO_IDX] = self.rho.copy()
         U[:, :, ConservativeState.RHOU_IDX] = self.q1 * self.q0
@@ -317,10 +298,12 @@ class PrimitiveState(State):
 
         return U
 
-    #@cache
+    @cache
     def ek(self) -> np.ndarray:
         return self.ek_JIT(self.q0, self.q1, self.q2)
 
+    def ek_NP(self):
+        return 0.5 * self.q0 * (self.q1 * self.q1 + self.q2 * self.q2)
 
     @staticmethod
     @nb.njit(cache=True)
@@ -334,9 +317,12 @@ class PrimitiveState(State):
                 _Ek[i, j] = 0.5 * rho[i, j] * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _Ek
 
-    #@cache
+    @cache
     def Ek(self) -> np.ndarray:
         return self.Ek_JIT(self.q1, self.q2)
+
+    def Ek_NP(self):
+        return 0.5 * (self.q1 * self.q1 + self.q2 * self.q2)
 
     @staticmethod
     @nb.njit(cache=True)
@@ -349,7 +335,7 @@ class PrimitiveState(State):
                 _Ek[i, j] = 0.5 * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _Ek
 
-    #@cache
+    @cache
     def H(self,
           Ek: np.ndarray = None
           ) -> np.ndarray:
@@ -398,9 +384,8 @@ class PrimitiveState(State):
                 _H[i, j] = gm * p[i, j] / rho[i, j] + 0.5 * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
         return _H
 
-    #@cache
+    @cache
     def a(self) -> np.ndarray:
-        #return np.sqrt(self.g * self.q3 / self.q0)
         return self.a_JIT(self.q3, self.q0, self.g)
 
     @staticmethod
@@ -415,6 +400,7 @@ class PrimitiveState(State):
                 _a[i, j] = np.sqrt(g * p[i, j] / rho[i, j])
         return _a
 
+    @cache
     def e(self):
         return self.q3 / (self.g - 1) + self.ek()
 
@@ -450,7 +436,7 @@ class PrimitiveState(State):
           U: ConservativeState = None,
           U_vector: np.ndarray = None) -> np.ndarray:
 
-        F = np.zeros_like(self.W)
+        F = np.zeros_like(self.W, dtype=float)
 
         if U is not None:
             F[:, :, 0] = U.rhou
@@ -472,11 +458,14 @@ class PrimitiveState(State):
         else:
             ru = self.rho * self.u
 
-            F[:, :, 0] = self.rho * self.u
+            F[:, :, 0] = ru
             F[:, :, 1] = ru * self.u + self.p
             F[:, :, 2] = ru * self.v
             F[:, :, 3] = self.u * (self.e() + self.p)
             return F
+
+    def realizable(self):
+        return np.all(self.rho > 0) and np.any(self.p > 0)
 
 
 class ConservativeState(State):
@@ -670,6 +659,7 @@ class ConservativeState(State):
         self.q1     = W.rho * W.u
         self.q2     = W.rho * W.v
         self.q3     = W.p / (self.g - 1) + W.ek()
+        self.cache  = cpy(W.cache)
 
         self.set_state_from_vars()
 
@@ -719,7 +709,7 @@ class ConservativeState(State):
 
     def to_primitive_vector(self):
 
-        W = np.zeros_like(self.U)
+        W = np.zeros_like(self.U, dtype=float)
 
         W[:, :, PrimitiveState.RHO_IDX] = self.rho.copy()
         W[:, :, PrimitiveState.U_IDX] = self.u()
@@ -728,25 +718,32 @@ class ConservativeState(State):
 
         return W
 
+    @cache
     def u(self) -> np.ndarray:
         return self.q1 / self.q0
 
+    @cache
     def v(self) -> np.ndarray:
         return self.q2 / self.q0
 
+    @cache
     def ek(self) -> np.ndarray:
         return 0.5 * (self.q1 * self.q1 + self.q2 * self.q2) / self.q0
 
+    @cache
     def h(self) -> np.ndarray:
         _ek = self.ek()
         return self.g * (self.q3 - _ek) + _ek
 
+    @cache
     def H(self) -> np.ndarray:
         return self.h() / self.q0
 
+    @cache
     def a(self) -> np.ndarray:
         return np.sqrt(self.g * self.p() / self.q0)
 
+    @cache
     def p(self) -> np.ndarray:
         return (self.g - 1) * (self.q3 - self.ek())
 
@@ -796,6 +793,9 @@ class ConservativeState(State):
                           rv * self.u(),
                           rv * v + p,
                           v * (self.e + p)))
+
+    def realizable(self):
+        return np.all(self.rho > 0) and np.any(self.e > 0)
 
 
 class RoePrimitiveState(PrimitiveState):

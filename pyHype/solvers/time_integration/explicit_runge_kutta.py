@@ -55,7 +55,6 @@ class ExplicitRungeKutta(TimeIntegrator):
             # Update state using intermediate state
             refBLK.state.update(_intermediate_state)
             refBLK.set_BC()
-
             refBLK.state.clear_cache()
 
     @classmethod

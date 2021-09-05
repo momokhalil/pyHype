@@ -22,6 +22,7 @@ import sys
 import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 from pyHype import execution_prints
 from pyHype.mesh import meshes
 from pyHype.mesh.base import BlockDescription
@@ -115,6 +116,8 @@ class Solver:
         # Create BlockDescription for each block in the mesh
         _mesh_inputs = {blk: BlockDescription(blkData) for (blk, blkData) in _mesh_dict.items()}
 
+        self.cmap = LinearSegmentedColormap.from_list('my_map', ['royalblue', 'midnightblue', 'black'])
+
         print('\t>>> Checking all boundary condition types')
         _bc_type_names = ['BCTypeE', 'BCTypeW', 'BCTypeN', 'BCTypeS']
         self._all_BC_types = []
@@ -195,23 +198,16 @@ class Solver:
                                             block.state.U)
 
     def real_plot(self):
-        if self.numTimeStep % 5 == 0:
-            _v = [block.state.rho for block in self.blocks]
-            max_ = max([np.max(v) for v in _v])
-            min_ = min([np.min(v) for v in _v])
-
-            for block in self.blocks:
-                self.realplot.contourf(block.mesh.x[:, :, 0],
-                                       block.mesh.y[:, :, 0],
-                                       block.state.rho,
-                                       50,
-                                       cmap='magma',
-                                       vmax=max_,
-                                       vmin=min_)
-
+        if self.numTimeStep % self.inputs.plot_every == 0:
+            data = [(block.mesh.x[:, :, 0], block.mesh.y[:, :, 0], block.state.rho)  for block in self.blocks]
+            for _vars in data:
+                self.realplot.contourf(*_vars, 50, cmap='YlGnBu',
+                                       vmax=max([np.max(v[2]) for v in data]),
+                                       vmin=min([np.min(v[2]) for v in data]))
             self.realplot.set_aspect('equal')
             plt.show()
             plt.pause(0.001)
+            plt.cla()
 
     def build_real_plot(self):
         plt.ion()
@@ -232,6 +228,6 @@ class Solver:
         W = max(se_x, ne_x) - min(sw_x, nw_x)
         L = max(nw_y, ne_y) - min(sw_y, se_y)
 
-        pl = 4
+        w = 6
 
-        self.realplot.figure.set_size_inches(pl / (L / W), pl)
+        self.realplot.figure.set_size_inches(w, w * (L / W))

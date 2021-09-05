@@ -34,6 +34,9 @@ from pyHype.blocks.ghost import GhostBlockEast, GhostBlockWest, GhostBlockSouth,
 from copy import deepcopy
 from copy import copy as cpy
 
+from itertools import chain
+
+
 if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
 
@@ -78,14 +81,14 @@ class QuadBlock:
 
         # Conservative Gradient
         if self.inputs.reconstruction_type == 'conservative':
-            self.dUdx               = np.zeros_like(self.mesh.x)
-            self.dUdy               = np.zeros_like(self.mesh.y)
+            self.dUdx               = np.zeros_like(self.mesh.x, dtype=float)
+            self.dUdy               = np.zeros_like(self.mesh.y, dtype=float)
             self.dWdx               = None
             self.dWdy               = None
         # Primitive Gradient
         elif self.inputs.reconstruction_type == 'primitive':
-            self.dWdx               = np.zeros_like(self.mesh.x)
-            self.dWdy               = np.zeros_like(self.mesh.y)
+            self.dWdx               = np.zeros_like(self.mesh.x, dtype=float)
+            self.dWdy               = np.zeros_like(self.mesh.y, dtype=float)
             self.dUdx               = None
             self.dUdy               = None
         else:
@@ -192,26 +195,36 @@ class QuadBlock:
         return _to_conv
 
     @staticmethod
-    def _to_primitive(block: QuadBlock):
-        _ghost_vals = block.ghost.__dict__.values()
-        if isinstance(block.state, ConservativeState) and \
-           all(map(lambda gBLK: isinstance(gBLK.state, ConservativeState), _ghost_vals)):
-            block.state = block.state.to_primitive_state()
-            for v in _ghost_vals:
-                v.state = v.state.to_primitive_state()
-        else:
-            raise TypeError('Reference block state or ghost block states are not of type ConservativeState')
+    def _is_all_blk_conservative(blks: dict.values):
+        return all(map(lambda blk: isinstance(blk.state, ConservativeState), blks))
 
     @staticmethod
-    def _to_conservative(block: QuadBlock):
-        _ghost_vals = block.ghost.__dict__.values()
-        if isinstance(block.state, PrimitiveState) and \
-           all(map(lambda gBLK: isinstance(gBLK.state, PrimitiveState), _ghost_vals)):
-            block.state = block.state.to_conservative_state()
-            for v in _ghost_vals:
-                v.state = v.state.to_conservative_state()
+    def _is_all_blk_primitive(blks: dict.values):
+        return all(map(lambda blk: isinstance(blk.state, PrimitiveState), blks))
+
+    def _to_primitive(self, block: QuadBlock):
+        _ghost_dict_vals = block.ghost.__dict__.values()
+
+        if not isinstance(block.state, ConservativeState):
+            raise TypeError('Reference block state is not ConservativeState.')
+        elif not self._is_all_blk_conservative(_ghost_dict_vals):
+            raise TypeError('Ghost block state is not ConservativeState.')
         else:
-            raise TypeError('Reference block state or ghost block states are not of type PrimitiveState')
+            block.state = block.state.to_primitive_state()
+            for v in _ghost_dict_vals:
+                v.state = v.state.to_primitive_state()
+
+    def _to_conservative(self, block: QuadBlock):
+        _ghost_dict_vals = block.ghost.__dict__.values()
+
+        if not isinstance(block.state, PrimitiveState):
+            raise TypeError('Reference block state is not PrimitiveState.')
+        elif not self._is_all_blk_primitive(_ghost_dict_vals):
+            raise TypeError('Ghost block state is not PrimitiveState.')
+        else:
+            block.state = block.state.to_conservative_state()
+            for v in _ghost_dict_vals:
+                v.state = v.state.to_conservative_state()
 
     def plot(self,
              ax: plt.axes = None,
@@ -240,20 +253,49 @@ class QuadBlock:
                     s=0)
 
         # Create nodes mesh for LineCollection
-        segs1 = np.stack((self.mesh.nodes.x[:, :, 0],
-                          self.mesh.nodes.y[:, :, 0]),
+        east = np.stack((self.mesh.nodes.x[:, -1, None, 0],
+                          self.mesh.nodes.y[:, -1, None, 0]),
                          axis=2)
-        segs2 = segs1.transpose((1, 0, 2))
+
+        west = np.stack((self.mesh.nodes.x[:, 0, None, 0],
+                         self.mesh.nodes.y[:, 0, None, 0]),
+                        axis=2)
+
+        north = np.stack((self.mesh.nodes.x[-1, None, :, 0],
+                         self.mesh.nodes.y[-1, None, :, 0]),
+                         axis=2)
+
+        south = np.stack((self.mesh.nodes.x[0, None, :, 0],
+                         self.mesh.nodes.y[0, None, :, 0]),
+                         axis=2)
+
+        block_sides = chain((east, west, north, south))
+
+        body = np.stack((self.mesh.nodes.x[:, :, 0],
+                         self.mesh.nodes.y[:, :, 0]),
+                        axis=2)
 
         # Create LineCollection for nodes
-        ax.add_collection(LineCollection(segs1,
-                                                colors='black',
-                                                linewidths=1,
-                                                alpha=0.5))
-        ax.add_collection(LineCollection(segs2,
-                                                colors='black',
-                                                linewidths=1,
-                                                alpha=0.5))
+        ax.add_collection(LineCollection(body,
+                                         colors='black',
+                                         linewidths=1,
+                                         alpha=1))
+        ax.add_collection(LineCollection(body.transpose((1, 0, 2)),
+                                         colors='black',
+                                         linewidths=1,
+                                         alpha=1))
+
+        for side in block_sides:
+
+            ax.add_collection(LineCollection(side,
+                                             colors='black',
+                                             linewidths=2,
+                                             alpha=1))
+            ax.add_collection(LineCollection(side.transpose((1, 0, 2)),
+                                             colors='black',
+                                             linewidths=2,
+                                             alpha=1))
+
 
         if show_cell_centre:
 
@@ -976,6 +1018,9 @@ class QuadBlock:
 
         self._time_integrator(self, dt)
 
+        if not self.realizable():
+            raise ValueError('Negative or zero pressure, density, or energy. Terminating simulation.')
+
     def get_flux(self) -> None:
         """
         Calls the get_flux() method from the Block's finite-volume-method to compute the flux at each cell wall.
@@ -1212,7 +1257,7 @@ class QuadBlock:
     def _get_nodal_solution_cell_average_conservative(self) -> np.ndarray:
 
         # Initialize solution array
-        U = np.zeros((self.inputs.ny + 1, self.inputs.nx + 1, 4))
+        U = np.zeros((self.inputs.ny + 1, self.inputs.nx + 1, 4), dtype=float)
 
         # Set corners
 
@@ -1258,6 +1303,9 @@ class QuadBlock:
                                    self.state.U[:-1, 1:, :])
 
         return U
+
+    def realizable(self):
+        return self.state.realizable() and all([blk.realizable() for blk in self.ghost()])
 
 class QuadBlockAdaptiveUniform(QuadBlock):
     pass

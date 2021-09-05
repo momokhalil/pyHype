@@ -47,12 +47,13 @@ class XDIR_EIGENSYSTEM_VECTORS:
         self.Lc_p2 = np.ones((2 * (nx + 1)))
         self.Lc_p3 = np.ones((1 * (nx + 1)))
 
+        self.Lp_m2 = np.ones((1 * (nx + 1)))
         self.Lp_m1 = np.ones((3 * (nx + 1)))
         self.Lp_p1 = 0.5 * np.ones((2 * (nx + 1)))
         self.Lp_p2 = np.ones((1 * (nx + 1)))
         self.Lp_p3 = 0.5 * np.ones((1 * (nx + 1)))
 
-        self.lam = np.zeros((4 * (nx + 1)))
+        self.lam = np.zeros((4 * (nx + 1)), dtype=float)
 
 
 class XDIR_EIGENSYSTEM_INDICES:
@@ -212,6 +213,8 @@ class XDIR_EIGENSYSTEM_INDICES:
                                                         0   0   X   0
         """
 
+        Lp_m2_i = self.get_indices(nx, [3])
+        Lp_m2_j = self.get_indices(nx, [1])
         Lp_m1_i = self.get_indices(nx, [1, 2, 3])
         Lp_m1_j = self.get_indices(nx, [0, 1, 2])
         Lp_p1_i = self.get_indices(nx, [0, 2])
@@ -221,8 +224,8 @@ class XDIR_EIGENSYSTEM_INDICES:
         Lp_p3_i = self.get_indices(nx, [0])
         Lp_p3_j = self.get_indices(nx, [3])
 
-        self.Lpi = np.hstack((Lp_m1_i, Lp_p1_i, Lp_p2_i, Lp_p3_i))
-        self.Lpj = np.hstack((Lp_m1_j, Lp_p1_j, Lp_p2_j, Lp_p3_j))
+        self.Lpi = np.hstack((Lp_m2_i, Lp_m1_i, Lp_p1_i, Lp_p2_i, Lp_p3_i))
+        self.Lpj = np.hstack((Lp_m2_j, Lp_m1_j, Lp_p1_j, Lp_p2_j, Lp_p3_j))
 
     def _get_eigenvalue_indices(self, nx):
         L_d0_i = self.get_indices(nx, [0, 1, 2, 3])

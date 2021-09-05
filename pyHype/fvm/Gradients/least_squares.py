@@ -160,8 +160,8 @@ def least_squares_9_point(Q, QE, QW, QN, QS,
                           stencilSW, stencilNW, stencilSE, stencilNE):
 
     # Initialize gradient arrays
-    dQdx = np.zeros((ny, nx, 4))
-    dQdy = np.zeros((ny, nx, 4))
+    dQdx = np.zeros((ny, nx, 4), dtype=float)
+    dQdy = np.zeros((ny, nx, 4), dtype=float)
 
     # ---------------------------------------------------------------------------------------
     # Corner cells

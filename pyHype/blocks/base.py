@@ -18,6 +18,9 @@ from typing import TYPE_CHECKING, Callable
 import functools
 
 import os
+
+import matplotlib.pyplot as plt
+
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
@@ -87,6 +90,9 @@ class GhostBlockContainer:
         self.N = N
         self.S = S
 
+    def __call__(self):
+        return self.__dict__.values()
+
 
 class NormalVector:
     def __init__(self,
@@ -112,9 +118,9 @@ class NormalVector:
 
 def to_all_blocks(func: Callable):
     @functools.wraps(func)
-    def _wrapper(self, *args):
+    def _wrapper(self, *args, **kwargs):
         for block in self.blocks.values():
-            func(self, block, *args)
+            func(self, block, *args, **kwargs)
     return _wrapper
 
 class Blocks:
@@ -198,3 +204,15 @@ class Blocks:
             print('South: ', block.neighbors.S)
             print('East:  ', block.neighbors.E)
             print('West:  ', block.neighbors.W)
+
+    def plot_mesh(self):
+
+        fig, ax = plt.subplots(1)
+        ax.set_aspect('equal')
+
+        for block in self.blocks.values():
+            block.plot(ax=ax)
+
+        plt.show()
+        plt.pause(0.001)
+        plt.close()

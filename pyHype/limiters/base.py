@@ -48,11 +48,13 @@ class SlopeLimiter:
                               _state,
                               refBLK.ghost.E.state.Q),
                              axis=1)
+
         # u_min for interior cells
         _NS = np.concatenate((refBLK.ghost.S.state.Q,
                               _state,
                               refBLK.ghost.N.state.Q),
                              axis=0)
+
         # Values for min/max evaluation
         _vals = (_state, _EW[:, :-2], _EW[:, 2:], _NS[:-2, :], _NS[2:, :])
 

@@ -129,8 +129,8 @@ class Mesh:
             self.ny = inputs.ny
 
         # x and y locations of each cell centroid
-        self.x = np.zeros((self.ny, self.nx))
-        self.y = np.zeros((self.ny, self.nx))
+        self.x = np.zeros((self.ny, self.nx), dtype=float)
+        self.y = np.zeros((self.ny, self.nx), dtype=float)
 
         # Initialize nodes attribute
         self.nodes = None
@@ -166,8 +166,8 @@ class Mesh:
         Wy = np.linspace(self.vertices.SW[1], self.vertices.NW[1], self.ny + 1)
 
         # Initialize temporary storage arrays for x and y node locations
-        x = np.zeros((self.ny + 1, self.nx + 1))
-        y = np.zeros((self.ny + 1, self.nx + 1))
+        x = np.zeros((self.ny + 1, self.nx + 1), dtype=float)
+        y = np.zeros((self.ny + 1, self.nx + 1), dtype=float)
 
         # Set x and y location for all nodes
         for i in range(self.ny + 1):
@@ -352,13 +352,13 @@ class Mesh:
         s2 = self.north_face_length()
         s4 = self.south_face_length()
 
-        # Diagonal
-        d1 = (self.nodes.x[1:, :-1] - self.nodes.x[:-1, 1:]) ** 2 + \
+        # Diagonal squared
+        d2 = (self.nodes.x[1:, :-1] - self.nodes.x[:-1, 1:]) ** 2 + \
              (self.nodes.y[1:, :-1] - self.nodes.y[:-1, 1:]) ** 2
 
         # Calculate opposite angles
-        a1 = np.arccos((s1 ** 2 + s4 ** 2 - d1) / 2 / s1 / s4)
-        a2 = np.arccos((s2 ** 2 + s3 ** 2 - d1) / 2 / s2 / s3)
+        a1 = np.arccos((s1 ** 2 + s4 ** 2 - d2) / (2 * s1 * s4))
+        a2 = np.arccos((s2 ** 2 + s3 ** 2 - d2) / (2 * s2 * s3))
 
         # Semiperimiter
         s = 0.5 * (s1 + s2 + s3 + s4)

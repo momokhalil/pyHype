@@ -54,19 +54,28 @@ class State:
         self.g = inputs.gamma
 
         # State matrix
-        self.Q = np.zeros((ny, nx, 4))
+        self._Q = np.zeros((ny, nx, 4), dtype=float)
 
         # State variables
-        self.q0 = np.zeros((ny, nx, 1))
-        self.q1 = np.zeros((ny, nx, 1))
-        self.q2 = np.zeros((ny, nx, 1))
-        self.q3 = np.zeros((ny, nx, 1))
+        self.q0 = np.zeros((ny, nx, 1), dtype=float)
+        self.q1 = np.zeros((ny, nx, 1), dtype=float)
+        self.q2 = np.zeros((ny, nx, 1), dtype=float)
+        self.q3 = np.zeros((ny, nx, 1), dtype=float)
 
         # gamma divided by gamma - 1
         self.g_over_gm = self.g / (self.g - 1)
 
         # Cache for storing calculated qunatities to avoid recalculation
         self.cache = {}
+
+    @property
+    def Q(self):
+        return self._Q
+
+    @Q.setter
+    def Q(self, Q):
+        self._Q = Q
+        self.clear_cache()
 
     def clear_cache(self) -> None:
         self.cache.clear()
@@ -139,9 +148,9 @@ class State:
     def reset(self, shape: [int] = None):
 
         if shape:
-            self.Q = np.zeros(shape=shape)
+            self.Q = np.zeros(shape=shape, dtype=float)
         else:
-            self.Q = np.zeros((self.ny, self.nx, 4))
+            self.Q = np.zeros((self.ny, self.nx, 4), dtype=float)
 
         self.set_vars_from_state()
 

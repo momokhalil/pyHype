@@ -100,20 +100,24 @@ class GhostBlock:
             - N/A
         """
 
-        # Realizability/Type check for density
-        if self.inputs.BC_inlet_west_rho <= 0:
-            raise ValueError('Inlet density is less than or equal to zero and thus non-physical.')
-        elif not isinstance(self.inputs.BC_inlet_west_rho, (int, float)):
-            raise TypeError('Inlet density is not of type int or float.')
+        _inlets = ['BC_inlet_west_rho', 'BC_inlet_east_rho', 'BC_inlet_north_rho', 'BC_inlet_south_rho',
+                   'BC_inlet_west_p', 'BC_inlet_east_p', 'BC_inlet_north_p', 'BC_inlet_south_p']
 
-        # Realizability/Type check for pressure
-        if self.inputs.BC_inlet_west_p <= 0:
-            raise ValueError('Inlet pressure is less than or equal to zero and thus non-physical.')
-        elif not isinstance(self.inputs.BC_inlet_west_p, (int, float)):
-            raise TypeError('Inlet pressure is not of type int or float.')
+        _has_inlets = [inlet for inlet in _inlets if hasattr(self.inputs, inlet)]
+
+        for ic in _has_inlets:
+            # Realizability/Type check for density
+            if self.inputs.__getattribute__(ic) <= 0:
+                raise ValueError('Inlet density or pressure is less than or equal to zero and thus non-physical.')
+            elif not isinstance(self.inputs.__getattribute__(ic), (int, float)):
+                raise TypeError('Inlet density or pressure is not of type int or float.')
+
 
     def __getitem__(self, index):
         return self.state.U[index]
+
+    def realizable(self):
+        return self.state.realizable()
 
     def row(self,
             index: int,
@@ -233,7 +237,9 @@ class GhostBlockEast(GhostBlock):
         # Rotate state to allign with wall
         utils.rotate(wall_angle, state)
         # Reflect normal velocity
-        state[:, :, 1] *= -1
+        state[:, :, 1] = -state[:, :, 1]
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle, state)
         # Update state
         self.state.update(state)
 
@@ -246,6 +252,8 @@ class GhostBlockEast(GhostBlock):
         utils.rotate(wall_angle, state)
         # Reflect normal velocity
         state[:, :, 1] = 0
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle, state)
         # Update state
         self.state.update(state)
 
@@ -321,7 +329,9 @@ class GhostBlockWest(GhostBlock):
         # Rotate state to allign with wall
         utils.rotate(wall_angle, state)
         # Reflect normal velocity
-        state[:, :, 1] *= -1
+        state[:, :, 1] = -state[:, :, 1]
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle, state)
         # Update state
         self.state.update(state)
 
@@ -334,6 +344,8 @@ class GhostBlockWest(GhostBlock):
         utils.rotate(wall_angle, state)
         # Reflect normal velocity
         state[:, :, 1] = 0
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle, state)
         # Update state
         self.state.update(state)
 
@@ -410,7 +422,9 @@ class GhostBlockNorth(GhostBlock):
         # Rotate state to allign with wall
         utils.rotate(wall_angle - np.pi/2, state)
         # Reflect normal velocity
-        state[:, :, 2] *= -1
+        state[:, :, 2] = -state[:, :, 2]
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
         self.state.update(state)
 
@@ -423,6 +437,8 @@ class GhostBlockNorth(GhostBlock):
         utils.rotate(wall_angle - np.pi/2, state)
         # Reflect normal velocity
         state[:, :, 2] = 0
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
         self.state.update(state)
 
@@ -496,7 +512,9 @@ class GhostBlockSouth(GhostBlock):
         # Rotate state to allign with wall
         utils.rotate(wall_angle - np.pi/2, state)
         # Reflect normal velocity
-        state[:, :, 2] *= -1
+        state[:, :, 2] = -state[:, :, 2]
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
         self.state.update(state)
 
@@ -509,6 +527,8 @@ class GhostBlockSouth(GhostBlock):
         utils.rotate(wall_angle - np.pi/2, state)
         # Reflect normal velocity
         state[:, :, 2] = 0
+        # Rotate state back to global axes
+        utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
         self.state.update(state)
 

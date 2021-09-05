@@ -19,6 +19,26 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numpy as np
 
 # Meshes
+def square_ten_by_ten_one_block(nx, ny, nghost):
+    block1 = {'nBLK': 1,
+              'NW': [0, 10], 'NE': [10, 10],
+              'SW': [0, 0], 'SE': [10, 0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': None,
+              'NeighborW': None,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'Reflection',
+              'BCTypeW': 'Reflection',
+              'BCTypeN': 'Reflection',
+              'BCTypeS': 'Reflection'}
+
+    return {1: block1}
+
+
 def square_ten_by_ten_four_block(nx, ny, nghost):
     block1 = {'nBLK': 1,
               'NE': [5, 5],
@@ -100,10 +120,8 @@ def square_ten_by_ten_four_block(nx, ny, nghost):
 # Meshes
 def step_three_block(nx, ny, nghost):
     block1 = {'nBLK': 1,
-              'NE': [5, 5],
-              'NW': [0, 5],
-              'SE': [5, 0],
-              'SW': [0, 0],
+              'NW': [0, 1], 'NE': [3, 1],
+              'SW': [0, 0], 'SE': [3, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
@@ -118,10 +136,8 @@ def step_three_block(nx, ny, nghost):
               'BCTypeS': 'Reflection'}
 
     block2 = {'nBLK': 2,
-              'NE': [5, 10],
-              'NW': [0, 10],
-              'SE': [5, 5],
-              'SW': [0, 5],
+              'NW': [0, 4], 'NE': [3, 4],
+              'SW': [0, 1], 'SE': [3, 1],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
@@ -136,10 +152,8 @@ def step_three_block(nx, ny, nghost):
               'BCTypeS': 'None'}
 
     block3 = {'nBLK': 3,
-              'NE': [10, 10],
-              'NW': [5, 10],
-              'SE': [10, 5],
-              'SW': [5, 5],
+              'NW': [3, 4], 'NE': [6, 4],
+              'SW': [3, 1], 'SE': [6, 1],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
@@ -156,6 +170,180 @@ def step_three_block(nx, ny, nghost):
     return {1: block1,
             2: block2,
             3: block3}
+
+def step_ten_block(nx, ny, nghost):
+
+    block1 = {'nBLK': 1,
+              'NW': [0, 1], 'NE': [3, 1],
+              'SW': [0, 0], 'SE': [3, 0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': None,
+              'NeighborW': None,
+              'NeighborN': 2,
+              'NeighborS': None,
+              'BCTypeE': 'Slipwall',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'None',
+              'BCTypeS': 'Slipwall'}
+
+    block2 = {'nBLK': 2,
+              'NW': [0, 2], 'NE': [3, 2],
+              'SW': [0, 1], 'SE': [3, 1],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 7,
+              'NeighborW': None,
+              'NeighborN': 3,
+              'NeighborS': 1,
+              'BCTypeE': 'None',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'None',
+              'BCTypeS': 'None'}
+
+    block3 = {'nBLK': 3,
+              'NW': [0, 3], 'NE': [3, 3],
+              'SW': [0, 2], 'SE': [3, 2],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 6,
+              'NeighborW': None,
+              'NeighborN': 4,
+              'NeighborS': 2,
+              'BCTypeE': 'None',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'None',
+              'BCTypeS': 'None'}
+
+    block4 = {'nBLK': 4,
+              'NW': [0, 4], 'NE': [3, 4],
+              'SW': [0, 3], 'SE': [3, 3],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 5,
+              'NeighborW': None,
+              'NeighborN': None,
+              'NeighborS': 3,
+              'BCTypeE': 'None',
+              'BCTypeW': 'InletDirichlet',
+              'BCTypeN': 'Slipwall',
+              'BCTypeS': 'None'}
+
+    block5 = {'nBLK': 5,
+              'NW': [3, 4], 'NE': [6, 4],
+              'SW': [3, 3], 'SE': [6, 3],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 10,
+              'NeighborW': 4,
+              'NeighborN': None,
+              'NeighborS': 6,
+              'BCTypeE': 'None',
+              'BCTypeW': 'None',
+              'BCTypeN': 'Slipwall',
+              'BCTypeS': 'None'}
+
+    block6 = {'nBLK': 6,
+              'NW': [3, 3], 'NE': [6, 3],
+              'SW': [3, 2], 'SE': [6, 2],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 9,
+              'NeighborW': 3,
+              'NeighborN': 5,
+              'NeighborS': 7,
+              'BCTypeE': 'None',
+              'BCTypeW': 'None',
+              'BCTypeN': 'None',
+              'BCTypeS': 'None'}
+
+    block7 = {'nBLK': 7,
+              'NW': [3, 2], 'NE': [6, 2],
+              'SW': [3, 1], 'SE': [6, 1],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 8,
+              'NeighborW': 2,
+              'NeighborN': 6,
+              'NeighborS': None,
+              'BCTypeE': 'None',
+              'BCTypeW': 'None',
+              'BCTypeN': 'None',
+              'BCTypeS': 'Slipwall'}
+
+    block8 = {'nBLK': 8,
+              'NW': [6, 2], 'NE': [9, 2],
+              'SW': [6, 1], 'SE': [9, 1],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': None,
+              'NeighborW': 7,
+              'NeighborN': 9,
+              'NeighborS': None,
+              'BCTypeE': 'OutletDirichlet',
+              'BCTypeW': 'None',
+              'BCTypeN': 'None',
+              'BCTypeS': 'Slipwall'}
+
+    block9 = {'nBLK': 9,
+              'NW': [6, 3], 'NE': [9, 3],
+              'SW': [6, 2], 'SE': [9, 2],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': None,
+              'NeighborW': 6,
+              'NeighborN': 10,
+              'NeighborS': 8,
+              'BCTypeE': 'OutletDirichlet',
+              'BCTypeW': 'None',
+              'BCTypeN': 'None',
+              'BCTypeS': 'None'}
+
+    block10 = {'nBLK': 10,
+               'NW': [6, 4], 'NE': [9, 4],
+               'SW': [6, 3], 'SE': [9, 3],
+               'nx': nx,
+               'ny': ny,
+               'n': nx * ny,
+               'nghost': nghost,
+               'NeighborE': None,
+               'NeighborW': 5,
+               'NeighborN': None,
+               'NeighborS': 9,
+               'BCTypeE': 'OutletDirichlet',
+               'BCTypeW': 'None',
+               'BCTypeN': 'Slipwall',
+               'BCTypeS': 'None'}
+
+    return {1: block1,
+            2: block2,
+            3: block3,
+            4: block4,
+            5: block5,
+            6: block6,
+            7: block7,
+            8: block8,
+            9: block9,
+            10: block10
+            }
 
 def ramp_six_block(nx, ny, nghost):
     block1 = {'nBLK': 1,
@@ -280,81 +468,10 @@ def ramp_two_block(nx, ny, nghost):
     return {1: block1,
             2: block2}
 
-def shallow_ramp_four_block(nx, ny, nghost):
+def wedge_15_two_block(nx, ny, nghost):
     block1 = {'nBLK': 1,
               'NW': [0, 2], 'NE': [2, 2],
               'SW': [0, 0], 'SE': [2, 0],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': 4,
-              'NeighborW': None,
-              'NeighborN': 2,
-              'NeighborS': None,
-              'BCTypeE': 'None',
-              'BCTypeW': 'InletDirichlet',
-              'BCTypeN': 'None',
-              'BCTypeS': 'Slipwall'}
-
-    block2 = {'nBLK': 2,
-              'NW': [0, 4], 'NE': [2, 4],
-              'SW': [0, 2], 'SE': [2, 2],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': 3,
-              'NeighborW': None,
-              'NeighborN': None,
-              'NeighborS': 1,
-              'BCTypeE': 'None',
-              'BCTypeW': 'InletDirichlet',
-              'BCTypeN': 'OutletDirichlet',
-              'BCTypeS': 'None'}
-
-    block3 = {'nBLK': 3,
-              'NW': [2, 4], 'NE': [4, 4],
-              'SW': [2, 2], 'SE': [4, 2],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': 2,
-              'NeighborN': None,
-              'NeighborS': 4,
-              'BCTypeE': 'OutletDirichlet',
-              'BCTypeW': 'None',
-              'BCTypeN': 'OutletDirichlet',
-              'BCTypeS': 'None'}
-
-    block4 = {'nBLK': 4,
-              'NW': [2, 2], 'NE': [4, 2],
-              'SW': [2, 0], 'SE': [4, 2 * np.tan(15 * np.pi / 180)],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': 1,
-              'NeighborN': 3,
-              'NeighborS': None,
-              'BCTypeE': 'OutletDirichlet',
-              'BCTypeW': 'None',
-              'BCTypeN': 'None',
-              'BCTypeS': 'Slipwall'}
-
-    return {1: block1,
-            2: block2,
-            3: block3,
-            4: block4
-            }
-
-def shallow_ramp_two_block(nx, ny, nghost):
-    block1 = {'nBLK': 1,
-              'NW': [0, 1], 'NE': [1, 1],
-              'SW': [0, 0], 'SE': [1, 0],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
@@ -366,11 +483,11 @@ def shallow_ramp_two_block(nx, ny, nghost):
               'BCTypeE': 'None',
               'BCTypeW': 'InletDirichlet',
               'BCTypeN': 'OutletDirichlet',
-              'BCTypeS': 'Reflection'}
+              'BCTypeS': 'Slipwall'}
 
     block2 = {'nBLK': 2,
-              'NW': [1, 1], 'NE': [2, 1],
-              'SW': [1, 0], 'SE': [2, 1 * np.tan(15 * np.pi / 180)],
+              'NW': [2, 2], 'NE': [4, 2],
+              'SW': [2, 0], 'SE': [4, 2 * np.tan(15 * np.pi / 180)],
               'nx': nx,
               'ny': ny,
               'n': nx * ny,
@@ -382,10 +499,84 @@ def shallow_ramp_two_block(nx, ny, nghost):
               'BCTypeE': 'OutletDirichlet',
               'BCTypeW': 'None',
               'BCTypeN': 'OutletDirichlet',
-              'BCTypeS': 'Reflection'}
+              'BCTypeS': 'Slipwall'}
 
     return {1: block1,
-            2: block2
+            2: block2,
+            }
+
+def wedge_35_four_block(nx, ny, nghost):
+    d = np.tan(30 * np.pi / 180)
+    k = 1
+    a = 2 / np.sqrt(3)
+    block1 = {'nBLK': 1,
+              'NW': [0, a], 'NE': [k, a],
+              'SW': [0, 0], 'SE': [k, 0],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 2,
+              'NeighborW': None,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'None',
+              'BCTypeW': 'OutletDirichlet',
+              'BCTypeN': 'OutletDirichlet',
+              'BCTypeS': 'OutletDirichlet'}
+
+    block2 = {'nBLK': 2,
+              'NW': [k, a], 'NE': [2 * k, a + d],
+              'SW': [k, 0], 'SE': [2 * k, d],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 3,
+              'NeighborW': 1,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'OutletDirichlet',
+              'BCTypeW': 'None',
+              'BCTypeN': 'OutletDirichlet',
+              'BCTypeS': 'Slipwall'}
+
+    block3 = {'nBLK': 3,
+              'NW': [2 * k, a + d], 'NE': [3 * k, a + 2 * d],
+              'SW': [2 * k, d], 'SE': [3 * k, 2 * d],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': 4,
+              'NeighborW': 2,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'OutletDirichlet',
+              'BCTypeW': 'None',
+              'BCTypeN': 'OutletDirichlet',
+              'BCTypeS': 'Slipwall'}
+
+    block4 = {'nBLK': 4,
+              'NW': [3 * k, a + 2 * d], 'NE': [4 * k, a + 3 * d],
+              'SW': [3 * k, 2 * d], 'SE': [4 * k, 3 * d],
+              'nx': nx,
+              'ny': ny,
+              'n': nx * ny,
+              'nghost': nghost,
+              'NeighborE': None,
+              'NeighborW': 3,
+              'NeighborN': None,
+              'NeighborS': None,
+              'BCTypeE': 'OutletDirichlet',
+              'BCTypeW': 'None',
+              'BCTypeN': 'OutletDirichlet',
+              'BCTypeS': 'Slipwall'}
+
+    return {1: block1,
+            2: block2,
+            3: block3,
+            4: block4,
             }
 
 def shallow_ramp_multiangle_three_block(nx, ny, nghost):
@@ -957,25 +1148,6 @@ def ramjet(nx, ny, nghost):
             9: block9,
             }
 
-def square_ten_by_ten_one_block(nx, ny, nghost):
-    block1 = {'nBLK': 1,
-              'NW': [0, 5], 'NE': [5, 5],
-              'SW': [0, 0], 'SE': [5, 0],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': None,
-              'NeighborN': None,
-              'NeighborS': None,
-              'BCTypeE': 'Reflection',
-              'BCTypeW': 'Reflection',
-              'BCTypeN': 'Reflection',
-              'BCTypeS': 'Reflection'}
-
-    return {1: block1}
-
 
 def chamber(nx, ny, nghost):
     block1 = {'nBLK': 1,
@@ -1143,10 +1315,11 @@ def chamber_skewed(nx, ny, nghost):
 DEFINED_MESHES = {'square_ten_by_ten_four_block': square_ten_by_ten_four_block,
                   'square_ten_by_ten_one_block': square_ten_by_ten_one_block,
                   'step_three_block': step_three_block,
+                  'step_ten_block': step_ten_block,
                   'ramp_two_block': ramp_two_block,
                   'ramp_six_block': ramp_six_block,
-                  'shallow_ramp_four_block': shallow_ramp_four_block,
-                  'shallow_ramp_two_block': shallow_ramp_two_block,
+                  'wedge_15_two_block': wedge_15_two_block,
+                  'wedge_35_four_block': wedge_35_four_block,
                   'shallow_ramp_multiangle_three_block': shallow_ramp_multiangle_three_block,
                   'ramp_channel': ramp_channel,
                   'ramjet': ramjet,

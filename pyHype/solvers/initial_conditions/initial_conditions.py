@@ -24,7 +24,8 @@ _DEFINED_IC_ = ['explosion',
                 'supersonic_rest',
                 'subsonic_flood',
                 'subsonic_rest',
-                'explosion_trapezoid'
+                'explosion_trapezoid',
+                'mach_reflection'
                 ]
 
 def is_defined_IC(name: str):
@@ -58,13 +59,7 @@ def explosion(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.nx):
-                if 3 <= block.mesh.x[i, j] <= 7 and 3 <= block.mesh.y[i, j] <= 7:
-                    block.state.U[i, j, :] = QL
-                else:
-                    block.state.U[i, j, :] = QR
-
+        block.state.U[:, :, :] = np.where(np.logical_and(3 <= block.mesh.x <= 7, 3 <= block.mesh.y <= 7), QL, QR)
         block.state.set_vars_from_state()
         block.state.non_dim()
 
@@ -80,14 +75,14 @@ def implosion(blocks, **kwargs):
     # High pressure zone
     rhoL = 4.6968
     pL = 404400.0
-    uL = 0.00
+    uL = 0.0
     vL = 0.0
     eL = pL / (g - 1)
 
     # Low pressure zone
     rhoR = 1.1742
     pR = 101100.0
-    uR = 0.00
+    uR = 0.0
     vR = 0.0
     eR = pR / (g - 1)
 
@@ -97,13 +92,8 @@ def implosion(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.nx):
-                if block.mesh.x[i, j] <= 3 and block.mesh.y[i, j] <= 3:
-                    block.state.U[i, j, :] = QR
-                else:
-                    block.state.U[i, j, :] = QL
-
+        block.state.U[:, :, :] = np.where(np.logical_and(block.mesh.x <= 5, block.mesh.y <= 5), QR, QL)
+        block.state.set_vars_from_state()
         block.state.non_dim()
 
 
@@ -147,6 +137,37 @@ def shockbox(blocks, **kwargs):
         block.state.non_dim()
 
 
+def mach_reflection(blocks, **kwargs):
+
+    if 'g' not in kwargs.keys():
+        raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
+
+    # Gamma
+    g = kwargs['g']
+
+    # Free stream
+    rhoL = 8
+    pL = 116.5
+    uL = 8.25
+    vL = 0.0
+    eL = pL / (g - 1) + 0.5 * (uL ** 2 + vL ** 2) * rhoL
+
+    # Post shock
+    rhoR = 1.4
+    pR = 1.0
+    uR = 0.0
+    vR = 0.0
+    eR = pR / (g - 1) + 0.5 * (uR ** 2 + vR ** 2) * rhoR
+
+    # Create state vectors
+    QL = np.array([rhoL, rhoL * uL, rhoL * vL, eL]).reshape((1, 1, 4))
+    QR = np.array([rhoR, rhoR * uR, rhoR * vR, eR]).reshape((1, 1, 4))
+
+    # Fill state vector in each block
+    for block in blocks:
+        block.state.U[:, :, :] = np.where(block.mesh.x <= 0.95, QL, QR)
+        block.state.non_dim()
+
 def supersonic_flood(blocks, **kwargs):
 
     if 'g' not in kwargs.keys():
@@ -163,14 +184,11 @@ def supersonic_flood(blocks, **kwargs):
     e = p / (g - 1) + 0.5 * (u ** 2 + v ** 2) * rho
 
     # Create state vectors
-    Q = np.array([rho, rho * u, rho * v, e])
+    Q = np.array([rho, rho * u, rho * v, e]).reshape((1, 1, 4))
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.nx):
-                block.state.U[i, j, :] = Q
-
+        block.state.U[:, :, :] = Q
         block.state.non_dim()
 
 def subsonic_flood(blocks, **kwargs):

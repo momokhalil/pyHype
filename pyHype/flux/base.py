@@ -17,10 +17,11 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
-from abc import abstractmethod
 import numba as nb
-from pyHype.states.states import ConservativeState, PrimitiveState, RoePrimitiveState
-from profilehooks import profile
+from abc import abstractmethod
+from pyHype.states.states import ConservativeState, \
+                                 PrimitiveState,    \
+                                 RoePrimitiveState
 
 
 class FluxFunction:
@@ -67,7 +68,7 @@ class FluxFunction:
                 raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
         else:
             raise AttributeError('Only give UL and UR or WL and WR, not combination of U and W')
-
+        #print([type(w) for w in [WL, WR, UL, UR]])
         return self.compute_flux(WL, WR, UL, UR)
 
     @staticmethod
@@ -86,7 +87,7 @@ class FluxFunction:
         # Check if PrimitiveState
         if isinstance(W, PrimitiveState):
             # Speed of sound
-            a = W.a_JIT(W.q3, W.q0, W.g)
+            a = W.a()
             # Compute wavespeeds
             slow, fast = W.u - a, W.u + a
             return slow, fast
@@ -129,10 +130,36 @@ class FluxFunction:
         if Roe_p is None and Roe_m is None:
             Roe_p, Roe_m = self.wavespeeds_x(Wroe)
         # Perform the harten correction using the JITed implementation
-        _harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m)
+        self._harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m)
 
         return Roe_p, Roe_m
 
+    @staticmethod
+    @nb.njit(cache=True)
+    def _harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m):
+        """
+        Performs the harten correction on a given array of Roe wavespeeds, using the given theta indicator computed using
+        Left and Right wavespeeds. The correction is applied in place due to the mutability of numpy arrays.
+
+        Parameters:
+            - Roe (np.ndarray): Numpy array holding the Roe wavespeeds which need to be corrected.
+            - theta (np.ndarray): Numpy array holding the theta indicator used for determining if a correction is needed
+        """
+
+        # Loop through array
+        for i in range(Roe_p.shape[0]):
+            for j in range(Roe_p.shape[1]):
+                # Save plus and minus thetas
+                _tp = 2 * (R_p[i, j] - L_p[i, j])
+                _tm = 2 * (R_m[i, j] - L_m[i, j])
+                # Correct for zero or below zero values
+                _tp = 1e-8 if _tp <= 0 else _tp
+                _tm = 1e-8 if _tm <= 0 else _tm
+                # Apply correction
+                if np.absolute(Roe_p[i, j]) < _tp:
+                    Roe_p[i, j] = 0.5 * ((Roe_p[i, j] * Roe_p[i, j]) / _tp + _tp)
+                if np.absolute(Roe_m[i, j]) < _tm:
+                    Roe_m[i, j] = 0.5 * ((Roe_m[i, j] * Roe_m[i, j]) / _tm + _tm)
 
     @staticmethod
     def _harten_correction_NUMPY(R_p, R_m, L_p, L_m, Roe_p, Roe_m):
@@ -146,15 +173,13 @@ class FluxFunction:
         theta_m = theta_m * (theta_m > 0)
 
         # Corrected fast and slow Roe wavespeeds
-        Roe_p = np.where(np.absolute(Roe_p) < theta_p,
-                         0.5 * ((Roe_p ** 2) / (theta_p + 1e-8) + theta_p),
-                         Roe_p)
+        Roe_p[:, :] = np.where(np.absolute(Roe_p) < theta_p,
+                               0.5 * ((Roe_p ** 2) / (theta_p + 1e-8) + theta_p),
+                               Roe_p)
 
-        Roe_m = np.where(np.absolute(Roe_m) < theta_m,
-                         0.5 * ((Roe_m ** 2) / (theta_m + 1e-8) + theta_m),
-                         Roe_m)
-
-        return Roe_p, Roe_m
+        Roe_m[:, :] = np.where(np.absolute(Roe_m) < theta_m,
+                               0.5 * ((Roe_m ** 2) / (theta_m + 1e-8) + theta_m),
+                               Roe_m)
 
 
     @abstractmethod
@@ -165,30 +190,3 @@ class FluxFunction:
                      UR: [ConservativeState, np.ndarray] = None,
                      ) -> np.ndarray:
         pass
-
-
-@nb.njit(cache=True)
-def _harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m):
-    """
-    Performs the harten correction on a given array of Roe wavespeeds, using the given theta indicator computed using
-    Left and Right wavespeeds. The correction is applied in place due to the mutability of numpy arrays.
-
-    Parameters:
-        - Roe (np.ndarray): Numpy array holding the Roe wavespeeds which need to be corrected.
-        - theta (np.ndarray): Numpy array holding the theta indicator used for determining if a correction is needed
-    """
-
-    # Loop through array
-    for i in range(Roe_p.shape[0]):
-        for j in range(Roe_p.shape[1]):
-            # Save plus and minus thetas
-            _tp = 2 * (R_p[i, j] - L_p[i, j])
-            _tm = 2 * (R_m[i, j] - L_m[i, j])
-            # Correct for zero or below zero values
-            _tp = 1e-8 if _tp <= 0 else _tp
-            _tm = 1e-8 if _tm <= 0 else _tm
-            # Apply correction
-            if np.absolute(Roe_p[i, j]) < _tp:
-                Roe_p[i, j] = 0.5 * ((Roe_p[i, j] * Roe_p[i, j]) / _tp + _tp)
-            if np.absolute(Roe_m[i, j]) < _tm:
-                Roe_m[i, j] = 0.5 * ((Roe_m[i, j] * Roe_m[i, j]) / _tm + _tm)

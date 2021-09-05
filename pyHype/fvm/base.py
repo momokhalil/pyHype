@@ -320,6 +320,7 @@ class MUSCLFiniteVolumeMethod:
         # Get reconstructed quadrature points
         _stateE, _stateW, _stateN, _stateS, _to_recon = self.reconstruct(refBLK)
 
+        # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
 
         # Copy all ghost cell values that will be used for the flux calculations
@@ -358,8 +359,9 @@ class MUSCLFiniteVolumeMethod:
             utils.unrotate(_to_recon.mesh.faceE.theta, self.Flux_E)
             utils.unrotate(_to_recon.mesh.faceW.theta - np.pi, self.Flux_W)
 
+        # --------------------------------------------------------------------------------------------------------------
         # Calculate y-direction Flux
-        f = 0.00
+
         # Rotate to allign with cell faces
         if _to_recon.is_cartesian:
             # If block is cartesian, rotate by 90 degrees CCW (implemented as array swaps for efficiency)
