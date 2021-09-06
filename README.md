@@ -63,42 +63,46 @@ exp.solve()
 ```
 ![alt text](/explosion.gif)
 
-## Explosion on non-cartesian, multiblock mesh simulation
-Here is an example of an explosion simulation performed on five blocks. The simulation was performed with the following: 
-- 350 x 350 cells per block
+## Double Mach Reflection (DMR)
+Here is an example of a Mach 10 DMR simulation performed on five blocks. The simulation was performed with the following: 
+- 500 x 500 cells per block
 - HLLL flux function
 - Venkatakrishnan flux limiter
 - Piecewise-Linear second order reconstruction
 - Green-Gauss gradient method
-- Strong-Stability-Preserving (SSP)-RK3 time stepping with CFL=0.6
-- Reflection boundary conditions
+- Strong-Stability-Preserving (SSP)-RK2 time stepping with CFL=0.4
 
-The example in given in the file [examples/explosion_skewed.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_skewed.py). The file is as follows:
+The example in given in the file [examples/dmr/dmr.py](https://github.com/momokhalil/pyHype/blob/main/examples/dmr/dmr.py). The file is as follows:
 
 ```python
 from pyHype.solvers import Euler2D
 
 # Solver settings
-settings = {'problem_type':             'explosion_3',
+settings = {'problem_type':             'mach_reflection',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'primitive',
-            'upwind_mode':              'primitive',
-            'write_solution':           True,
+            'reconstruction_type':      'conservative',
+            'upwind_mode':              'conservative',
+            'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
-            'write_solution_name':      'explosion3',
-            'write_every_n_timesteps':  15,
-            'CFL':                      0.6,
-            't_final':                  0.04,
-            'realplot':                 False,
+            'write_solution_name':      'machref',
+            'write_every_n_timesteps':  20,
+            'plot_every':               10,
+            'CFL':                      0.4,
+            't_final':                  0.25,
+            'realplot':                 True,
             'profile':                  False,
             'gamma':                    1.4,
             'rho_inf':                  1.0,
-            'a_inf':                    343.0,
+            'a_inf':                    1.0,
             'R':                        287.0,
-            'nx':                       350,
-            'ny':                       350,
+            'nx':                       50,
+            'ny':                       50,
             'nghost':                   1,
-            'mesh_name':                'chamber_skewed_2'
+            'mesh_name':                'wedge_35_four_block',
+            'BC_inlet_west_rho':        8.0,
+            'BC_inlet_west_u':          8.25,
+            'BC_inlet_west_v':          0.0,
+            'BC_inlet_west_p':          116.5,
             }
 
 # Create solver
@@ -106,70 +110,74 @@ exp = Euler2D(fvm='SecondOrderPWL',
               gradient='GreenGauss',
               flux_function='HLLL',
               limiter='Venkatakrishnan',
-              integrator='RK3SSP',
+              integrator='RK2',
               settings=settings)
 
 # Solve
 exp.solve()
 ```
-![alt text](/explosion3.gif)
+![alt text](/examples/dmr/dmr.png)
 
 
-## Supersonic Simulation
-Here is an example of supersonic ramjet simulation performed on 9 blocks. The simulation was performed with the following: 
+## High Speed Jet
+Here is an example of high-speed jet simulation performed on 5 blocks. The simulation was performed with the following: 
 - Mach 2 flow
-- 300 x 300 cell blocks
-- Roe approximate riemann solver
+- 100 x 1000 cell blocks
+- HLLL flux function
 - Venkatakrishnan flux limiter
 - Piecewise-Linear second order reconstruction
 - Green-Gauss gradient method
 - RK2 time stepping with CFL=0.4
-- Reflection boundary conditions for top and bottom walls
-- Dirichlet input and output boundary conditions
 
-The example in given in the file [examples/ramjet/ramjet.py](https://github.com/momokhalil/pyHype/blob/main/examples/ramjet/ramjet.py). The file is as follows:
+The example in given in the file [examples/jet/jet.py](https://github.com/momokhalil/pyHype/blob/main/examples/jet/jet.py). The file is as follows:
 
 ```python
 from pyHype.solvers import Euler2D
 
 # Solver settings
-settings = {'problem_type':             'supersonic_flood',
+settings = {'problem_type':             'subsonic_rest',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'conservative',
-            'upwind_mode':              'primitive',
+            'reconstruction_type':      'primitive',
+            'upwind_mode':              'conservative',
             'write_solution':           True,
             'write_solution_mode':      'every_n_timesteps',
-            'write_solution_name':      'ramjet',
-            'write_every_n_timesteps':  40,
+            'write_solution_name':      'kvi',
+            'write_every_n_timesteps':  20,
+            'plot_every':               10,
             'CFL':                      0.4,
-            't_final':                  10.0,
+            't_final':                  25.0,
             'realplot':                 False,
             'profile':                  False,
             'gamma':                    1.4,
             'rho_inf':                  1.0,
             'a_inf':                    1.0,
             'R':                        287.0,
-            'nx':                       300,
-            'ny':                       300,
+            'nx':                       1000,
+            'ny':                       100,
             'nghost':                   1,
-            'mesh_name':                'ramjet',
+            'mesh_name':                'jet',
             'BC_inlet_west_rho':        1.0,
-            'BC_inlet_west_u':          2.0,
+            'BC_inlet_west_u':          0.25,
             'BC_inlet_west_v':          0.0,
-            'BC_inlet_west_p':          1 / 1.4,
+            'BC_inlet_west_p':          2.0 / 1.4,
             }
 
 # Create solver
 exp = Euler2D(fvm='SecondOrderPWL',
               gradient='GreenGauss',
-              flux_function='Roe',
+              flux_function='HLLL',
               limiter='Venkatakrishnan',
               integrator='RK2',
               settings=settings)
+
 # Solve
 exp.solve()
 ```
-![alt text](/ramjet.png)
+Mach Number:
+![alt text](/examples/jet/Ma.png)
+
+Density:
+![alt text](/examples/jet/rho.png)
 
 ## Current work
 1. Integrate airfoil meshing and mesh optimization using elliptic PDEs
