@@ -1306,9 +1306,3 @@ class QuadBlock:
 
     def realizable(self):
         return self.state.realizable() and all([blk.realizable() for blk in self.ghost()])
-
-class QuadBlockAdaptiveUniform(QuadBlock):
-    pass
-
-class QuadBlockAdaptiveNonUniform(QuadBlock):
-    pass
