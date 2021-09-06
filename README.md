@@ -174,10 +174,10 @@ exp = Euler2D(fvm='SecondOrderPWL',
 exp.solve()
 ```
 Mach Number:
-![alt text](/examples/jet/Ma.png)
+![alt text](/examples/jet/Ma.gif)
 
 Density:
-![alt text](/examples/jet/rho.png)
+![alt text](/examples/jet/rho.gif)
 
 ## Current work
 1. Integrate airfoil meshing and mesh optimization using elliptic PDEs
