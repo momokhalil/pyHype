@@ -1416,6 +1416,6 @@ DEFINED_MESHES = {'square_ten_by_ten_four_block': square_ten_by_ten_four_block,
                   'chamber': chamber,
                   'chamber_skewed': chamber_skewed,
                   'chamber_skewed_2': chamber_skewed_2,
-                  'kv_instability': kv_instability}
+                  'jet': jet}
 
 
