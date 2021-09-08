@@ -83,7 +83,47 @@ class CellFace:
         self.L = None
 
 
-class Mesh:
+class _mesh_transfinite_gen:
+    def __init__(self) -> None:
+        self.x = None
+        self.y = None
+        self.nx = None
+        self.ny = None
+
+    def _get_interior_mesh_transfinite(self,
+                                       x: np.ndarray,
+                                       y: np.ndarray):
+
+        _im = np.linspace(1 / self.ny, (self.ny - 1) / self.ny, self.ny - 2)
+        _jm = np.linspace(1 / self.nx, (self.nx - 1) / self.nx, self.nx - 2)
+
+        jm, im = np.meshgrid(_jm, _im)
+
+        _mi = np.linspace((self.ny - 1) / self.ny, 1 / self.ny, self.ny - 2)
+        _mj = np.linspace((self.nx - 1) / self.nx, 1 / self.nx, self.nx - 2)
+
+        mj, mi = np.meshgrid(_mj, _mi)
+
+        x[1:-1, 1:-1] = self.__get_kernel_transfinite(x, im, jm, mi, mj)
+        y[1:-1, 1:-1] = self.__get_kernel_transfinite(y, im, jm, mi, mj)
+
+        return x, y
+
+    @staticmethod
+    def __get_kernel_transfinite(x: np.ndarray,
+                                 im: np.ndarray,
+                                 jm: np.ndarray,
+                                 mi: np.ndarray,
+                                 mj: np.ndarray,
+                                 ):
+
+        return mi * x[0, 1:-1]       + im * x[-1, 1:-1]         + \
+               mj * x[1:-1, 0, None] + jm * x[1:-1, -1, None]   - \
+               mi * mj * x[0, 0]     - mi * jm * x[0, -1]       - \
+               im * mj * x[-1, 0]    - im * jm * x[-1, -1]
+
+
+class Mesh(_mesh_transfinite_gen):
     def __init__(self,
                  inputs,
                  block_data: BlockDescription = None,
@@ -101,6 +141,8 @@ class Mesh:
         elif not isinstance(block_data, BlockDescription) and not (NE and NW and SE and SW and nx and ny):
             raise ValueError('If block_data of type BlockDescription is not provided, then vertices for each corner'
                              ' and cell count must be provided.')
+
+        super().__init__()
 
         # Initialize inputs class
         self.inputs = inputs
@@ -215,7 +257,7 @@ class Mesh:
         self.dy = self.faceN.ymid - self.faceS.ymid
 
 
-    def _get_interior_mesh_transfinite(self,
+    """def _get_interior_mesh_transfinite(self,
                                        x: np.ndarray,
                                        y: np.ndarray):
 
@@ -230,7 +272,7 @@ class Mesh:
         mj, mi = np.meshgrid(_mj, _mi)
 
         x[1:-1, 1:-1] = self.__get_kernel_transfinite(x, im, jm, mi, mj)
-        x[1:-1, 1:-1] = self.__get_kernel_transfinite(y, im, jm, mi, mj)
+        y[1:-1, 1:-1] = self.__get_kernel_transfinite(y, im, jm, mi, mj)
 
         return x, y
 
@@ -242,11 +284,11 @@ class Mesh:
                                  mj: np.ndarray,
                                  ):
 
-        return mi * x[0, 1:-1] + im * x[-1, 1:-1]               \
-             + mj * x[1:-1, 0, None] + jm * x[1:-1, -1, None]   \
-             - mi * mj * x[0, 0] - mi * jm * x[0, -1]           \
-             - im * mj * x[-1, 0]  - im * jm * x[-1, -1]
-
+        return mi * x[0, 1:-1]       + im * x[-1, 1:-1]         + \
+               mj * x[1:-1, 0, None] + jm * x[1:-1, -1, None]   - \
+               mi * mj * x[0, 0]     - mi * jm * x[0, -1]       - \
+               im * mj * x[-1, 0]    - im * jm * x[-1, -1]
+"""
     def get_east_face_norm(self) -> [np.ndarray]:
 
         den = self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]
@@ -528,3 +570,71 @@ class Mesh:
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
         plt.close()
+
+
+class QuadMeshGenerator(_mesh_transfinite_gen):
+    def __init__(self,
+                 nx_cell: int,
+                 ny_cell: int,
+                 nx: int,
+                 ny: int,
+                 nghost: int,
+                 BCE: [str],
+                 BCW: [str],
+                 BCN: [str],
+                 BCS: [str],
+                 NE: [float],
+                 NW: [float],
+                 SE: [float],
+                 SW: [float],
+                 ) -> None:
+
+        super().__init__()
+
+        self.nghost = nghost
+        self.nx_cell, self.ny_cell = nx_cell, ny_cell
+        self.nx, self.ny = nx + 1, ny + 1
+        self.BCE, self.BCW, self.BCN, self.BCS = BCE, BCW, BCN, BCS
+
+        _x, _y = np.meshgrid(np.linspace(0, 1, self.nx), np.linspace(0, 1, self.ny))
+
+        _x[0, :]    = np.linspace(SW[0], SE[0], self.nx)
+        _x[-1, :]   = np.linspace(NW[0], NE[0], self.nx)
+        _y[0, :]    = np.linspace(SW[1], SE[1], self.nx)
+        _y[-1, :]   = np.linspace(NW[1], NE[1], self.nx)
+        _x[:, 0]    = np.linspace(SW[0], NW[0], self.ny)
+        _x[:, -1]   = np.linspace(SE[0], NE[0], self.ny)
+        _y[:, 0]    = np.linspace(SW[1], NW[1], self.ny)
+        _y[:, -1]   = np.linspace(SE[1], NE[1], self.ny)
+
+        self.x, self.y = self._get_interior_mesh_transfinite(_x, _y)
+        self.dict = self._create_block_descriptions()
+
+
+    def _create_block_descriptions(self):
+
+        _ny = self.ny - 1
+        _nx = self.nx - 1
+
+        dicts = {}
+
+        for i in range(_ny):
+            for j in range(_nx):
+                _num = _nx * i + j
+                _blk = {'nBLK': _num,
+                        'NW': [self.x[i + 1, j], self.y[i + 1, j]], 'NE': [self.x[i + 1, j + 1], self.y[i + 1, j + 1]],
+                        'SW': [self.x[i, j], self.y[i, j]], 'SE': [self.x[i, j + 1], self.y[i, j + 1]],
+                        'nx': self.nx_cell,
+                        'ny': self.ny_cell,
+                        'n': self.nx_cell * self.ny_cell,
+                        'nghost': self.nghost,
+                        'NeighborE': _num + 1 if j < _nx - 1 else None,
+                        'NeighborW': _num - 1 if j > 0 else None,
+                        'NeighborN': _num + _nx if _num + _nx < _ny * _nx else None,
+                        'NeighborS': _num - _nx if _num - _nx >= 0 else None,
+                        'BCTypeE': self.BCE[i] if j == _nx - 1 else 'None',
+                        'BCTypeW': self.BCW[i] if j == 0 else 'None',
+                        'BCTypeN': self.BCN[j] if i == _ny - 1 else 'None',
+                        'BCTypeS': self.BCS[j] if i == 0 else 'None'}
+                dicts[_num] = _blk
+        return dicts

@@ -17,6 +17,7 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+from pyHype.mesh.base import QuadMeshGenerator
 
 # Meshes
 def square_ten_by_ten_one_block(nx, ny, nghost):
@@ -1313,92 +1314,16 @@ def chamber_skewed(nx, ny, nghost):
 
 def jet(nx, ny, nghost):
 
-    block1 = {'nBLK': 1,
-              'NW': [0.0, 0.1], 'NE': [1.0, 0.1],
-              'SW': [0.0, 0.0], 'SE': [1.0, 0.0],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': None,
-              'NeighborN': 2,
-              'NeighborS': None,
-              'BCTypeE': 'OutletDirichlet',
-              'BCTypeW': 'Slipwall',
-              'BCTypeN': 'None',
-              'BCTypeS': 'OutletDirichlet'}
+    BCE = ['OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet']
+    BCW = ['Slipwall', 'Slipwall', 'InletDirichlet', 'Slipwall', 'Slipwall']
+    BCN = ['OutletDirichlet']
+    BCS = ['OutletDirichlet']
 
-    block2 = {'nBLK': 2,
-              'NW': [0.0, 0.2], 'NE': [1.0, 0.2],
-              'SW': [0.0, 0.1], 'SE': [1.0, 0.1],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': None,
-              'NeighborN': 3,
-              'NeighborS': 1,
-              'BCTypeE': 'OutletDirichlet',
-              'BCTypeW': 'Slipwall',
-              'BCTypeN': 'None',
-              'BCTypeS': 'None'}
+    _mesh = QuadMeshGenerator(nx=1, ny=5, nx_cell=nx, ny_cell=ny, nghost=nghost,
+                              BCE=BCE, BCW=BCW, BCN=BCN, BCS=BCS,
+                              NE=(1, 0.5), SW=(0, 0), NW=(0, 0.5), SE=(1, 0))
 
-    block3 = {'nBLK': 3,
-              'NW': [0.0, 0.3], 'NE': [1.0, 0.3],
-              'SW': [0.0, 0.2], 'SE': [1.0, 0.2],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': None,
-              'NeighborN': 4,
-              'NeighborS': 2,
-              'BCTypeE': 'OutletDirichlet',
-              'BCTypeW': 'InletDirichlet',
-              'BCTypeN': 'None',
-              'BCTypeS': 'None'}
-
-    block4 = {'nBLK': 4,
-              'NW': [0.0, 0.4], 'NE': [1.0, 0.4],
-              'SW': [0.0, 0.3], 'SE': [1.0, 0.3],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': None,
-              'NeighborN': 5,
-              'NeighborS': 3,
-              'BCTypeE': 'OutletDirichlet',
-              'BCTypeW': 'Slipwall',
-              'BCTypeN': 'None',
-              'BCTypeS': 'None'}
-
-    block5 = {'nBLK': 5,
-              'NW': [0.0, 0.5], 'NE': [1.0, 0.5],
-              'SW': [0.0, 0.4], 'SE': [1.0, 0.4],
-              'nx': nx,
-              'ny': ny,
-              'n': nx * ny,
-              'nghost': nghost,
-              'NeighborE': None,
-              'NeighborW': None,
-              'NeighborN': None,
-              'NeighborS': 4,
-              'BCTypeE': 'OutletDirichlet',
-              'BCTypeW': 'Slipwall',
-              'BCTypeN': 'OutletDirichlet',
-              'BCTypeS': 'None'}
-
-    return {1: block1,
-            2: block2,
-            3: block3,
-            4: block4,
-            5: block5,
-            }
+    return _mesh.dict
 
 
 DEFINED_MESHES = {'square_ten_by_ten_four_block': square_ten_by_ten_four_block,
