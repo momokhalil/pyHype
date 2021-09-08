@@ -187,10 +187,10 @@ class Blocks:
             Neighbor_N_n = mesh_inputs.get(block.global_nBLK).NeighborN
             Neighbor_S_n = mesh_inputs.get(block.global_nBLK).NeighborS
 
-            block.connect(NeighborE=self.blocks[Neighbor_E_n] if Neighbor_E_n else None,
-                          NeighborW=self.blocks[Neighbor_W_n] if Neighbor_W_n else None,
-                          NeighborN=self.blocks[Neighbor_N_n] if Neighbor_N_n else None,
-                          NeighborS=self.blocks[Neighbor_S_n] if Neighbor_S_n else None,
+            block.connect(NeighborE=self.blocks[Neighbor_E_n] if Neighbor_E_n is not None else None,
+                          NeighborW=self.blocks[Neighbor_W_n] if Neighbor_W_n is not None else None,
+                          NeighborN=self.blocks[Neighbor_N_n] if Neighbor_N_n is not None else None,
+                          NeighborS=self.blocks[Neighbor_S_n] if Neighbor_S_n is not None else None,
                           NeighborNE=None,
                           NeighborNW=None,
                           NeighborSE=None,
