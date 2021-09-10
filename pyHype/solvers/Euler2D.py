@@ -28,6 +28,12 @@ import pyHype.solvers.initial_conditions.initial_conditions as ic
 
 from pyHype.solvers.base import Solver
 
+from typing import TYPE_CHECKING
+from typing import Union
+
+if TYPE_CHECKING:
+    from pyHype.mesh.base import MeshGenerator
+
 np.set_printoptions(threshold=sys.maxsize)
 
 
@@ -38,14 +44,15 @@ class Euler2D(Solver):
                  flux_function: str = 'Roe',
                  limiter:       str = 'Venkatakrishnan',
                  integrator:    str = 'RK2',
-                 settings:      dict = None
+                 settings:      dict = None,
+                 mesh:          Union[MeshGenerator, dict] = None,
                  ) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
         # Store mesh features required to create block descriptions
 
         super().__init__(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
-                                   integrator=integrator, settings=settings)
+                         integrator=integrator, settings=settings, mesh=mesh)
 
         # Create Blocks
         print('\t>>> Building solution blocks')

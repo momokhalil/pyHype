@@ -1,5 +1,19 @@
 from pyHype.solvers import Euler2D
 
+block1 = {'nBLK': 1,
+          'NW': [0, 10], 'NE': [10, 10],
+          'SW': [0, 0], 'SE': [10, 0],
+          'NeighborE': None,
+          'NeighborW': None,
+          'NeighborN': None,
+          'NeighborS': None,
+          'BCTypeE': 'Reflection',
+          'BCTypeW': 'Reflection',
+          'BCTypeN': 'Reflection',
+          'BCTypeS': 'Reflection'}
+
+_mesh = {1: block1}
+
 # Solver settings
 settings = {'problem_type':             'implosion',
             'interface_interpolation':  'arithmetic_average',
@@ -20,8 +34,7 @@ settings = {'problem_type':             'implosion',
             'R':                        287.0,
             'nx':                       60,
             'ny':                       60,
-            'nghost':                   1,
-            'mesh_name':                'square_ten_by_ten_one_block'
+            'nghost':                   1
             }
 
 # Create solver
@@ -30,6 +43,7 @@ exp = Euler2D(fvm='SecondOrderPWL',
               flux_function='Roe',
               limiter='Venkatakrishnan',
               integrator='RK2',
-              settings=settings)
+              settings=settings,
+              mesh=_mesh)
 
 exp.solve()

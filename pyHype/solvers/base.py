@@ -20,17 +20,16 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import sys
 import numpy as np
-from datetime import datetime
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap
 from pyHype import execution_prints
-from pyHype.mesh import meshes
 from pyHype.mesh.base import BlockDescription
 
 from abc import abstractmethod
 
 from typing import TYPE_CHECKING
-from typing import Iterable
+from typing import Iterable, Union
+from pyHype.mesh.base import MeshGenerator
 
 if TYPE_CHECKING:
     from pyHype.blocks.QuadBlock import QuadBlock
@@ -41,7 +40,7 @@ np.set_printoptions(threshold=sys.maxsize)
 class ProblemInput:
     __REQUIRED__ = ['problem_type', 'realplot', 't_final', 'CFL',
                     'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny',
-                    'nghost', 'mesh_name', 'profile',
+                    'nghost', 'profile',
                     'interface_interpolation', 'reconstruction_type',
                     'write_solution']
 
@@ -89,7 +88,8 @@ class Solver:
                  flux_function: str = 'Roe',
                  limiter:       str = 'Venkatakrishnan',
                  integrator:    str = 'RK2',
-                 settings:      dict = None
+                 settings:      dict = None,
+                 mesh:          Union[MeshGenerator, dict] = None,
                  ) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
@@ -99,29 +99,28 @@ class Solver:
         print(execution_prints.lice)
         print('\n------------------------------------ Setting-Up Solver ---------------------------------------\n')
 
-        # Mesh name
-        print('\t>>> Gathering Mesh Information')
-        mesh_name = settings['mesh_name']
-
         # save original input dict
         self._settings_dict = settings
 
         # --------------------------------------------------------------------------------------------------------------
         # Create dictionary that describes each block in mesh
         print('\t>>> Building Mesh Descriptors')
-        # Get function that creates the dictionary of block description dictionaries.
-        _mesh_func = meshes.DEFINED_MESHES[mesh_name]
-        # Call mesh_func with nx, and ny to return the dictionary of description dictionaries
-        _mesh_dict = _mesh_func(nx=settings['nx'], ny=settings['ny'], nghost=settings['nghost'])
+
+        # Get mesh dict to build block decription objects
+        _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
+
         # Create BlockDescription for each block in the mesh
-        _mesh_inputs = {blk: BlockDescription(blkData) for (blk, blkData) in _mesh_dict.items()}
+        _mesh_inputs = {blk: BlockDescription(blkData,
+                                              nx=settings['nx'],
+                                              ny=settings['ny'],
+                                              nghost=settings['nghost']) for (blk, blkData) in _mesh.items()}
 
         self.cmap = LinearSegmentedColormap.from_list('my_map', ['royalblue', 'midnightblue', 'black'])
 
         print('\t>>> Checking all boundary condition types')
         _bc_type_names = ['BCTypeE', 'BCTypeW', 'BCTypeN', 'BCTypeS']
         self._all_BC_types = []
-        for blkdata in _mesh_dict.values():
+        for blkdata in _mesh.values():
             for bc_name in _bc_type_names:
                 if blkdata[bc_name] not in self._all_BC_types:
                     self._all_BC_types.append(blkdata[bc_name])
