@@ -1,4 +1,7 @@
 from pyHype.solvers import Euler2D
+from mesh import step_ten_block
+
+mesh = step_ten_block()
 
 # Solver settings
 settings = {'problem_type':             'supersonic_flood',
@@ -21,7 +24,6 @@ settings = {'problem_type':             'supersonic_flood',
             'nx':                       45,
             'ny':                       15,
             'nghost':                   1,
-            'mesh_name':                'step_ten_block',
             'BC_inlet_west_rho':        1.0,
             'BC_inlet_west_u':          2.0,
             'BC_inlet_west_v':          0.0,
@@ -34,7 +36,8 @@ exp = Euler2D(fvm='SecondOrderPWL',
               flux_function='HLLL',
               limiter='Venkatakrishnan',
               integrator='RK2',
-              settings=settings)
+              settings=settings,
+              mesh=mesh)
 
 # Solve
 exp.solve()

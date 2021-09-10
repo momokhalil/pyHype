@@ -1,4 +1,33 @@
 from pyHype.solvers import Euler2D
+import numpy as np
+
+block1 = {'nBLK': 1,
+          'NW': [0, 2], 'NE': [2, 2],
+          'SW': [0, 0], 'SE': [2, 0],
+          'NeighborE': 2,
+          'NeighborW': None,
+          'NeighborN': None,
+          'NeighborS': None,
+          'BCTypeE': 'None',
+          'BCTypeW': 'InletDirichlet',
+          'BCTypeN': 'OutletDirichlet',
+          'BCTypeS': 'Slipwall'}
+
+block2 = {'nBLK': 2,
+          'NW': [2, 2], 'NE': [4, 2],
+          'SW': [2, 0], 'SE': [4, 2 * np.tan(15 * np.pi / 180)],
+          'NeighborE': None,
+          'NeighborW': 1,
+          'NeighborN': None,
+          'NeighborS': None,
+          'BCTypeE': 'OutletDirichlet',
+          'BCTypeW': 'None',
+          'BCTypeN': 'OutletDirichlet',
+          'BCTypeS': 'Slipwall'}
+
+mesh = {1: block1,
+        2: block2,
+        }
 
 # Solver settings
 settings = {'problem_type':             'supersonic_flood',
@@ -21,7 +50,6 @@ settings = {'problem_type':             'supersonic_flood',
             'nx':                       50,
             'ny':                       50,
             'nghost':                   1,
-            'mesh_name':                'wedge_15_two_block',
             'BC_inlet_west_rho':        1.0,
             'BC_inlet_west_u':          2.0,
             'BC_inlet_west_v':          0.0,
@@ -34,7 +62,8 @@ exp = Euler2D(fvm='SecondOrderPWL',
               flux_function='Roe',
               limiter='Venkatakrishnan',
               integrator='RK2',
-              settings=settings)
+              settings=settings,
+              mesh=mesh)
 
 # Solve
 exp.solve()

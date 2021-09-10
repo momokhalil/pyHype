@@ -17,6 +17,7 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+from abc import abstractmethod
 from typing import Union
 import matplotlib.pyplot as plt
 import pyHype.mesh.airfoil as airfoil
@@ -24,14 +25,14 @@ from matplotlib.collections import LineCollection
 
 
 class BlockDescription:
-    def __init__(self, blk_input):
+    def __init__(self,
+                 blk_input: dict,
+                 nx: int,
+                 ny: int,
+                 nghost: int):
 
         # Set parameter attributes from input dict
         self.nBLK = blk_input['nBLK']
-        self.n = blk_input['n']
-        self.nx = blk_input['nx']
-        self.ny = blk_input['ny']
-        self.nghost = blk_input['nghost']
         self.NeighborE = blk_input['NeighborE']
         self.NeighborW = blk_input['NeighborW']
         self.NeighborN = blk_input['NeighborN']
@@ -44,6 +45,11 @@ class BlockDescription:
         self.BCTypeW = blk_input['BCTypeW']
         self.BCTypeN = blk_input['BCTypeN']
         self.BCTypeS = blk_input['BCTypeS']
+
+        self.n = nx * ny
+        self.nx = nx
+        self.ny = ny
+        self.nghost = nghost
 
 
 class Vertices:
@@ -414,12 +420,10 @@ class Mesh(_mesh_transfinite_gen):
 
     @staticmethod
     def get_centroid_from_arrays(x: np.ndarray, y: np.ndarray):
-
+        # Kernel of centroids x-coordinates
         xc = 0.25 * (x[1:, 0:-1] + x[1:, 1:] + x[0:-1, 0:-1] + x[0:-1, 1:])
-
         # Kernel of centroids y-coordinates
         yc = 0.25 * (y[1:, 0:-1] + y[1:, 1:] + y[0:-1, 0:-1] + y[0:-1, 1:])
-
         return xc, yc
 
 
@@ -467,65 +471,49 @@ class Mesh(_mesh_transfinite_gen):
     # Face Midpoints
 
     def get_east_face_midpoint(self):
-
         x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[:-1, 1:])
         y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[:-1, 1:])
-
         return x, y
 
     def get_west_face_midpoint(self):
-
         x = 0.5 * (self.nodes.x[1:, :-1] + self.nodes.x[:-1, :-1])
         y = 0.5 * (self.nodes.y[1:, :-1] + self.nodes.y[:-1, :-1])
-
         return x, y
 
     def get_north_face_midpoint(self):
-
         x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[1:, :-1])
         y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[1:, :-1])
-
         return x, y
 
     def get_south_face_midpoint(self):
-
         x = 0.5 * (self.nodes.x[:-1, 1:] + self.nodes.x[:-1, :-1])
         y = 0.5 * (self.nodes.y[:-1, 1:] + self.nodes.y[:-1, :-1])
-
         return x, y
 
     def compute_east_face_midpoint(self):
-
         self.faceE.xmid, self.faceE.ymid = self.get_east_face_midpoint()
 
     def compute_west_face_midpoint(self):
-
         self.faceW.xmid, self.faceW.ymid = self.get_west_face_midpoint()
 
     def compute_north_face_midpoint(self):
-
         self.faceN.xmid, self.faceN.ymid = self.get_north_face_midpoint()
 
     def compute_south_face_midpoint(self):
-
         self.faceS.xmid, self.faceS.ymid = self.get_south_face_midpoint()
 
     # Face Angles
 
     def get_east_face_angle(self):
-
         return self.faceE.theta[:, -1, None, :]
 
     def get_west_face_angle(self):
-
         return self.faceW.theta[:, 0, None, :] - np.pi
 
     def get_north_face_angle(self):
-
         return self.faceN.theta[-1, None, :, :]
 
     def get_south_face_angle(self):
-
         return self.faceS.theta[0, None, :, :] - np.pi
 
     # Plotting
@@ -571,41 +559,46 @@ class Mesh(_mesh_transfinite_gen):
         plt.show()
         plt.close()
 
+class MeshGenerator:
+    def __init__(self):
+        self.dict = {}
 
-class QuadMeshGenerator(_mesh_transfinite_gen):
+    @abstractmethod
+    def _create_block_descriptions(self):
+        pass
+
+class QuadMeshGenerator(MeshGenerator, _mesh_transfinite_gen):
     def __init__(self,
-                 nx_cell: int,
-                 ny_cell: int,
-                 nx: int,
-                 ny: int,
-                 nghost: int,
-                 BCE: [str],
-                 BCW: [str],
-                 BCN: [str],
-                 BCS: [str],
-                 NE: [float],
-                 NW: [float],
-                 SE: [float],
-                 SW: [float],
+                 nx_blk: int, ny_blk: int,
+                 BCE: [str], BCW: [str], BCN: [str], BCS: [str],
+                 NE: [float] = None, NW: [float] = None, SE: [float] = None, SW: [float] = None,
+                 left_x: [float] = None, left_y: [float] = None,
+                 right_x: [float] = None, right_y: [float] = None,
+                 top_x: [float] = None, top_y: [float] = None,
+                 bot_x: [float] = None, bot_y: [float] = None,
+                 blk_num_offset: int = 0,
                  ) -> None:
 
         super().__init__()
 
-        self.nghost = nghost
-        self.nx_cell, self.ny_cell = nx_cell, ny_cell
-        self.nx, self.ny = nx + 1, ny + 1
-        self.BCE, self.BCW, self.BCN, self.BCS = BCE, BCW, BCN, BCS
+        self.nx, self.ny = nx_blk + 1, ny_blk + 1
+        self._blk_num_offset = blk_num_offset
+
+        self.BCE = [BCE for _ in range(ny_blk)] if isinstance(BCE, str) else BCE
+        self.BCW = [BCW for _ in range(ny_blk)] if isinstance(BCW, str) else BCW
+        self.BCN = [BCN for _ in range(nx_blk)] if isinstance(BCN, str) else BCN
+        self.BCS = [BCS for _ in range(nx_blk)] if isinstance(BCS, str) else BCS
 
         _x, _y = np.meshgrid(np.linspace(0, 1, self.nx), np.linspace(0, 1, self.ny))
 
-        _x[0, :]    = np.linspace(SW[0], SE[0], self.nx)
-        _x[-1, :]   = np.linspace(NW[0], NE[0], self.nx)
-        _y[0, :]    = np.linspace(SW[1], SE[1], self.nx)
-        _y[-1, :]   = np.linspace(NW[1], NE[1], self.nx)
-        _x[:, 0]    = np.linspace(SW[0], NW[0], self.ny)
-        _x[:, -1]   = np.linspace(SE[0], NE[0], self.ny)
-        _y[:, 0]    = np.linspace(SW[1], NW[1], self.ny)
-        _y[:, -1]   = np.linspace(SE[1], NE[1], self.ny)
+        _x[0, :]    = np.linspace(SW[0], SE[0], self.nx) if bot_x is None else bot_x
+        _y[0, :]    = np.linspace(SW[1], SE[1], self.nx) if bot_y is None else bot_y
+        _x[-1, :]   = np.linspace(NW[0], NE[0], self.nx) if top_x is None else top_x
+        _y[-1, :]   = np.linspace(NW[1], NE[1], self.nx) if top_y is None else top_y
+        _x[:, 0]    = np.linspace(SW[0], NW[0], self.ny) if left_x is None else left_x
+        _y[:, 0]    = np.linspace(SW[1], NW[1], self.ny) if left_y is None else left_y
+        _x[:, -1]   = np.linspace(SE[0], NE[0], self.ny) if right_x is None else right_x
+        _y[:, -1]   = np.linspace(SE[1], NE[1], self.ny) if right_y is None else right_y
 
         self.x, self.y = self._get_interior_mesh_transfinite(_x, _y)
         self.dict = self._create_block_descriptions()
@@ -620,14 +613,10 @@ class QuadMeshGenerator(_mesh_transfinite_gen):
 
         for i in range(_ny):
             for j in range(_nx):
-                _num = _nx * i + j
+                _num = _nx * i + j + self._blk_num_offset
                 _blk = {'nBLK': _num,
                         'NW': [self.x[i + 1, j], self.y[i + 1, j]], 'NE': [self.x[i + 1, j + 1], self.y[i + 1, j + 1]],
                         'SW': [self.x[i, j], self.y[i, j]], 'SE': [self.x[i, j + 1], self.y[i, j + 1]],
-                        'nx': self.nx_cell,
-                        'ny': self.ny_cell,
-                        'n': self.nx_cell * self.ny_cell,
-                        'nghost': self.nghost,
                         'NeighborE': _num + 1 if j < _nx - 1 else None,
                         'NeighborW': _num - 1 if j > 0 else None,
                         'NeighborN': _num + _nx if _num + _nx < _ny * _nx else None,
@@ -637,4 +626,5 @@ class QuadMeshGenerator(_mesh_transfinite_gen):
                         'BCTypeN': self.BCN[j] if i == _ny - 1 else 'None',
                         'BCTypeS': self.BCS[j] if i == 0 else 'None'}
                 dicts[_num] = _blk
+
         return dicts
