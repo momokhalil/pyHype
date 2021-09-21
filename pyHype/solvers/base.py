@@ -92,9 +92,6 @@ class Solver:
                  mesh:          Union[MeshGenerator, dict] = None,
                  ) -> None:
 
-        # --------------------------------------------------------------------------------------------------------------
-        # Store mesh features required to create block descriptions
-
         print(execution_prints.pyhype)
         print(execution_prints.lice)
         print('\n------------------------------------ Setting-Up Solver ---------------------------------------\n')
@@ -108,13 +105,11 @@ class Solver:
 
         # Get mesh dict to build block decription objects
         _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
-
         # Create BlockDescription for each block in the mesh
         _mesh_inputs = {blk: BlockDescription(blkData,
                                               nx=settings['nx'],
                                               ny=settings['ny'],
                                               nghost=settings['nghost']) for (blk, blkData) in _mesh.items()}
-
         self.cmap = LinearSegmentedColormap.from_list('my_map', ['royalblue', 'midnightblue', 'black'])
 
         print('\t>>> Checking all boundary condition types')
@@ -125,33 +120,22 @@ class Solver:
                 if blkdata[bc_name] not in self._all_BC_types:
                     self._all_BC_types.append(blkdata[bc_name])
 
-        # Create ProblemInput to store inputs and mesh description
         print('\t>>> Building Settings Descriptors')
         self.inputs = ProblemInput(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
                                    integrator=integrator, settings=settings, mesh_inputs=_mesh_inputs)
-
-        # Create Blocks
         self._blocks = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Initialise attributes
 
         print('\t>>> Initializing basic solution attributes')
-        # Simulation time
         self.t = 0
-        # Time step
         self.dt = 0
-        # Number of time steps
         self.numTimeStep = 0
-        # CFL number
         self.CFL = self.inputs.CFL
-        # Normalized target simulation time
         self.t_final = self.inputs.t_final * self.inputs.a_inf
-        # Profiler results
         self.profile_data = None
-        # Real-time plot
         self.realfig, self.realplot = None, None
-        # Plot
         self.plot = None
 
     @abstractmethod
