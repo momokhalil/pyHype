@@ -19,11 +19,10 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
-import numba as nb
 from abc import abstractmethod
 
 from pyHype.limiters import limiters
-from pyHype.states.states import State, ConservativeState
+from pyHype.states.states import ConservativeState
 from pyHype.flux.Roe import ROE_FLUX_X
 from pyHype.flux.HLLE import HLLE_FLUX_X
 from pyHype.flux.HLLL import HLLL_FLUX_X
@@ -33,8 +32,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyHype.blocks.QuadBlock import QuadBlock
-    from pyHype.blocks.base import GhostBlockContainer
-    from pyHype.mesh.base import Mesh
 
 
 __DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
@@ -151,82 +148,49 @@ class MUSCLFiniteVolumeMethod:
                           . . .
         """
 
-        # Set x and y direction number of points
         self.nx = inputs.nx
         self.ny = inputs.ny
-
-        # Set inputs
         self.inputs = inputs
-
-        # Set global block number
         self.global_nBLK = global_nBLK
 
-        # Initialize x and y direction flux
         self.Flux_E = np.empty((self.ny, self.nx, 4))
         self.Flux_W = np.empty((self.ny, self.nx, 4))
         self.Flux_N = np.empty((self.ny, self.nx, 4))
         self.Flux_S = np.empty((self.ny, self.nx, 4))
 
-        # Initialize left and right conservative states
         self.UL = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
         self.UR = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
 
-        # Set Flux Function. Flux Function must be included in __DEFINED_FLUX_FUNCTIONS__
         _flux_func = self.inputs.flux_function
-
-        if _flux_func in __DEFINED_FLUX_FUNCTIONS__:
-
-            # ROE Flux
-            if _flux_func == 'Roe':
-                self.flux_function_X = ROE_FLUX_X(self.inputs, self.inputs.nx)
-                self.flux_function_Y = ROE_FLUX_X(self.inputs, self.inputs.ny)
-            # HLLE Flux
-            elif _flux_func == 'HLLE':
-                self.flux_function_X = HLLE_FLUX_X(self.inputs)
-                self.flux_function_Y = HLLE_FLUX_X(self.inputs)
-            # HLLL Flux
-            elif _flux_func == 'HLLL':
-                self.flux_function_X = HLLL_FLUX_X(self.inputs)
-                self.flux_function_Y = HLLL_FLUX_X(self.inputs)
-        # None
+        if _flux_func == 'Roe':
+            self.flux_function_X = ROE_FLUX_X(self.inputs, self.inputs.nx)
+            self.flux_function_Y = ROE_FLUX_X(self.inputs, self.inputs.ny)
+        elif _flux_func == 'HLLE':
+            self.flux_function_X = HLLE_FLUX_X(self.inputs)
+            self.flux_function_Y = HLLE_FLUX_X(self.inputs)
+        elif _flux_func == 'HLLL':
+            self.flux_function_X = HLLL_FLUX_X(self.inputs)
+            self.flux_function_Y = HLLL_FLUX_X(self.inputs)
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Flux function type not specified.')
 
-        # Set slope limiter. Slope limiter must be included in __DEFINED_SLOPE_LIMITERS__
         _flux_limiter = self.inputs.limiter
-
-        if _flux_limiter in __DEFINED_SLOPE_LIMITERS__:
-
-            # Van Leer limiter
-            if _flux_limiter == 'VanLeer':
-                self.flux_limiter = limiters.VanLeer(self.inputs)
-            # Van Albada limiter
-            elif _flux_limiter == 'VanAlbada':
-                self.flux_limiter = limiters.VanAlbada(self.inputs)
-            # Venkatakrishnan
-            elif _flux_limiter == 'Venkatakrishnan':
-                self.flux_limiter = limiters.Venkatakrishnan(self.inputs)
-            # BarthJespersen
-            elif _flux_limiter == 'BarthJespersen':
-                self.flux_limiter = limiters.BarthJespersen(self.inputs)
-        # None
+        if _flux_limiter == 'VanLeer':
+            self.flux_limiter = limiters.VanLeer(self.inputs)
+        elif _flux_limiter == 'VanAlbada':
+            self.flux_limiter = limiters.VanAlbada(self.inputs)
+        elif _flux_limiter == 'Venkatakrishnan':
+            self.flux_limiter = limiters.Venkatakrishnan(self.inputs)
+        elif _flux_limiter == 'BarthJespersen':
+            self.flux_limiter = limiters.BarthJespersen(self.inputs)
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
-        # Set slope limiter. Slope limiter must be included in __DEFINED_SLOPE_LIMITERS__
         _gradient = self.inputs.gradient
-
-        if _gradient in __DEFINED_GRADIENT_FUNCS__:
-
-            # Van Leer limiter
-            if _gradient == 'GreenGauss':
-                self.gradient = Grads.GreenGauss(self.inputs)
-            # None
-            else:
-                raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Reconstruction functions
+        if _gradient == 'GreenGauss':
+            self.gradient = Grads.GreenGauss(self.inputs)
+        else:
+            raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
     def reconstruct(self,
                     refBLK
@@ -244,24 +208,14 @@ class MUSCLFiniteVolumeMethod:
             - stateN: Reconstructed state on north cell face
             - stateS: Reconstructed state on south cell face
         """
-
-        # Select correct reconstruction type and return left and right reconstructed conservative states
-
-        # Primitive reconstruction
         if self.inputs.reconstruction_type == 'primitive':
             _to_recon = refBLK.to_primitive(copy=True)
         else:
             _to_recon = refBLK
 
-        # Get gradients
         self.gradient(_to_recon)
-
-        # Reconstruct state
         _stateE, _stateW, _stateN, _stateS = self.reconstruct_state(_to_recon)
-
-        # Conservative reconstruction (by default)
         return _stateE, _stateW, _stateN, _stateS, _to_recon
-
 
     @abstractmethod
     def reconstruct_state(self,
@@ -272,28 +226,21 @@ class MUSCLFiniteVolumeMethod:
         """
         pass
 
-    # ------------------------------------------------------------------------------------------------------------------
-    # Flux evaluation and integration functions
-
     @abstractmethod
     def integrate_flux_E(self, refBLK):
         pass
-
 
     @abstractmethod
     def integrate_flux_W(self, refBLK):
         pass
 
-
     @abstractmethod
     def integrate_flux_N(self, refBLK):
         pass
 
-
     @abstractmethod
     def integrate_flux_S(self, refBLK):
         pass
-
 
     def dUdt(self, refBLK):
         """
@@ -302,103 +249,77 @@ class MUSCLFiniteVolumeMethod:
 
         dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
         """
-
-        # Compute fluxes
         self.get_flux(refBLK)
-
-        # Integrate fluxes
         fluxE = self.integrate_flux_E(refBLK)
         fluxW = self.integrate_flux_W(refBLK)
         fluxN = self.integrate_flux_N(refBLK)
         fluxS = self.integrate_flux_S(refBLK)
-
         return -(fluxE + fluxW + fluxN + fluxS) / refBLK.mesh.A
 
 
     def get_flux(self, refBLK: QuadBlock):
+        """
+        Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all of the rows and columns
+        of cells on the blocks in a sweeping fashion (but unsplit) fashion.
 
-        # Get reconstructed quadrature points
+        Parameters:
+            - refBLK (QuadBlock): QuadBlock that needs its fluxes calculated.
+
+        Return:
+            - N/A
+        """
         _stateE, _stateW, _stateN, _stateS, _to_recon = self.reconstruct(refBLK)
 
-        # --------------------------------------------------------------------------------------------------------------
         # Calculate x-direction Flux
-
-        # Copy all ghost cell values that will be used for the flux calculations
         _ghostE = _to_recon.ghost.E.col(0, copy=True)
         _ghostW = _to_recon.ghost.W.col(-1, copy=True)
         _ghostN = _to_recon.ghost.N.row(0, copy=True)
         _ghostS = _to_recon.ghost.S.row(-1, copy=True)
 
-        # Rotate to allign with cell faces
         if not _to_recon.is_cartesian:
             utils.rotate(_to_recon.mesh.faceE.theta, _stateE)
             utils.rotate(_to_recon.mesh.faceW.theta - np.pi, _stateW)
             utils.rotate(_to_recon.mesh.get_east_face_angle(), _ghostE)
             utils.rotate(_to_recon.mesh.get_west_face_angle(), _ghostW)
 
-        # Get states on the left and right on EW interfaces
         _stateL = np.concatenate((_ghostW, _stateE), axis=1)
         _stateR = np.concatenate((_stateW, _ghostE), axis=1)
 
-        # Iterate over all rows in block
         for row in range(self.ny):
-            # Get cell interface flux
             if refBLK.reconstruction_type == 'primitive':
-                flux_EW = self.flux_function_X(WL=_stateL[row, None, :, :],
-                                               WR=_stateR[row, None, :, :])
+                flux_EW = self.flux_function_X(WL=_stateL[row, None, :, :], WR=_stateR[row, None, :, :])
             else:
-                flux_EW = self.flux_function_X(UL=_stateL[row, None, :, :],
-                                               UR=_stateR[row, None, :, :])
-            # Set east face flux
+                flux_EW = self.flux_function_X(UL=_stateL[row, None, :, :], UR=_stateR[row, None, :, :])
             self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
-            # Set west face flux
             self.Flux_W[row, :, :] = flux_EW[:, :-1, :]
 
-        # Rotate flux back to local frame
         if not _to_recon.is_cartesian:
             utils.unrotate(_to_recon.mesh.faceE.theta, self.Flux_E)
             utils.unrotate(_to_recon.mesh.faceW.theta - np.pi, self.Flux_W)
 
-        # --------------------------------------------------------------------------------------------------------------
         # Calculate y-direction Flux
-
-        # Rotate to allign with cell faces
         if _to_recon.is_cartesian:
-            # If block is cartesian, rotate by 90 degrees CCW (implemented as array swaps for efficiency)
             utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
         else:
-            # If not, rotate by the given angle using the standard rotation matrix
             utils.rotate(_to_recon.mesh.faceN.theta, _stateN)
             utils.rotate(_to_recon.mesh.faceS.theta - np.pi, _stateS)
             utils.rotate(_to_recon.mesh.get_north_face_angle(), _ghostN)
             utils.rotate(_to_recon.mesh.get_south_face_angle(), _ghostS)
 
-        # Get states on the left and right on NS interfaces
         _stateL = np.concatenate((_ghostS, _stateN), axis=0).transpose((1, 0, 2))
         _stateR = np.concatenate((_stateS, _ghostN), axis=0).transpose((1, 0, 2))
 
-        # Iterate over all columns in block
         for col in range(self.nx):
-            # Calculate face-normal-flux at each cell east-west interface
             if refBLK.reconstruction_type == 'primitive':
-                flux_NS = self.flux_function_Y(WL=_stateL[col, None, :, :],
-                                               WR=_stateR[col, None, :, :]
-                                               ).reshape(-1, 4)
+                flux_NS = self.flux_function_Y(WL=_stateL[col, None, :, :], WR=_stateR[col, None, :, :]).reshape(-1, 4)
             else:
-                flux_NS = self.flux_function_Y(UL=_stateL[col, None, :, :],
-                                               UR=_stateR[col, None, :, :]
-                                               ).reshape(-1, 4)
-            # Set east face flux
+                flux_NS = self.flux_function_Y(UL=_stateL[col, None, :, :], UR=_stateR[col, None, :, :]).reshape(-1, 4)
             self.Flux_N[:, col, :] = flux_NS[1:, :]
-            # Set west face flux
             self.Flux_S[:, col, :] = flux_NS[:-1, :]
 
-        # Rotate flux back to global frame
         if refBLK.is_cartesian:
-            # If block is cartesian, rotate by 90 degrees CW (implemented as array swaps for efficiency)
             utils.unrotate90(self.Flux_N, self.Flux_S)
         else:
-            # If not, rotate by the given angle using the standard rotation matrix
             utils.unrotate(_to_recon.mesh.faceN.theta, self.Flux_N)
             utils.unrotate(_to_recon.mesh.faceS.theta - np.pi, self.Flux_S)
 

@@ -26,33 +26,21 @@ class ExplicitRungeKutta(TimeIntegrator):
                  a: list[list] = None,
                  ):
 
-        # Call superclass constructor
         super().__init__(inputs)
-        # Butcher tableau representation
         self.a = a
-        # Number of stages
         if isinstance(a, list):
             self.num_stages = len(a)
 
     def integrate(self, refBLK, dt):
 
-        # Save state vector
         U = refBLK.state.U.copy()
-        # Initialise dictionary to store stage residuals
         _stage_residuals = {}
-        # Iterate across num_stages
         for stage in range(self.num_stages):
-            # Get residual for current stage
             _stage_residuals[stage] = refBLK.dUdt()
-            # Copy U into intermediate stage
             _intermediate_state = U
-            # Add stage contributions to current stage according to the method's Butcher tableau
             for step in range(stage + 1):
-                # Only add if tableau factor is non-zero
                 if self.a[stage][step] != 0:
-                    # Accumulate stage contributions
                     _intermediate_state = _intermediate_state + dt * self.a[stage][step] * _stage_residuals[step]
-            # Update state using intermediate state
             refBLK.state.update(_intermediate_state)
             refBLK.set_BC()
             refBLK.state.clear_cache()
