@@ -13,12 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
-import numpy as np
 from pyHype.solvers.time_integration.base import TimeIntegrator
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from pyHype.blocks import QuadBlock
 
 class ExplicitRungeKutta(TimeIntegrator):
     def __init__(self,
@@ -28,11 +32,19 @@ class ExplicitRungeKutta(TimeIntegrator):
 
         super().__init__(inputs)
         self.a = a
-        if isinstance(a, list):
-            self.num_stages = len(a)
+        self.num_stages = len(a)
 
-    def integrate(self, refBLK, dt):
+    def integrate(self, refBLK: QuadBlock, dt) -> None:
+        """
+        Perform integration for a general explicit Runge-Kutta scheme based on the Butcher tableau.
 
+        Parameters:
+            - refBLK (QuadBlock): Reference block whos state is to be integrated in time
+            - dt (float): Time step
+
+        Return:
+            - N/A
+        """
         U = refBLK.state.U.copy()
         _stage_residuals = {}
         for stage in range(self.num_stages):
@@ -41,9 +53,8 @@ class ExplicitRungeKutta(TimeIntegrator):
             for step in range(stage + 1):
                 if self.a[stage][step] != 0:
                     _intermediate_state = _intermediate_state + dt * self.a[stage][step] * _stage_residuals[step]
-            refBLK.state.update(_intermediate_state)
+            refBLK.state.U = _intermediate_state
             refBLK.set_BC()
-            refBLK.state.clear_cache()
 
     @classmethod
     def ExplicitEuler1(cls, inputs):

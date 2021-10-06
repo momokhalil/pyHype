@@ -271,6 +271,7 @@ class MUSCLFiniteVolumeMethod:
         _stateE, _stateW, _stateN, _stateS, _to_recon = self.reconstruct(refBLK)
 
         # Calculate x-direction Flux
+
         _ghostE = _to_recon.ghost.E.col(0, copy=True)
         _ghostW = _to_recon.ghost.W.col(-1, copy=True)
         _ghostN = _to_recon.ghost.N.row(0, copy=True)
@@ -287,17 +288,18 @@ class MUSCLFiniteVolumeMethod:
 
         for row in range(self.ny):
             if refBLK.reconstruction_type == 'primitive':
-                flux_EW = self.flux_function_X(WL=_stateL[row, None, :, :], WR=_stateR[row, None, :, :])
+                flux = self.flux_function_X(WL=_stateL[row, None, :, :], WR=_stateR[row, None, :, :])
             else:
-                flux_EW = self.flux_function_X(UL=_stateL[row, None, :, :], UR=_stateR[row, None, :, :])
-            self.Flux_E[row, :, :] = flux_EW[:, 1:, :]
-            self.Flux_W[row, :, :] = flux_EW[:, :-1, :]
+                flux = self.flux_function_X(UL=_stateL[row, None, :, :], UR=_stateR[row, None, :, :])
+            self.Flux_E[row, :, :] = flux[:, 1:, :]
+            self.Flux_W[row, :, :] = flux[:, :-1, :]
 
         if not _to_recon.is_cartesian:
             utils.unrotate(_to_recon.mesh.faceE.theta, self.Flux_E)
             utils.unrotate(_to_recon.mesh.faceW.theta - np.pi, self.Flux_W)
 
         # Calculate y-direction Flux
+
         if _to_recon.is_cartesian:
             utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
         else:
@@ -311,11 +313,11 @@ class MUSCLFiniteVolumeMethod:
 
         for col in range(self.nx):
             if refBLK.reconstruction_type == 'primitive':
-                flux_NS = self.flux_function_Y(WL=_stateL[col, None, :, :], WR=_stateR[col, None, :, :]).reshape(-1, 4)
+                flux = self.flux_function_Y(WL=_stateL[col, None, :, :], WR=_stateR[col, None, :, :]).reshape(-1, 4)
             else:
-                flux_NS = self.flux_function_Y(UL=_stateL[col, None, :, :], UR=_stateR[col, None, :, :]).reshape(-1, 4)
-            self.Flux_N[:, col, :] = flux_NS[1:, :]
-            self.Flux_S[:, col, :] = flux_NS[:-1, :]
+                flux = self.flux_function_Y(UL=_stateL[col, None, :, :], UR=_stateR[col, None, :, :]).reshape(-1, 4)
+            self.Flux_N[:, col, :] = flux[1:, :]
+            self.Flux_S[:, col, :] = flux[:-1, :]
 
         if refBLK.is_cartesian:
             utils.unrotate90(self.Flux_N, self.Flux_S)

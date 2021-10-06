@@ -227,7 +227,7 @@ class GhostBlockEast(GhostBlock):
                          ny=self.refBLK.ny)
 
     def set_BC_none(self):
-        self.state.update(self.refBLK.neighbors.E.get_west_ghost())
+        self.state.U = self.refBLK.neighbors.E.get_west_ghost()
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -241,7 +241,7 @@ class GhostBlockEast(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_slipwall(self):
         # Get state from interior domain
@@ -255,7 +255,7 @@ class GhostBlockEast(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
         rho = self.inputs.BC_inlet_east_rho
@@ -272,7 +272,7 @@ class GhostBlockEast(GhostBlock):
         pass
 
     def set_BC_outlet_dirichlet(self):
-        self.state.update(self.refBLK.get_east_ghost())
+        self.state.U = self.refBLK.get_east_ghost()
 
     def set_BC_outlet_riemann(self):
         pass
@@ -319,7 +319,7 @@ class GhostBlockWest(GhostBlock):
                          ny=self.refBLK.ny)
 
     def set_BC_none(self):
-        self.state.update(self.refBLK.neighbors.W.get_east_ghost())
+        self.state.U = self.refBLK.neighbors.W.get_east_ghost()
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -333,7 +333,7 @@ class GhostBlockWest(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_slipwall(self):
         # Get state from interior domain
@@ -347,7 +347,7 @@ class GhostBlockWest(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
 
@@ -365,7 +365,7 @@ class GhostBlockWest(GhostBlock):
         pass
 
     def set_BC_outlet_dirichlet(self):
-        self.state.update(self.refBLK.get_west_ghost())
+        self.state.U = self.refBLK.get_west_ghost()
 
     def set_BC_outlet_riemann(self):
         pass
@@ -412,7 +412,7 @@ class GhostBlockNorth(GhostBlock):
                          ny=inputs.nghost)
 
     def set_BC_none(self):
-        self.state.update(self.refBLK.neighbors.N.get_south_ghost())
+        self.state.U = self.refBLK.neighbors.N.get_south_ghost()
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -426,7 +426,7 @@ class GhostBlockNorth(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_slipwall(self):
         # Get state from interior domain
@@ -440,7 +440,7 @@ class GhostBlockNorth(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
         rho = self.inputs.BC_inlet_north_rho
@@ -457,7 +457,7 @@ class GhostBlockNorth(GhostBlock):
         pass
 
     def set_BC_outlet_dirichlet(self):
-        self.state.update(self.refBLK.get_north_ghost())
+        self.state.U = self.refBLK.get_north_ghost()
 
     def set_BC_outlet_riemann(self):
         pass
@@ -502,7 +502,7 @@ class GhostBlockSouth(GhostBlock):
                          ny=inputs.nghost)
 
     def set_BC_none(self):
-        self.state.update(self.refBLK.neighbors.S.get_north_ghost())
+        self.state.U = self.refBLK.neighbors.S.get_north_ghost()
 
     def set_BC_reflection(self):
         # Get state from interior domain
@@ -516,7 +516,7 @@ class GhostBlockSouth(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_slipwall(self):
         # Get state from interior domain
@@ -530,7 +530,7 @@ class GhostBlockSouth(GhostBlock):
         # Rotate state back to global axes
         utils.unrotate(wall_angle - np.pi / 2, state)
         # Update state
-        self.state.update(state)
+        self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
         rho = self.inputs.BC_inlet_south_rho
@@ -547,7 +547,7 @@ class GhostBlockSouth(GhostBlock):
         pass
 
     def set_BC_outlet_dirichlet(self):
-        self.state.update(self.refBLK.get_south_ghost())
+        self.state.U = self.refBLK.get_south_ghost()
 
     def set_BC_outlet_riemann(self):
         pass

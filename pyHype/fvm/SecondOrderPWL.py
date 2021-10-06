@@ -18,17 +18,15 @@ from __future__ import annotations
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
+import numpy as np
+np.set_printoptions(precision=3)
+
 from typing import TYPE_CHECKING
+from pyHype.fvm.base import MUSCLFiniteVolumeMethod
 
 if TYPE_CHECKING:
     from pyHype.blocks.base import QuadBlock
     from pyHype.mesh.base import CellFace
-
-import numpy as np
-from pyHype.fvm.base import MUSCLFiniteVolumeMethod
-
-
-np.set_printoptions(precision=3)
 
 
 class SecondOrderPWL(MUSCLFiniteVolumeMethod):
@@ -40,9 +38,7 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
             super().__init__(inputs, global_nBLK)
 
     @staticmethod
-    def high_order_term(refBLK: QuadBlock,
-                        face: CellFace
-                        ) -> np.ndarray:
+    def high_order_term(refBLK: QuadBlock, face: CellFace) -> np.ndarray:
         """
         Compute the high order term used for the state reconstruction at the quadrature point on a specified face.
 
@@ -56,9 +52,7 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
         return refBLK.gradx * (face.xmid - refBLK.mesh.x) + refBLK.grady * (face.ymid - refBLK.mesh.y)
 
-    def reconstruct_state(self,
-                          refBLK: QuadBlock
-                          ) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def reconstruct_state(self, refBLK: QuadBlock) -> [np.ndarray]:
         """
         Performs a second order accurate, piecewise linear MUSCL type reconstruction by calculatine the high order terms
         using the first order gradients of the solution variables, limiting the slopes of the reconstruction to
@@ -95,24 +89,14 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
 
         return stateE, stateW, stateN, stateS
 
-    def integrate_flux_E(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_E(self, refBLK: QuadBlock) -> np.ndarray:
         return self.Flux_E * refBLK.mesh.faceE.L
 
-    def integrate_flux_W(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_W(self, refBLK: QuadBlock) -> np.ndarray:
         return -self.Flux_W * refBLK.mesh.faceW.L
 
-    def integrate_flux_N(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_N(self, refBLK: QuadBlock) -> np.ndarray:
         return self.Flux_N * refBLK.mesh.faceN.L
 
-    def integrate_flux_S(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_S(self, refBLK: QuadBlock) -> np.ndarray:
         return -self.Flux_S * refBLK.mesh.faceS.L
-
-

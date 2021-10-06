@@ -75,6 +75,7 @@ class State:
     @Q.setter
     def Q(self, Q):
         self._Q = Q
+        self.set_vars_from_state()
         self.clear_cache()
 
     def clear_cache(self) -> None:
@@ -86,7 +87,6 @@ class State:
     def dcopy(self):
         _copy = State(self.inputs, self.nx, self.ny)
         _copy.Q = self.Q.copy()
-
         _copy.q0 = self.q0.copy()
         _copy.q1 = self.q1.copy()
         _copy.q2 = self.q2.copy()
@@ -146,17 +146,15 @@ class State:
             return other - self.Q
 
     def reset(self, shape: [int] = None):
-
         if shape:
             self.Q = np.zeros(shape=shape, dtype=float)
         else:
             self.Q = np.zeros((self.ny, self.nx, 4), dtype=float)
-
         self.set_vars_from_state()
 
-    def update(self, value: np.ndarray) -> None:
+    """def update(self, value: np.ndarray) -> None:
         self.Q = value
-        self.set_vars_from_state()
+        self.set_vars_from_state()"""
 
     @abstractmethod
     def non_dim(self):
