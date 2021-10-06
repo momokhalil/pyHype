@@ -59,8 +59,9 @@ def explosion(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U[:, :, :] = np.where(np.logical_and(3 <= block.mesh.x <= 7, 3 <= block.mesh.y <= 7), QL, QR)
-        block.state.set_vars_from_state()
+        _x_cond = np.logical_and(3 <= block.mesh.x, block.mesh.x <= 7)
+        _y_cond = np.logical_and(3 <= block.mesh.y, block.mesh.y <= 7)
+        block.state.U = np.where(np.logical_and(_x_cond, _y_cond), QL, QR)
         block.state.non_dim()
 
 
@@ -92,8 +93,7 @@ def implosion(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U[:, :, :] = np.where(np.logical_and(block.mesh.x <= 5, block.mesh.y <= 5), QR, QL)
-        block.state.set_vars_from_state()
+        block.state.U = np.where(np.logical_and(block.mesh.x <= 5, block.mesh.y <= 5), QR, QL)
         block.state.non_dim()
 
 
@@ -125,15 +125,9 @@ def shockbox(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.nx):
-                if block.mesh.x[i, j] <= 5 and block.mesh.y[i, j] <= 5:
-                    block.state.U[i, j, :] = QR
-                elif block.mesh.x[i, j] > 5 and block.mesh.y[i, j] > 5:
-                    block.state.U[i, j, :] = QR
-                else:
-                    block.state.U[i, j, :] = QL
-
+        _cond_1 = np.logical_and(block.mesh.x <= 5, block.mesh.y <= 5)
+        _cond_2 = np.logical_and(block.mesh.x > 5, block.mesh.y > 5)
+        block.state.U = np.where(np.logical_and(_cond_1, _cond_2), QR, QL)
         block.state.non_dim()
 
 
@@ -165,7 +159,7 @@ def mach_reflection(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U[:, :, :] = np.where(block.mesh.x <= 0.95, QL, QR)
+        block.state.U = np.where(block.mesh.x <= 0.95, QL, QR)
         block.state.non_dim()
 
 def supersonic_flood(blocks, **kwargs):
@@ -188,7 +182,7 @@ def supersonic_flood(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U[:, :, :] = Q
+        block.state.U = Q
         block.state.non_dim()
 
 def subsonic_flood(blocks, **kwargs):
@@ -211,10 +205,7 @@ def subsonic_flood(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.nx):
-                block.state.U[i, j, :] = Q
-
+        block.state.U = Q
         block.state.non_dim()
 
 def supersonic_rest(blocks, **kwargs):
@@ -237,10 +228,7 @@ def supersonic_rest(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.nx):
-                block.state.U[i, j, :] = Q
-
+        block.state.U = Q
         block.state.non_dim()
 
 def subsonic_rest(blocks, **kwargs):
@@ -263,10 +251,7 @@ def subsonic_rest(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.nx):
-                block.state.U[i, j, :] = Q
-
+        block.state.U = Q
         block.state.non_dim()
 
 def explosion_trapezoid(blocks, **kwargs):
@@ -297,16 +282,15 @@ def explosion_trapezoid(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        for i in range(block.mesh.ny):
-            for j in range(block.mesh.ny):
-                if (-0.75 <= block.mesh.x[i, j] <= -0.25 and -0.75 <= block.mesh.y[i, j] <= -0.25) or \
-                   ( 0.25 <= block.mesh.x[i, j] <=  0.75 and  0.25 <= block.mesh.y[i, j] <=  0.75) or \
-                   (-0.75 <= block.mesh.x[i, j] <= -0.25 and  0.25 <= block.mesh.y[i, j] <=  0.75) or \
-                   ( 0.25 <= block.mesh.x[i, j] <=  0.75 and -0.75 <= block.mesh.y[i, j] <= -0.25):
-                    block.state.U[i, j, :] = QL
-                else:
-                    block.state.U[i, j, :] = QR
-
+        _cond_1 = np.logical_and(np.logical_and(-0.75 <= block.mesh.x, block.mesh.x <= -0.25),
+                                 np.logical_and(-0.75 <= block.mesh.y, block.mesh.y <= -0.25))
+        _cond_2 = np.logical_and(np.logical_and(0.25 <= block.mesh.x, block.mesh.x <= 0.75),
+                                 np.logical_and(0.25 <= block.mesh.y, block.mesh.y <= 0.75))
+        _cond_3 = np.logical_and(np.logical_and(-0.75 <= block.mesh.x, block.mesh.x <= -0.25),
+                                 np.logical_and(0.25 <= block.mesh.y, block.mesh.y <= 0.75))
+        _cond_4 = np.logical_and(np.logical_and(0.25 <= block.mesh.x, block.mesh.x <= 0.75),
+                                 np.logical_and(-0.75 <= block.mesh.y, block.mesh.y <= -0.25))
+        block.state.U = np.where(np.logical_and(_cond_1, _cond_2, _cond_3, _cond_4), QL, QR)
         block.state.non_dim()
 
 def explosion_3(blocks, **kwargs):

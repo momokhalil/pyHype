@@ -24,7 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-from pyHype.fvm import SecondOrderPWL
+from pyHype.fvm import FirstOrder, SecondOrderPWL
 from pyHype.mesh.base import BlockDescription, Mesh
 from pyHype.states.states import ConservativeState, PrimitiveState
 from pyHype.blocks.base import NormalVector, GhostBlockContainer, Neighbors
@@ -97,7 +97,9 @@ class QuadBlock:
         # Set finite volume method
         fvm = self.inputs.fvm
 
-        if fvm == 'SecondOrderPWL':
+        if fvm == 'FirstOrder':
+            self.fvm = FirstOrder(self.inputs, self.global_nBLK)
+        elif fvm == 'SecondOrderPWL':
             self.fvm = SecondOrderPWL(self.inputs, self.global_nBLK)
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
@@ -1015,9 +1017,7 @@ class QuadBlock:
         Returns:
             - N.A
         """
-
         self._time_integrator(self, dt)
-
         if not self.realizable():
             raise ValueError('Negative or zero pressure, density, or energy. Terminating simulation.')
 
@@ -1031,10 +1031,9 @@ class QuadBlock:
         Returns:
             - None
         """
-
         self.fvm.get_flux(self)
 
-    def dUdt(self) -> None:
+    def dUdt(self) -> np.ndarray:
         """
         Calls the dUdt() method from the Block's finite-volume-method to compute the residuals used for the time
         marching scheme.
