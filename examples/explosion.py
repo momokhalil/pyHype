@@ -38,7 +38,7 @@ settings = {'problem_type':             'explosion',
             }
 
 # Create solver
-exp = Euler2D(fvm='FirstOrder',
+exp = Euler2D(fvm='SecondOrderPWL',
               gradient='GreenGauss',
               flux_function='Roe',
               limiter='Venkatakrishnan',

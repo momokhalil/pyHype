@@ -524,12 +524,9 @@ class QuadBlock:
         # Speed of sound
         a = self.state.a()
         # Calculate dt using the CFL condition
-        dt = self.inputs.CFL * np.amin(np.minimum(self.mesh.dx[:, :, 0] / (np.absolute(self.state.u()) + a),
-                                                  self.mesh.dy[:, :, 0] / (np.absolute(self.state.v()) + a)))
+        dt = self.inputs.CFL * np.amin(np.minimum(self.mesh.dx[:, :, 0] / (np.absolute(self.state.u) + a),
+                                                  self.mesh.dy[:, :, 0] / (np.absolute(self.state.v) + a)))
         return dt
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Grid methods
 
     def connect(self,
                 NeighborE: QuadBlock,
