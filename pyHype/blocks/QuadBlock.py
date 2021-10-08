@@ -1098,7 +1098,7 @@ class QuadBlock:
             - du_dx (np.ndarray): Derivative of u with respect to the x direction.
         """
 
-        return (self.gradx[:, :, 1, None] - self.state.u() * self.drho_dx()) / self.state.rho
+        return (self.gradx[:, :, 1, None] - self.state.u * self.drho_dx()) / self.state.rho
 
     def dv_dx(self) -> np.ndarray:
         """
@@ -1121,7 +1121,7 @@ class QuadBlock:
             - dv_dx (np.ndarray): Derivative of v with respect to the x direction.
         """
 
-        return (self.gradx[:, :, 2, None] - self.state.v() * self.drho_dx()) / self.state.rho
+        return (self.gradx[:, :, 2, None] - self.state.v * self.drho_dx()) / self.state.rho
 
     def de_dx(self) -> np.ndarray:
         """
@@ -1171,7 +1171,7 @@ class QuadBlock:
             - du_dy (np.ndarray): Derivative of u with respect to the y direction.
         """
 
-        return (self.grady[:, :, 1, None] - self.state.u() * self.drho_dx()) / self.state.rho
+        return (self.grady[:, :, 1, None] - self.state.u * self.drho_dx()) / self.state.rho
 
     def dv_dy(self) -> np.ndarray:
         """
@@ -1194,7 +1194,7 @@ class QuadBlock:
             - dv_dy (np.ndarray): Derivative of v with respect to the y direction.
         """
 
-        return (self.grady[:, :, 2, None] - self.state.v() * self.drho_dx()) / self.state.rho
+        return (self.grady[:, :, 2, None] - self.state.v * self.drho_dx()) / self.state.rho
 
     def de_dy(self) -> np.ndarray:
         """

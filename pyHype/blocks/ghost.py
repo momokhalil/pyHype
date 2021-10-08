@@ -266,8 +266,6 @@ class GhostBlockEast(GhostBlock):
         self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_east_v
         self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_east_p / (self.inputs.gamma - 1) + ek
 
-        self.state.set_vars_from_state()
-
     def set_BC_inlet_riemann(self):
         pass
 
@@ -359,8 +357,6 @@ class GhostBlockWest(GhostBlock):
         self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_west_v
         self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_west_p / (self.inputs.gamma - 1) + ek
 
-        self.state.set_vars_from_state()
-
     def set_BC_inlet_riemann(self):
         pass
 
@@ -451,8 +447,6 @@ class GhostBlockNorth(GhostBlock):
         self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_north_v
         self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_north_p / (self.inputs.gamma - 1) + ek
 
-        self.state.set_vars_from_state()
-
     def set_BC_inlet_riemann(self):
         pass
 
@@ -540,8 +534,6 @@ class GhostBlockSouth(GhostBlock):
         self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_south_u
         self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_south_v
         self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_south_p / (self.inputs.gamma - 1) + ek
-
-        self.state.set_vars_from_state()
 
     def set_BC_inlet_riemann(self):
         pass

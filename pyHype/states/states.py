@@ -24,6 +24,7 @@ from pyHype.states.base import State
 from pyHype.input.input_file_builder import ProblemInput
 from pyHype.utils.utils import cache
 from copy import copy as cpy
+from profilehooks import profile
 
 
 class PrimitiveState(State):
@@ -254,33 +255,27 @@ class PrimitiveState(State):
         return ConservativeState(self.inputs, W_vector=self.W)
 
     def to_conservative_vector(self) -> np.ndarray:
-
         U = np.zeros_like(self.W, dtype=float)
-
         U[:, :, ConservativeState.RHO_IDX] = self.rho.copy()
         U[:, :, ConservativeState.RHOU_IDX] = self.rho * self.u
         U[:, :, ConservativeState.RHOV_IDX] = self.rho * self.v
         U[:, :, ConservativeState.E_IDX] = self.p / (self.g - 1) + self.ek()
-
         return U
 
     @cache
     def ek(self) -> np.ndarray:
-        return self.ek_JIT(self.rho, self.u, self.v)
+        return self.ek_JIT(self.Q)
 
     def ek_NP(self):
         return self.rho * self.Ek_NP()
 
     @staticmethod
     @nb.njit(cache=True)
-    def ek_JIT(rho: np.ndarray,
-               u: np.ndarray,
-               v: np.ndarray,
-               ) -> np.ndarray:
-        _Ek = np.zeros_like(u)
-        for i in range(u.shape[0]):
-            for j in range(u.shape[1]):
-                _Ek[i, j] = 0.5 * rho[i, j] * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
+    def ek_JIT(W: np.ndarray) -> np.ndarray:
+        _Ek = np.zeros((W.shape[0], W.shape[1]))
+        for i in range(W.shape[0]):
+            for j in range(W.shape[1]):
+                _Ek[i, j] = 0.5 * W[i, j, 0] * (W[i, j, 1] * W[i, j, 1] + W[i, j, 2] * W[i, j, 2])
         return _Ek
 
     @cache
@@ -370,7 +365,7 @@ class PrimitiveState(State):
 
     @cache
     def e(self):
-        return self.p / (self.g - 1) + self.ek()
+        return self.one_over_gm * self.p + self.ek()
 
     def V(self) -> np.ndarray:
         return np.sqrt(self.u * self.u + self.v * self.v)
@@ -400,9 +395,8 @@ class PrimitiveState(State):
           U: ConservativeState = None,
           U_vector: np.ndarray = None) -> np.ndarray:
 
-        F = np.zeros_like(self.W, dtype=float)
-
         if U is not None:
+            F = np.zeros_like(self.W, dtype=float)
             F[:, :, 0] = U.rhou
             F[:, :, 1] = U.rhou * self.u + self.p
             F[:, :, 2] = U.rhou * self.v
@@ -410,6 +404,7 @@ class PrimitiveState(State):
             return F
 
         elif U_vector is not None:
+            F = np.zeros_like(self.W, dtype=float)
             ru = U_vector[:, :, ConservativeState.RHOU_IDX]
             e = U_vector[:, :, ConservativeState.E_IDX]
 
@@ -420,22 +415,23 @@ class PrimitiveState(State):
             return F
 
         else:
-            return self._F_from_prim_JIT(self.rho, self.u, self.v, self.p, self.e())
+            return self._F_from_prim_JIT(self._Q, self.ek(), self.one_over_gm)
 
     @staticmethod
     @nb.njit(cache=True)
-    def _F_from_prim_JIT(rho, u, v, p, e):
-        _F = np.zeros((rho.shape[0], rho.shape[1], 4))
+    def _F_from_prim_JIT(W, ek, k):
+        _F = np.zeros((W.shape[0], W.shape[1], 4))
         _u = 0.0
         _ru = 0.0
-        for i in range(rho.shape[0]):
-            for j in range(rho.shape[1]):
-                _u = u[i, j]
-                _ru = rho[i, j] * _u
+        for i in range(W.shape[0]):
+            for j in range(W.shape[1]):
+                _u = W[i, j, 1]
+                _ru = W[i, j, 0] * _u
                 _F[i, j, 0] = _ru
-                _F[i, j, 1] = _ru * _u + p[i, j]
-                _F[i, j, 2] = _ru * v[i, j]
-                _F[i, j, 3] = _u * (e[i, j] + p[i, j])
+                _F[i, j, 1] = _ru * _u + W[i, j, 3]
+                _F[i, j, 2] = _ru * W[i, j, 2]
+                _e = k * W[i, j, 3] + ek[i, j]
+                _F[i, j, 3] = _u * (_e + W[i, j, 3])
         return _F
 
     def realizable(self):
@@ -856,7 +852,8 @@ class RoePrimitiveState(PrimitiveState):
         self.rho    = np.sqrt(WL.rho * WR.rho)
         self.u      = (WL.u * sqRhoL + WR.u * sqRhoR) / sqRhoRL
         self.v      = (WL.v * sqRhoL + WR.v * sqRhoR) / sqRhoRL
-        self.p      = (WL.p * sqRhoL + WR.p * sqRhoR) / sqRhoRL
+        e           = (WL.e() * sqRhoL + WR.e() * sqRhoR) / sqRhoRL
+        self.p      = (self.g - 1) * (e - self.ek())
 
     @staticmethod
     @nb.njit(cache=True)
