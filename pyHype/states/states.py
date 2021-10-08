@@ -420,13 +420,23 @@ class PrimitiveState(State):
             return F
 
         else:
-            ru = self.rho * self.u
+            return self._F_from_prim_JIT(self.rho, self.u, self.v, self.p, self.e())
 
-            F[:, :, 0] = ru
-            F[:, :, 1] = ru * self.u + self.p
-            F[:, :, 2] = ru * self.v
-            F[:, :, 3] = self.u * (self.e() + self.p)
-            return F
+    @staticmethod
+    @nb.njit(cache=True)
+    def _F_from_prim_JIT(rho, u, v, p, e):
+        _F = np.zeros((rho.shape[0], rho.shape[1], 4))
+        _u = 0.0
+        _ru = 0.0
+        for i in range(rho.shape[0]):
+            for j in range(rho.shape[1]):
+                _u = u[i, j]
+                _ru = rho[i, j] * _u
+                _F[i, j, 0] = _ru
+                _F[i, j, 1] = _ru * _u + p[i, j]
+                _F[i, j, 2] = _ru * v[i, j]
+                _F[i, j, 3] = _u * (e[i, j] + p[i, j])
+        return _F
 
     def realizable(self):
         return np.all(self.rho > 0) and np.all(self.p > 0)
@@ -832,17 +842,38 @@ class RoePrimitiveState(PrimitiveState):
             WR      Right primitive state                           \n
         """
 
-        # Compute common quantities
-        sqRhoL  = np.sqrt(WL.rho)
-        sqRhoR  = np.sqrt(WR.rho)
-        sqRhoRL = sqRhoL + sqRhoR
+        self.Q = self._roe_state_from_prim_JIT(WL.Q, WR.Q)
 
+    def _roe_state_from_prim_NP(self,
+                                WL: PrimitiveState,
+                                WR: PrimitiveState
+                                ) -> None:
+        # Compute common quantities
+        sqRhoL      = np.sqrt(WL.rho)
+        sqRhoR      = np.sqrt(WR.rho)
+        sqRhoRL     = sqRhoL + sqRhoR
         # Compute *Roe* average quantities
-        self.rho = np.sqrt(WL.rho * WR.rho)
-        self.u = (WL.u * sqRhoL + WR.u * sqRhoR) / sqRhoRL
-        self.v = (WL.v * sqRhoL + WR.v * sqRhoR) / sqRhoRL
-        e       = (WL.e() * sqRhoL + WR.e() * sqRhoR) / sqRhoRL
-        self.p = (self.g - 1) * (e - self.ek())
+        self.rho    = np.sqrt(WL.rho * WR.rho)
+        self.u      = (WL.u * sqRhoL + WR.u * sqRhoR) / sqRhoRL
+        self.v      = (WL.v * sqRhoL + WR.v * sqRhoR) / sqRhoRL
+        self.p      = (WL.p * sqRhoL + WR.p * sqRhoR) / sqRhoRL
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _roe_state_from_prim_JIT(QL: np.ndarray,
+                                 QR: np.ndarray
+                                 ) -> np.ndarray:
+        _Q = np.zeros_like(QL)
+        for i in range(QL.shape[0]):
+            for j in range(QL.shape[1]):
+                sqRhoL = np.sqrt(QL[i, j, 0])
+                sqRhoR = np.sqrt(QR[i, j, 0])
+                sqRhoRL = sqRhoL + sqRhoR
+                _Q[i, j, 0] = np.sqrt(QL[i, j, 0] + QR[i, j, 0])
+                _Q[i, j, 1] = (QL[i, j, 1] * sqRhoL + QR[i, j, 1] * sqRhoR) / sqRhoRL
+                _Q[i, j, 2] = (QL[i, j, 2] * sqRhoL + QR[i, j, 2] * sqRhoR) / sqRhoRL
+                _Q[i, j, 3] = (QL[i, j, 3] * sqRhoL + QR[i, j, 3] * sqRhoR) / sqRhoRL
+        return _Q
 
     def roe_state_from_conservative_states(self,
                                            UL: ConservativeState,
