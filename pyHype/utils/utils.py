@@ -16,9 +16,10 @@ limitations under the License.
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
-import numpy as np
-from typing import Union, Callable
 import functools
+import numpy as np
+from profilehooks import profile
+from typing import Union, Callable
 
 
 def rotate(theta: Union[float, np.ndarray],
@@ -170,19 +171,12 @@ def reflect_point(x1: float,
 
         return xp, yp
 
-
 def cache(func: Callable):
     @functools.wraps(func)
-    def _wrapper(*args, **kwargs):
-        instance = args[0]
-        if func.__name__ not in instance.cache.keys():
-            #print(func.__name__, 'NOT IN CACHE')
-            instance.cache[func.__name__] = func(*args, **kwargs)
-            return instance.cache[func.__name__]
-        else:
-            #print(func.__name__, 'IN CACHEEEEEEEEEE')
-            return instance.cache[func.__name__]
-
+    def _wrapper(self, *args, **kwargs):
+        if func.__name__ not in self.cache.keys():
+            self.cache[func.__name__] = func(self, *args, **kwargs)
+        return self.cache[func.__name__]
     return _wrapper
 
 
@@ -195,8 +189,6 @@ class Cache:
 
     def __call__(self, *args, **kwargs):
         instance = args[0]
-
         if self.func not in instance.cache.keys():
             instance.cache[self.func] = self.func(*args, **kwargs)
-
         return instance.cache[self.func]

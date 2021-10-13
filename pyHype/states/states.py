@@ -21,10 +21,13 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numba as nb
 import numpy as np
 from pyHype.states.base import State
-from pyHype.input.input_file_builder import ProblemInput
 from pyHype.utils.utils import cache
 from copy import copy as cpy
 from profilehooks import profile
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from pyHype.solvers.base import ProblemInput
 
 
 class PrimitiveState(State):
@@ -264,7 +267,7 @@ class PrimitiveState(State):
 
     @cache
     def ek(self) -> np.ndarray:
-        return self.ek_JIT(self.Q)
+        return self.ek_JIT(self._Q)
 
     def ek_NP(self):
         return self.rho * self.Ek_NP()
@@ -575,14 +578,6 @@ class ConservativeState(State):
         raise NotImplementedError('Property "p" is not settable for class' + str(type(self)))
 
     @property
-    def W(self) -> np.ndarray:
-        return self._Q
-
-    @W.setter
-    def W(self, W: np.ndarray) -> None:
-        self.Q = W
-
-    @property
     def U(self) -> np.ndarray:
         return self.Q
 
@@ -592,9 +587,7 @@ class ConservativeState(State):
 
     # PUBLIC METHODS ---------------------------------------------------------------------------------------------------
 
-    def from_conservative_state(self,
-                                U: 'ConservativeState'
-                                ) -> None:
+    def from_conservative_state(self, U: 'ConservativeState') -> None:
         self.U = U.U.copy()
 
     def from_conservative_state_vector(self,
@@ -626,9 +619,7 @@ class ConservativeState(State):
         self.rhov     = rhov.copy()
         self.e        = e.copy()
 
-    def from_primitive_state(self,
-                             W: PrimitiveState
-                             ) -> None:
+    def from_primitive_state(self, W: PrimitiveState) -> None:
         """
         Creates a `COnservativeState` object from a `PrimitiveState` object. Given that `PrimitiveState` state
         vector is $W = \\begin{bmatrix} \\rho \\ u \\ v \\ p \\end{bmatrix}^T$ and `ConservativeState` state vector is
@@ -649,9 +640,7 @@ class ConservativeState(State):
         self.e      = W.p / (self.g - 1) + W.ek()
         self.cache  = cpy(W.cache)
 
-    def from_primitive_state_vector(self,
-                                    W_vector: np.ndarray
-                                    ) -> None:
+    def from_primitive_state_vector(self, W_vector: np.ndarray) -> None:
         """
 
         """
@@ -838,7 +827,7 @@ class RoePrimitiveState(PrimitiveState):
             WR      Right primitive state                           \n
         """
 
-        self.Q = self._roe_state_from_prim_JIT(WL.Q, WR.Q)
+        self.Q = self._roe_state_from_prim_JIT(WL._Q, WR._Q)
 
     def _roe_state_from_prim_NP(self,
                                 WL: PrimitiveState,
