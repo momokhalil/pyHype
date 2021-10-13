@@ -34,7 +34,7 @@ settings = {'problem_type':             'implosion',
             'R':                        287.0,
             'nx':                       60,
             'ny':                       60,
-            'nghost':                   1
+            'nghost':                   1,
             }
 
 # Create solver

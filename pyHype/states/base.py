@@ -14,14 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from __future__ import annotations
+from dataclasses import dataclass
 
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
 from abc import abstractmethod
-from pyHype.input.input_file_builder import ProblemInput
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from pyHype.solvers.base import ProblemInput
 
 class State:
     """
@@ -33,6 +36,7 @@ class State:
     $X = \\begin{bmatrix} x_1 \\ x_2 \\ \\dots \\ x_n \\end{bmatrix}^T$. The state vector represents the solution at
     each physical discretization point.
     """
+
     def __init__(self, inputs: ProblemInput, nx: int, ny: int):
         """
         ## Attributes
@@ -55,6 +59,7 @@ class State:
         self.g_over_gm = self.g / (self.g - 1)
         self.one_over_gm = 1 / (self.g - 1)
         self.cache = {}
+        self.cache_vars = inputs.cache_vars
 
     @property
     def Q(self):

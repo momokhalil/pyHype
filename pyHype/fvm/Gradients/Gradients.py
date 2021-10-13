@@ -18,12 +18,12 @@ from __future__ import annotations
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
-from pyHype.input.input_file_builder import ProblemInput
 from pyHype.fvm.Gradients.least_squares import least_squares_9_point
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pyHype.solvers.base import ProblemInput
     from pyHype.blocks.QuadBlock import QuadBlock
 
 

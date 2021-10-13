@@ -38,11 +38,28 @@ np.set_printoptions(threshold=sys.maxsize)
 
 
 class ProblemInput:
-    __REQUIRED__ = ['problem_type', 'realplot', 't_final', 'CFL',
-                    'gamma', 'R', 'rho_inf', 'a_inf', 'nx', 'ny',
-                    'nghost', 'profile',
-                    'interface_interpolation', 'reconstruction_type',
-                    'write_solution']
+    __REQUIRED__ = ['problem_type',
+                    'interface_interpolation',
+                    'reconstruction_type',
+                    'upwind_mode',
+                    'write_solution',
+                    'write_solution_mode',
+                    'write_solution_name',
+                    'write_every_n_timesteps',
+                    'plot_every',
+                    'CFL',
+                    't_final',
+                    'realplot',
+                    'profile',
+                    'gamma',
+                    'rho_inf',
+                    'a_inf',
+                    'R',
+                    'nx',
+                    'ny',
+                    'nghost'
+                    ]
+
 
     def __init__(self,
                  fvm: str,
@@ -96,16 +113,11 @@ class Solver:
         print(execution_prints.lice)
         print('\n------------------------------------ Setting-Up Solver ---------------------------------------\n')
 
-        # save original input dict
         self._settings_dict = settings
 
-        # --------------------------------------------------------------------------------------------------------------
-        # Create dictionary that describes each block in mesh
         print('\t>>> Building Mesh Descriptors')
 
-        # Get mesh dict to build block decription objects
         _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
-        # Create BlockDescription for each block in the mesh
         _mesh_inputs = {blk: BlockDescription(blkData,
                                               nx=settings['nx'],
                                               ny=settings['ny'],
@@ -123,10 +135,6 @@ class Solver:
         print('\t>>> Building Settings Descriptors')
         self.inputs = ProblemInput(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
                                    integrator=integrator, settings=settings, mesh_inputs=_mesh_inputs)
-        self._blocks = None
-
-        # --------------------------------------------------------------------------------------------------------------
-        # Initialise attributes
 
         print('\t>>> Initializing basic solution attributes')
         self.t = 0
@@ -137,6 +145,7 @@ class Solver:
         self.profile_data = None
         self.realfig, self.realplot = None, None
         self.plot = None
+        self._blocks = None
 
     @abstractmethod
     def set_IC(self):

@@ -15,13 +15,13 @@ limitations under the License.
 """
 from __future__ import annotations
 
-
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
-from abc import abstractmethod
 import numba as nb
+from abc import abstractmethod
+from profilehooks import profile
 
 from typing import TYPE_CHECKING
 
@@ -31,6 +31,10 @@ if TYPE_CHECKING:
 class SlopeLimiter:
     def __init__(self, inputs):
         self.inputs = inputs
+        self.sE = np.zeros((inputs.ny, inputs.nx, 1))
+        self.sW = np.zeros((inputs.ny, inputs.nx, 1))
+        self.sN = np.zeros((inputs.ny, inputs.nx, 1))
+        self.sS = np.zeros((inputs.ny, inputs.nx, 1))
 
     def get_slope(self,
                   refBLK: QuadBlock,
@@ -40,40 +44,23 @@ class SlopeLimiter:
                   quadS: np.ndarray,
                   ) -> [np.ndarray]:
 
-        # State
-        _state = refBLK.state.Q
-
-        # u_max for interior cells
-        _EW = np.concatenate((refBLK.ghost.W.state.Q,
-                              _state,
-                              refBLK.ghost.E.state.Q),
-                             axis=1)
-
-        # u_min for interior cells
-        _NS = np.concatenate((refBLK.ghost.S.state.Q,
-                              _state,
-                              refBLK.ghost.N.state.Q),
-                             axis=0)
-
+        _EW = np.concatenate((refBLK.ghost.W.state.Q, refBLK.state.Q, refBLK.ghost.E.state.Q), axis=1)
+        _NS = np.concatenate((refBLK.ghost.S.state.Q, refBLK.state.Q, refBLK.ghost.N.state.Q), axis=0)
         # Values for min/max evaluation
-        _vals = (_state, _EW[:, :-2], _EW[:, 2:], _NS[:-2, :], _NS[2:, :])
-
+        _vals = (refBLK.state.Q, _EW[:, :-2], _EW[:, 2:], _NS[:-2, :], _NS[2:, :])
         # Difference between largest/smallest value and average value
-        dmax = np.maximum.reduce(_vals) - _state
-        dmin = np.minimum.reduce(_vals) - _state
-
+        dmax = np.maximum.reduce(_vals) - refBLK.state.Q
+        dmin = np.minimum.reduce(_vals) - refBLK.state.Q
         # Difference between quadrature points and average value
-        dE = quadE - _state
-        dW = quadW - _state
-        dN = quadN - _state
-        dS = quadS - _state
-
+        dE = quadE - refBLK.state.Q
+        dW = quadW - refBLK.state.Q
+        dN = quadN - refBLK.state.Q
+        dS = quadS - refBLK.state.Q
         # Calculate slopes for each face
         sE = self._compute_slope(dmax, dmin, dE)
         sW = self._compute_slope(dmax, dmin, dW)
         sN = self._compute_slope(dmax, dmin, dN)
         sS = self._compute_slope(dmax, dmin, dS)
-
         return sE, sW, sN, sS
 
     def limit(self,
@@ -97,17 +84,15 @@ class SlopeLimiter:
 
     @staticmethod
     @nb.njit(cache=True)
-    def _compute_slope(dmax, dmin, dU):
-        _s = np.ones_like(dU)
-        n = dU.shape[0]
-        m = dU.shape[1]
-        for i in range(n):
-            for j in range(m):
+    def _compute_slope(dmax, dmin, dE):
+        _s = np.ones_like(dE)
+        for i in range(dE.shape[0]):
+            for j in range(dE.shape[1]):
                 for v in range(4):
-                    if dU[i, j, v] > 0:
-                        _s[i, j, v] = dmax[i, j, v] / (dU[i, j, v] + 1e-8)
-                    elif dU[i, j, v] < 0:
-                        _s[i, j, v] = dmin[i, j, v] / (dU[i, j, v] + 1e-8)
+                    if dE[i, j, v] > 0:
+                        _s[i, j, v] = dmax[i, j, v] / (dE[i, j, v] + 1e-8)
+                    elif dE[i, j, v] < 0:
+                        _s[i, j, v] = dmin[i, j, v] / (dE[i, j, v] + 1e-8)
         return _s
 
 
