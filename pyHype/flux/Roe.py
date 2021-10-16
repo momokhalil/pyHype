@@ -158,25 +158,25 @@ class ROE_FLUX_X(FluxFunction):
                    ua: np.ndarray = None,
                    ) -> None:
 
-        H = Wroe.H()
-        Ek = Wroe.Ek()
-        ua = Wroe.u * Wroe.a() if ua is None else ua
+        H   = Wroe.H()
+        Ek  = Wroe.Ek()
+        ua  = Wroe.u * Wroe.a() if ua is None else ua
 
         _sz = self.size + 1
 
         # -3 subdiagonal entries
-        self.Rc.data[0 * _sz:1 * _sz] = H - ua
+        self.Rc.data[0 * _sz:1 * _sz]   = H - ua
         # -2 subdiagonal entries
-        self.Rc.data[1 * _sz:2 * _sz] = Wroe.v
-        self.Rc.data[2 * _sz:3 * _sz] = Ek
+        self.Rc.data[1 * _sz:2 * _sz]   = Wroe.v
+        self.Rc.data[2 * _sz:3 * _sz]   = Ek
         # -1 subdiagonal entries
-        self.Rc.data[3 * _sz:4 * _sz] = Lm
-        self.Rc.data[4 * _sz:5 * _sz] = Wroe.v
-        self.Rc.data[5 * _sz:6 * _sz] = H + ua
+        self.Rc.data[3 * _sz:4 * _sz]   = Lm
+        self.Rc.data[4 * _sz:5 * _sz]   = Wroe.v
+        self.Rc.data[5 * _sz:6 * _sz]   = H + ua
         # diagonal entries
-        self.Rc.data[7 * _sz:8 * _sz] = Wroe.u
-        self.Rc.data[8 * _sz:9 * _sz] = Wroe.v
-        self.Rc.data[9 * _sz:10 * _sz] = Wroe.v
+        self.Rc.data[7 * _sz:8 * _sz]   = Wroe.u
+        self.Rc.data[8 * _sz:9 * _sz]   = Wroe.v
+        self.Rc.data[9 * _sz:10 * _sz]  = Wroe.v
         # +1 subdiagonal entries
         self.Rc.data[11 * _sz:12 * _sz] = Lp
 

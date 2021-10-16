@@ -53,13 +53,11 @@ class State:
         self.inputs = inputs
         self.nx = nx
         self.ny = ny
-
         self.g = inputs.gamma
         self._Q = np.zeros((ny, nx, 4), dtype=float)
         self.g_over_gm = self.g / (self.g - 1)
         self.one_over_gm = 1 / (self.g - 1)
         self.cache = {}
-        self.cache_vars = inputs.cache_vars
 
     @property
     def Q(self):

@@ -275,15 +275,15 @@ class PrimitiveState(State):
     @staticmethod
     @nb.njit(cache=True)
     def ek_JIT(W: np.ndarray) -> np.ndarray:
-        _Ek = np.zeros((W.shape[0], W.shape[1]))
+        _ek = np.zeros((W.shape[0], W.shape[1]))
         for i in range(W.shape[0]):
             for j in range(W.shape[1]):
-                _Ek[i, j] = 0.5 * W[i, j, 0] * (W[i, j, 1] * W[i, j, 1] + W[i, j, 2] * W[i, j, 2])
-        return _Ek
+                _ek[i, j] = 0.5 * W[i, j, 0] * (W[i, j, 1] * W[i, j, 1] + W[i, j, 2] * W[i, j, 2])
+        return _ek
 
     @cache
     def Ek(self) -> np.ndarray:
-        return self.Ek_JIT(self.u, self.v)
+        return self.Ek_JIT(self._Q)
 
     def Ek_NP(self):
         _u = self.u
@@ -292,13 +292,11 @@ class PrimitiveState(State):
 
     @staticmethod
     @nb.njit(cache=True)
-    def Ek_JIT(u: np.ndarray,
-               v: np.ndarray
-               ) -> np.ndarray:
-        _Ek = np.zeros_like(u)
-        for i in range(u.shape[0]):
-            for j in range(u.shape[1]):
-                _Ek[i, j] = 0.5 * (u[i, j] * u[i, j] + v[i, j] * v[i, j])
+    def Ek_JIT(W: np.ndarray) -> np.ndarray:
+        _Ek = np.zeros((W.shape[0], W.shape[1]))
+        for i in range(W.shape[0]):
+            for j in range(W.shape[1]):
+                _Ek[i, j] = 0.5 * (W[i, j, 1] * W[i, j, 1] + W[i, j, 2] * W[i, j, 2])
         return _Ek
 
     @cache
