@@ -171,6 +171,7 @@ def reflect_point(x1: float,
 
         return xp, yp
 
+
 def cache(func: Callable):
     @functools.wraps(func)
     def _wrapper(self, *args, **kwargs):

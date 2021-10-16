@@ -68,7 +68,6 @@ class FluxFunction:
                 raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
         else:
             raise AttributeError('Only give UL and UR or WL and WR, not combination of U and W')
-        #print([type(w) for w in [WL, WR, UL, UR]])
         return self.compute_flux(WL, WR, UL, UR)
 
     @staticmethod

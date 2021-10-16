@@ -49,7 +49,6 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         Returns:
             - high_ord (np.ndarray): High order term
         """
-
         return refBLK.gradx * (face.xmid - refBLK.mesh.x) + refBLK.grady * (face.ymid - refBLK.mesh.y)
 
     def reconstruct_state(self, refBLK: QuadBlock) -> [np.ndarray]:
@@ -75,11 +74,10 @@ class SecondOrderPWL(MUSCLFiniteVolumeMethod):
         high_ord_S = self.high_order_term(refBLK, refBLK.mesh.faceS)
 
         # Compute slope limiter
-        phi = self.flux_limiter.limit(refBLK,
-                                      quadE=refBLK.state + high_ord_E,
-                                      quadW=refBLK.state + high_ord_W,
-                                      quadN=refBLK.state + high_ord_N,
-                                      quadS=refBLK.state + high_ord_S)
+        phi = self.flux_limiter.limit(refBLK, quadE=refBLK.state + high_ord_E,
+                                              quadW=refBLK.state + high_ord_W,
+                                              quadN=refBLK.state + high_ord_N,
+                                              quadS=refBLK.state + high_ord_S)
 
         # Compute limited values at quadrature points
         stateE = refBLK.state + phi * high_ord_E

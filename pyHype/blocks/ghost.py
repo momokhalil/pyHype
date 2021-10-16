@@ -199,7 +199,7 @@ class GhostBlockEast(GhostBlock):
         # Construct ConservativeState class to represent the solution on the mesh
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
         # Set geometric angle
-        self.theta = refBLK.thetaE
+        #self.theta = refBLK.thetaE
 
         # Calculate location of NorthWest corner
         NWx = self.refBLK.mesh.nodes.x[-1, -1]
@@ -289,7 +289,7 @@ class GhostBlockWest(GhostBlock):
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
 
         # Set geometric angle
-        self.theta = refBLK.thetaW
+        #self.theta = refBLK.thetaW
 
         # Calculate location of NorthEast corner
         NEx = self.refBLK.mesh.nodes.x[-1, 0]
@@ -380,7 +380,7 @@ class GhostBlockNorth(GhostBlock):
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
 
         # Set geometric angle
-        self.theta = refBLK.thetaN
+        #self.theta = refBLK.thetaN
 
         # Calculate location of SouthWest corner
         SWx = self.refBLK.mesh.nodes.x[-1, 0]
@@ -468,7 +468,7 @@ class GhostBlockSouth(GhostBlock):
 
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
 
-        self.theta = refBLK.thetaS
+        #self.theta = refBLK.thetaS
 
         # Calculate location of NorthWest corner
         NWx = self.refBLK.mesh.nodes.x[0, 0]
