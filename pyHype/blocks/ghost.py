@@ -21,8 +21,8 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numpy as np
 from abc import abstractmethod
 from pyHype.utils import utils
-from pyHype.mesh.base import Mesh
-from typing import TYPE_CHECKING
+from pyHype.mesh.QuadMesh import QuadMesh
+from typing import TYPE_CHECKING, Union
 from pyHype.states import ConservativeState
 
 if TYPE_CHECKING:
@@ -48,23 +48,15 @@ class GhostBlock:
                  BCtype: str,
                  refBLK: QuadBlock):
 
-        # Set inputs
         self.inputs = inputs
-        # Set BC type
         self.BCtype = BCtype
-        # Set number of cells
         self.nx = inputs.nx
         self.ny = inputs.ny
-        # Set number of ghost cells
         self.nghost = inputs.nghost
-        # Set reference block
         self.refBLK = refBLK
 
-        # State attribute (set to None)
         self.state = None
-        # Mesh attribute (set to None)
         self.mesh = None
-        # Angle of boudndary (deprecated, will be removed soon)
         self.theta = None
 
         # Assign the BCset method to avoid checking type everytime
@@ -106,7 +98,6 @@ class GhostBlock:
         _has_inlets = [inlet for inlet in _inlets if hasattr(self.inputs, inlet)]
 
         for ic in _has_inlets:
-            # Realizability/Type check for density
             if self.inputs.__getattribute__(ic) <= 0:
                 raise ValueError('Inlet density or pressure is less than or equal to zero and thus non-physical.')
             elif not isinstance(self.inputs.__getattribute__(ic), (int, float)):
@@ -155,6 +146,74 @@ class GhostBlock:
         _col = self.state.Q[:, None, index, :]
         return _col.copy() if copy else _col
 
+    @staticmethod
+    def zero_wall_u_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
+        """
+        Sets the u velocity along the wall to zero. Rotates the state from global to wall frame and back to ensure
+        coordinate alignment.
+
+        Parameters:
+            - state (np.ndarray): Ghost cell state arrays
+            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
+
+        Returns:
+            - None
+        """
+        utils.rotate(wall_angle, state)
+        state[:, :, 1] = 0
+        utils.unrotate(wall_angle, state)
+
+    @staticmethod
+    def flip_wall_u_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
+        """
+        Flips the sign of the u velocity along the wall. Rotates the state from global to wall frame and back to ensure
+        coordinate alignment.
+
+        Parameters:
+            - state (np.ndarray): Ghost cell state arrays
+            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
+
+        Returns:
+            - None
+        """
+        utils.rotate(wall_angle, state)
+        state[:, :, 1] = -state[:, :, 1]
+        utils.unrotate(wall_angle, state)
+
+    @staticmethod
+    def zero_wall_v_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
+        """
+        Sets the v velocity along the wall to zero. Rotates the state from global to wall frame and back to ensure
+        coordinate alignment.
+
+        Parameters:
+            - state (np.ndarray): Ghost cell state arrays
+            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
+
+        Returns:
+            - None
+        """
+        utils.rotate(wall_angle, state)
+        state[:, :, 2] = 0
+        utils.unrotate(wall_angle, state)
+
+    @staticmethod
+    def flip_wall_v_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
+        """
+        Flips the sign of the v velocity along the wall. Rotates the state from global to wall frame and back to ensure
+        coordinate alignment.
+
+        Parameters:
+            - state (np.ndarray): Ghost cell state arrays
+            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
+
+        Returns:
+            - None
+        """
+        utils.rotate(wall_angle, state)
+        state[:, :, 2] = -state[:, :, 2]
+        utils.unrotate(wall_angle, state)
+
     @abstractmethod
     def set_BC_none(self):
         pass
@@ -185,21 +244,13 @@ class GhostBlock:
 
 
 class GhostBlockEast(GhostBlock):
-    """
-
-    """
-
     def __init__(self,
                  inputs: ProblemInput,
                  BCtype: str,
                  refBLK: QuadBlock):
 
-        # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
-        # Construct ConservativeState class to represent the solution on the mesh
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
-        # Set geometric angle
-        #self.theta = refBLK.thetaE
 
         # Calculate location of NorthWest corner
         NWx = self.refBLK.mesh.nodes.x[-1, -1]
@@ -209,68 +260,55 @@ class GhostBlockEast(GhostBlock):
         SWy = self.refBLK.mesh.nodes.y[0, -1]
 
         # Get points on the outside of the block
-        NEx, NEy = utils.reflect_point(NWx, NWy, SWx, SWy,
-                                       xr=self.refBLK.mesh.nodes.x[-1, -1 - self.inputs.nghost],
+        NEx, NEy = utils.reflect_point(NWx, NWy, SWx, SWy, xr=self.refBLK.mesh.nodes.x[-1, -1 - self.inputs.nghost],
                                        yr=self.refBLK.mesh.nodes.y[-1, -1 - self.inputs.nghost])
-
-        SEx, SEy = utils.reflect_point(NWx, NWy, SWx, SWy,
-                                       xr=self.refBLK.mesh.nodes.x[0, -1 - self.inputs.nghost],
+        SEx, SEy = utils.reflect_point(NWx, NWy, SWx, SWy, xr=self.refBLK.mesh.nodes.x[0, -1 - self.inputs.nghost],
                                        yr=self.refBLK.mesh.nodes.y[0, -1 - self.inputs.nghost])
-
         # Construct Mesh
-        self.mesh = Mesh(self.inputs,
-                         NE=(NEx, NEy),
-                         NW=(NWx, NWy),
-                         SE=(SEx, SEy),
-                         SW=(SWx, SWy),
-                         nx=inputs.nghost,
-                         ny=self.refBLK.ny)
+        self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
+                             nx=inputs.nghost, ny=self.refBLK.ny)
 
     def set_BC_none(self):
+        """
+        Boundary condition type NONE, allows flow to pass between blocks.
+        """
         self.state.U = self.refBLK.neighbors.E.get_west_ghost()
 
     def set_BC_reflection(self):
-        # Get state from interior domain
+        """
+        Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
+        sign of the normal component.
+        """
         state = self.refBLK.get_east_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_east_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle, state)
-        # Reflect normal velocity
-        state[:, :, 1] = -state[:, :, 1]
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle, state)
-        # Update state
+        self.flip_wall_u_velocity(state, self.refBLK.mesh.get_east_face_angle())
         self.state.U = state
 
     def set_BC_slipwall(self):
-        # Get state from interior domain
+        """
+        Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
+        normal component.
+        """
         state = self.refBLK.get_east_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_east_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle, state)
-        # Reflect normal velocity
-        state[:, :, 1] = 0
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle, state)
-        # Update state
+        self.zero_wall_u_velocity(state, self.refBLK.mesh.get_east_face_angle())
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
-        rho = self.inputs.BC_inlet_east_rho
-        ek = 0.5 * rho * (self.inputs.BC_inlet_east_u ** 2 + self.inputs.BC_inlet_east_v ** 2)
-
-        self.state.U[:, :, self.state.RHO_IDX] = rho
-        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_east_u
-        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_east_v
-        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_east_p / (self.inputs.gamma - 1) + ek
-
-    def set_BC_inlet_riemann(self):
-        pass
+        """
+        Set dirichlet inlet boundary condition on the eastern face.
+        """
+        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_east_rho
+        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_east_rho * self.inputs.BC_inlet_east_u
+        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_east_rho * self.inputs.BC_inlet_east_v
+        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_east_p / (self.inputs.gamma - 1) \
+                                                + 0.5 * self.inputs.BC_inlet_east_rho \
+                                                      * (self.inputs.BC_inlet_east_u ** 2 +
+                                                         self.inputs.BC_inlet_east_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
         self.state.U = self.refBLK.get_east_ghost()
+
+    def set_BC_inlet_riemann(self):
+        pass
 
     def set_BC_outlet_riemann(self):
         pass
@@ -282,14 +320,8 @@ class GhostBlockWest(GhostBlock):
                  BCtype: str,
                  refBLK: QuadBlock):
 
-        # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
-
-        # Construct ConservativeState class to represent the solution on the mesh
         self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
-
-        # Set geometric angle
-        #self.theta = refBLK.thetaW
 
         # Calculate location of NorthEast corner
         NEx = self.refBLK.mesh.nodes.x[-1, 0]
@@ -299,69 +331,52 @@ class GhostBlockWest(GhostBlock):
         SEy = self.refBLK.mesh.nodes.y[0, 0]
 
         # Get points on the outside of the block
-        NWx, NWy = utils.reflect_point(NEx, NEy, SEx, SEy,
-                                       xr=self.refBLK.mesh.nodes.x[-1, self.inputs.nghost],
+        NWx, NWy = utils.reflect_point(NEx, NEy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[-1, self.inputs.nghost],
                                        yr=self.refBLK.mesh.nodes.y[-1, self.inputs.nghost])
-
-        SWx, SWy = utils.reflect_point(NEx, NEy, SEx, SEy,
-                                       xr=self.refBLK.mesh.nodes.x[0, self.inputs.nghost],
+        SWx, SWy = utils.reflect_point(NEx, NEy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[0, self.inputs.nghost],
                                        yr=self.refBLK.mesh.nodes.y[0, self.inputs.nghost])
-
         # Construct Mesh
-        self.mesh = Mesh(self.inputs,
-                         NE=(NEx, NEy),
-                         NW=(NWx, NWy),
-                         SE=(SEx, SEy),
-                         SW=(SWx, SWy),
-                         nx=inputs.nghost,
-                         ny=self.refBLK.ny)
+        self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
+                             nx=inputs.nghost, ny=self.refBLK.ny)
 
     def set_BC_none(self):
         self.state.U = self.refBLK.neighbors.W.get_east_ghost()
 
     def set_BC_reflection(self):
-        # Get state from interior domain
+        """
+        Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
+        sign of the normal component.
+        """
         state = self.refBLK.get_west_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_west_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle, state)
-        # Reflect normal velocity
-        state[:, :, 1] = -state[:, :, 1]
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle, state)
-        # Update state
+        self.flip_wall_u_velocity(state, self.refBLK.mesh.get_west_face_angle())
         self.state.U = state
 
     def set_BC_slipwall(self):
-        # Get state from interior domain
+        """
+        Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
+        normal component.
+        """
         state = self.refBLK.get_west_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_west_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle, state)
-        # Reflect normal velocity
-        state[:, :, 1] = 0
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle, state)
-        # Update state
+        self.zero_wall_u_velocity(state, self.refBLK.mesh.get_west_face_angle())
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
-
-        rho = self.inputs.BC_inlet_west_rho
-        ek = 0.5 * rho * (self.inputs.BC_inlet_west_u ** 2 + self.inputs.BC_inlet_west_v ** 2)
-
-        self.state.U[:, :, self.state.RHO_IDX] = rho
-        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_west_u
-        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_west_v
-        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_west_p / (self.inputs.gamma - 1) + ek
-
-    def set_BC_inlet_riemann(self):
-        pass
+        """
+        Set dirichlet inlet boundary condition on the eastern face.
+        """
+        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_west_rho
+        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_west_rho * self.inputs.BC_inlet_west_u
+        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_west_rho * self.inputs.BC_inlet_west_v
+        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_west_p / (self.inputs.gamma - 1) \
+                                                + 0.5 * self.inputs.BC_inlet_west_rho \
+                                                      * (self.inputs.BC_inlet_west_u ** 2 +
+                                                         self.inputs.BC_inlet_west_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
         self.state.U = self.refBLK.get_west_ghost()
+
+    def set_BC_inlet_riemann(self):
+        pass
 
     def set_BC_outlet_riemann(self):
         pass
@@ -373,14 +388,8 @@ class GhostBlockNorth(GhostBlock):
                  BCtype: str,
                  refBLK: QuadBlock):
 
-        # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
-
-        # Construct ConservativeState class to represent the solution on the mesh
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
-
-        # Set geometric angle
-        #self.theta = refBLK.thetaN
 
         # Calculate location of SouthWest corner
         SWx = self.refBLK.mesh.nodes.x[-1, 0]
@@ -390,68 +399,52 @@ class GhostBlockNorth(GhostBlock):
         SEy = self.refBLK.mesh.nodes.y[-1, -1]
 
         # Get points on the outside of the block
-        NWx, NWy = utils.reflect_point(SWx, SWy, SEx, SEy,
-                                       xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, 0],
+        NWx, NWy = utils.reflect_point(SWx, SWy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, 0],
                                        yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, 0])
-
-        NEx, NEy = utils.reflect_point(SWx, SWy, SEx, SEy,
-                                       xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, -1],
+        NEx, NEy = utils.reflect_point(SWx, SWy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, -1],
                                        yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, -1])
-
         # Construct Mesh
-        self.mesh = Mesh(self.inputs,
-                         NE=(NEx, NEy),
-                         NW=(NWx, NWy),
-                         SE=(SEx, SEy),
-                         SW=(SWx, SWy),
-                         nx=self.refBLK.ny,
-                         ny=inputs.nghost)
+        self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
+                             nx=self.refBLK.ny, ny=inputs.nghost)
 
     def set_BC_none(self):
         self.state.U = self.refBLK.neighbors.N.get_south_ghost()
 
     def set_BC_reflection(self):
-        # Get state from interior domain
+        """
+        Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
+        sign of the normal component.
+        """
         state = self.refBLK.get_north_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_north_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle - np.pi/2, state)
-        # Reflect normal velocity
-        state[:, :, 2] = -state[:, :, 2]
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle - np.pi / 2, state)
-        # Update state
+        self.flip_wall_v_velocity(state, self.refBLK.mesh.get_north_face_angle() - np.pi / 2)
         self.state.U = state
 
     def set_BC_slipwall(self):
-        # Get state from interior domain
+        """
+        Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
+        normal component.
+        """
         state = self.refBLK.get_north_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_north_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle - np.pi/2, state)
-        # Reflect normal velocity
-        state[:, :, 2] = 0
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle - np.pi / 2, state)
-        # Update state
+        self.zero_wall_v_velocity(state, self.refBLK.mesh.get_north_face_angle() - np.pi / 2)
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
-        rho = self.inputs.BC_inlet_north_rho
-        ek = 0.5 * rho * (self.inputs.BC_inlet_north_u ** 2 + self.inputs.BC_inlet_north_v ** 2)
-
-        self.state.U[:, :, self.state.RHO_IDX] = rho
-        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_north_u
-        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_north_v
-        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_north_p / (self.inputs.gamma - 1) + ek
-
-    def set_BC_inlet_riemann(self):
-        pass
+        """
+        Set dirichlet inlet boundary condition on the northern face.
+        """
+        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_north_rho
+        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_north_rho * self.inputs.BC_inlet_north_u
+        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_north_rho * self.inputs.BC_inlet_north_v
+        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_north_p / (self.inputs.gamma - 1) \
+                                                + 0.5 * self.inputs.BC_inlet_north_rho \
+                                                      * (self.inputs.BC_inlet_north_u ** 2 +
+                                                         self.inputs.BC_inlet_north_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
         self.state.U = self.refBLK.get_north_ghost()
+
+    def set_BC_inlet_riemann(self):
+        pass
 
     def set_BC_outlet_riemann(self):
         pass
@@ -463,12 +456,8 @@ class GhostBlockSouth(GhostBlock):
                  BCtype: str,
                  refBLK: QuadBlock):
 
-        # Call superclass contructor
         super().__init__(inputs, BCtype, refBLK)
-
         self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
-
-        #self.theta = refBLK.thetaS
 
         # Calculate location of NorthWest corner
         NWx = self.refBLK.mesh.nodes.x[0, 0]
@@ -478,68 +467,52 @@ class GhostBlockSouth(GhostBlock):
         NEy = self.refBLK.mesh.nodes.y[0, -1]
 
         # Get points on the outside of the block
-        SWx, SWy = utils.reflect_point(NWx, NWy, NEx, NEy,
-                                       xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, 0],
+        SWx, SWy = utils.reflect_point(NWx, NWy, NEx, NEy, xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, 0],
                                        yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, 0])
-
-        SEx, SEy = utils.reflect_point(NWx, NWy, NEx, NEy,
-                                       xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, -1],
+        SEx, SEy = utils.reflect_point(NWx, NWy, NEx, NEy, xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, -1],
                                        yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, -1])
-
         # Construct Mesh
-        self.mesh = Mesh(self.inputs,
-                         NE=(NEx, NEy),
-                         NW=(NWx, NWy),
-                         SE=(SEx, SEy),
-                         SW=(SWx, SWy),
-                         nx=self.refBLK.ny,
-                         ny=inputs.nghost)
+        self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
+                             nx=self.refBLK.ny, ny=inputs.nghost)
 
     def set_BC_none(self):
         self.state.U = self.refBLK.neighbors.S.get_north_ghost()
 
     def set_BC_reflection(self):
-        # Get state from interior domain
+        """
+        Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
+        sign of the normal component.
+        """
         state = self.refBLK.get_south_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_south_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle - np.pi/2, state)
-        # Reflect normal velocity
-        state[:, :, 2] = -state[:, :, 2]
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle - np.pi / 2, state)
-        # Update state
+        self.flip_wall_v_velocity(state, self.refBLK.mesh.get_south_face_angle() - np.pi / 2)
         self.state.U = state
 
     def set_BC_slipwall(self):
-        # Get state from interior domain
+        """
+        Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
+        normal component.
+        """
         state = self.refBLK.get_south_ghost()
-        # Get wall angle
-        wall_angle = self.refBLK.mesh.get_south_face_angle()
-        # Rotate state to allign with wall
-        utils.rotate(wall_angle - np.pi/2, state)
-        # Reflect normal velocity
-        state[:, :, 2] = 0
-        # Rotate state back to global axes
-        utils.unrotate(wall_angle - np.pi / 2, state)
-        # Update state
+        self.zero_wall_v_velocity(state, self.refBLK.mesh.get_south_face_angle() - np.pi / 2)
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
-        rho = self.inputs.BC_inlet_south_rho
-        ek = 0.5 * rho * (self.inputs.BC_inlet_south_u ** 2 + self.inputs.BC_inlet_south_v ** 2)
-
-        self.state.U[:, :, self.state.RHO_IDX] = rho
-        self.state.U[:, :, self.state.RHOU_IDX] = rho * self.inputs.BC_inlet_south_u
-        self.state.U[:, :, self.state.RHOV_IDX] = rho * self.inputs.BC_inlet_south_v
-        self.state.U[:, :, self.state.E_IDX] = self.inputs.BC_inlet_south_p / (self.inputs.gamma - 1) + ek
-
-    def set_BC_inlet_riemann(self):
-        pass
+        """
+        Set dirichlet inlet boundary condition on the southern face.
+        """
+        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_south_rho
+        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_south_rho * self.inputs.BC_inlet_south_u
+        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_south_rho * self.inputs.BC_inlet_south_v
+        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_south_p / (self.inputs.gamma - 1) \
+                                                + 0.5 * self.inputs.BC_inlet_south_rho \
+                                                      * (self.inputs.BC_inlet_south_u ** 2 +
+                                                         self.inputs.BC_inlet_south_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
         self.state.U = self.refBLK.get_south_ghost()
+
+    def set_BC_inlet_riemann(self):
+        pass
 
     def set_BC_outlet_riemann(self):
         pass
