@@ -149,7 +149,8 @@ class PrimitiveState(State):
     # METHODS FOR UPDATING INTERNAL STATE BASED ON EXTERNAL INPUTS
 
     def from_conservative_state(self,
-                                U: 'ConservativeState'
+                                U: 'ConservativeState',
+                                copy: bool = True,
                                 ) -> None:
         """
         Creates a `PrimitiveState` object from a `ConservativeState` object. Given that `PrimitiveState` state
@@ -165,11 +166,16 @@ class PrimitiveState(State):
         **Parameters**                              \n
             U       ConservativeState object        \n
         """
-        self.rho    = U.rho.copy()
-        self.u      = U.u / self.rho
-        self.v      = U.v / self.rho
+        if copy:
+            self.rho    = U.rho.copy()
+            self.u      = U.u.copy()
+            self.v      = U.v.copy()
+        else:
+            self.rho    = U.rho
+            self.u      = U.u
+            self.v      = U.v
+
         self.p      = (self.g - 1) * (U.e - self.ek())
-        self.cache  = cpy(U.cache)
 
     def from_conservative_state_vector(self,
                                        U_vector: np.ndarray
@@ -636,7 +642,6 @@ class ConservativeState(State):
         self.rhou   = W.rho * W.u
         self.rhov   = W.rho * W.v
         self.e      = W.p / (self.g - 1) + W.ek()
-        self.cache  = cpy(W.cache)
 
     def from_primitive_state_vector(self, W_vector: np.ndarray) -> None:
         """
