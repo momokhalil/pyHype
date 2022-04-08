@@ -21,8 +21,8 @@ import numba as nb
 from abc import abstractmethod
 from pyHype.states.states import ConservativeState, \
                                  PrimitiveState,    \
-                                 RoePrimitiveState
-
+                                 RoePrimitiveState, \
+                                 State
 
 class FluxFunction:
     def __init__(self, inputs):
@@ -33,42 +33,29 @@ class FluxFunction:
         self.n = inputs.n
 
     def __call__(self,
-                 WL: [PrimitiveState, np.ndarray] = None,
-                 WR: [PrimitiveState, np.ndarray] = None,
-                 UL: [ConservativeState, np.ndarray] = None,
-                 UR: [ConservativeState, np.ndarray] = None,
+                 stateL: State,
+                 stateR: State,
                  *args, **kwargs):
 
-        if UL is not None and UR is not None and (WL is None) and (WR is None):
-            # Create Left and Right PrimitiveStates
-            if isinstance(UL, ConservativeState):
-                WL = UL.to_primitive_state()
-            elif isinstance(UL, np.ndarray):
-                WL = PrimitiveState(self.inputs, U_vector=UL)
-            else:
-                raise ValueError('Parameter UL must be of type ConservativeState or np.ndarray')
-
-            if isinstance(UR, ConservativeState):
-                WR = UR.to_primitive_state()
-            elif isinstance(UR, np.ndarray):
-                WR = PrimitiveState(self.inputs, U_vector=UR)
-            else:
-                raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
-
-        elif WL is not None and WR is not None and UL is None and UR is None:
-            # Create Left and Right PrimitiveStates
-            if isinstance(WL, np.ndarray):
-                WL = PrimitiveState(self.inputs, W_vector=WL)
-            else:
-                raise ValueError('Parameter UL must be of type ConservativeState or np.ndarray')
-
-            if isinstance(WR, np.ndarray):
-                WR = PrimitiveState(self.inputs, W_vector=WR)
-            else:
-                raise ValueError('Parameter UR must be of type ConservativeState or np.ndarray')
+        if isinstance(stateL, PrimitiveState):
+            _WL = stateL
+            _UL = _WL.to_conservative_state()
+        elif isinstance(stateL, ConservativeState):
+            _UL = stateL
+            _WL = _UL.to_primitive_state()
         else:
-            raise AttributeError('Only give UL and UR or WL and WR, not combination of U and W')
-        return self.compute_flux(WL, WR, UL, UR)
+            raise TypeError('FluxFunction.__call__() Error, unknown state type.')
+
+        if isinstance(stateR, PrimitiveState):
+            _WR = stateR
+            _UR = _WR.to_conservative_state()
+        elif isinstance(stateR, ConservativeState):
+            _UR = stateR
+            _WR = _UR.to_primitive_state()
+        else:
+            raise TypeError('FluxFunction.__call__() Error, unknown state type.')
+
+        return self.compute_flux(_WL, _WR, _UL, _UR)
 
     @staticmethod
     def wavespeeds_x(W: PrimitiveState) -> [np.ndarray]:
@@ -185,7 +172,7 @@ class FluxFunction:
     def compute_flux(self,
                      WL: PrimitiveState,
                      WR: PrimitiveState,
-                     UL: [ConservativeState, np.ndarray] = None,
-                     UR: [ConservativeState, np.ndarray] = None,
+                     UL: [ConservativeState, np.ndarray],
+                     UR: [ConservativeState, np.ndarray],
                      ) -> np.ndarray:
         pass

@@ -22,22 +22,18 @@ import numpy as np
 from abc import abstractmethod
 
 from pyHype.limiters import limiters
-from pyHype.states.states import ConservativeState
-from pyHype.flux.Roe import ROE_FLUX_X
-from pyHype.flux.HLLE import HLLE_FLUX_X
-from pyHype.flux.HLLL import HLLL_FLUX_X
+from pyHype.utils.utils import DirectionalContainerBase
+
+import pyHype.flux as flux
 import pyHype.fvm.Gradients as Grads
+from pyHype.states.states import StateFactory as sf
 import pyHype.utils.utils as utils
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyHype.blocks.QuadBlock import QuadBlock
-
-
-__DEFINED_FLUX_FUNCTIONS__ = ['Roe', 'HLLE', 'HLLL']
-__DEFINED_SLOPE_LIMITERS__ = ['VanAlbada', 'VanLeer', 'Venkatakrishnan', 'BarthJespersen']
-__DEFINED_GRADIENT_FUNCS__ = ['GreenGauss']
-__DEFINED_RECONSTRUCTION__ = ['Primitive', 'Conservative']
+    from pyHype.blocks.QuadBlock import QuadBlock, GradientsContainer
+    from pyHype.states.base import State
+    from pyHype.mesh.quadratures import QuadraturePoint
 
 
 class MUSCLFiniteVolumeMethod:
@@ -80,147 +76,86 @@ class MUSCLFiniteVolumeMethod:
                 O----------O----------O----------O----------O |
                  \|         \|         \|         \|         \|
                   O----------O----------O----------O----------O
-
-
-        then, cells are constructed as follows:
-
-        O---------O---------O---------O---------O
-        |         |         |         |         |
-        |         |         |         |         |
-        |         |         |         |         |
-        O---------O---------O---------O---------O
-        |         |         |         |         |
-        |         |    .....x.....    |         | -- Y+1/2
-        |         |    .    |    .    |         |
-        O---------O----x--- C ---x----O---------O -- Y
-        |         |    .    |    .    |         |
-        |         |    .....x.....    |         | -- Y-1/2
-        |         |         |         |         |
-        O---------O---------O---------O---------O
-        |         |         |         |         |
-        |         |         |         |         |
-        |         |         |         |         |
-        O---------O---------O---------O---------O
-                       |    |    |
-                   X-1/2    X    X+1/2
-
-        Reduction to 1D problem for each cell:
-
-        x - direction:
-
-        O---------O---------O---------O---------O
-        |         |         |         |         |
-        |         |         |         |         |
-        |         |         |         |         |
-        O---------O---------O---------O---------O
-        |         |         |         |         |
-        |         |         |         |         |
-        |         |         |         |         |
-        O---------O---------O---------O---------O
-        |         |         |         |         |
-        |         |         |         |         |
-      ..|.........|.........|.........|.........|..
-      . O----x----O----x--- C ---x----O----x----0 .
-      ..|.........|.........|.........|.........|..
-        |         |         |         |         |
-        |         |         |         |         |
-        O---------O---------O---------O---------0
-
-        y - direction:
                           . . .
-        O---------O-------.-O-.-------O---------O
-        |         |       . | .       |         |
-        |         |       . x .       |         |
-        |         |       . | .       |         |
-        O---------O-------.-O-.-------O---------O
-        |         |       . | .       |         |
-        |         |       . x .       |         |
-        |         |       . | .       |         |
-        O---------O-------.-C-.-------O---------O
-        |         |       . | .       |         |
-        |         |       . x .       |         |
-        |         |       . | .       |         |
-        O---------O-------.-O-.-------O---------O
-        |         |       . | .       |         |
-        |         |       . x .       |         |
-        |         |       . | .       |         |
-        O---------O-------.-O-.-------O---------O
-                          . . .
+        ... to be continued.
         """
-
         self.nx = inputs.nx
         self.ny = inputs.ny
         self.inputs = inputs
         self.global_nBLK = global_nBLK
 
-        self.Flux_E = np.empty((self.ny, self.nx, 4))
-        self.Flux_W = np.empty((self.ny, self.nx, 4))
-        self.Flux_N = np.empty((self.ny, self.nx, 4))
-        self.Flux_S = np.empty((self.ny, self.nx, 4))
-
-        self.UL = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
-        self.UR = ConservativeState(self.inputs, nx=self.nx + 1, ny=1)
-
-        _flux_func = self.inputs.flux_function
-        if _flux_func == 'Roe':
-            self.flux_function_X = ROE_FLUX_X(self.inputs, self.inputs.nx)
-            self.flux_function_Y = ROE_FLUX_X(self.inputs, self.inputs.ny)
-        elif _flux_func == 'HLLE':
-            self.flux_function_X = HLLE_FLUX_X(self.inputs)
-            self.flux_function_Y = HLLE_FLUX_X(self.inputs)
-        elif _flux_func == 'HLLL':
-            self.flux_function_X = HLLL_FLUX_X(self.inputs)
-            self.flux_function_Y = HLLL_FLUX_X(self.inputs)
+        # Flux storage arrays
+        self.Flux = DirectionalContainerBase(
+            east_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            west_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            north_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            south_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+        )
+        # Set flux function
+        if self.inputs.fvm_flux_function == 'Roe':
+            self.flux_function_X = flux.FluxRoe(self.inputs, self.inputs.nx, self.inputs.ny)
+            self.flux_function_Y = flux.FluxRoe(self.inputs, self.inputs.ny, self.inputs.nx)
+        elif self.inputs.fvm_flux_function == 'HLLE':
+            self.flux_function_X = flux.FluxHLLE(self.inputs)
+            self.flux_function_Y = flux.FluxHLLE(self.inputs)
+        elif self.inputs.fvm_flux_function == 'HLLL':
+            self.flux_function_X = flux.FluxHLLL(self.inputs)
+            self.flux_function_Y = flux.FluxHLLL(self.inputs)
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Flux function type not specified.')
 
-        _flux_limiter = self.inputs.limiter
-        if _flux_limiter == 'VanLeer':
-            self.flux_limiter = limiters.VanLeer(self.inputs)
-        elif _flux_limiter == 'VanAlbada':
-            self.flux_limiter = limiters.VanAlbada(self.inputs)
-        elif _flux_limiter == 'Venkatakrishnan':
-            self.flux_limiter = limiters.Venkatakrishnan(self.inputs)
-        elif _flux_limiter == 'BarthJespersen':
-            self.flux_limiter = limiters.BarthJespersen(self.inputs)
+        # Set slope limiter
+        if self.inputs.fvm_slope_limiter == 'VanLeer':
+            self.limiter = limiters.VanLeer(self.inputs)
+        elif self.inputs.fvm_slope_limiter == 'VanAlbada':
+            self.limiter = limiters.VanAlbada(self.inputs)
+        elif self.inputs.fvm_slope_limiter == 'Venkatakrishnan':
+            self.limiter = limiters.Venkatakrishnan(self.inputs)
+        elif self.inputs.fvm_slope_limiter == 'BarthJespersen':
+            self.limiter = limiters.BarthJespersen(self.inputs)
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
-        _gradient = self.inputs.gradient
-        if _gradient == 'GreenGauss':
+        # Set gradient algorithm
+        if self.inputs.fvm_gradient_type == 'GreenGauss':
             self.gradient = Grads.GreenGauss(self.inputs)
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
 
     def reconstruct(self,
-                    refBLK
-                    ) -> [np.ndarray]:
+                    refBLK: QuadBlock
+                    ) -> None:
         """
-        This method routes the state required for reconstruction to the correct implementation of the reconstruction.
-        Current reconstruction methods are Primitive and Conservative.
+        This method performs the steps needed to complete the spatial reconstruction of the solution state, which is
+        part of the spatial discretization required to solve the finite volume problem. The reconstruction process has
+        three key components:
+          1) Transformation of the state solution into the correct reconstruction basis.
+          2) Computation of the gradients
+          3) Computation of the slope limiter to ensure monotonicity
 
-        Parameters:
-            - refBLK: Reference block to reconstruct
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block to reconstruct
 
-        Return:
-            - stateE: Reconstructed state on east cell face
-            - stateW: Reconstructed state on west cell face
-            - stateN: Reconstructed state on north cell face
-            - stateS: Reconstructed state on south cell face
+        :rtype: None
+        :return: None
         """
-        if self.inputs.reconstruction_type == 'primitive':
-            _to_recon = refBLK.to_primitive(copy=True)
-        else:
-            _to_recon = refBLK
-
-        self.gradient(_to_recon)
-        _stateE, _stateW, _stateN, _stateS = self.reconstruct_state(_to_recon)
-        return _stateE, _stateW, _stateN, _stateS, _to_recon
+        refBLK.reconBlk.from_conservative(refBLK)
+        self.gradient(refBLK)
+        self.compute_limiter(refBLK)
 
     @abstractmethod
     def reconstruct_state(self,
                           refBLK: QuadBlock
                           ) -> [np.ndarray]:
+        """
+        Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
+        """
+        pass
+
+    @abstractmethod
+    def compute_limiter(self,
+                        refBLK: QuadBlock
+                        ) -> [np.ndarray]:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
@@ -242,7 +177,25 @@ class MUSCLFiniteVolumeMethod:
     def integrate_flux_S(self, refBLK):
         pass
 
-    def dUdt(self, refBLK):
+    @staticmethod
+    @abstractmethod
+    def high_order_term(refBLK: QuadBlock, qp: QuadraturePoint) -> np.ndarray:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def limited_solution_at_quadrature_point(self, state: State, gradients: GradientsContainer,
+                                             qp: QuadraturePoint
+                                             ) -> np.ndarray:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def unlimited_solution_at_quadrature_point(self, state: State, gradients: GradientsContainer, qp: QuadraturePoint
+                                               ) -> np.ndarray:
+        pass
+
+    def dUdt(self, refBLK: QuadBlock):
         """
         Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
         applying the semi-discrete Godunov method:
@@ -254,13 +207,46 @@ class MUSCLFiniteVolumeMethod:
         fluxW = self.integrate_flux_W(refBLK)
         fluxN = self.integrate_flux_N(refBLK)
         fluxS = self.integrate_flux_S(refBLK)
-        return -(fluxE + fluxW + fluxN + fluxS) / refBLK.mesh.A
+        return (fluxW - fluxE + fluxS - fluxN) / refBLK.mesh.A
 
+    def get_LR_states_for_EW_fluxes(self,
+                                    state_type: str,
+                                    ghostE: np.ndarray,
+                                    ghostW: np.ndarray,
+                                    stateE: np.ndarray,
+                                    stateW: np.ndarray,
+                                    ) -> [State]:
+        _stateL = sf.create_from_array(state_type=state_type,
+                                       inputs=self.inputs,
+                                       array=np.concatenate((ghostW, stateE), axis=1
+                                                            ).reshape((1, (self.nx + 1) * self.ny, 4)))
+        _stateR = sf.create_from_array(state_type=state_type,
+                                       inputs=self.inputs,
+                                       array=np.concatenate((stateW, ghostE), axis=1
+                                                            ).reshape((1, (self.nx + 1) * self.ny, 4)))
+        return _stateL, _stateR
 
-    def get_flux(self, refBLK: QuadBlock):
+    def get_LR_states_for_NS_fluxes(self,
+                                    state_type: str,
+                                    ghostN: np.ndarray,
+                                    ghostS: np.ndarray,
+                                    stateN: np.ndarray,
+                                    stateS: np.ndarray,
+                                    ) -> [State]:
+        _stateL = sf.create_from_array(array=np.concatenate((ghostS, stateN), axis=0
+                                                            ).transpose((1, 0, 2)
+                                                                        ).reshape((1, (self.ny+1)*self.nx, 4)),
+                                                 state_type=state_type, inputs=self.inputs)
+        _stateR = sf.create_from_array(array=np.concatenate((stateS, ghostN), axis=0
+                                                            ).transpose((1, 0, 2)
+                                                                        ).reshape((1, (self.ny+1)*self.nx, 4)),
+                                                 state_type=state_type, inputs=self.inputs)
+        return _stateL, _stateR
+
+    def get_flux(self, refBLK: QuadBlock) -> None:
         """
         Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all of the rows and columns
-        of cells on the blocks in a sweeping fashion (but unsplit) fashion.
+        of cells on the blocks in a sweeping (but unsplit) fashion.
 
         Parameters:
             - refBLK (QuadBlock): QuadBlock that needs its fluxes calculated.
@@ -268,60 +254,53 @@ class MUSCLFiniteVolumeMethod:
         Return:
             - N/A
         """
-        _stateE, _stateW, _stateN, _stateS, _to_recon = self.reconstruct(refBLK)
+        # Reconstruct solution
+        self.reconstruct(refBLK)
 
         # Calculate x-direction Flux
+        for nqp, (qe, qw) in enumerate(zip(refBLK.QP.E, refBLK.QP.W)):
+            _ghostE = refBLK.reconBlk.ghost.E.col(0, copy=True)
+            _ghostW = refBLK.reconBlk.ghost.W.col(-1, copy=True)
+            _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
+            _stateW = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qw)
 
-        _ghostE = _to_recon.ghost.E.col(0, copy=True)
-        _ghostW = _to_recon.ghost.W.col(-1, copy=True)
-        _ghostN = _to_recon.ghost.N.row(0, copy=True)
-        _ghostS = _to_recon.ghost.S.row(-1, copy=True)
+            if not refBLK.is_cartesian:
+                utils.rotate(refBLK.mesh.faceE.theta, _stateE)
+                utils.rotate(refBLK.mesh.faceW.theta - np.pi, _stateW)
+                utils.rotate(refBLK.mesh.get_east_face_angle(), _ghostE)
+                utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
 
-        if not _to_recon.is_cartesian:
-            utils.rotate(_to_recon.mesh.faceE.theta, _stateE)
-            utils.rotate(_to_recon.mesh.faceW.theta - np.pi, _stateW)
-            utils.rotate(_to_recon.mesh.get_east_face_angle(), _ghostE)
-            utils.rotate(_to_recon.mesh.get_west_face_angle(), _ghostW)
+            sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _ghostE, _ghostW, _stateE, _stateW)
+            fluxEW = self.flux_function_X(stateL=sL, stateR=sR).reshape((self.ny,  (self.nx+1), 4))
+            self.Flux.E[nqp][:] = fluxEW[:, 1:, :]
+            self.Flux.W[nqp][:] = fluxEW[:, :-1, :]
 
-        _stateL = np.concatenate((_ghostW, _stateE), axis=1)
-        _stateR = np.concatenate((_stateW, _ghostE), axis=1)
-
-        for row in range(self.ny):
-            if refBLK.reconstruction_type == 'primitive':
-                flux = self.flux_function_X(WL=_stateL[row, None, :, :], WR=_stateR[row, None, :, :])
-            else:
-                flux = self.flux_function_X(UL=_stateL[row, None, :, :], UR=_stateR[row, None, :, :])
-            self.Flux_E[row, :, :] = flux[:, 1:, :]
-            self.Flux_W[row, :, :] = flux[:, :-1, :]
-
-        if not _to_recon.is_cartesian:
-            utils.unrotate(_to_recon.mesh.faceE.theta, self.Flux_E)
-            utils.unrotate(_to_recon.mesh.faceW.theta - np.pi, self.Flux_W)
+            if not refBLK.is_cartesian:
+                utils.unrotate(refBLK.mesh.faceE.theta, self.Flux.E[nqp])
+                utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux.W[nqp])
 
         # Calculate y-direction Flux
+        for nqp, (qn, qs) in enumerate(zip(refBLK.QP.N, refBLK.QP.S)):
+            _ghostN = refBLK.reconBlk.ghost.N.row(0, copy=True)
+            _ghostS = refBLK.reconBlk.ghost.S.row(-1, copy=True)
+            _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
+            _stateS = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qs)
 
-        if _to_recon.is_cartesian:
-            utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
-        else:
-            utils.rotate(_to_recon.mesh.faceN.theta, _stateN)
-            utils.rotate(_to_recon.mesh.faceS.theta - np.pi, _stateS)
-            utils.rotate(_to_recon.mesh.get_north_face_angle(), _ghostN)
-            utils.rotate(_to_recon.mesh.get_south_face_angle(), _ghostS)
-
-        _stateL = np.concatenate((_ghostS, _stateN), axis=0).transpose((1, 0, 2))
-        _stateR = np.concatenate((_stateS, _ghostN), axis=0).transpose((1, 0, 2))
-
-        for col in range(self.nx):
-            if refBLK.reconstruction_type == 'primitive':
-                flux = self.flux_function_Y(WL=_stateL[col, None, :, :], WR=_stateR[col, None, :, :]).reshape(-1, 4)
+            if refBLK.is_cartesian:
+                utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
             else:
-                flux = self.flux_function_Y(UL=_stateL[col, None, :, :], UR=_stateR[col, None, :, :]).reshape(-1, 4)
-            self.Flux_N[:, col, :] = flux[1:, :]
-            self.Flux_S[:, col, :] = flux[:-1, :]
+                utils.rotate(refBLK.mesh.faceN.theta, _stateN)
+                utils.rotate(refBLK.mesh.faceS.theta - np.pi, _stateS)
+                utils.rotate(refBLK.mesh.get_north_face_angle(), _ghostN)
+                utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
 
-        if refBLK.is_cartesian:
-            utils.unrotate90(self.Flux_N, self.Flux_S)
-        else:
-            utils.unrotate(_to_recon.mesh.faceN.theta, self.Flux_N)
-            utils.unrotate(_to_recon.mesh.faceS.theta - np.pi, self.Flux_S)
+            sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _ghostN, _ghostS, _stateN, _stateS)
+            fluxNS = self.flux_function_Y(stateL=sL, stateR=sR).reshape((self.nx, (self.ny + 1), 4)).transpose((1, 0, 2))
+            self.Flux.N[nqp][:] = fluxNS[1:, :, :]
+            self.Flux.S[nqp][:] = fluxNS[:-1, :, :]
 
+            if refBLK.is_cartesian:
+                utils.unrotate90(self.Flux.N[nqp], self.Flux.S[nqp])
+            else:
+                utils.unrotate(refBLK.mesh.faceN.theta, self.Flux.N[nqp])
+                utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux.S[nqp])

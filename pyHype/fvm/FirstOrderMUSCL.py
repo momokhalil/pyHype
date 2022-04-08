@@ -31,7 +31,7 @@ from pyHype.fvm.base import MUSCLFiniteVolumeMethod
 np.set_printoptions(precision=3)
 
 
-class FirstOrder(MUSCLFiniteVolumeMethod):
+class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
 
         if inputs.nghost != 1:

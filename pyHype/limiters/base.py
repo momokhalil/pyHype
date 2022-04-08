@@ -21,7 +21,6 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numpy as np
 import numba as nb
 from abc import abstractmethod
-from profilehooks import profile
 
 from typing import TYPE_CHECKING
 
@@ -31,19 +30,46 @@ if TYPE_CHECKING:
 class SlopeLimiter:
     def __init__(self, inputs):
         self.inputs = inputs
-        self.sE = np.zeros((inputs.ny, inputs.nx, 1))
-        self.sW = np.zeros((inputs.ny, inputs.nx, 1))
-        self.sN = np.zeros((inputs.ny, inputs.nx, 1))
-        self.sS = np.zeros((inputs.ny, inputs.nx, 1))
+        self.phi = None
 
-    def get_slope(self,
-                  refBLK: QuadBlock,
-                  quadE: np.ndarray,
-                  quadW: np.ndarray,
-                  quadN: np.ndarray,
-                  quadS: np.ndarray,
-                  ) -> [np.ndarray]:
+    def __call__(self,
+                 refBLK: QuadBlock,
+                 gqpE: np.ndarray,
+                 gqpW: np.ndarray,
+                 gqpN: np.ndarray,
+                 gqpS: np.ndarray
+                 ) -> None:
+        self._limit(refBLK, gqpE, gqpW, gqpN, gqpS)
 
+    def _get_slope(self,
+                   refBLK: QuadBlock,
+                   gqpE: np.ndarray,
+                   gqpW: np.ndarray,
+                   gqpN: np.ndarray,
+                   gqpS: np.ndarray,
+                   ) -> [[np.ndarray]]:
+        """
+        Calculates the solution slopes to determine the slope limiter values on all quadrature points.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block with solution data for slope calculation
+
+        :type gqpE: np.ndarray
+        :param gqpE: reconstructed solution states at east face quadrature points
+
+        :type gqpW: np.ndarray
+        :param gqpW: reconstructed solution states at west face quadrature points
+
+        :type gqpN: np.ndarray
+        :param gqpN: reconstructed solution states at north face quadrature points
+
+        :type gqpS: np.ndarray
+        :param gqpS: reconstructed solution states at south face quadrature points
+
+        :rtype: tuple(list(np.ndarray))
+        :return: lists containing the solution slopes at each quadraure point for each face
+        """
+        # Concatenate block solution state with ghost block solution states
         _EW = np.concatenate((refBLK.ghost.W.state.Q, refBLK.state.Q, refBLK.ghost.E.state.Q), axis=1)
         _NS = np.concatenate((refBLK.ghost.S.state.Q, refBLK.state.Q, refBLK.ghost.N.state.Q), axis=0)
         # Values for min/max evaluation
@@ -52,49 +78,88 @@ class SlopeLimiter:
         dmax = np.maximum.reduce(_vals) - refBLK.state.Q
         dmin = np.minimum.reduce(_vals) - refBLK.state.Q
         # Difference between quadrature points and average value
-        dE = quadE - refBLK.state.Q
-        dW = quadW - refBLK.state.Q
-        dN = quadN - refBLK.state.Q
-        dS = quadS - refBLK.state.Q
+        dE = [_gqpE - refBLK.state.Q for _gqpE in gqpE]
+        dW = [_gqpW - refBLK.state.Q for _gqpW in gqpW]
+        dN = [_gqpN - refBLK.state.Q for _gqpN in gqpN]
+        dS = [_gqpS - refBLK.state.Q for _gqpS in gqpS]
         # Calculate slopes for each face
-        sE = self._compute_slope(dmax, dmin, dE)
-        sW = self._compute_slope(dmax, dmin, dW)
-        sN = self._compute_slope(dmax, dmin, dN)
-        sS = self._compute_slope(dmax, dmin, dS)
+        sE = [self._compute_slope(dmax, dmin, _dE) for _dE in dE]
+        sW = [self._compute_slope(dmax, dmin, _dW) for _dW in dW]
+        sN = [self._compute_slope(dmax, dmin, _dN) for _dN in dN]
+        sS = [self._compute_slope(dmax, dmin, _dS) for _dS in dS]
         return sE, sW, sN, sS
 
-    def limit(self,
-              refBLK: QuadBlock,
-              quadE: np.ndarray = None,
-              quadW: np.ndarray = None,
-              quadN: np.ndarray = None,
-              quadS: np.ndarray = None,
-              ) -> np.ndarray:
+    def _limit(self,
+               refBLK: QuadBlock,
+               gqpE: np.ndarray,
+               gqpW: np.ndarray,
+               gqpN: np.ndarray,
+               gqpS: np.ndarray,
+               ) -> None:
+        """
+        Calculates the solution slopes to determine the slope limiter values on all quadrature points.
 
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block with solution data for slope calculation
+
+        :type gqpE: np.ndarray
+        :param gqpE: reconstructed solution states at east face quadrature points
+
+        :type gqpW: np.ndarray
+        :param gqpW: reconstructed solution states at west face quadrature points
+
+        :type gqpN: np.ndarray
+        :param gqpN: reconstructed solution states at north face quadrature points
+
+        :type gqpS: np.ndarray
+        :param gqpS: reconstructed solution states at south face quadrature points
+
+        :rtype: tuple(list(np.ndarray))
+        :return: lists containing the solution slopes at each quadraure point for each face
+        """
         # Calculate values needed to build slopes
-        sE, sW, sN, sS = self.get_slope(refBLK, quadE, quadW, quadN, quadS)
-
+        sE, sW, sN, sS = self._get_slope(refBLK, gqpE, gqpW, gqpN, gqpS)
         # Minimum limiter value
-        phi = np.minimum.reduce((self._limiter_func(sE),
-                                 self._limiter_func(sW),
-                                 self._limiter_func(sN),
-                                 self._limiter_func(sS)))
-
-        return np.where(phi < 0, 0, phi)
+        phi = np.minimum.reduce((*(self._limiter_func(_sE) for _sE in sE),
+                                 *(self._limiter_func(_sW) for _sW in sW),
+                                 *(self._limiter_func(_sN) for _sN in sN),
+                                 *(self._limiter_func(_sS) for _sS in sS)))
+        self.phi = np.where(phi < 0, 0, phi)
 
     @staticmethod
     @nb.njit(cache=True)
-    def _compute_slope(dmax, dmin, dE):
-        _s = np.ones_like(dE)
-        for i in range(dE.shape[0]):
-            for j in range(dE.shape[1]):
-                for v in range(4):
-                    if dE[i, j, v] > 0:
-                        _s[i, j, v] = dmax[i, j, v] / (dE[i, j, v] + 1e-8)
-                    elif dE[i, j, v] < 0:
-                        _s[i, j, v] = dmin[i, j, v] / (dE[i, j, v] + 1e-8)
-        return _s
+    def _compute_slope(dmax: np.ndarray,
+                       dmin: np.ndarray,
+                       davg: np.ndarray
+                       ) -> np.ndarray:
+        """
+        Calculates the slope of the solution state based on the difference between the average solution state and
+        the min/max average solution states in the reconstruction neighbots and the reconstructed solution states at
+        at the quadrature points.
 
+        :type dmax: np.ndarray
+        :param dmax: Difference between the average soltion and the maximum average solution in all reconstruction
+                     neighbors
+
+        :type dmin: np.ndarray
+        :param dmin: Difference between the average soltion and the minimum average solution in all reconstruction
+                     neighbors
+
+        :type davg: np.ndarray
+        :param davg: Difference between the average solution and the reconstructed solutions at the quadrature points
+
+        :rtype _s: np.ndarray
+        :return _s: slope used for limiter calculation
+        """
+        _s = np.ones_like(davg)
+        for i in range(davg.shape[0]):
+            for j in range(davg.shape[1]):
+                for v in range(davg.shape[2]):
+                    if davg[i, j, v] > 0:
+                        _s[i, j, v] = dmax[i, j, v] / (davg[i, j, v] + 1e-12)
+                    elif davg[i, j, v] < 0:
+                        _s[i, j, v] = dmin[i, j, v] / (davg[i, j, v] + 1e-12)
+        return _s
 
     @staticmethod
     @abstractmethod

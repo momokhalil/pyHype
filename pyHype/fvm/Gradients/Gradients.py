@@ -18,7 +18,7 @@ from __future__ import annotations
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
-from pyHype.fvm.Gradients.least_squares import least_squares_9_point
+from abc import abstractmethod
 
 from typing import TYPE_CHECKING
 
@@ -31,7 +31,18 @@ class Gradient:
     def __init__(self, inputs: ProblemInput):
         self.inputs = inputs
 
+    def __call__(self,
+                 refBLK: QuadBlock
+                 ) -> None:
+        self._get_gradient(refBLK)
 
+    @staticmethod
+    @abstractmethod
+    def _get_gradient(refBLK: QuadBlock) -> None:
+        pass
+
+
+"""
 class LeastSquares9Point:
     def __init__(self, inputs: ProblemInput):
         self.inputs = inputs
@@ -44,48 +55,40 @@ class LeastSquares9Point:
     def __call__(self, refBLK):
         return self.least_squares_nearest_neighbor(refBLK)
 
-    def least_squares_nearest_neighbor(self, refBLK):
+    def least_squares_nearest_neighbor(self, refBLK: QuadBlock):
         bdr = refBLK.boundary_blocks
 
-        dQdx, dQdy = least_squares_9_point(refBLK.state.Q,
+        refBLK.grad.x, refBLK.grad.y = least_squares_9_point(refBLK.state.Q,
                                            bdr.E.state.Q, bdr.W.state.Q, bdr.N.state.Q, bdr.S.state.Q,
                                            refBLK.mesh.x, refBLK.mesh.y,
                                            bdr.E.x, bdr.E.y, bdr.W.x, bdr.W.y,
                                            bdr.N.x, bdr.N.y, bdr.S.x, bdr.S.y,
                                            self.inputs.nx, self.inputs.ny,
                                            self.stencilSW, self.stencilNW, self.stencilSE, self.stencilNE)
-        return dQdx, dQdy
+"""
 
 
-class GreenGauss:
+class GreenGauss(Gradient):
     def __init__(self, inputs: ProblemInput):
-        self.inputs = inputs
-
-    def __call__(self, refBLK: QuadBlock) -> None:
-        return self.green_gauss(refBLK)
+        super().__init__(inputs)
 
     @staticmethod
-    def green_gauss(refBLK: QuadBlock) -> None:
-
-        # Concatenate mesh state and ghost block states
-        interfaceE, interfaceW, interfaceN, interfaceS = refBLK.get_interface_values()
-
+    def _get_gradient(refBLK: QuadBlock) -> None:
+        interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
         # Get each face's contribution to dUdx
-        E = interfaceE * refBLK.mesh.faceE.L
-        W = interfaceW * refBLK.mesh.faceW.L
-        N = interfaceN * refBLK.mesh.faceN.L
-        S = interfaceS * refBLK.mesh.faceS.L
-
+        E = interfaceE * refBLK.mesh.face.E.L
+        W = interfaceW * refBLK.mesh.face.W.L
+        N = interfaceN * refBLK.mesh.face.N.L
+        S = interfaceS * refBLK.mesh.face.S.L
         # Compute dUdx
-        refBLK.gradx = (E * refBLK.mesh.faceE.xnorm +
-                        W * refBLK.mesh.faceW.xnorm +
-                        N * refBLK.mesh.faceN.xnorm +
-                        S * refBLK.mesh.faceS.xnorm
-                        ) / refBLK.mesh.A
-
+        refBLK.grad.x = (E * refBLK.mesh.face.E.xnorm +
+                         W * refBLK.mesh.face.W.xnorm +
+                         N * refBLK.mesh.face.N.xnorm +
+                         S * refBLK.mesh.face.S.xnorm
+                         ) / refBLK.mesh.A
         # Compute dUdy
-        refBLK.grady = (E * refBLK.mesh.faceE.ynorm +
-                        W * refBLK.mesh.faceW.ynorm +
-                        N * refBLK.mesh.faceN.ynorm +
-                        S * refBLK.mesh.faceS.ynorm
-                        ) / refBLK.mesh.A
+        refBLK.grad.y = (E * refBLK.mesh.face.E.ynorm +
+                         W * refBLK.mesh.face.W.ynorm +
+                         N * refBLK.mesh.face.N.ynorm +
+                         S * refBLK.mesh.face.S.ynorm
+                         ) / refBLK.mesh.A

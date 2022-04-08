@@ -21,7 +21,7 @@ from pyHype.flux.base import FluxFunction
 from pyHype.states.states import PrimitiveState, RoePrimitiveState, ConservativeState
 
 
-class HLLL_FLUX_X(FluxFunction):
+class FluxHLLL(FluxFunction):
     def __init__(self, inputs):
         super().__init__(inputs)
 
@@ -31,10 +31,6 @@ class HLLL_FLUX_X(FluxFunction):
                      UL: [ConservativeState, np.ndarray] = None,
                      UR: [ConservativeState, np.ndarray] = None,
                      ) -> np.ndarray:
-
-        # Get conservative states
-        UL = WL.to_conservative_state()
-        UR = WR.to_conservative_state()
 
         # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR)

@@ -14,6 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from pyHype.fvm.FirstOrder import FirstOrder
-from pyHype.fvm.SecondOrderPWL import SecondOrderPWL
+from pyHype.fvm.FirstOrderMUSCL import FirstOrderMUSCL
+from pyHype.fvm.SecondOrderMUSCL import SecondOrderMUSCL
 

@@ -39,20 +39,29 @@ np.set_printoptions(threshold=sys.maxsize)
 
 class Euler2D(Solver):
     def __init__(self,
-                 fvm:           str = 'SecondOrderPWL',
-                 gradient:      str = 'GreenGauss',
-                 flux_function: str = 'Roe',
-                 limiter:       str = 'Venkatakrishnan',
-                 integrator:    str = 'RK2',
-                 settings:      dict = None,
-                 mesh:          Union[MeshGenerator, dict] = None,
+                 fvm_type:                  str = 'MUSCL',
+                 fvm_spatial_order:         int = 2,
+                 fvm_num_quadrature_points: int = 1,
+                 fvm_gradient_type:         str = 'GreenGauss',
+                 fvm_flux_function:         str = 'Roe',
+                 fvm_slope_limiter:         str = 'Venkatakrishnan',
+                 time_integrator:           str = 'RK2',
+                 settings:                  dict = None,
+                 mesh_inputs:               Union[MeshGenerator, dict] = None,
                  ) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
         # Store mesh features required to create block descriptions
 
-        super().__init__(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
-                         integrator=integrator, settings=settings, mesh=mesh)
+        super().__init__(fvm_type=fvm_type,
+                         fvm_spatial_order=fvm_spatial_order,
+                         fvm_num_quadrature_points=fvm_num_quadrature_points,
+                         fvm_gradient_type=fvm_gradient_type,
+                         fvm_flux_function=fvm_flux_function,
+                         fvm_slope_limiter=fvm_slope_limiter,
+                         time_integrator=time_integrator,
+                         settings=settings,
+                         mesh_inputs=mesh_inputs)
 
         # Create Blocks
         print('\t>>> Building solution blocks')
@@ -66,11 +75,11 @@ class Euler2D(Solver):
     def __str__(self):
         __str = '\tA Solver of type Euler2D for solving the 2D Euler\n' \
                 '\tequations on structured grids using the Finite Volume Method.\n\n' \
-                '\t' + f"{'Finite Volume Method: ':<40} {self.inputs.fvm}" + '\n' + \
-                '\t' + f"{'Gradient Method: ':<40} {self.inputs.gradient}" + '\n' + \
-                '\t' + f"{'Flux Function: ':<40} {self.inputs.flux_function}" + '\n' + \
-                '\t' + f"{'Limiter: ':<40} {self.inputs.limiter}" + '\n' + \
-                '\t' + f"{'Time Integrator: ':<40} {self.inputs.integrator}"
+                '\t' + f"{'Finite Volume Method: ':<40} {self.inputs.fvm_type}" + '\n' + \
+                '\t' + f"{'Gradient Method: ':<40} {self.inputs.fvm_gradient_type}" + '\n' + \
+                '\t' + f"{'Flux Function: ':<40} {self.inputs.fvm_flux_function}" + '\n' + \
+                '\t' + f"{'Limiter: ':<40} {self.inputs.fvm_slope_limiter}" + '\n' + \
+                '\t' + f"{'Time Integrator: ':<40} {self.inputs.time_integrator}"
         return __str
 
 
