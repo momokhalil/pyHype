@@ -28,18 +28,165 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-from pyHype.fvm import FirstOrder, SecondOrderPWL
-from pyHype.mesh.base import BlockDescription, Mesh
+from pyHype.fvm import FirstOrderMUSCL, SecondOrderMUSCL
+from pyHype.mesh.QuadMesh import QuadMesh
+from pyHype.mesh import quadratures as qp
+from pyHype.mesh.base import BlockDescription
 from pyHype.states.states import ConservativeState, PrimitiveState
-from pyHype.blocks.base import GhostBlockContainer, Neighbors
+from pyHype.blocks.base import Neighbors, BaseBlock, BaseBlock_Only_State
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
-from pyHype.blocks.ghost import GhostBlockEast, GhostBlockWest, GhostBlockSouth, GhostBlockNorth
+from pyHype.blocks.ghost import GhostBlocks
 
 if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
 
-# QuadBlock Class Definition
-class QuadBlock:
+class GradientsContainer:
+    def __init__(self, inputs: ProblemInput):
+        self.inputs = inputs
+
+    def check_gradients(self):
+        pass
+
+class FirstOrderGradients(GradientsContainer):
+    def __init__(self, inputs: ProblemInput):
+        super().__init__(inputs)
+        self.x = np.empty(shape=(inputs.ny, inputs.nx, 4))
+        self.y = np.empty(shape=(inputs.ny, inputs.nx, 4))
+
+class SecondOrderGradients(GradientsContainer):
+    def __init__(self, inputs: ProblemInput):
+        super().__init__(inputs)
+        self.x = np.empty(shape=(inputs.ny, inputs.nx, 4))
+        self.y = np.empty(shape=(inputs.ny, inputs.nx, 4))
+        self.xx = np.empty(shape=(inputs.ny, inputs.nx, 4))
+        self.yy = np.empty(shape=(inputs.ny, inputs.nx, 4))
+        self.xy = np.empty(shape=(inputs.ny, inputs.nx, 4))
+
+class GradientsFactory:
+    @staticmethod
+    def create_gradients(inputs: ProblemInput):
+        if inputs.fvm_spatial_order == 1:
+            return FirstOrderGradients(inputs)
+        elif inputs.fvm_spatial_order == 2:
+            return SecondOrderGradients(inputs)
+        else:
+            raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
+                             'extended for the given order.')
+
+class BaseBlock_With_Ghost(BaseBlock_Only_State):
+
+    def __init__(self, inputs: ProblemInput, nx: int, ny: int, block_data: BlockDescription, refBLK: BaseBlock,
+                 state_type: str = 'conservative') -> None:
+        """
+        Constructs instance of class BaseBlock_With_Ghost.
+
+        :type inputs: ProblemInputs
+        :param inputs: Object that contains all the input parameters that decribe the problem.
+
+        :type nx: int
+        :param nx: Number of cells in the x direction
+
+        :type nx: int
+        :param ny: Number of cells in the y direction
+
+        :type block_data: BlockDescription
+        :param block_data: Object containing the parameters that describe the block
+
+        :type refBLK: QuadBlock
+        :param refBLK: Reference to the interior block that the ghost cells need to store
+
+        :type state_type: str
+        :param state_type: Type of the state in the block and the ghost blocks
+
+        :return: None
+        """
+        super().__init__(inputs, nx, ny, state_type=state_type)
+        self.ghost = GhostBlocks(inputs, block_data, refBLK=refBLK, state_type=state_type)
+
+    def to_primitive(self) -> None:
+        """
+        Converts state in the interior and ghost blocks to `PrimitiveState`.
+
+        :return: None
+        """
+        self.state = self.state.to_primitive_state()
+        for gblk in self.ghost():
+            gblk.state = gblk.state.to_primitive_state()
+
+    def to_conservative(self) -> None:
+        """
+        Converts state in the interior and ghost blocks to `ConservativeState`.
+
+        :return: None
+        """
+        self.state = self.state.to_conservative_state()
+        for gblk in self.ghost():
+            gblk.state = gblk.state.to_conservative_state()
+
+    def from_primitive(self, from_block: BaseBlock_With_Ghost) -> None:
+        """
+        Updates the state in the interior and ghost blocks, which may be any subclasss of `State`, using the state in
+        the interior and ghost blocks from the input block, which is of type `PrimitiveState`.
+
+        :type from_block: BaseBlock_With_Ghost
+        :param from_block: Block whos interior and ghost block states are used to update self.
+
+        :return: None
+        """
+        self.state.from_primitive_state(from_block.state)
+        for gblk, gblk_from in zip(self.ghost(), from_block.ghost()):
+            gblk.state.from_primitive_state(gblk_from.state)
+
+    def from_conservative(self, from_block: BaseBlock_With_Ghost) -> None:
+        """
+        Updates the state in the interior and ghost blocks, which may be any subclasss of `State`, using the state in
+        the interior and ghost blocks from the input block, which is of type `ConservativeState`.
+
+        :type from_block: BaseBlock_With_Ghost
+        :param from_block: Block whos interior and ghost block states are used to update self.
+
+        :return: None
+        """
+        self.state.from_conservative_state(from_block.state)
+        for gblk, gblk_from in zip(self.ghost(), from_block.ghost()):
+            gblk.state.from_conservative_state(gblk_from.state)
+
+    def get_interface_values(self) -> [np.ndarray]:
+        """
+        Compute values at the midpoint of the cell interfaces. The method of computing the values is specified in the
+        input file, and its respective implementation must be included in the class.
+
+        :rtype: (np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+        :return: Arrays containing interface values on each face
+        """
+        if self.inputs.interface_interpolation == 'arithmetic_average':
+            interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values_arithmetic()
+        else:
+            raise ValueError('Interface Interpolation method is not defined.')
+
+        return interfaceE, interfaceW, interfaceN, interfaceS
+
+    def get_interface_values_arithmetic(self) -> [np.ndarray]:
+        """
+        Compute the midpoint interface values via an arithmetic mean of the state values in the cells on either side
+        of each interface.
+
+        :rtype: (np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+        :return: Numpy arrays containing the arithmetic mean-based interface values
+        """
+
+        # Concatenate ghost cell and state values in the East-West and North-South directions
+        catx = np.concatenate((self.ghost.W.state.Q, self.state.Q, self.ghost.E.state.Q), axis=1)
+        caty = np.concatenate((self.ghost.S.state.Q, self.state.Q, self.ghost.N.state.Q), axis=0)
+
+        # Compute arithmetic mean
+        interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
+        interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
+
+        return interfaceEW[:, 1:, :], interfaceEW[:, :-1, :], interfaceNS[1:, :, :], interfaceNS[:-1, :, :]
+
+
+class QuadBlock(BaseBlock_With_Ghost):
     def __init__(self,
                  inputs: ProblemInput,
                  block_data: BlockDescription
@@ -47,75 +194,62 @@ class QuadBlock:
 
         self.inputs             = inputs
         self.block_data         = block_data
-        self.mesh               = Mesh(inputs, block_data)
-        self.state              = ConservativeState(inputs, nx=inputs.nx, ny=inputs.ny)
+        self.mesh               = QuadMesh(inputs, block_data)
         self.global_nBLK        = block_data.nBLK
         self.ghost              = None
         self.neighbors          = None
         self.nx                 = inputs.nx
         self.ny                 = inputs.ny
+        self.grad               = GradientsFactory.create_gradients(inputs)
 
-        # Conservative Gradient
-        if self.inputs.reconstruction_type == 'conservative':
-            self.dUdx               = np.zeros_like(self.mesh.x, dtype=float)
-            self.dUdy               = np.zeros_like(self.mesh.y, dtype=float)
-            self.dWdx               = None
-            self.dWdy               = None
-        # Primitive Gradient
-        elif self.inputs.reconstruction_type == 'primitive':
-            self.dWdx               = np.zeros_like(self.mesh.x, dtype=float)
-            self.dWdy               = np.zeros_like(self.mesh.y, dtype=float)
-            self.dUdx               = None
-            self.dUdy               = None
-        else:
-            raise ValueError('Reconstruction type is not defined.')
+        super().__init__(inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self)
 
+        # Create reconstruction block
+        self.reconBlk = BaseBlock_With_Ghost(inputs, inputs.nx, inputs.ny, block_data=block_data, refBLK=self,
+                                             state_type=self.inputs.reconstruction_type)
         # Set finite volume method
-        fvm = self.inputs.fvm
-
-        if fvm == 'FirstOrder':
-            self.fvm = FirstOrder(self.inputs, self.global_nBLK)
-        elif fvm == 'SecondOrderPWL':
-            self.fvm = SecondOrderPWL(self.inputs, self.global_nBLK)
+        if self.inputs.fvm_type == 'MUSCL':
+            if self.inputs.fvm_spatial_order == 1:
+                self.fvm = FirstOrderMUSCL(self.inputs, self.global_nBLK)
+            elif self.inputs.fvm_spatial_order == 2:
+                self.fvm = SecondOrderMUSCL(self.inputs, self.global_nBLK)
+            else:
+                raise ValueError('No MUSCL finite volume method has been specialized with order '
+                                 + str(self.inputs.fvm_spatial_order))
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
 
         # Set time integrator
-        time_integrator = self.inputs.integrator
-
-        if time_integrator      == 'ExplicitEuler1':
-            self._time_integrator = Erk.ExplicitEuler1(self.inputs)
-        elif time_integrator    == 'RK2':
-            self._time_integrator = Erk.RK2(self.inputs)
-        elif time_integrator    == 'Generic2':
-            self._time_integrator = Erk.Generic2(self.inputs)
-        elif time_integrator    == 'Ralston2':
-            self._time_integrator = Erk.Ralston2(self.inputs)
-        elif time_integrator    == 'Generic3':
-            self._time_integrator = Erk.Generic3(self.inputs)
-        elif time_integrator    == 'RK3':
-            self._time_integrator = Erk.RK3(self.inputs)
-        elif time_integrator    == 'RK3SSP':
-            self._time_integrator = Erk.RK3SSP(self.inputs)
-        elif time_integrator    == 'Ralston3':
-            self._time_integrator = Erk.Ralston3(self.inputs)
-        elif time_integrator    == 'RK4':
-            self._time_integrator = Erk.RK4(self.inputs)
-        elif time_integrator    == 'Ralston4':
-            self._time_integrator = Erk.Ralston4(self.inputs)
-        elif time_integrator    == 'DormandPrince5':
-            self._time_integrator = Erk.DormandPrince5(self.inputs)
+        if self.inputs.time_integrator   == 'ExplicitEuler1':
+            self._time_integrator   = Erk.ExplicitEuler1(self.inputs)
+        elif self.inputs.time_integrator == 'RK2':
+            self._time_integrator   = Erk.RK2(self.inputs)
+        elif self.inputs.time_integrator == 'Generic2':
+            self._time_integrator   = Erk.Generic2(self.inputs)
+        elif self.inputs.time_integrator == 'Ralston2':
+            self._time_integrator   = Erk.Ralston2(self.inputs)
+        elif self.inputs.time_integrator == 'Generic3':
+            self._time_integrator   = Erk.Generic3(self.inputs)
+        elif self.inputs.time_integrator == 'RK3':
+            self._time_integrator   = Erk.RK3(self.inputs)
+        elif self.inputs.time_integrator == 'RK3SSP':
+            self._time_integrator   = Erk.RK3SSP(self.inputs)
+        elif self.inputs.time_integrator == 'Ralston3':
+            self._time_integrator   = Erk.Ralston3(self.inputs)
+        elif self.inputs.time_integrator == 'RK4':
+            self._time_integrator   = Erk.RK4(self.inputs)
+        elif self.inputs.time_integrator == 'Ralston4':
+            self._time_integrator   = Erk.Ralston4(self.inputs)
+        elif self.inputs.time_integrator == 'DormandPrince5':
+            self._time_integrator   = Erk.DormandPrince5(self.inputs)
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
-        # Build boundary blocks
-        self.ghost = GhostBlockContainer(E=GhostBlockEast(self.inputs, BCtype=block_data.BCTypeE, refBLK=self),
-                                         W=GhostBlockWest(self.inputs, BCtype=block_data.BCTypeW, refBLK=self),
-                                         N=GhostBlockNorth(self.inputs, BCtype=block_data.BCTypeN, refBLK=self),
-                                         S=GhostBlockSouth(self.inputs, BCtype=block_data.BCTypeS, refBLK=self))
-
         # is block cartesian
         self.is_cartesian = self._is_cartesian()
+
+        # Quadrature
+        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
 
     def _is_cartesian(self) -> bool:
@@ -152,6 +286,7 @@ class QuadBlock:
 
     def scopy(self):
         _cpy = cpy(self)
+        _cpy.state = cpy(self.state)
         _cpy.ghost = cpy(self.ghost)
         _cpy.ghost.E = cpy(self.ghost.E)
         _cpy.ghost.W = cpy(self.ghost.W)
@@ -361,82 +496,6 @@ class QuadBlock:
         """
         return self.fvm.Flux_S
 
-    @property
-    def gradx(self):
-        """
-        Returns the x-direction gradients based on the reconstruction type. For example, if the reconstruction type is
-        primitive, this will return self.dWdx.
-
-        Parameters:
-            - None
-
-        Return:
-            - (np.ndarray): Values of the x-direction gradients.
-        """
-        if self.reconstruction_type == 'primitive':
-            return self.dWdx
-        elif self.reconstruction_type == 'conservative':
-            return self.dUdx
-        else:
-            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
-
-    @property
-    def grady(self):
-        """
-        Returns the y-direction gradients based on the reconstruction type. For example, if the reconstruction type is
-        primitive, this will return self.dWdy.
-
-        Parameters:
-            - None
-
-        Return:
-            - (np.ndarray): Values of the y-direction gradients.
-        """
-        if self.reconstruction_type == 'primitive':
-            return self.dWdy
-        elif self.reconstruction_type == 'conservative':
-            return self.dUdy
-        else:
-            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
-
-    @gradx.setter
-    def gradx(self, gradx):
-        """
-        Sets the x-direction gradients based on the reconstruction type. For example, if the reconstruction type is
-        primitive, this will set the self.dWdx attribute.
-
-        Parameters:
-            - (np.ndarray): Values of the x-direction gradients.
-
-        Return:
-            - None
-        """
-        if self.reconstruction_type == 'primitive':
-            self.dWdx = gradx
-        elif self.reconstruction_type == 'conservative':
-            self.dUdx = gradx
-        else:
-            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
-
-    @grady.setter
-    def grady(self, grady):
-        """
-        Sets the y-direction gradients based on the reconstruction type. For example, if the reconstruction type is
-        primitive, this will set the self.dWdy attribute.
-
-        Parameters:
-            - (np.ndarray): Values of the y-direction gradients.
-
-        Return:
-            - None
-        """
-        if self.reconstruction_type == 'primitive':
-            self.dWdy = grady
-        elif self.reconstruction_type == 'conservative':
-            self.dUdy = grady
-        else:
-            raise ValueError('Reconstruction type ' + str(self.reconstruction_type) + ' is not defined.')
-
     def __getitem__(self, index):
 
         # Extract variables
@@ -465,22 +524,6 @@ class QuadBlock:
     def _index_in_north_ghost_block(self, x, y):
         return y > self.mesh.ny and 0 <= x <= self.mesh.nx
 
-    @staticmethod
-    def _get_side_length(pt1, pt2):
-        return np.sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
-
-    @staticmethod
-    def _get_side_angle(pt1, pt2):
-        if pt1[1] == pt2[1]:
-            return np.pi / 2
-        elif pt1[0] == pt2[0]:
-            return 0
-        else:
-            return np.arctan((pt1[0] - pt2[0]) / (pt2[1] - pt1[1]))
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Time stepping methods
-
     def get_dt(self) -> np.float:
         """
         Return the time step for this block based on the CFL condition.
@@ -491,13 +534,10 @@ class QuadBlock:
         Returns:
             - dt (np.float): Float representing the value of the time step
         """
-
-        # Speed of sound
         a = self.state.a()
-        # Calculate dt using the CFL condition
-        dt = self.inputs.CFL * np.amin(np.minimum(self.mesh.dx[:, :, 0] / (np.absolute(self.state.u) + a),
-                                                  self.mesh.dy[:, :, 0] / (np.absolute(self.state.v) + a)))
-        return dt
+        _tx = self.mesh.dx[:, :, 0] / (np.absolute(self.state.u) + a)
+        _ty = self.mesh.dy[:, :, 0] / (np.absolute(self.state.v) + a)
+        return self.inputs.CFL * np.amin(np.minimum(_tx, _ty))
 
     def connect(self,
                 NeighborE: QuadBlock,
@@ -696,34 +736,6 @@ class QuadBlock:
                                    self.ghost.N[:, index, None, :]),
                                   axis=1)
         return _fullcol.copy() if copy else _fullcol
-
-    def get_interface_values(self) -> [np.ndarray]:
-
-        if self.inputs.interface_interpolation == 'arithmetic_average':
-            interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values_arithmetic()
-            #interfaceEW, interfaceNS = self.get_interface_values_arithmetic()
-            return interfaceE, interfaceW, interfaceN, interfaceS
-        else:
-            raise ValueError('Interface Interpolation method is not defined.')
-
-    def get_interface_values_arithmetic(self) -> [np.ndarray]:
-
-        catx = np.concatenate((self.ghost.W.state.Q,
-                                self.state.Q,
-                                self.ghost.E.state.Q),
-                                axis=1)
-
-        caty = np.concatenate((self.ghost.S.state.Q,
-                                self.state.Q,
-                                self.ghost.N.state.Q),
-                                axis=0)
-
-        # Compute arithmetic mean
-        interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
-        interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
-
-        return interfaceEW[:, 1:, :], interfaceEW[:, :-1, :], interfaceNS[1:, :, :], interfaceNS[:-1, :, :]
-        #return interfaceEW, interfaceNS
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods

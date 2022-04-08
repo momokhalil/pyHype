@@ -24,10 +24,12 @@ from pyHype.utils import utils
 from pyHype.mesh.QuadMesh import QuadMesh
 from typing import TYPE_CHECKING, Union
 from pyHype.states import ConservativeState
+from pyHype.blocks.base import BaseBlock_Only_State
 
 if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
-    from pyHype.blocks.base import QuadBlock
+    from pyHype.blocks.base import QuadBlock, BaseBlock
+    from pyHype.mesh.base import BlockDescription
 
 _DEFINED_BC_ = ['None',
                 'Reflection',
@@ -42,20 +44,48 @@ _DEFINED_BC_ = ['None',
 def is_defined_BC(name: str):
     return True if name in _DEFINED_BC_ else False
 
-class GhostBlock:
+class GhostBlocks:
+    def __init__(self,
+                 inputs: ProblemInput,
+                 block_data: BlockDescription,
+                 refBLK: BaseBlock,
+                 state_type: str = 'conservative',
+                 ) -> None:
+        """
+        A class designed to hold references to each Block's ghost blocks.
+
+        Parameters:
+            - E: Reference to the east ghost block
+            - W: Reference to the west nghost block
+            - N: Reference to the north ghost block
+            - S: Reference to the south ghost block
+        """
+        self.E = GhostBlockEast(inputs,  BCtype=block_data.BCTypeE, refBLK=refBLK, state_type=state_type)
+        self.W = GhostBlockWest(inputs,  BCtype=block_data.BCTypeW, refBLK=refBLK, state_type=state_type)
+        self.N = GhostBlockNorth(inputs, BCtype=block_data.BCTypeN, refBLK=refBLK, state_type=state_type)
+        self.S = GhostBlockSouth(inputs, BCtype=block_data.BCTypeS, refBLK=refBLK, state_type=state_type)
+
+    def __call__(self) -> dict_values[BaseBlock_Only_State]:
+        return self.__dict__.values()
+
+
+class GhostBlock(BaseBlock_Only_State):
     def __init__(self,
                  inputs: ProblemInput,
                  BCtype: str,
-                 refBLK: QuadBlock):
+                 refBLK: BaseBlock,
+                 nx: int,
+                 ny: int,
+                 state_type: str = 'conservative'):
 
-        self.inputs = inputs
+        super().__init__(inputs, nx, ny, state_type=state_type)
+
         self.BCtype = BCtype
         self.nx = inputs.nx
         self.ny = inputs.ny
         self.nghost = inputs.nghost
         self.refBLK = refBLK
 
-        self.state = None
         self.mesh = None
         self.theta = None
 
@@ -216,30 +246,52 @@ class GhostBlock:
 
     @abstractmethod
     def set_BC_none(self):
+        """
+        Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
+        them.
+        """
         pass
 
     @abstractmethod
     def set_BC_outlet_dirichlet(self):
+        """
+        Set outlet dirichlet boundary condition
+        """
         pass
 
     @abstractmethod
     def set_BC_outlet_riemann(self):
+        """
+        Set outlet riemann boundary condition
+        """
         pass
 
     @abstractmethod
     def set_BC_reflection(self):
+        """
+        Set reflection boundary condition
+        """
         pass
 
     @abstractmethod
     def set_BC_slipwall(self):
+        """
+        Set slipwall boundary condition
+        """
         pass
 
     @abstractmethod
     def set_BC_inlet_dirichlet(self):
+        """
+        Set inlet dirichlet boundary condition
+        """
         pass
 
     @abstractmethod
     def set_BC_inlet_riemann(self):
+        """
+        Set inlet riemann boundary condition
+        """
         pass
 
 
@@ -247,19 +299,16 @@ class GhostBlockEast(GhostBlock):
     def __init__(self,
                  inputs: ProblemInput,
                  BCtype: str,
-                 refBLK: QuadBlock):
+                 refBLK: Union[BaseBlock, QuadBlock],
+                 state_type: str = 'conservative') -> None:
 
-        super().__init__(inputs, BCtype, refBLK)
-        self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
+        super().__init__(inputs, BCtype, refBLK, nx=inputs.nghost, ny=inputs.ny, state_type=state_type)
 
-        # Calculate location of NorthWest corner
+        # Calculate coordinates of all four vertices
         NWx = self.refBLK.mesh.nodes.x[-1, -1]
         NWy = self.refBLK.mesh.nodes.y[-1, -1]
-        # Calculate location of SouthWest corner
         SWx = self.refBLK.mesh.nodes.x[0, -1]
         SWy = self.refBLK.mesh.nodes.y[0, -1]
-
-        # Get points on the outside of the block
         NEx, NEy = utils.reflect_point(NWx, NWy, SWx, SWy, xr=self.refBLK.mesh.nodes.x[-1, -1 - self.inputs.nghost],
                                        yr=self.refBLK.mesh.nodes.y[-1, -1 - self.inputs.nghost])
         SEx, SEy = utils.reflect_point(NWx, NWy, SWx, SWy, xr=self.refBLK.mesh.nodes.x[0, -1 - self.inputs.nghost],
@@ -270,7 +319,8 @@ class GhostBlockEast(GhostBlock):
 
     def set_BC_none(self):
         """
-        Boundary condition type NONE, allows flow to pass between blocks.
+        Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
+        them.
         """
         self.state.U = self.refBLK.neighbors.E.get_west_ghost()
 
@@ -305,6 +355,10 @@ class GhostBlockEast(GhostBlock):
                                                          self.inputs.BC_inlet_east_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
+        """
+        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
+        ghost cells.
+        """
         self.state.U = self.refBLK.get_east_ghost()
 
     def set_BC_inlet_riemann(self):
@@ -318,19 +372,16 @@ class GhostBlockWest(GhostBlock):
     def __init__(self,
                  inputs: ProblemInput,
                  BCtype: str,
-                 refBLK: QuadBlock):
+                 refBLK: Union[BaseBlock, QuadBlock],
+                 state_type: str = 'conservative'):
 
-        super().__init__(inputs, BCtype, refBLK)
-        self.state = ConservativeState(inputs, nx=self.nghost, ny=self.ny)
+        super().__init__(inputs, BCtype, refBLK, nx=inputs.nghost, ny=inputs.ny, state_type=state_type)
 
-        # Calculate location of NorthEast corner
+        # Calculate coordinates of all four vertices
         NEx = self.refBLK.mesh.nodes.x[-1, 0]
         NEy = self.refBLK.mesh.nodes.y[-1, 0]
-        # Calculate location of SouthEast corner
         SEx = self.refBLK.mesh.nodes.x[0, 0]
         SEy = self.refBLK.mesh.nodes.y[0, 0]
-
-        # Get points on the outside of the block
         NWx, NWy = utils.reflect_point(NEx, NEy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[-1, self.inputs.nghost],
                                        yr=self.refBLK.mesh.nodes.y[-1, self.inputs.nghost])
         SWx, SWy = utils.reflect_point(NEx, NEy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[0, self.inputs.nghost],
@@ -340,6 +391,10 @@ class GhostBlockWest(GhostBlock):
                              nx=inputs.nghost, ny=self.refBLK.ny)
 
     def set_BC_none(self):
+        """
+        Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
+        them.
+        """
         self.state.U = self.refBLK.neighbors.W.get_east_ghost()
 
     def set_BC_reflection(self):
@@ -373,6 +428,10 @@ class GhostBlockWest(GhostBlock):
                                                          self.inputs.BC_inlet_west_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
+        """
+        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
+        ghost cells.
+        """
         self.state.U = self.refBLK.get_west_ghost()
 
     def set_BC_inlet_riemann(self):
@@ -386,19 +445,16 @@ class GhostBlockNorth(GhostBlock):
     def __init__(self,
                  inputs: ProblemInput,
                  BCtype: str,
-                 refBLK: QuadBlock):
+                 refBLK: Union[BaseBlock, QuadBlock],
+                 state_type: str = 'conservative'):
 
-        super().__init__(inputs, BCtype, refBLK)
-        self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
+        super().__init__(inputs, BCtype, refBLK, nx=inputs.nx, ny=inputs.nghost, state_type=state_type)
 
-        # Calculate location of SouthWest corner
+        # Calculate coordinates of all four vertices
         SWx = self.refBLK.mesh.nodes.x[-1, 0]
         SWy = self.refBLK.mesh.nodes.y[-1, 0]
-        # Calculate location of SouthEast corner
         SEx = self.refBLK.mesh.nodes.x[-1, -1]
         SEy = self.refBLK.mesh.nodes.y[-1, -1]
-
-        # Get points on the outside of the block
         NWx, NWy = utils.reflect_point(SWx, SWy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, 0],
                                        yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, 0])
         NEx, NEy = utils.reflect_point(SWx, SWy, SEx, SEy, xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, -1],
@@ -408,6 +464,10 @@ class GhostBlockNorth(GhostBlock):
                              nx=self.refBLK.ny, ny=inputs.nghost)
 
     def set_BC_none(self):
+        """
+        Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
+        them.
+        """
         self.state.U = self.refBLK.neighbors.N.get_south_ghost()
 
     def set_BC_reflection(self):
@@ -441,6 +501,10 @@ class GhostBlockNorth(GhostBlock):
                                                          self.inputs.BC_inlet_north_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
+        """
+        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
+        ghost cells.
+        """
         self.state.U = self.refBLK.get_north_ghost()
 
     def set_BC_inlet_riemann(self):
@@ -454,19 +518,16 @@ class GhostBlockSouth(GhostBlock):
     def __init__(self,
                  inputs: ProblemInput,
                  BCtype: str,
-                 refBLK: QuadBlock):
+                 refBLK: Union[BaseBlock, QuadBlock],
+                 state_type: str = 'conservative') -> None:
 
-        super().__init__(inputs, BCtype, refBLK)
-        self.state = ConservativeState(inputs, nx=self.nx, ny=self.nghost)
+        super().__init__(inputs, BCtype, refBLK, nx=inputs.nx, ny=inputs.nghost, state_type=state_type)
 
-        # Calculate location of NorthWest corner
+        # Calculate coordinates of all four vertices
         NWx = self.refBLK.mesh.nodes.x[0, 0]
         NWy = self.refBLK.mesh.nodes.y[0, 0]
-        # Calculate location of NorthEast corner
         NEx = self.refBLK.mesh.nodes.x[0, -1]
         NEy = self.refBLK.mesh.nodes.y[0, -1]
-
-        # Get points on the outside of the block
         SWx, SWy = utils.reflect_point(NWx, NWy, NEx, NEy, xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, 0],
                                        yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, 0])
         SEx, SEy = utils.reflect_point(NWx, NWy, NEx, NEy, xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, -1],
@@ -476,6 +537,10 @@ class GhostBlockSouth(GhostBlock):
                              nx=self.refBLK.ny, ny=inputs.nghost)
 
     def set_BC_none(self):
+        """
+        Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
+        them.
+        """
         self.state.U = self.refBLK.neighbors.S.get_north_ghost()
 
     def set_BC_reflection(self):
@@ -509,6 +574,10 @@ class GhostBlockSouth(GhostBlock):
                                                          self.inputs.BC_inlet_south_v ** 2)
 
     def set_BC_outlet_dirichlet(self):
+        """
+        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
+        ghost cells.
+        """
         self.state.U = self.refBLK.get_south_ghost()
 
     def set_BC_inlet_riemann(self):

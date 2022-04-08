@@ -95,11 +95,10 @@ class PrimitiveState(State):
 
         super().__init__(inputs, _nx, _ny)
 
-        if state:
-            if isinstance(state, PrimitiveState):
-                self.from_primitive_state(state)
-            elif isinstance(state, ConservativeState):
-                self.from_conservative_state(state)
+        if isinstance(state, PrimitiveState):
+            self.from_primitive_state(state)
+        elif isinstance(state, ConservativeState):
+            self.from_conservative_state(state)
         elif U_vector is not None:
             self.from_conservative_state_vector(U_vector)
         elif W_vector is not None:
@@ -697,9 +696,7 @@ class ConservativeState(State):
 
     @cache
     def Ek(self) -> np.ndarray:
-        _u = self.u
-        _v = self.v
-        return 0.5 * (_u * _u + _v * _v)
+        return 0.5 * (self.u * self.u + self.v * self.v)
 
     @cache
     def h(self) -> np.ndarray:
@@ -890,3 +887,47 @@ class RoePrimitiveState(PrimitiveState):
 
         # Set state vector and variables from *Roe* averages
         self.from_primitive_state_vars(rho, u, v, p, copy=False)
+
+
+class StateFactory:
+    @classmethod
+    def create(cls,
+               state_type: str,
+               inputs: ProblemInput,
+               nx: int = None,
+               ny: int = None,
+               state: State = None,
+               U_vector: np.ndarray = None,
+               W_vector: np.ndarray = None
+               ) -> State:
+        if state_type == 'primitive':
+            return PrimitiveState(inputs, nx, ny, state, U_vector, W_vector)
+        elif state_type == 'conservative':
+            return ConservativeState(inputs, nx, ny, state, U_vector, W_vector)
+        else:
+            raise TypeError('StateFactory.create() Error, unknown state type.')
+
+    @classmethod
+    def create_from_array(cls,
+                          state_type: str,
+                          inputs: ProblemInput,
+                          array: np.ndarray
+                          ) -> State:
+        if state_type == 'primitive':
+            return PrimitiveState(inputs, W_vector=array)
+        elif state_type == 'conservative':
+            return ConservativeState(inputs, U_vector=array)
+        else:
+            raise TypeError('StateFactory.create_from_array() Error, unknown state type.')
+
+    @classmethod
+    def create_from_state(cls,
+                          inputs: ProblemInput,
+                          state: State
+                          ) -> State:
+        if isinstance(state, PrimitiveState):
+            return PrimitiveState(inputs, state=state)
+        elif isinstance(state, ConservativeState):
+            return ConservativeState(inputs, state=state)
+        else:
+            raise TypeError('StateFactory.create_from_state() Error, unknown state type.')

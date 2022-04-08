@@ -51,7 +51,6 @@ def rotate(theta: Union[float, np.ndarray],
         raise RuntimeError('theta cannot have more than 3 dimensions.')
 
     for array in arrays:
-
         u = array[:, :, 1] * np.cos(theta) + array[:, :, 2] * np.sin(theta)
         v = array[:, :, 2] * np.cos(theta) - array[:, :, 1] * np.sin(theta)
 
@@ -193,3 +192,15 @@ class Cache:
         if self.func not in instance.cache.keys():
             instance.cache[self.func] = self.func(*args, **kwargs)
         return instance.cache[self.func]
+
+
+class DirectionalContainerBase:
+    def __init__(self,
+                 east_obj: object = None,
+                 west_obj: object = None,
+                 north_obj: object = None,
+                 south_obj: object = None):
+        self.E = east_obj
+        self.W = west_obj
+        self.N = north_obj
+        self.S = south_obj

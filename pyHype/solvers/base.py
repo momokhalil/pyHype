@@ -62,13 +62,15 @@ class ProblemInput:
 
 
     def __init__(self,
-                 fvm: str,
-                 gradient: str,
-                 flux_function: str,
-                 limiter: str,
-                 integrator: str,
-                 settings: dict,
-                 mesh_inputs: dict
+                 fvm_type:                  str = 'MUSCL',
+                 fvm_spatial_order:         int = 2,
+                 fvm_num_quadrature_points: int = 1,
+                 fvm_gradient_type:         str = 'GreenGauss',
+                 fvm_flux_function:         str = 'Roe',
+                 fvm_slope_limiter:         str = 'Venkatakrishnan',
+                 time_integrator:           str = 'RK2',
+                 settings:                  dict = None,
+                 mesh_inputs:               Union[MeshGenerator, dict] = None,
                  ) -> None:
         """
         Sets required input parametes from input parameter dict. Initialized values to default, with the correct type
@@ -79,11 +81,13 @@ class ProblemInput:
 
         # REQUIRED
 
-        self.fvm = fvm
-        self.gradient = gradient
-        self.flux_function = flux_function
-        self.limiter = limiter
-        self.integrator = integrator
+        self.fvm_type = fvm_type
+        self.fvm_spatial_order = fvm_spatial_order
+        self.fvm_num_quadrature_points = fvm_num_quadrature_points
+        self.fvm_gradient_type = fvm_gradient_type
+        self.fvm_flux_function = fvm_flux_function
+        self.fvm_slope_limiter = fvm_slope_limiter
+        self.time_integrator = time_integrator
         self.n = settings['nx'] * settings['ny']
         self.mesh_inputs = mesh_inputs
 
@@ -100,13 +104,15 @@ class ProblemInput:
 
 class Solver:
     def __init__(self,
-                 fvm:           str = 'SecondOrderPWL',
-                 gradient:      str = 'GreenGauss',
-                 flux_function: str = 'Roe',
-                 limiter:       str = 'Venkatakrishnan',
-                 integrator:    str = 'RK2',
-                 settings:      dict = None,
-                 mesh:          Union[MeshGenerator, dict] = None,
+                 fvm_type:                  str = 'MUSCL',
+                 fvm_spatial_order:         int = 2,
+                 fvm_num_quadrature_points: int = 1,
+                 fvm_gradient_type:         str = 'GreenGauss',
+                 fvm_flux_function:         str = 'Roe',
+                 fvm_slope_limiter:         str = 'Venkatakrishnan',
+                 time_integrator:           str = 'RK2',
+                 settings:                  dict = None,
+                 mesh_inputs:               Union[MeshGenerator, dict] = None,
                  ) -> None:
 
         print(execution_prints.pyhype)
@@ -117,7 +123,7 @@ class Solver:
 
         print('\t>>> Building Mesh Descriptors')
 
-        _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
+        _mesh = mesh_inputs.dict if isinstance(mesh_inputs, MeshGenerator) else mesh_inputs
         _mesh_inputs = {blk: BlockDescription(blkData,
                                               nx=settings['nx'],
                                               ny=settings['ny'],
@@ -133,8 +139,15 @@ class Solver:
                     self._all_BC_types.append(blkdata[bc_name])
 
         print('\t>>> Building Settings Descriptors')
-        self.inputs = ProblemInput(fvm=fvm, gradient=gradient, flux_function=flux_function, limiter=limiter,
-                                   integrator=integrator, settings=settings, mesh_inputs=_mesh_inputs)
+        self.inputs = ProblemInput(fvm_type=fvm_type,
+                                   fvm_spatial_order=fvm_spatial_order,
+                                   fvm_num_quadrature_points=fvm_num_quadrature_points,
+                                   fvm_gradient_type=fvm_gradient_type,
+                                   fvm_flux_function=fvm_flux_function,
+                                   fvm_slope_limiter=fvm_slope_limiter,
+                                   time_integrator=time_integrator,
+                                   settings=settings,
+                                   mesh_inputs=_mesh_inputs)
 
         print('\t>>> Initializing basic solution attributes')
         self.t = 0
@@ -193,7 +206,7 @@ class Solver:
         if self.numTimeStep % self.inputs.plot_every == 0:
             data = [(block.mesh.x[:, :, 0], block.mesh.y[:, :, 0], block.state.rho)  for block in self.blocks]
             for _vars in data:
-                self.realplot.contourf(*_vars, 50, cmap='YlGnBu',
+                self.realplot.contourf(*_vars, 50, cmap='magma',
                                        vmax=max([np.max(v[2]) for v in data]),
                                        vmin=min([np.min(v[2]) for v in data]))
             self.realplot.set_aspect('equal')

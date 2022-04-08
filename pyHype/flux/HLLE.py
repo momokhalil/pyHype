@@ -20,20 +20,16 @@ from pyHype.flux.base import FluxFunction
 from pyHype.states.states import RoePrimitiveState, ConservativeState, PrimitiveState
 
 
-class HLLE_FLUX_X(FluxFunction):
+class FluxHLLE(FluxFunction):
     def __init__(self, inputs):
         super().__init__(inputs)
 
     def compute_flux(self,
                      WL: PrimitiveState,
                      WR: PrimitiveState,
-                     UL: [ConservativeState, np.ndarray] = None,
-                     UR: [ConservativeState, np.ndarray] = None,
+                     UL: ConservativeState = None,
+                     UR: ConservativeState = None,
                      ) -> np.ndarray:
-
-        # Get conservative states
-        UL = WL.to_conservative_state()
-        UR = WR.to_conservative_state()
 
         # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR)

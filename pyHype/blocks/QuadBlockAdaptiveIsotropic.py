@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 from pyHype.blocks import QuadBlock
-from pyHype.fvm import SecondOrderPWL
+from pyHype.fvm import SecondOrderMUSCL
 from pyHype.mesh.base import BlockDescription, Mesh
 from pyHype.states.states import ConservativeState, PrimitiveState
 from pyHype.blocks.base import NormalVector, GhostBlockContainer, Neighbors
