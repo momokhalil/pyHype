@@ -16,6 +16,8 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+from abc import ABC
+
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
@@ -34,8 +36,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs, global_nBLK):
         if inputs.nghost != 1:
             raise ValueError('Number of ghost cells must be equal to 1 for this method.')
-        else:
-            super().__init__(inputs, global_nBLK)
+        super().__init__(inputs, global_nBLK)
 
     @staticmethod
     def high_order_term(refBLK: QuadBlock,

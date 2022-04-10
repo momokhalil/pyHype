@@ -133,12 +133,12 @@ class ExplicitRungeKutta(TimeIntegrator):
 
         if a in (0, 2/3, 1):
             raise ValueError('Value of alpha parameter is not allowd.')
-        else:
-            k = (1 - a) / a / (3 * a - 2)
-            return cls(inputs,
-                       a=[[a],
-                          [1 + k, -k],
-                          [0.5 - 1 / (6 * a), 1 / (6 * a * (1 - a)), (2 - 3 * a) / (6 * (1 - a))]])
+
+        k = (1 - a) / a / (3 * a - 2)
+        return cls(inputs,
+                   a=[[a],
+                      [1 + k, -k],
+                      [0.5 - 1 / (6 * a), 1 / (6 * a * (1 - a)), (2 - 3 * a) / (6 * (1 - a))]])
 
 
     @classmethod

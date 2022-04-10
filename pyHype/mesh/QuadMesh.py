@@ -37,8 +37,7 @@ class QuadMesh(_mesh_transfinite_gen):
 
         if isinstance(block_data, BlockDescription) and (NE or NW or SE or SW or nx or ny):
             raise ValueError('Cannot provide block_data of type BlockDescription and also vertices and/or cell count.')
-
-        elif not isinstance(block_data, BlockDescription) and not (NE and NW and SE and SW and nx and ny):
+        if not isinstance(block_data, BlockDescription) and not (NE and NW and SE and SW and nx and ny):
             raise ValueError('If block_data of type BlockDescription is not provided, then vertices for each corner'
                              ' and cell count must be provided.')
 

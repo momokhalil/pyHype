@@ -117,7 +117,7 @@ class GhostBlock(BaseBlock_Only_State):
         for ic in _has_inlets:
             if self.inputs.__getattribute__(ic) <= 0:
                 raise ValueError('Inlet density or pressure is less than or equal to zero and thus non-physical.')
-            elif not isinstance(self.inputs.__getattribute__(ic), (int, float)):
+            if not isinstance(self.inputs.__getattribute__(ic), (int, float)):
                 raise TypeError('Inlet density or pressure is not of type int or float.')
 
 
