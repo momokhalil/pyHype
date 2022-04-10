@@ -899,13 +899,13 @@ class StateFactory:
 
     @classmethod
     def create_from_array(cls,
-                          state_type: str,
+                          array_state_type: str,
                           inputs: ProblemInput,
                           array: np.ndarray
                           ) -> State:
-        if state_type == 'primitive':
+        if array_state_type == 'primitive':
             return PrimitiveState(inputs, W_vector=array)
-        elif state_type == 'conservative':
+        elif array_state_type == 'conservative':
             return ConservativeState(inputs, U_vector=array)
         else:
             raise TypeError('StateFactory.create_from_array() Error, unknown state type.')
@@ -921,3 +921,29 @@ class StateFactory:
             return ConservativeState(inputs, state=state)
         else:
             raise TypeError('StateFactory.create_from_state() Error, unknown state type.')
+
+    @classmethod
+    def create_primitive_from_array(cls,
+                                    array_state_type: str,
+                                    inputs: ProblemInput,
+                                    array: np.ndarray
+                                    ) -> PrimitiveState:
+        if array_state_type == 'primitive':
+            return PrimitiveState(inputs, W_vector=array)
+        elif array_state_type == 'conservative':
+            return PrimitiveState(inputs, U_vector=array)
+        else:
+            raise TypeError('StateFactory.create_primitive_from_array() Error, unknown state type.')
+
+    @classmethod
+    def create_conservative_from_array(cls,
+                                       array_state_type: str,
+                                       inputs: ProblemInput,
+                                       array: np.ndarray
+                                       ) -> ConservativeState:
+        if array_state_type == 'primitive':
+            return ConservativeState(inputs, W_vector=array)
+        elif array_state_type == 'conservative':
+            return ConservativeState(inputs, U_vector=array)
+        else:
+            raise TypeError('StateFactory.create_conservative_from_array() Error, unknown state type.')
