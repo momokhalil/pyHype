@@ -892,10 +892,9 @@ class StateFactory:
                ) -> State:
         if state_type == 'primitive':
             return PrimitiveState(inputs, nx, ny, state, U_vector, W_vector)
-        elif state_type == 'conservative':
+        if state_type == 'conservative':
             return ConservativeState(inputs, nx, ny, state, U_vector, W_vector)
-        else:
-            raise TypeError('StateFactory.create() Error, unknown state type.')
+        raise TypeError('StateFactory.create() Error, unknown state type.')
 
     @classmethod
     def create_from_array(cls,
@@ -905,10 +904,9 @@ class StateFactory:
                           ) -> State:
         if array_state_type == 'primitive':
             return PrimitiveState(inputs, W_vector=array)
-        elif array_state_type == 'conservative':
+        if array_state_type == 'conservative':
             return ConservativeState(inputs, U_vector=array)
-        else:
-            raise TypeError('StateFactory.create_from_array() Error, unknown state type.')
+        raise TypeError('StateFactory.create_from_array() Error, unknown state type.')
 
     @classmethod
     def create_from_state(cls,
@@ -917,10 +915,9 @@ class StateFactory:
                           ) -> State:
         if isinstance(state, PrimitiveState):
             return PrimitiveState(inputs, state=state)
-        elif isinstance(state, ConservativeState):
+        if isinstance(state, ConservativeState):
             return ConservativeState(inputs, state=state)
-        else:
-            raise TypeError('StateFactory.create_from_state() Error, unknown state type.')
+        raise TypeError('StateFactory.create_from_state() Error, unknown state type.')
 
     @classmethod
     def create_primitive_from_array(cls,
@@ -930,10 +927,9 @@ class StateFactory:
                                     ) -> PrimitiveState:
         if array_state_type == 'primitive':
             return PrimitiveState(inputs, W_vector=array)
-        elif array_state_type == 'conservative':
+        if array_state_type == 'conservative':
             return PrimitiveState(inputs, U_vector=array)
-        else:
-            raise TypeError('StateFactory.create_primitive_from_array() Error, unknown state type.')
+        raise TypeError('StateFactory.create_primitive_from_array() Error, unknown state type.')
 
     @classmethod
     def create_conservative_from_array(cls,
@@ -943,7 +939,6 @@ class StateFactory:
                                        ) -> ConservativeState:
         if array_state_type == 'primitive':
             return ConservativeState(inputs, W_vector=array)
-        elif array_state_type == 'conservative':
+        if array_state_type == 'conservative':
             return ConservativeState(inputs, U_vector=array)
-        else:
-            raise TypeError('StateFactory.create_conservative_from_array() Error, unknown state type.')
+        raise TypeError('StateFactory.create_conservative_from_array() Error, unknown state type.')
