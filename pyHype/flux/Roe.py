@@ -43,8 +43,6 @@ class FluxRoe(FluxFunction):
             = vec.A_d0, vec.A_m1, vec.A_m2, vec.A_m3, vec.A_p1, vec.A_p2
         self.Rc_d0, self.Rc_m1, self.Rc_m2, self.Rc_m3, self.Rc_p1, self.Rc_p2, self.Rc_p3 \
             = vec.Rc_d0, vec.Rc_m1, vec.Rc_m2, vec.Rc_m3, vec.Rc_p1, vec.Rc_p2, vec.Rc_p3
-        self.Lc_d0, self.Lc_m1, self.Lc_m2, self.Lc_m3, self.Lc_p1, self.Lc_p2, self.Lc_p3 \
-            = vec.Lc_d0, vec.Lc_m1, vec.Lc_m2, vec.Lc_m3, vec.Lc_p1, vec.Lc_p2, vec.Lc_p3
         self.Lp_m2, self.Lp_m1, self.Lp_d0, self.Lp_p1, self.Lp_p2, self.Lp_p3 \
             = vec.Lp_m2, vec.Lp_m1, vec.Lp_d0, vec.Lp_p1, vec.Lp_p2, vec.Lp_p3
         self.lam = vec.lam
@@ -53,7 +51,6 @@ class FluxRoe(FluxFunction):
         idx = XDIR_EIGENSYSTEM_INDICES(size, sweeps)
         self.Ai, self.Aj = idx.Ai, idx.Aj
         self.Rci, self.Rcj = idx.Rci, idx.Rcj
-        self.Lci, self.Lcj = idx.Lci, idx.Lcj
         self.Lpi, self.Lpj = idx.Lpi, idx.Lpj
         self.Li, self.Lj = idx.Li, idx.Lj
 
@@ -65,10 +62,6 @@ class FluxRoe(FluxFunction):
         Rc_data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,   # Subdiagonals
                                   self.Rc_d0,                           # Diagonal
                                   self.Rc_p1, self.Rc_p2, self.Rc_p3))  # Superdiagonals
-        # Left eigenvectors data container
-        Lc_data = np.concatenate((self.Lc_m3, self.Lc_m2, self.Lc_m1,   # Subdiagonals
-                                  self.Lc_d0,                           # Diagonal
-                                  self.Lc_p1, self.Lc_p2, self.Lc_p3))  # Superdiagonals
         # Left eigenvectors primitive data container
         Lp_data = np.concatenate((self.Lp_m2, self.Lp_m1,               # Subdiagonals
                                   self.Lp_d0,                           # Diagonal
@@ -79,7 +72,6 @@ class FluxRoe(FluxFunction):
         # Build sparse matrices
         self.Jac    = coo((A_data, (self.Ai, self.Aj)))
         self.Rc     = coo((Rc_data, (self.Rci, self.Rcj)))
-        self.Lc     = coo((Lc_data, (self.Lci, self.Lcj)))
         self.Lp     = coo((Lp_data, (self.Lpi, self.Lpj)))
         self.Lambda = coo((L_data, (self.Li, self.Lj)))
 
