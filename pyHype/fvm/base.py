@@ -192,7 +192,7 @@ class MUSCLFiniteVolumeMethod:
 
         dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
         """
-        self.get_flux(refBLK)
+        self.evaluate_flux(refBLK)
         fluxE = self.integrate_flux_E(refBLK)
         fluxW = self.integrate_flux_W(refBLK)
         fluxN = self.integrate_flux_N(refBLK)
@@ -227,21 +227,7 @@ class MUSCLFiniteVolumeMethod:
         _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
         return _stateL, _stateR
 
-    def get_flux(self, refBLK: QuadBlock) -> None:
-        """
-        Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all of the rows and columns
-        of cells on the blocks in a sweeping (but unsplit) fashion.
-
-        Parameters:
-            - refBLK (QuadBlock): QuadBlock that needs its fluxes calculated.
-
-        Return:
-            - N/A
-        """
-        # Reconstruct solution
-        self.reconstruct(refBLK)
-
-        # Calculate x-direction Flux
+    def evaluate_flux_x(self, refBLK: QuadBlock) -> None:
         for nqp, (qe, qw) in enumerate(zip(refBLK.QP.E, refBLK.QP.W)):
             _ghostE = refBLK.reconBlk.ghost.E.col(0, copy=True)
             _ghostW = refBLK.reconBlk.ghost.W.col(-1, copy=True)
@@ -263,7 +249,7 @@ class MUSCLFiniteVolumeMethod:
                 utils.unrotate(refBLK.mesh.faceE.theta, self.Flux.E[nqp])
                 utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux.W[nqp])
 
-        # Calculate y-direction Flux
+    def evaluate_flux_y(self, refBLK: QuadBlock) -> None:
         for nqp, (qn, qs) in enumerate(zip(refBLK.QP.N, refBLK.QP.S)):
             _ghostN = refBLK.reconBlk.ghost.N.row(0, copy=True)
             _ghostS = refBLK.reconBlk.ghost.S.row(-1, copy=True)
@@ -288,3 +274,18 @@ class MUSCLFiniteVolumeMethod:
             else:
                 utils.unrotate(refBLK.mesh.faceN.theta, self.Flux.N[nqp])
                 utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux.S[nqp])
+
+    def evaluate_flux(self, refBLK: QuadBlock) -> None:
+        """
+        Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all of the rows and columns
+        of cells on the blocks in a sweeping (but unsplit) fashion.
+
+        Parameters:
+            - refBLK (QuadBlock): QuadBlock that needs its fluxes calculated.
+
+        Return:
+            - N/A
+        """
+        self.reconstruct(refBLK)
+        self.evaluate_flux_x(refBLK)
+        self.evaluate_flux_y(refBLK)
