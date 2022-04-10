@@ -284,38 +284,6 @@ class QuadBlock(BaseBlock_With_Ghost):
 
         return self.inputs.reconstruction_type
 
-    @staticmethod
-    def _is_all_blk_conservative(blks: dict.values):
-        return all(map(lambda blk: isinstance(blk.state, ConservativeState), blks))
-
-    @staticmethod
-    def _is_all_blk_primitive(blks: dict.values):
-        return all(map(lambda blk: isinstance(blk.state, PrimitiveState), blks))
-
-    def _to_primitive(self, block: QuadBlock):
-        _ghost_dict_vals = block.ghost.__dict__.values()
-
-        if not isinstance(block.state, ConservativeState):
-            raise TypeError('Reference block state is not ConservativeState.')
-        elif not self._is_all_blk_conservative(_ghost_dict_vals):
-            raise TypeError('Ghost block state is not ConservativeState.')
-        else:
-            block.state = block.state.to_primitive_state()
-            for v in _ghost_dict_vals:
-                v.state = v.state.to_primitive_state()
-
-    def _to_conservative(self, block: QuadBlock):
-        _ghost_dict_vals = block.ghost.__dict__.values()
-
-        if not isinstance(block.state, PrimitiveState):
-            raise TypeError('Reference block state is not PrimitiveState.')
-        elif not self._is_all_blk_primitive(_ghost_dict_vals):
-            raise TypeError('Ghost block state is not PrimitiveState.')
-        else:
-            block.state = block.state.to_conservative_state()
-            for v in _ghost_dict_vals:
-                v.state = v.state.to_conservative_state()
-
     def plot(self,
              ax: plt.axes = None,
              show_cell_centre: bool = False):
@@ -334,7 +302,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         _show = ax is None
 
         if not ax:
-            fig, ax = plt.subplots(1, 1)
+            _, ax = plt.subplots(1, 1)
 
         # Create scatter plots for nodes
         ax.scatter(self.mesh.nodes.x[:, :, 0],
