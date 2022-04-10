@@ -44,8 +44,8 @@ def explosion(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        _x_cond = np.logical_and(3 <= block.mesh.x, block.mesh.x <= 7)
-        _y_cond = np.logical_and(3 <= block.mesh.y, block.mesh.y <= 7)
+        _x_cond = np.logical_and(block.mesh.x >= 3, block.mesh.x <= 7)
+        _y_cond = np.logical_and(block.mesh.y >= 3, block.mesh.y <= 7)
         block.state.U = np.where(np.logical_and(_x_cond, _y_cond), QL, QR)
         block.state.non_dim()
 
@@ -269,11 +269,11 @@ def explosion_trapezoid(blocks, **kwargs):
     for block in blocks:
         _cond_1 = np.logical_and(np.logical_and(-0.75 <= block.mesh.x, block.mesh.x <= -0.25),
                                  np.logical_and(-0.75 <= block.mesh.y, block.mesh.y <= -0.25))
-        _cond_2 = np.logical_and(np.logical_and(0.25 <= block.mesh.x, block.mesh.x <= 0.75),
-                                 np.logical_and(0.25 <= block.mesh.y, block.mesh.y <= 0.75))
+        _cond_2 = np.logical_and(np.logical_and(block.mesh.x >= 0.25, block.mesh.x <= 0.75),
+                                 np.logical_and(block.mesh.y >= 0.25, block.mesh.y <= 0.75))
         _cond_3 = np.logical_and(np.logical_and(-0.75 <= block.mesh.x, block.mesh.x <= -0.25),
-                                 np.logical_and(0.25 <= block.mesh.y, block.mesh.y <= 0.75))
-        _cond_4 = np.logical_and(np.logical_and(0.25 <= block.mesh.x, block.mesh.x <= 0.75),
+                                 np.logical_and(block.mesh.y >= 0.25, block.mesh.y <= 0.75))
+        _cond_4 = np.logical_and(np.logical_and(block.mesh.x >= 0.25, block.mesh.x <= 0.75),
                                  np.logical_and(-0.75 <= block.mesh.y, block.mesh.y <= -0.25))
         block.state.U = np.where(np.logical_and(_cond_1, _cond_2, _cond_3, _cond_4), QL, QR)
         block.state.non_dim()
