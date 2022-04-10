@@ -78,7 +78,7 @@ exp = Euler2D(fvm_type='MUSCL',
 # Solve
 exp.solve()
 ```
-![alt text](/explosion.gif)
+![alt text](/examples/explosion/explosion.gif)
 
 ## Double Mach Reflection (DMR)
 Here is an example of a Mach 10 DMR simulation performed on five blocks. The simulation was performed with the following: 
