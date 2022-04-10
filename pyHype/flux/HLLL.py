@@ -24,9 +24,7 @@ from pyHype.states.states import PrimitiveState, RoePrimitiveState, Conservative
 class FluxHLLL(FluxFunction):
     def compute_flux(self,
                      WL: PrimitiveState,
-                     WR: PrimitiveState,
-                     UL: [ConservativeState, np.ndarray] = None,
-                     UR: [ConservativeState, np.ndarray] = None,
+                     WR: PrimitiveState
                      ) -> np.ndarray:
 
         # Get Roe state
@@ -41,6 +39,9 @@ class FluxHLLL(FluxFunction):
 
         L_plus = np.maximum.reduce((R_m, Lm))[:, :, None]
         L_minus = np.minimum.reduce((L_p, Lp))[:, :, None]
+
+        UR = WR.to_conservative_state()
+        UL = WL.to_conservative_state()
 
         # Left and right fluxes
         FluxR = WR.F(U=UR)
