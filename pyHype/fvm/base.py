@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyHype.blocks.QuadBlock import QuadBlock, GradientsContainer
     from pyHype.states.base import State
+    from pyHype.states.states import PrimitiveState, ConservativeState
     from pyHype.mesh.quadratures import QuadraturePoint
 
 
@@ -204,15 +205,12 @@ class MUSCLFiniteVolumeMethod:
                                     ghostW: np.ndarray,
                                     stateE: np.ndarray,
                                     stateW: np.ndarray,
-                                    ) -> [State]:
-        _stateL = sf.create_from_array(state_type=state_type,
-                                       inputs=self.inputs,
-                                       array=np.concatenate((ghostW, stateE), axis=1
-                                                            ).reshape((1, (self.nx + 1) * self.ny, 4)))
-        _stateR = sf.create_from_array(state_type=state_type,
-                                       inputs=self.inputs,
-                                       array=np.concatenate((stateW, ghostE), axis=1
-                                                            ).reshape((1, (self.nx + 1) * self.ny, 4)))
+                                    ) -> [PrimitiveState]:
+        _arrL = np.concatenate((ghostW, stateE), axis=1).reshape((1, (self.nx + 1) * self.ny, 4))
+        _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
+
+        _arrR = np.concatenate((stateW, ghostE), axis=1).reshape((1, (self.nx + 1) * self.ny, 4))
+        _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
         return _stateL, _stateR
 
     def get_LR_states_for_NS_fluxes(self,
@@ -221,15 +219,12 @@ class MUSCLFiniteVolumeMethod:
                                     ghostS: np.ndarray,
                                     stateN: np.ndarray,
                                     stateS: np.ndarray,
-                                    ) -> [State]:
-        _stateL = sf.create_from_array(array=np.concatenate((ghostS, stateN), axis=0
-                                                            ).transpose((1, 0, 2)
-                                                                        ).reshape((1, (self.ny+1)*self.nx, 4)),
-                                                 state_type=state_type, inputs=self.inputs)
-        _stateR = sf.create_from_array(array=np.concatenate((stateS, ghostN), axis=0
-                                                            ).transpose((1, 0, 2)
-                                                                        ).reshape((1, (self.ny+1)*self.nx, 4)),
-                                                 state_type=state_type, inputs=self.inputs)
+                                    ) -> [PrimitiveState]:
+        _arrL = np.concatenate((ghostS, stateN), axis=0).transpose((1, 0, 2)).reshape((1, (self.ny+1)*self.nx, 4))
+        _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
+
+        _arrR = np.concatenate((stateS, ghostN), axis=0).transpose((1, 0, 2)).reshape((1, (self.ny+1)*self.nx, 4))
+        _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
         return _stateL, _stateR
 
     def get_flux(self, refBLK: QuadBlock) -> None:
@@ -260,7 +255,7 @@ class MUSCLFiniteVolumeMethod:
                 utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
 
             sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _ghostE, _ghostW, _stateE, _stateW)
-            fluxEW = self.flux_function_X(stateL=sL, stateR=sR).reshape((self.ny,  (self.nx+1), 4))
+            fluxEW = self.flux_function_X(WL=sL, WR=sR).reshape((self.ny,  (self.nx+1), 4))
             self.Flux.E[nqp][:] = fluxEW[:, 1:, :]
             self.Flux.W[nqp][:] = fluxEW[:, :-1, :]
 
@@ -284,7 +279,7 @@ class MUSCLFiniteVolumeMethod:
                 utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
 
             sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _ghostN, _ghostS, _stateN, _stateS)
-            fluxNS = self.flux_function_Y(stateL=sL, stateR=sR).reshape((self.nx, (self.ny + 1), 4)).transpose((1, 0, 2))
+            fluxNS = self.flux_function_Y(WL=sL, WR=sR).reshape((self.nx, (self.ny + 1), 4)).transpose((1, 0, 2))
             self.Flux.N[nqp][:] = fluxNS[1:, :, :]
             self.Flux.S[nqp][:] = fluxNS[:-1, :, :]
 
