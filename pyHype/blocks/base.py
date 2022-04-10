@@ -186,7 +186,7 @@ class Blocks:
 
         self.num_BLK = len(self.blocks)
 
-        for global_nBLK, block in self.blocks.items():
+        for block in self.blocks.values():
             Neighbor_E_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborE
             Neighbor_W_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborW
             Neighbor_N_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborN
@@ -211,7 +211,7 @@ class Blocks:
             print('West:  ', block.neighbors.W)
 
     def plot_mesh(self):
-        fig, ax = plt.subplots(1)
+        _, ax = plt.subplots(1)
         ax.set_aspect('equal')
         for block in self.blocks.values():
             block.plot(ax=ax)

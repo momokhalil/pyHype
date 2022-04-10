@@ -144,15 +144,6 @@ class MUSCLFiniteVolumeMethod:
         self.compute_limiter(refBLK)
 
     @abstractmethod
-    def reconstruct_state(self,
-                          refBLK: QuadBlock
-                          ) -> [np.ndarray]:
-        """
-        Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def compute_limiter(self,
                         refBLK: QuadBlock
                         ) -> [np.ndarray]:

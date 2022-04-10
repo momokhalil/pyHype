@@ -796,13 +796,11 @@ class RoePrimitiveState(PrimitiveState):
         if WL and WR:
             if UL or UR:
                 raise ValueError('Cannot provide ConservativeStates along with PrimitiveStates.')
-            else:
-                super().__init__(inputs, nx=WL.W.shape[1], ny=WL.W.shape[0])
+            super().__init__(inputs, nx=WL.W.shape[1], ny=WL.W.shape[0])
         elif UL and UR:
             if WL or WR:
                 raise ValueError('Cannot provide PrimitiveStates along with ConservativeStates.')
-            else:
-                super().__init__(inputs, nx=UL.U.shape[1], ny=UL.U.shape[0])
+            super().__init__(inputs, nx=UL.U.shape[1], ny=UL.U.shape[0])
 
         self.roe_state_from_primitive_states(WL, WR)
 
@@ -819,7 +817,7 @@ class RoePrimitiveState(PrimitiveState):
             WR      Right primitive state                           \n
         """
 
-        self.Q = self._roe_state_from_prim_JIT(WL._Q, WR._Q)
+        self.Q = self._roe_state_from_prim_JIT(WL.Q, WR.Q)
 
     def _roe_state_from_prim_NP(self,
                                 WL: PrimitiveState,
