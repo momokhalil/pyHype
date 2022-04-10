@@ -150,7 +150,7 @@ class MUSCLFiniteVolumeMethod:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def compute_limiter(self,
@@ -159,41 +159,39 @@ class MUSCLFiniteVolumeMethod:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def integrate_flux_E(self, refBLK):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def integrate_flux_W(self, refBLK):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def integrate_flux_N(self, refBLK):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def integrate_flux_S(self, refBLK):
-        pass
+        raise NotImplementedError
 
     @staticmethod
     @abstractmethod
     def high_order_term(refBLK: QuadBlock, qp: QuadraturePoint) -> np.ndarray:
-        pass
+        raise NotImplementedError
 
-    @staticmethod
     @abstractmethod
     def limited_solution_at_quadrature_point(self, state: State, gradients: GradientsContainer,
                                              qp: QuadraturePoint
                                              ) -> np.ndarray:
-        pass
+        raise NotImplementedError
 
-    @staticmethod
     @abstractmethod
     def unlimited_solution_at_quadrature_point(self, state: State, gradients: GradientsContainer, qp: QuadraturePoint
                                                ) -> np.ndarray:
-        pass
+        raise NotImplementedError
 
     def dUdt(self, refBLK: QuadBlock):
         """

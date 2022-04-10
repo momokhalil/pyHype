@@ -128,7 +128,7 @@ class MeshGenerator:
 
     @abstractmethod
     def _create_block_descriptions(self):
-        pass
+        raise NotImplementedError
 
 class QuadMeshGenerator(MeshGenerator, _mesh_transfinite_gen):
     def __init__(self,

@@ -131,7 +131,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         """
         a = inputs.alpha
 
-        if a == 0 or a == 2 / 3 or a == 1:
+        if a in (0, 2/3, 1):
             raise ValueError('Value of alpha parameter is not allowd.')
         else:
             k = (1 - a) / a / (3 * a - 2)

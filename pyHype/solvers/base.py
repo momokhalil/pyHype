@@ -162,11 +162,11 @@ class Solver:
 
     @abstractmethod
     def set_IC(self):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def set_BC(self):
-        pass
+        raise NotImplementedError
 
     @property
     def blocks(self) -> Iterable[QuadBlock]:
@@ -218,7 +218,7 @@ class Solver:
         plt.ion()
         self.realfig, self.realplot = plt.subplots(1)
 
-        blks = [blk for blk in self.inputs.mesh_inputs.values()]
+        blks = list(self.inputs.mesh_inputs.values())
 
         sw_x = min([blk.SW[0] for blk in blks])
         nw_x = min([blk.NW[0] for blk in blks])

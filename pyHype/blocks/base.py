@@ -27,6 +27,7 @@ from pyHype.states import PrimitiveState, ConservativeState
 from typing import TYPE_CHECKING, Callable
 if TYPE_CHECKING:
     from pyHype.blocks.QuadBlock import QuadBlock
+    from pyHype.solvers.base import ProblemInput
 
 
 class Neighbors:

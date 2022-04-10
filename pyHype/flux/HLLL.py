@@ -22,9 +22,6 @@ from pyHype.states.states import PrimitiveState, RoePrimitiveState, Conservative
 
 
 class FluxHLLL(FluxFunction):
-    def __init__(self, inputs):
-        super().__init__(inputs)
-
     def compute_flux(self,
                      WL: PrimitiveState,
                      WR: PrimitiveState,

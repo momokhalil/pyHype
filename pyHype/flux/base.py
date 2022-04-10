@@ -175,4 +175,4 @@ class FluxFunction:
                      UL: [ConservativeState, np.ndarray],
                      UR: [ConservativeState, np.ndarray],
                      ) -> np.ndarray:
-        pass
+        raise NotImplementedError

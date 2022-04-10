@@ -69,35 +69,43 @@ class State:
 
     @property
     @abstractmethod
-    def rho(self) -> None: pass
+    def rho(self) -> None:
+        raise NotImplementedError
 
     @rho.setter
     @abstractmethod
-    def rho(self, rho: np.ndarray) -> None: pass
+    def rho(self, rho: np.ndarray) -> None:
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def u(self) -> None: pass
+    def u(self) -> None:
+        raise NotImplementedError
 
     @u.setter
     @abstractmethod
-    def u(self, u: np.ndarray) -> None: pass
+    def u(self, u: np.ndarray) -> None:
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def v(self) -> None:  pass
+    def v(self) -> None:
+        raise NotImplementedError
 
     @v.setter
     @abstractmethod
-    def v(self, v: np.ndarray) -> None: pass
+    def v(self, v: np.ndarray) -> None:
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def p(self) -> None: pass
+    def p(self) -> None:
+        raise NotImplementedError
 
     @p.setter
     @abstractmethod
-    def p(self, p: np.ndarray) -> None: pass
+    def p(self, p: np.ndarray) -> None:
+        raise NotImplementedError
 
     def clear_cache(self) -> None:
         self.cache.clear()
@@ -162,18 +170,18 @@ class State:
         """
         Makes state vector and state variables non-dimensional
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def a(self):
         """
         Returns speed of sound over entire grid
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def H(self):
         """
         Returns total entalpy over entire grid
         """
-        pass
+        raise NotImplementedError

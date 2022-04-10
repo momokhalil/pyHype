@@ -284,29 +284,6 @@ class QuadBlock(BaseBlock_With_Ghost):
 
         return self.inputs.reconstruction_type
 
-    def scopy(self):
-        _cpy = cpy(self)
-        _cpy.state = cpy(self.state)
-        _cpy.ghost = cpy(self.ghost)
-        _cpy.ghost.E = cpy(self.ghost.E)
-        _cpy.ghost.W = cpy(self.ghost.W)
-        _cpy.ghost.N = cpy(self.ghost.N)
-        _cpy.ghost.S = cpy(self.ghost.S)
-        return _cpy
-
-    def dcopy(self):
-        return deepcopy(self)
-
-    def to_primitive(self, copy: bool = True) -> QuadBlock:
-        _to_conv = self.scopy() if copy else self
-        self._to_primitive(_to_conv)
-        return _to_conv
-
-    def to_conservative(self, copy: bool = True) -> QuadBlock:
-        _to_conv = self.scopy() if copy else self
-        self._to_conservative(_to_conv)
-        return _to_conv
-
     @staticmethod
     def _is_all_blk_conservative(blks: dict.values):
         return all(map(lambda blk: isinstance(blk.state, ConservativeState), blks))
@@ -354,7 +331,7 @@ class QuadBlock(BaseBlock_With_Ghost):
             - None
         """
 
-        _show = True if ax is None else False
+        _show = ax is None
 
         if not ax:
             fig, ax = plt.subplots(1, 1)
@@ -1039,4 +1016,4 @@ class QuadBlock(BaseBlock_With_Ghost):
         return U
 
     def realizable(self):
-        return self.state.realizable() and all([blk.realizable() for blk in self.ghost()])
+        return self.state.realizable() and all(blk.realizable() for blk in self.ghost())

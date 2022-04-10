@@ -16,6 +16,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
@@ -23,7 +24,6 @@ from abc import abstractmethod
 from pyHype.utils import utils
 from pyHype.mesh.QuadMesh import QuadMesh
 from typing import TYPE_CHECKING, Union
-from pyHype.states import ConservativeState
 from pyHype.blocks.base import BaseBlock_Only_State
 
 if TYPE_CHECKING:
@@ -31,18 +31,6 @@ if TYPE_CHECKING:
     from pyHype.blocks.base import QuadBlock, BaseBlock
     from pyHype.mesh.base import BlockDescription
 
-_DEFINED_BC_ = ['None',
-                'Reflection',
-                'Slipwall',
-                'InletDirichlet',
-                'InletRiemann',
-                'OutletDirichlet',
-                'OuletRiemann'
-                ]
-
-
-def is_defined_BC(name: str):
-    return True if name in _DEFINED_BC_ else False
 
 class GhostBlocks:
     def __init__(self,
@@ -65,7 +53,7 @@ class GhostBlocks:
         self.N = GhostBlockNorth(inputs, BCtype=block_data.BCTypeN, refBLK=refBLK, state_type=state_type)
         self.S = GhostBlockSouth(inputs, BCtype=block_data.BCTypeS, refBLK=refBLK, state_type=state_type)
 
-    def __call__(self) -> dict_values[BaseBlock_Only_State]:
+    def __call__(self):
         return self.__dict__.values()
 
 
@@ -90,23 +78,22 @@ class GhostBlock(BaseBlock_Only_State):
         self.theta = None
 
         # Assign the BCset method to avoid checking type everytime
-        if self.BCtype in _DEFINED_BC_:
-            if self.BCtype == 'None':
-                self.set_BC = self.set_BC_none
-            elif self.BCtype == 'Reflection':
-                self.set_BC = self.set_BC_reflection
-            elif self.BCtype == 'Slipwall':
-                self.set_BC = self.set_BC_slipwall
-            elif self.BCtype == 'InletDirichlet':
-                self._inlet_realizability_check()
-                self.set_BC = self.set_BC_inlet_dirichlet
-            elif self.BCtype == 'InletRiemann':
-                self._inlet_realizability_check()
-                self.set_BC = self.set_BC_inlet_riemann
-            elif self.BCtype == 'OutletDirichlet':
-                self.set_BC = self.set_BC_outlet_dirichlet
-            elif self.BCtype == 'OutletRiemann':
-                self.set_BC = self.set_BC_outlet_riemann
+        if self.BCtype == 'None':
+            self.set_BC = self.set_BC_none
+        elif self.BCtype == 'Reflection':
+            self.set_BC = self.set_BC_reflection
+        elif self.BCtype == 'Slipwall':
+            self.set_BC = self.set_BC_slipwall
+        elif self.BCtype == 'InletDirichlet':
+            self._inlet_realizability_check()
+            self.set_BC = self.set_BC_inlet_dirichlet
+        elif self.BCtype == 'InletRiemann':
+            self._inlet_realizability_check()
+            self.set_BC = self.set_BC_inlet_riemann
+        elif self.BCtype == 'OutletDirichlet':
+            self.set_BC = self.set_BC_outlet_dirichlet
+        elif self.BCtype == 'OutletRiemann':
+            self.set_BC = self.set_BC_outlet_riemann
         else:
             raise ValueError('Boundary Condition type ' + str(self.BCtype) + ' has not been specialized.')
 
@@ -250,49 +237,49 @@ class GhostBlock(BaseBlock_Only_State):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def set_BC_outlet_dirichlet(self):
         """
         Set outlet dirichlet boundary condition
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def set_BC_outlet_riemann(self):
         """
         Set outlet riemann boundary condition
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def set_BC_reflection(self):
         """
         Set reflection boundary condition
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def set_BC_slipwall(self):
         """
         Set slipwall boundary condition
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def set_BC_inlet_dirichlet(self):
         """
         Set inlet dirichlet boundary condition
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def set_BC_inlet_riemann(self):
         """
         Set inlet riemann boundary condition
         """
-        pass
+        raise NotImplementedError
 
 
 class GhostBlockEast(GhostBlock):
