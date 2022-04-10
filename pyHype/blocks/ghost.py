@@ -349,10 +349,10 @@ class GhostBlockEast(GhostBlock):
         self.state.U = self.refBLK.get_east_ghost()
 
     def set_BC_inlet_riemann(self):
-        pass
+        return NotImplementedError
 
     def set_BC_outlet_riemann(self):
-        pass
+        return NotImplementedError
 
 
 class GhostBlockWest(GhostBlock):
@@ -422,10 +422,10 @@ class GhostBlockWest(GhostBlock):
         self.state.U = self.refBLK.get_west_ghost()
 
     def set_BC_inlet_riemann(self):
-        pass
+        return NotImplementedError
 
     def set_BC_outlet_riemann(self):
-        pass
+        return NotImplementedError
 
 
 class GhostBlockNorth(GhostBlock):
@@ -495,10 +495,10 @@ class GhostBlockNorth(GhostBlock):
         self.state.U = self.refBLK.get_north_ghost()
 
     def set_BC_inlet_riemann(self):
-        pass
+        return NotImplementedError
 
     def set_BC_outlet_riemann(self):
-        pass
+        return NotImplementedError
 
 
 class GhostBlockSouth(GhostBlock):
@@ -568,7 +568,7 @@ class GhostBlockSouth(GhostBlock):
         self.state.U = self.refBLK.get_south_ghost()
 
     def set_BC_inlet_riemann(self):
-        pass
+        return NotImplementedError
 
     def set_BC_outlet_riemann(self):
-        pass
+        return NotImplementedError
