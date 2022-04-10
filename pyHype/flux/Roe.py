@@ -240,12 +240,9 @@ class FluxRoe(FluxFunction):
         self.Lambda.data[2  * _sz:3  * _sz] = Wroe.u
         self.Lambda.data[3  * _sz:4  * _sz] = Lp
 
-
     def compute_flux(self,
                      WL: PrimitiveState,
-                     WR: PrimitiveState,
-                     UL: ConservativeState,
-                     UR: ConservativeState,
+                     WR: PrimitiveState
                      ) -> np.ndarray:
         """
         Computes the flux using the Roe approximate riemann solver. First, the Roe average state is computed based on
@@ -280,19 +277,21 @@ class FluxRoe(FluxFunction):
         to be continued...
 
         """
-        Wroe = RoePrimitiveState(self.inputs, WL, WR)
-        if self.inputs.upwind_mode == 'conservative':
-            return 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux_conservative(Wroe, WL, WR, UL, UR)
-        elif self.inputs.upwind_mode == 'primitive':
-            return 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux_primitive(Wroe, WL, WR)
-        else:
-            raise ValueError('Must specify type of upwinding')
+        return 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux(WL, WR)
 
-    def diagonalize_primitive(self,
-                              Wroe: RoePrimitiveState,
-                              WL: PrimitiveState,
-                              WR: PrimitiveState
-                              ) -> None:
+    def get_upwind_flux(self,
+                        WL: PrimitiveState,
+                        WR: PrimitiveState,
+                        ) -> np.ndarray:
+        self.diagonalize(RoePrimitiveState(self.inputs, WL, WR), WL, WR)
+        self.Lambda.data = np.absolute(self.Lambda.data)
+        return 0.5 * (self.Rc * (self.Lambda * (self.Lp * (WR - WL).flatten()))).reshape(1, -1, 4)
+
+    def diagonalize(self,
+                    Wroe: RoePrimitiveState,
+                    WL: PrimitiveState,
+                    WR: PrimitiveState
+                    ) -> None:
         """
         Diagonalization of the Euler equations in primitive form. First, the Harten correction is applied to prevent
         expansion shocks, and then, the right-conservative, left-primitive primitive eigenvectors, and eigenvalues are
@@ -310,57 +309,3 @@ class FluxRoe(FluxFunction):
         self.compute_Rc(Wroe, Lm, Lp)
         self.compute_Lp(Wroe)
         self.compute_eigenvalues(Wroe, Lp, Lm)
-
-
-    def diagonalize_conservative(self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState) -> None:
-        """
-        Diagonalization of the Euler equations in conservative form. First, the Harten correction is applied to prevent
-        expansion shocks, and then, the right-conservative, left-conservative primitive eigenvectors, and eigenvalues
-        are calculated.
-
-        Parameters:
-            - Wroe (RoePrimitiveState): Primitive state holding the Roe averages
-            - WL (PrimitiveState): Primitive left states
-            - WR (PrimitiveState): Primitive right states
-
-        Returns:
-            - None
-        """
-        Lm, Lp = self.harten_correction_x(Wroe, WL, WR)
-        self.compute_Rc(Wroe, Lm, Lp)
-        self.compute_Lc(Wroe)
-        self.compute_eigenvalues(Wroe, Lp, Lm)
-
-
-    def get_upwind_flux_conservative(self,
-                                     Wroe: RoePrimitiveState,
-                                     WL: PrimitiveState,
-                                     WR: PrimitiveState,
-                                     UL: ConservativeState,
-                                     UR: ConservativeState,
-                                     ) -> np.ndarray:
-
-        self.diagonalize_conservative(Wroe, WL, WR)
-        self.Lambda.data = np.absolute(self.Lambda.data)
-
-        # Dissipative upwind term
-        return 0.5 * (self.Rc *
-                      (self.Lambda *
-                       (self.Lc * (UR - UL).flatten()))
-                      ).reshape(1, -1, 4)
-
-
-    def get_upwind_flux_primitive(self,
-                                  Wroe: RoePrimitiveState,
-                                  WL: PrimitiveState,
-                                  WR: PrimitiveState,
-                                  ) -> np.ndarray:
-
-        self.diagonalize_primitive(Wroe, WL, WR)
-        self.Lambda.data = np.absolute(self.Lambda.data)
-
-        # Dissipative upwind term
-        return 0.5 * (self.Rc *
-                      (self.Lambda *
-                       (self.Lp * (WR - WL).flatten()))
-                      ).reshape(1, -1, 4)

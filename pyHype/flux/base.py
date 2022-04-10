@@ -33,29 +33,14 @@ class FluxFunction:
         self.n = inputs.n
 
     def __call__(self,
-                 stateL: State,
-                 stateR: State,
+                 WL: PrimitiveState,
+                 WR: PrimitiveState,
                  *args, **kwargs):
-
-        if isinstance(stateL, PrimitiveState):
-            _WL = stateL
-            _UL = _WL.to_conservative_state()
-        elif isinstance(stateL, ConservativeState):
-            _UL = stateL
-            _WL = _UL.to_primitive_state()
-        else:
-            raise TypeError('FluxFunction.__call__() Error, unknown state type.')
-
-        if isinstance(stateR, PrimitiveState):
-            _WR = stateR
-            _UR = _WR.to_conservative_state()
-        elif isinstance(stateR, ConservativeState):
-            _UR = stateR
-            _WR = _UR.to_primitive_state()
-        else:
-            raise TypeError('FluxFunction.__call__() Error, unknown state type.')
-
-        return self.compute_flux(_WL, _WR, _UL, _UR)
+        if not isinstance(WL, PrimitiveState):
+            raise TypeError('FluxFunction.__call__() Error, WL must be a PrimitiveState.')
+        if not isinstance(WR, PrimitiveState):
+            raise TypeError('FluxFunction.__call__() Error, WR must be a PrimitiveState.')
+        return self.compute_flux(WL, WR)
 
     @staticmethod
     def wavespeeds_x(W: PrimitiveState) -> [np.ndarray]:
@@ -171,8 +156,6 @@ class FluxFunction:
     @abstractmethod
     def compute_flux(self,
                      WL: PrimitiveState,
-                     WR: PrimitiveState,
-                     UL: [ConservativeState, np.ndarray],
-                     UR: [ConservativeState, np.ndarray],
+                     WR: PrimitiveState
                      ) -> np.ndarray:
         raise NotImplementedError
