@@ -1,5 +1,4 @@
 from pyHype.solvers import Euler2D
-import numpy as np
 
 block1 = {'nBLK': 1,
           'NW': [0, 10], 'NE': [10, 10],
@@ -14,9 +13,6 @@ block1 = {'nBLK': 1,
           'BCTypeS': 'Reflection'}
 
 mesh = {1: block1}
-
-a = np.arange(0, 400).reshape((10, 10, 4))
-print(a.reshape((1, 100, 4))[0, 0, :])
 
 # Solver settings
 settings = {'problem_type':             'implosion',
@@ -36,8 +32,8 @@ settings = {'problem_type':             'implosion',
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
             'R':                        287.0,
-            'nx':                       100,
-            'ny':                       100,
+            'nx':                       500,
+            'ny':                       500,
             'nghost':                   1,
             }
 
