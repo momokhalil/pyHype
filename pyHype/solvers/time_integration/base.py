@@ -29,4 +29,4 @@ class TimeIntegrator:
     # Abstract methodo to define integration scheme
     @abstractmethod
     def integrate(self, refBLK, dt):
-        pass
+        raise NotImplementedError

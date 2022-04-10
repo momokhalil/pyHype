@@ -239,7 +239,4 @@ class XDIR_EIGENSYSTEM_INDICES:
 
     @staticmethod
     def get_indices(size: int, sweeps: int, num: list):
-        _base = np.concatenate([np.arange(n, 4 * (size + 1) * sweeps, 4, dtype=np.int) for n in num])
-        #_cat = np.concatenate([_base + n * size for n in range(sweeps)])
-        #print(_base.shape, _cat.shape)
-        return _base
+        return np.concatenate([np.arange(n, 4 * (size + 1) * sweeps, 4, dtype=np.int) for n in num])

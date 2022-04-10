@@ -84,35 +84,30 @@ class Euler2D(Solver):
 
 
     def set_IC(self):
-
-        if not ic.is_defined_IC(self.inputs.problem_type):
-            raise ValueError('Initial condition of type ' + str(self.inputs.problem_type) + ' has not been specialized.'
-                             ' Please make sure it is defined in ./initial_conditions/initial_conditions.py and added '
-                             'to the list of defined ICs in _DEFINED_IC_ on top of this file.')
+        problem_type = self.inputs.problem_type
+        if problem_type == 'implosion':
+            _set_IC = ic.implosion(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'explosion':
+            _set_IC = ic.explosion(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'shockbox':
+            _set_IC = ic.shockbox(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'supersonic_flood':
+            _set_IC = ic.supersonic_flood(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'supersonic_rest':
+            _set_IC = ic.supersonic_rest(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'subsonic_flood':
+            _set_IC = ic.subsonic_flood(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'subsonic_rest':
+            _set_IC = ic.subsonic_rest(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'explosion_trapezoid':
+            _set_IC = ic.explosion_trapezoid(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'explosion_3':
+            _set_IC = ic.explosion_3(self.blocks, g=self.inputs.gamma)
+        elif problem_type == 'mach_reflection':
+            _set_IC = ic.mach_reflection(self.blocks, g=self.inputs.gamma)
         else:
-
-            problem_type = self.inputs.problem_type
-
-            if problem_type == 'implosion':
-                _set_IC = ic.implosion(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'explosion':
-                _set_IC = ic.explosion(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'shockbox':
-                _set_IC = ic.shockbox(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'supersonic_flood':
-                _set_IC = ic.supersonic_flood(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'supersonic_rest':
-                _set_IC = ic.supersonic_rest(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'subsonic_flood':
-                _set_IC = ic.subsonic_flood(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'subsonic_rest':
-                _set_IC = ic.subsonic_rest(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'explosion_trapezoid':
-                _set_IC = ic.explosion_trapezoid(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'explosion_3':
-                _set_IC = ic.explosion_3(self.blocks, g=self.inputs.gamma)
-            elif problem_type == 'mach_reflection':
-                _set_IC = ic.mach_reflection(self.blocks, g=self.inputs.gamma)
+            raise ValueError(
+                'Initial condition of type ' + str(self.inputs.problem_type) + ' has not been specialized.')
 
     def set_BC(self):
         self._blocks.set_BC()
@@ -155,8 +150,6 @@ class Euler2D(Solver):
             profiler.enable()
         else:
             profiler = None
-
-        #self._blocks.plot_mesh()
 
         while self.t < self.t_final:
             if self.numTimeStep % 50 == 0:

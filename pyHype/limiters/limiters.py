@@ -21,18 +21,12 @@ from pyHype.limiters import SlopeLimiter
 
 
 class BarthJespersen(SlopeLimiter):
-    def __init__(self, inputs):
-        super().__init__(inputs)
-
     @staticmethod
     def _limiter_func(slope: np.ndarray) -> np.ndarray:
         return np.minimum(1, slope)
 
 
 class Venkatakrishnan(SlopeLimiter):
-    def __init__(self, inputs):
-        super().__init__(inputs)
-
     @staticmethod
     def _limiter_func(slope: np.ndarray) -> np.ndarray:
         s2 = slope ** 2
@@ -40,9 +34,6 @@ class Venkatakrishnan(SlopeLimiter):
 
 
 class VanAlbada(SlopeLimiter):
-    def __init__(self, inputs):
-        super().__init__(inputs)
-
     @staticmethod
     def _limiter_func(slope: np.ndarray) -> np.ndarray:
         s2 = slope ** 2
@@ -50,9 +41,6 @@ class VanAlbada(SlopeLimiter):
 
 
 class VanLeer(SlopeLimiter):
-    def __init__(self, inputs):
-        super().__init__(inputs)
-
     @staticmethod
     def _limiter_func(slope: np.ndarray) -> np.ndarray:
         return (np.absolute(slope) + slope) / (slope + 1)

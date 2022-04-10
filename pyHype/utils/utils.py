@@ -18,7 +18,6 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import functools
 import numpy as np
-from profilehooks import profile
 from typing import Union, Callable
 
 

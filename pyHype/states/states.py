@@ -22,8 +22,6 @@ import numba as nb
 import numpy as np
 from pyHype.states.base import State
 from pyHype.utils.utils import cache
-from copy import copy as cpy
-from profilehooks import profile
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -69,10 +67,7 @@ class PrimitiveState(State):
         # Initialize attributes for storing solution data
 
         # Check if an input vector is given
-        if state or (U_vector is not None) or (W_vector is not None):
-            _vec_given = True
-        else:
-            _vec_given = False
+        _vec_given = state or (U_vector is not None) or (W_vector is not None)
 
         # Check if more than one input vector is given
         if _vec_given and sum(map(bool, [state, U_vector is not None, W_vector is not None])) > 1:
@@ -480,10 +475,7 @@ class ConservativeState(State):
         """
 
         # Check if an input vector is given
-        if state or (U_vector is not None) or (W_vector is not None):
-            _vec_given = True
-        else:
-            _vec_given = False
+        _vec_given = state or (U_vector is not None) or (W_vector is not None)
 
         # Check if more than one input vector is given
         if _vec_given and sum(map(bool, [state, U_vector is not None, W_vector is not None])) > 1:

@@ -164,4 +164,4 @@ class SlopeLimiter:
     @staticmethod
     @abstractmethod
     def _limiter_func(slope: np.ndarray) -> np.ndarray:
-        pass
+        raise NotImplementedError

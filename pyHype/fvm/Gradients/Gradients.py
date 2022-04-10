@@ -18,6 +18,8 @@ from __future__ import annotations
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
+import numpy as np
+import numba as nb
 from abc import abstractmethod
 
 from typing import TYPE_CHECKING
@@ -39,7 +41,7 @@ class Gradient:
     @staticmethod
     @abstractmethod
     def _get_gradient(refBLK: QuadBlock) -> None:
-        pass
+        raise NotImplementedError
 
 
 """
@@ -69,11 +71,8 @@ class LeastSquares9Point:
 
 
 class GreenGauss(Gradient):
-    def __init__(self, inputs: ProblemInput):
-        super().__init__(inputs)
 
-    @staticmethod
-    def _get_gradient(refBLK: QuadBlock) -> None:
+    def _get_gradient(self, refBLK: QuadBlock) -> None:
         interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
         # Get each face's contribution to dUdx
         E = interfaceE * refBLK.mesh.face.E.L

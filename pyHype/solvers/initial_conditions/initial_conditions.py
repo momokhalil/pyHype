@@ -16,24 +16,9 @@ limitations under the License.
 
 import numpy as np
 
-_DEFINED_IC_ = ['explosion',
-                'explosion_3',
-                'implosion',
-                'shockbox',
-                'supersonic_flood',
-                'supersonic_rest',
-                'subsonic_flood',
-                'subsonic_rest',
-                'explosion_trapezoid',
-                'mach_reflection'
-                ]
-
-def is_defined_IC(name: str):
-    return True if name in _DEFINED_IC_ else False
-
 def explosion(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -67,7 +52,7 @@ def explosion(blocks, **kwargs):
 
 def implosion(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -99,7 +84,7 @@ def implosion(blocks, **kwargs):
 
 def shockbox(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -133,7 +118,7 @@ def shockbox(blocks, **kwargs):
 
 def mach_reflection(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -164,7 +149,7 @@ def mach_reflection(blocks, **kwargs):
 
 def supersonic_flood(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -187,7 +172,7 @@ def supersonic_flood(blocks, **kwargs):
 
 def subsonic_flood(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -210,7 +195,7 @@ def subsonic_flood(blocks, **kwargs):
 
 def supersonic_rest(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -233,7 +218,7 @@ def supersonic_rest(blocks, **kwargs):
 
 def subsonic_rest(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -256,7 +241,7 @@ def subsonic_rest(blocks, **kwargs):
 
 def explosion_trapezoid(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
@@ -295,7 +280,7 @@ def explosion_trapezoid(blocks, **kwargs):
 
 def explosion_3(blocks, **kwargs):
 
-    if 'g' not in kwargs.keys():
+    if 'g' not in kwargs:
         raise KeyError('Parameter g (gamma) must be passed to the explosion IC function.')
 
     # Gamma
