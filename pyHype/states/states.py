@@ -819,7 +819,7 @@ class RoePrimitiveState(PrimitiveState):
             WR      Right primitive state                           \n
         """
 
-        self.Q = self._roe_state_from_prim_JIT(WL._Q, WR._Q)
+        self.Q = self._roe_state_from_prim_JIT(WL.Q, WR.Q)
 
     def _roe_state_from_prim_NP(self,
                                 WL: PrimitiveState,
