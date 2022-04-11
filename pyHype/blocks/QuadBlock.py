@@ -19,9 +19,6 @@ from typing import TYPE_CHECKING
 
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
-
-from copy import deepcopy
-from copy import copy as cpy
 from itertools import chain
 
 import numpy as np
@@ -32,7 +29,6 @@ from pyHype.fvm import FirstOrderMUSCL, SecondOrderMUSCL
 from pyHype.mesh.QuadMesh import QuadMesh
 from pyHype.mesh import quadratures as qp
 from pyHype.mesh.base import BlockDescription
-from pyHype.states.states import ConservativeState, PrimitiveState
 from pyHype.blocks.base import Neighbors, BaseBlock, BaseBlock_Only_State
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 from pyHype.blocks.ghost import GhostBlocks

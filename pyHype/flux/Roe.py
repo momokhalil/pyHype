@@ -22,7 +22,7 @@ np.set_printoptions(linewidth=200)
 np.set_printoptions(precision=3)
 from scipy.sparse import coo_matrix as coo
 from pyHype.flux.base import FluxFunction
-from pyHype.states.states import RoePrimitiveState, ConservativeState, PrimitiveState
+from pyHype.states.states import RoePrimitiveState, PrimitiveState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_VECTORS
 
 
