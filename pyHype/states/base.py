@@ -129,7 +129,7 @@ class State:
         """
         if isinstance(other, State):
             return self.Q + other.Q
-        elif isinstance(other, np.ndarray):
+        if isinstance(other, np.ndarray):
             return self.Q + other
 
     def __radd__(self, other: [State, np.ndarray]) -> np.ndarray:
@@ -138,7 +138,7 @@ class State:
         """
         if isinstance(other, State):
             return other.Q + self.Q
-        elif isinstance(other, np.ndarray):
+        if isinstance(other, np.ndarray):
             return other + self.Q
 
     def __sub__(self, other: State) -> np.ndarray:
@@ -147,7 +147,7 @@ class State:
         """
         if isinstance(other, State):
             return self.Q - other.Q
-        elif isinstance(other, np.ndarray):
+        if isinstance(other, np.ndarray):
             return self.Q - other
 
     def __rsub__(self, other: [State, np.ndarray]) -> np.ndarray:
@@ -156,7 +156,7 @@ class State:
         """
         if isinstance(other, State):
             return other.Q - self.Q
-        elif isinstance(other, np.ndarray):
+        if isinstance(other, np.ndarray):
             return other - self.Q
 
     def reset(self, shape: [int] = None):

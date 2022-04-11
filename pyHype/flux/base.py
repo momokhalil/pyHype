@@ -60,8 +60,7 @@ class FluxFunction:
             # Compute wavespeeds
             slow, fast = W.u - a, W.u + a
             return slow, fast
-        else:
-            raise TypeError('Input is not PrimitiveState.')
+        raise TypeError('Input is not PrimitiveState.')
 
 
     def harten_correction_x(self,
