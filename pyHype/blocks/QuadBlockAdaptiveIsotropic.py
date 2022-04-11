@@ -19,23 +19,9 @@ from typing import TYPE_CHECKING
 
 import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
-
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
 
 from pyHype.blocks import QuadBlock
-from pyHype.fvm import SecondOrderMUSCL
-from pyHype.mesh.base import BlockDescription, Mesh
-from pyHype.states.states import ConservativeState, PrimitiveState
-from pyHype.blocks.base import NormalVector, GhostBlockContainer, Neighbors
-from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
-from pyHype.blocks.ghost import GhostBlockEast, GhostBlockWest, GhostBlockSouth, GhostBlockNorth
-
-from copy import deepcopy
-from copy import copy as cpy
-
-from itertools import chain
 
 
 if TYPE_CHECKING:

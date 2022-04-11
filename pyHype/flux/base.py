@@ -19,10 +19,8 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 import numpy as np
 import numba as nb
 from abc import abstractmethod
-from pyHype.states.states import ConservativeState, \
-                                 PrimitiveState,    \
-                                 RoePrimitiveState, \
-                                 State
+from pyHype.states.states import PrimitiveState,    \
+                                 RoePrimitiveState
 
 class FluxFunction:
     def __init__(self, inputs):

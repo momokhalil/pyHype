@@ -16,7 +16,6 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-from abc import ABC
 
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
