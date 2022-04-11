@@ -901,16 +901,14 @@ class QuadBlock(BaseBlock_With_Ghost):
                 return self._get_nodal_solution_piecewise_linear_conservative()
             raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
 
-        elif interpolation == 'cell_average':
+        if interpolation == 'cell_average':
 
             if formulation == 'primitive':
                 return self._get_nodal_solution_cell_average_primitive()
             if formulation == 'conservative':
                 return self._get_nodal_solution_cell_average_conservative()
             raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
-
-        else:
-            raise ValueError('Interpolation method ' + str(interpolation) + 'has not been specialized.')
+        raise ValueError('Interpolation method ' + str(interpolation) + 'has not been specialized.')
 
 
     def _get_nodal_solution_piecewise_linear_primitive(self) -> np.ndarray:
