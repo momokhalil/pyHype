@@ -158,16 +158,15 @@ def reflect_point(x1: float,
 
     if y1 == y2:
         return xr, 2 * y1 - yr
-    elif x1 == x2:
+    if x1 == x2:
         return 2 * x1 - xr, yr
-    else:
-        m = (y1 - y2) / (x1 - x2)
-        b = 0.5 * (y1 + y2 - m * (x1 + x2))
+    m = (y1 - y2) / (x1 - x2)
+    b = 0.5 * (y1 + y2 - m * (x1 + x2))
 
-        xp = ((1 - m ** 2) * xr + 2 * m * yr - 2 * m * b) / (1 + m ** 2)
-        yp = (2 * m * xr - (1 - m ** 2) * yr + 2 * b) / (1 + m ** 2)
+    xp = ((1 - m ** 2) * xr + 2 * m * yr - 2 * m * b) / (1 + m ** 2)
+    yp = (2 * m * xr - (1 - m ** 2) * yr + 2 * b) / (1 + m ** 2)
 
-        return xp, yp
+    return xp, yp
 
 
 def cache(func: Callable):

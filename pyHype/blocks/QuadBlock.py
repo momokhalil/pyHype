@@ -63,11 +63,10 @@ class GradientsFactory:
     def create_gradients(inputs: ProblemInput):
         if inputs.fvm_spatial_order == 1:
             return FirstOrderGradients(inputs)
-        elif inputs.fvm_spatial_order == 2:
+        if inputs.fvm_spatial_order == 2:
             return SecondOrderGradients(inputs)
-        else:
-            raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
-                             'extended for the given order.')
+        raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
+                         'extended for the given order.')
 
 class BaseBlock_With_Ghost(BaseBlock_Only_State):
 
@@ -444,14 +443,13 @@ class QuadBlock(BaseBlock_With_Ghost):
 
         if self._index_in_west_ghost_block(x, y):
             return self.ghost.W.state[y, 0, var]
-        elif self._index_in_east_ghost_block(x, y):
+        if self._index_in_east_ghost_block(x, y):
             return self.ghost.E.state[y, 0, var]
-        elif self._index_in_north_ghost_block(x, y):
+        if self._index_in_north_ghost_block(x, y):
             return self.ghost.N.state[0, x, var]
-        elif self._index_in_south_ghost_block(x, y):
+        if self._index_in_south_ghost_block(x, y):
             return self.ghost.N.state[0, x, var]
-        else:
-            raise ValueError('Incorrect indexing')
+        raise ValueError('Incorrect indexing')
 
     def _index_in_west_ghost_block(self, x, y):
         return x < 0 and 0 <= y <= self.mesh.ny
@@ -899,19 +897,17 @@ class QuadBlock(BaseBlock_With_Ghost):
 
             if formulation == 'primitive':
                 return self._get_nodal_solution_piecewise_linear_primitive()
-            elif formulation == 'conservative':
+            if formulation == 'conservative':
                 return self._get_nodal_solution_piecewise_linear_conservative()
-            else:
-                raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
+            raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
 
         elif interpolation == 'cell_average':
 
             if formulation == 'primitive':
                 return self._get_nodal_solution_cell_average_primitive()
-            elif formulation == 'conservative':
+            if formulation == 'conservative':
                 return self._get_nodal_solution_cell_average_conservative()
-            else:
-                raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
+            raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
 
         else:
             raise ValueError('Interpolation method ' + str(interpolation) + 'has not been specialized.')

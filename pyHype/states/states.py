@@ -305,8 +305,7 @@ class PrimitiveState(State):
           ) -> np.ndarray:
         if Ek is None:
             return self.H_JIT(self.rho, self.u, self.v, self.p, self.g_over_gm)
-        else:
-            return self.H_given_Ek_JIT(self.rho, self.p, Ek, self.g_over_gm)
+        return self.H_given_Ek_JIT(self.rho, self.p, Ek, self.g_over_gm)
 
 
     @staticmethod
@@ -404,7 +403,7 @@ class PrimitiveState(State):
             F[:, :, 3] = self.u * (U.e + self.p)
             return F
 
-        elif U_vector is not None:
+        if U_vector is not None:
             F = np.zeros_like(self.W, dtype=float)
             ru = U_vector[:, :, ConservativeState.RHOU_IDX]
             e = U_vector[:, :, ConservativeState.E_IDX]
@@ -414,9 +413,7 @@ class PrimitiveState(State):
             F[:, :, 2] = ru * self.v
             F[:, :, 3] = self.u * (e + self.p)
             return F
-
-        else:
-            return self._F_from_prim_JIT(self._Q, self.ek(), self.one_over_gm)
+        return self._F_from_prim_JIT(self._Q, self.ek(), self.one_over_gm)
 
     @staticmethod
     @nb.njit(cache=True)
