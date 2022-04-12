@@ -1,6 +1,11 @@
 from pyHype.solvers import Euler2D
 import numpy as np
 
+a = np.ones((10, 10))
+np.reshape(a, (100, ))
+
+print(a)
+
 block1 = {'nBLK': 1,
           'NW': [0, 2], 'NE': [2, 2],
           'SW': [0, 0], 'SE': [2, 0],
@@ -11,10 +16,10 @@ block1 = {'nBLK': 1,
           'BCTypeE': 'None',
           'BCTypeW': 'InletDirichlet',
           'BCTypeN': 'OutletDirichlet',
-          'BCTypeS': 'Slipwall'}
+          'BCTypeS': 'Reflection'}
 
 block2 = {'nBLK': 2,
-          'NW': [2, 2], 'NE': [4, 2],
+          'NW': [2, 2], 'NE': [4, 2 + 2 * np.tan(15 * np.pi / 180)],
           'SW': [2, 0], 'SE': [4, 2 * np.tan(15 * np.pi / 180)],
           'NeighborE': None,
           'NeighborW': 1,
@@ -23,7 +28,7 @@ block2 = {'nBLK': 2,
           'BCTypeE': 'OutletDirichlet',
           'BCTypeW': 'None',
           'BCTypeN': 'OutletDirichlet',
-          'BCTypeS': 'Slipwall'}
+          'BCTypeS': 'Reflection'}
 
 mesh = {1: block1,
         2: block2,
@@ -32,14 +37,13 @@ mesh = {1: block1,
 # Solver settings
 settings = {'problem_type':             'supersonic_flood',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'primitive',
-            'upwind_mode':              'conservative',
+            'reconstruction_type':      'conservative',
             'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
             'write_solution_name':      'super_wedge',
             'write_every_n_timesteps':  20,
             'plot_every':               10,
-            'CFL':                      0.4,
+            'CFL':                      0.3,
             't_final':                  25.0,
             'realplot':                 True,
             'profile':                  False,
@@ -47,8 +51,8 @@ settings = {'problem_type':             'supersonic_flood',
             'rho_inf':                  1.0,
             'a_inf':                    1.0,
             'R':                        287.0,
-            'nx':                       50,
-            'ny':                       50,
+            'nx':                       100,
+            'ny':                       100,
             'nghost':                   1,
             'BC_inlet_west_rho':        1.0,
             'BC_inlet_west_u':          2.0,
@@ -57,13 +61,15 @@ settings = {'problem_type':             'supersonic_flood',
             }
 
 # Create solver
-exp = Euler2D(fvm='SecondOrderPWL',
-              gradient='GreenGauss',
-              flux_function='Roe',
-              limiter='Venkatakrishnan',
-              integrator='RK2',
+exp = Euler2D(fvm_type='MUSCL',
+              fvm_spatial_order=2,
+              fvm_num_quadrature_points=1,
+              fvm_gradient_type='GreenGauss',
+              fvm_flux_function='Roe',
+              fvm_slope_limiter='Venkatakrishnan',
+              time_integrator='RK2',
               settings=settings,
-              mesh=mesh)
+              mesh_inputs=mesh)
 
 # Solve
 exp.solve()
