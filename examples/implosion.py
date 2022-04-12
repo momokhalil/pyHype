@@ -32,8 +32,8 @@ settings = {'problem_type':             'implosion',
             'rho_inf':                  1.0,
             'a_inf':                    343.0,
             'R':                        287.0,
-            'nx':                       500,
-            'ny':                       500,
+            'nx':                       50,
+            'ny':                       50,
             'nghost':                   1,
             }
 
