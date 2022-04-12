@@ -41,7 +41,6 @@ class ProblemInput:
     __REQUIRED__ = ['problem_type',
                     'interface_interpolation',
                     'reconstruction_type',
-                    'upwind_mode',
                     'write_solution',
                     'write_solution_mode',
                     'write_solution_name',
