@@ -503,10 +503,8 @@ class ConservativeState(State):
                 self.from_primitive_state(state)
             elif isinstance(state, ConservativeState):
                 self.from_conservative_state(state)
-
         elif U_vector is not None:
             self.from_conservative_state_vector(U_vector)
-
         elif W_vector is not None:
             self.from_primitive_state_vector(W_vector)
 
@@ -640,7 +638,7 @@ class ConservativeState(State):
         """
         self.rho    = W_vector[:, :, PrimitiveState.RHO_IDX].copy()
         self.rhou   = W_vector[:, :, PrimitiveState.U_IDX] * self.rho
-        self.rhou   = W_vector[:, :, PrimitiveState.V_IDX] * self.rho
+        self.rhov   = W_vector[:, :, PrimitiveState.V_IDX] * self.rho
         self.e      = W_vector[:, :, PrimitiveState.P_IDX] / (self.g - 1) + self.ek()
 
     def from_primitive_state_vars(self,
