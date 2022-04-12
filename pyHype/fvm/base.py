@@ -94,14 +94,14 @@ class MUSCLFiniteVolumeMethod:
         )
         # Set flux function
         if self.inputs.fvm_flux_function == 'Roe':
-            self.flux_function_X = flux.FluxRoe(self.inputs, self.inputs.nx, self.inputs.ny)
-            self.flux_function_Y = flux.FluxRoe(self.inputs, self.inputs.ny, self.inputs.nx)
+            self.flux_function_X = flux.FluxRoe(self.inputs, size=self.inputs.nx, sweeps=self.inputs.ny)
+            self.flux_function_Y = flux.FluxRoe(self.inputs, size=self.inputs.ny, sweeps=self.inputs.nx)
         elif self.inputs.fvm_flux_function == 'HLLE':
-            self.flux_function_X = flux.FluxHLLE(self.inputs)
-            self.flux_function_Y = flux.FluxHLLE(self.inputs)
+            self.flux_function_X = flux.FluxHLLE(self.inputs, nx=self.inputs.nx, ny=self.inputs.ny)
+            self.flux_function_Y = flux.FluxHLLE(self.inputs, nx=self.inputs.ny, ny=self.inputs.nx)
         elif self.inputs.fvm_flux_function == 'HLLL':
-            self.flux_function_X = flux.FluxHLLL(self.inputs)
-            self.flux_function_Y = flux.FluxHLLL(self.inputs)
+            self.flux_function_X = flux.FluxHLLL(self.inputs, nx=self.inputs.nx, ny=self.inputs.ny)
+            self.flux_function_Y = flux.FluxHLLL(self.inputs, nx=self.inputs.ny, ny=self.inputs.nx)
         else:
             raise ValueError('MUSCLFiniteVolumeMethod: Flux function type not specified.')
 
@@ -206,10 +206,23 @@ class MUSCLFiniteVolumeMethod:
                                     stateE: np.ndarray,
                                     stateW: np.ndarray,
                                     ) -> [PrimitiveState]:
-        _arrL = np.concatenate((ghostW, stateE), axis=1).reshape((1, (self.nx + 1) * self.ny, 4))
+        """
+        Compute and return the left and right states used for the East-West inviscid flux calculation. The left state
+        is created by concatenating the west ghost-cell state and the east face state. The right state
+        is created by concatenating the east ghost-cell state and the west face state. After concatenation, the arrays
+        are reshaped to produce a (1, n, 4) shaped array.
+
+        :param state_type: variable basis of the state data in the the input arrays
+        :param ghostE: east ghost cell state array
+        :param ghostW: west ghost cell state array
+        :param stateE: east state array
+        :param stateW: west state array
+        :return:
+        """
+        _arrL = np.concatenate((ghostW, stateE), axis=1)
         _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
 
-        _arrR = np.concatenate((stateW, ghostE), axis=1).reshape((1, (self.nx + 1) * self.ny, 4))
+        _arrR = np.concatenate((stateW, ghostE), axis=1)
         _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
         return _stateL, _stateR
 
@@ -220,10 +233,10 @@ class MUSCLFiniteVolumeMethod:
                                     stateN: np.ndarray,
                                     stateS: np.ndarray,
                                     ) -> [PrimitiveState]:
-        _arrL = np.concatenate((ghostS, stateN), axis=0).transpose((1, 0, 2)).reshape((1, (self.ny+1)*self.nx, 4))
+        _arrL = np.concatenate((ghostS, stateN), axis=0).transpose((1, 0, 2))
         _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
 
-        _arrR = np.concatenate((stateS, ghostN), axis=0).transpose((1, 0, 2)).reshape((1, (self.ny+1)*self.nx, 4))
+        _arrR = np.concatenate((stateS, ghostN), axis=0).transpose((1, 0, 2))
         _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
         return _stateL, _stateR
 
@@ -235,19 +248,19 @@ class MUSCLFiniteVolumeMethod:
             _stateW = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qw)
 
             if not refBLK.is_cartesian:
-                utils.rotate(refBLK.mesh.faceE.theta, _stateE)
-                utils.rotate(refBLK.mesh.faceW.theta - np.pi, _stateW)
+                utils.rotate(refBLK.mesh.face.E.theta, _stateE)
+                utils.rotate(refBLK.mesh.face.W.theta - np.pi, _stateW)
                 utils.rotate(refBLK.mesh.get_east_face_angle(), _ghostE)
                 utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
 
             sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _ghostE, _ghostW, _stateE, _stateW)
-            fluxEW = self.flux_function_X(WL=sL, WR=sR).reshape((self.ny,  (self.nx+1), 4))
+            fluxEW = self.flux_function_X(WL=sL, WR=sR)
             self.Flux.E[nqp][:] = fluxEW[:, 1:, :]
             self.Flux.W[nqp][:] = fluxEW[:, :-1, :]
 
             if not refBLK.is_cartesian:
-                utils.unrotate(refBLK.mesh.faceE.theta, self.Flux.E[nqp])
-                utils.unrotate(refBLK.mesh.faceW.theta - np.pi, self.Flux.W[nqp])
+                utils.unrotate(refBLK.mesh.face.E.theta, self.Flux.E[nqp])
+                utils.unrotate(refBLK.mesh.face.W.theta - np.pi, self.Flux.W[nqp])
 
     def evaluate_flux_y(self, refBLK: QuadBlock) -> None:
         for nqp, (qn, qs) in enumerate(zip(refBLK.QP.N, refBLK.QP.S)):
@@ -259,21 +272,21 @@ class MUSCLFiniteVolumeMethod:
             if refBLK.is_cartesian:
                 utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
             else:
-                utils.rotate(refBLK.mesh.faceN.theta, _stateN)
-                utils.rotate(refBLK.mesh.faceS.theta - np.pi, _stateS)
+                utils.rotate(refBLK.mesh.face.N.theta, _stateN)
+                utils.rotate(refBLK.mesh.face.S.theta - np.pi, _stateS)
                 utils.rotate(refBLK.mesh.get_north_face_angle(), _ghostN)
                 utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
 
             sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _ghostN, _ghostS, _stateN, _stateS)
-            fluxNS = self.flux_function_Y(WL=sL, WR=sR).reshape((self.nx, (self.ny + 1), 4)).transpose((1, 0, 2))
+            fluxNS = self.flux_function_Y(WL=sL, WR=sR).transpose((1, 0, 2))
             self.Flux.N[nqp][:] = fluxNS[1:, :, :]
             self.Flux.S[nqp][:] = fluxNS[:-1, :, :]
 
             if refBLK.is_cartesian:
                 utils.unrotate90(self.Flux.N[nqp], self.Flux.S[nqp])
             else:
-                utils.unrotate(refBLK.mesh.faceN.theta, self.Flux.N[nqp])
-                utils.unrotate(refBLK.mesh.faceS.theta - np.pi, self.Flux.S[nqp])
+                utils.unrotate(refBLK.mesh.face.N.theta, self.Flux.N[nqp])
+                utils.unrotate(refBLK.mesh.face.S.theta - np.pi, self.Flux.S[nqp])
 
     def evaluate_flux(self, refBLK: QuadBlock) -> None:
         """
