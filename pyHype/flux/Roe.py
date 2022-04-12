@@ -28,7 +28,7 @@ from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_
 
 class FluxRoe(FluxFunction):
     def __init__(self, inputs, size, sweeps):
-        super().__init__(inputs)
+        super().__init__(inputs, nx=size, ny=sweeps)
         # Thermodynamic quantities
         self.gh = self.g - 1
         self.gt = 1 - self.g
@@ -159,45 +159,6 @@ class FluxRoe(FluxFunction):
         self.Rc.data[12 * _sz:13 * _sz] = Lp
 
 
-    def compute_Lc(self,
-                   Wroe: RoePrimitiveState,
-                   ua: np.ndarray = None,
-                   ) -> None:
-
-        # Compute flow variables
-        a       = Wroe.a()
-        Ek      = Wroe.Ek()
-        ua      = Wroe.u * Wroe.a() if ua is None else ua
-        a2      = a ** 2
-        ta2     = a2 * 2
-        ghek    = self.gh * Ek
-        gtu     = self.gt * Wroe.u
-        gtv     = self.gt * Wroe.v
-
-        _sz = (self.size + 1) * self.sweeps
-
-        # -3 subdiagonal entries
-        self.Lc.data[0  * _sz:1  * _sz] = -Wroe.v
-        # -2 subdiagonal entries
-        self.Lc.data[1  * _sz:2  * _sz] = (ghek - ua) / ta2
-        # -1 subdiagonal entries
-        self.Lc.data[2  * _sz:3  * _sz] = (a2 - ghek) / a2
-        self.Lc.data[3 * _sz:4 * _sz]   = (gtu + a) / ta2
-        # diagonal entries
-        self.Lc.data[5  * _sz:6  * _sz] = (ghek + ua) / ta2
-        self.Lc.data[6 * _sz:7 * _sz]   = self.gh * Wroe.u / a2
-        self.Lc.data[7 * _sz:8 * _sz]   = gtv / ta2
-        # +1 subdiagonal entries
-        self.Lc.data[8  * _sz:9 * _sz]  = (gtu - a) / ta2
-        self.Lc.data[9 * _sz:10 * _sz]  = self.gh * Wroe.v / a2
-        self.Lc.data[10 * _sz:11 * _sz] = self.gh / ta2
-        # +2 subdiagonal entries
-        self.Lc.data[11 * _sz:12 * _sz] = gtv / ta2
-        self.Lc.data[12 * _sz:13 * _sz] = self.gt / a2
-        # +3 subdiagonal entries
-        self.Lc.data[13 * _sz:14 * _sz] = self.gh / ta2
-
-
     def compute_Lp(self,
                    Wroe: RoePrimitiveState,
                    ) -> None:
@@ -269,7 +230,10 @@ class FluxRoe(FluxFunction):
         to be continued...
 
         """
-        return 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux(WL, WR)
+        WR.reshape((1, (self.nx + 1) * self.ny, 4))
+        WL.reshape((1, (self.nx + 1) * self.ny, 4))
+        flux = 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux(WL, WR)
+        return flux.reshape((self.ny,  (self.nx+1), 4))
 
     def get_upwind_flux(self,
                         WL: PrimitiveState,

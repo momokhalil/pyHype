@@ -185,3 +185,6 @@ class State:
         Returns total entalpy over entire grid
         """
         raise NotImplementedError
+
+    def reshape(self, shape: tuple):
+        self.Q = self.Q.reshape(shape)

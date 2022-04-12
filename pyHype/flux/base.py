@@ -23,11 +23,11 @@ from pyHype.states.states import PrimitiveState,    \
                                  RoePrimitiveState
 
 class FluxFunction:
-    def __init__(self, inputs):
+    def __init__(self, inputs, nx, ny):
         self.inputs = inputs
         self.g = inputs.gamma
-        self.nx = inputs.nx
-        self.ny = inputs.ny
+        self.nx = nx
+        self.ny = ny
         self.n = inputs.n
 
     def __call__(self,
