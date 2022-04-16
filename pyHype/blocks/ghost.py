@@ -23,6 +23,7 @@ import numpy as np
 from abc import abstractmethod
 from pyHype.utils import utils
 from pyHype.mesh.QuadMesh import QuadMesh
+from pyHype.states import PrimitiveState
 from typing import TYPE_CHECKING, Union
 from pyHype.blocks.base import BaseBlock_Only_State
 
@@ -164,24 +165,7 @@ class GhostBlock(BaseBlock_Only_State):
         return _col.copy() if copy else _col
 
     @staticmethod
-    def zero_wall_u_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
-        """
-        Sets the u velocity along the wall to zero. Rotates the state from global to wall frame and back to ensure
-        coordinate alignment.
-
-        Parameters:
-            - state (np.ndarray): Ghost cell state arrays
-            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
-
-        Returns:
-            - None
-        """
-        utils.rotate(wall_angle, state)
-        state[:, :, 1] = 0
-        utils.unrotate(wall_angle, state)
-
-    @staticmethod
-    def flip_wall_u_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
+    def reflect(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
         """
         Flips the sign of the u velocity along the wall. Rotates the state from global to wall frame and back to ensure
         coordinate alignment.
@@ -194,41 +178,7 @@ class GhostBlock(BaseBlock_Only_State):
             - None
         """
         utils.rotate(wall_angle, state)
-        state[:, :, 1] = -state[:, :, 1]
-        utils.unrotate(wall_angle, state)
-
-    @staticmethod
-    def zero_wall_v_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
-        """
-        Sets the v velocity along the wall to zero. Rotates the state from global to wall frame and back to ensure
-        coordinate alignment.
-
-        Parameters:
-            - state (np.ndarray): Ghost cell state arrays
-            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
-
-        Returns:
-            - None
-        """
-        utils.rotate(wall_angle, state)
-        state[:, :, 2] = 0
-        utils.unrotate(wall_angle, state)
-
-    @staticmethod
-    def flip_wall_v_velocity(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
-        """
-        Flips the sign of the v velocity along the wall. Rotates the state from global to wall frame and back to ensure
-        coordinate alignment.
-
-        Parameters:
-            - state (np.ndarray): Ghost cell state arrays
-            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
-
-        Returns:
-            - None
-        """
-        utils.rotate(wall_angle, state)
-        state[:, :, 2] = -state[:, :, 2]
+        state[:, :, PrimitiveState.U_IDX] = -state[:, :, PrimitiveState.U_IDX]
         utils.unrotate(wall_angle, state)
 
     @abstractmethod
@@ -317,7 +267,7 @@ class GhostBlockEast(GhostBlock):
         sign of the normal component.
         """
         state = self.refBLK.get_east_ghost()
-        self.flip_wall_u_velocity(state, self.refBLK.mesh.get_east_face_angle())
+        self.reflect(state, self.refBLK.mesh.face.E.theta)
         self.state.U = state
 
     def set_BC_slipwall(self):
@@ -326,7 +276,7 @@ class GhostBlockEast(GhostBlock):
         normal component.
         """
         state = self.refBLK.get_east_ghost()
-        self.zero_wall_u_velocity(state, self.refBLK.mesh.get_east_face_angle())
+        self.reflect(state, self.refBLK.mesh.face.E.theta)
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
@@ -390,7 +340,7 @@ class GhostBlockWest(GhostBlock):
         sign of the normal component.
         """
         state = self.refBLK.get_west_ghost()
-        self.flip_wall_u_velocity(state, self.refBLK.mesh.get_west_face_angle())
+        self.reflect(state, self.refBLK.mesh.face.W.theta)
         self.state.U = state
 
     def set_BC_slipwall(self):
@@ -399,7 +349,7 @@ class GhostBlockWest(GhostBlock):
         normal component.
         """
         state = self.refBLK.get_west_ghost()
-        self.zero_wall_u_velocity(state, self.refBLK.mesh.get_west_face_angle())
+        self.reflect(state, self.refBLK.mesh.face.W.theta)
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
@@ -463,7 +413,7 @@ class GhostBlockNorth(GhostBlock):
         sign of the normal component.
         """
         state = self.refBLK.get_north_ghost()
-        self.flip_wall_v_velocity(state, self.refBLK.mesh.get_north_face_angle() - np.pi / 2)
+        self.reflect(state, self.refBLK.mesh.face.N.theta)
         self.state.U = state
 
     def set_BC_slipwall(self):
@@ -472,7 +422,7 @@ class GhostBlockNorth(GhostBlock):
         normal component.
         """
         state = self.refBLK.get_north_ghost()
-        self.zero_wall_v_velocity(state, self.refBLK.mesh.get_north_face_angle() - np.pi / 2)
+        self.reflect(state, self.refBLK.mesh.face.N.theta)
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):
@@ -536,7 +486,7 @@ class GhostBlockSouth(GhostBlock):
         sign of the normal component.
         """
         state = self.refBLK.get_south_ghost()
-        self.flip_wall_v_velocity(state, self.refBLK.mesh.get_south_face_angle() - np.pi / 2)
+        self.reflect(state, self.refBLK.mesh.face.S.theta)
         self.state.U = state
 
     def set_BC_slipwall(self):
@@ -545,7 +495,7 @@ class GhostBlockSouth(GhostBlock):
         normal component.
         """
         state = self.refBLK.get_south_ghost()
-        self.zero_wall_v_velocity(state, self.refBLK.mesh.get_south_face_angle() - np.pi / 2)
+        self.reflect(state, self.refBLK.mesh.face.S.theta)
         self.state.U = state
 
     def set_BC_inlet_dirichlet(self):

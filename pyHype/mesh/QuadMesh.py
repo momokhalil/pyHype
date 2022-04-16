@@ -118,24 +118,28 @@ class QuadMesh(_mesh_transfinite_gen):
         self.face.E.L = self.east_face_length()
         self.compute_east_face_midpoint()
         self.compute_east_face_norm()
+        self.compute_east_face_angle()
 
         # West Face
         self.face.W = CellFace()
         self.face.W.L = self.west_face_length()
         self.compute_west_face_midpoint()
         self.compute_west_face_norm()
+        self.compute_west_face_angle()
 
         # North Face
         self.face.N = CellFace()
         self.face.N.L = self.north_face_length()
         self.compute_north_face_midpoint()
         self.compute_north_face_norm()
+        self.compute_north_face_angle()
 
         # South Face
         self.face.S = CellFace()
         self.face.S.L = self.south_face_length()
         self.compute_south_face_midpoint()
         self.compute_south_face_norm()
+        self.compute_south_face_angle()
 
         # Cell area
         self.compute_cell_area()
@@ -144,7 +148,43 @@ class QuadMesh(_mesh_transfinite_gen):
         self.dx = self.face.E.xmid - self.face.W.xmid
         self.dy = self.face.N.ymid - self.face.S.ymid
 
-    def get_east_face_norm(self) -> [np.ndarray]:
+    def compute_east_face_angle(self) -> None:
+        """
+        Returns the east face angles in radians.
+
+        :rtype: np.ndarray
+        :return: East face angles
+        """
+        self.face.E.theta = self.get_east_face_angle()[:, -1, None, :]
+
+    def compute_west_face_angle(self) -> None:
+        """
+        Returns the west face angles in radians.
+
+        :rtype: np.ndarray
+        :return: West face angles
+        """
+        self.face.W.theta = self.get_west_face_angle()[:, 0, None, :] - np.pi
+
+    def compute_north_face_angle(self) -> None:
+        """
+        Returns the north face angles in radians.
+
+        :rtype: np.ndarray
+        :return: North face angles
+        """
+        self.face.N.theta = self.get_north_face_angle()[-1, None, :, :]
+
+    def compute_south_face_angle(self) -> None:
+        """
+        Returns the south face angles in radians.
+
+        :rtype: np.ndarray
+        :return: South face angles
+        """
+        self.face.S.theta = self.get_south_face_angle()[0, None, :, :] - np.pi
+
+    def get_east_face_angle(self) -> [np.ndarray]:
         """
         Calculates and returns the normal vector components of the east faces.
 
@@ -153,10 +193,19 @@ class QuadMesh(_mesh_transfinite_gen):
         """
         den = self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]
         num = self.nodes.x[:-1, 1:] - self.nodes.x[1:, 1:]
-        theta = np.where(den != 0, np.arctan(num / den), 0)
+        return np.where(den != 0, np.arctan(num / den), 0)
+
+    def get_east_face_norm(self) -> [np.ndarray]:
+        """
+        Calculates and returns the normal vector components of the east faces.
+
+        :rtype: tuple(np.ndarray, np.ndarray, np.ndarray)
+        :return: x and y component of the cell-face outward-facing normal vector, along with the face angle.
+        """
+        theta = self.get_east_face_angle()
         xnorm = np.cos(theta)
         ynorm = np.sin(theta)
-        return xnorm, ynorm, theta
+        return xnorm, ynorm
 
     def compute_east_face_norm(self) -> None:
         """
@@ -165,12 +214,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: None
         :return: None
         """
-        if isinstance(self.face.E, CellFace):
-            self.face.E.xnorm, self.face.E.ynorm, self.face.E.theta = self.get_east_face_norm()
-        else:
-            raise TypeError('faceE is not of type CellFace')
+        self.face.E.xnorm, self.face.E.ynorm = self.get_east_face_norm()
 
-    def get_west_face_norm(self) -> [np.ndarray]:
+    def get_west_face_angle(self) -> [np.ndarray]:
         """
         Calculates and returns the normal vector components of the west faces.
 
@@ -179,10 +225,19 @@ class QuadMesh(_mesh_transfinite_gen):
         """
         den = self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]
         num = self.nodes.x[:-1, :-1] - self.nodes.x[1:, :-1]
-        theta = np.where(den != 0, np.arctan(num / den), 0) + np.pi
+        return np.where(den != 0, np.arctan(num / den), 0) + np.pi
+
+    def get_west_face_norm(self) -> [np.ndarray]:
+        """
+        Calculates and returns the normal vector components of the west faces.
+
+        :rtype: tuple(np.ndarray, np.ndarray, np.ndarray)
+        :return: x and y component of the cell-face outward-facing normal vector, along with the face angle.
+        """
+        theta = self.get_west_face_angle()
         xnorm = np.cos(theta)
         ynorm = np.sin(theta)
-        return xnorm, ynorm, theta
+        return xnorm, ynorm
 
     def compute_west_face_norm(self) -> None:
         """
@@ -191,12 +246,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: None
         :return: None
         """
-        if isinstance(self.face.W, CellFace):
-            self.face.W.xnorm, self.face.W.ynorm, self.face.W.theta = self.get_west_face_norm()
-        else:
-            raise TypeError('faceW is not of type CellFace')
+        self.face.W.xnorm, self.face.W.ynorm = self.get_west_face_norm()
 
-    def get_north_face_norm(self) -> [np.ndarray]:
+    def get_north_face_angle(self) -> [np.ndarray]:
         """
         Calculates and returns the normal vector components of the north faces.
 
@@ -205,10 +257,19 @@ class QuadMesh(_mesh_transfinite_gen):
         """
         den = self.nodes.x[1:, 1:] - self.nodes.x[1:, :-1]
         num = self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]
-        theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
+        return np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2)
+
+    def get_north_face_norm(self) -> [np.ndarray]:
+        """
+        Calculates and returns the normal vector components of the north faces.
+
+        :rtype: tuple(np.ndarray, np.ndarray, np.ndarray)
+        :return: x and y component of the cell-face outward-facing normal vector, along with the face angle.
+        """
+        theta = self.get_north_face_angle()
         xnorm = np.cos(theta)
         ynorm = np.sin(theta)
-        return xnorm, ynorm, theta
+        return xnorm, ynorm
 
     def compute_north_face_norm(self) -> None:
         """
@@ -217,12 +278,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: None
         :return: None
         """
-        if isinstance(self.face.N, CellFace):
-            self.face.N.xnorm, self.face.N.ynorm, self.face.N.theta = self.get_north_face_norm()
-        else:
-            raise TypeError('faceN is not of type CellFace')
+        self.face.N.xnorm, self.face.N.ynorm = self.get_north_face_norm()
 
-    def get_south_face_norm(self) -> [np.ndarray]:
+    def get_south_face_angle(self) -> [np.ndarray]:
         """
         Calculates and returns the normal vector components of the south faces.
 
@@ -231,10 +289,19 @@ class QuadMesh(_mesh_transfinite_gen):
         """
         den = self.nodes.x[:-1, 1:] - self.nodes.x[:-1, :-1]
         num = self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]
-        theta = np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2) + np.pi
+        return np.where(den != 0, np.pi / 2 - np.arctan(num / den), np.pi / 2) + np.pi
+
+    def get_south_face_norm(self) -> [np.ndarray]:
+        """
+        Calculates and returns the normal vector components of the south faces.
+
+        :rtype: tuple(np.ndarray, np.ndarray, np.ndarray)
+        :return: x and y component of the cell-face outward-facing normal vector, along with the face angle.
+        """
+        theta = self.get_south_face_angle()
         xnorm = np.cos(theta)
         ynorm = np.sin(theta)
-        return xnorm, ynorm, theta
+        return xnorm, ynorm
 
     def compute_south_face_norm(self) -> None:
         """
@@ -243,10 +310,7 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: None
         :return: None
         """
-        if isinstance(self.face.S, CellFace):
-            self.face.S.xnorm, self.face.S.ynorm, self.face.S.theta = self.get_south_face_norm()
-        else:
-            raise TypeError('faceS is not of type CellFace')
+        self.face.S.xnorm, self.face.S.ynorm = self.get_south_face_norm()
 
     def compute_cell_area(self) -> None:
         """
@@ -470,42 +534,6 @@ class QuadMesh(_mesh_transfinite_gen):
         :return: None
         """
         self.face.S.xmid, self.face.S.ymid = self.get_south_face_midpoint()
-
-    def get_east_face_angle(self) -> np.ndarray:
-        """
-        Returns the east face angles in radians.
-
-        :rtype: np.ndarray
-        :return: East face angles
-        """
-        return self.face.E.theta[:, -1, None, :]
-
-    def get_west_face_angle(self) -> np.ndarray:
-        """
-        Returns the west face angles in radians.
-
-        :rtype: np.ndarray
-        :return: West face angles
-        """
-        return self.face.W.theta[:, 0, None, :] - np.pi
-
-    def get_north_face_angle(self) -> np.ndarray:
-        """
-        Returns the north face angles in radians.
-
-        :rtype: np.ndarray
-        :return: North face angles
-        """
-        return self.face.N.theta[-1, None, :, :]
-
-    def get_south_face_angle(self) -> np.ndarray:
-        """
-        Returns the south face angles in radians.
-
-        :rtype: np.ndarray
-        :return: South face angles
-        """
-        return self.face.S.theta[0, None, :, :] - np.pi
 
     def get_NE_vertices(self):
         """
