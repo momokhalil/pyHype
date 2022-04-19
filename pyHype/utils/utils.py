@@ -194,10 +194,10 @@ class Cache:
 
 class DirectionalContainerBase:
     def __init__(self,
-                 east_obj: object = None,
-                 west_obj: object = None,
-                 north_obj: object = None,
-                 south_obj: object = None):
+                 east_obj: object or list or tuple = None,
+                 west_obj: object or list or tuple = None,
+                 north_obj: object or list or tuple = None,
+                 south_obj: object or list or tuple = None):
         self.E = east_obj
         self.W = west_obj
         self.N = north_obj
