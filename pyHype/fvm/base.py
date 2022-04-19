@@ -19,6 +19,8 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
+
 from abc import abstractmethod
 
 from pyHype.limiters import limiters
@@ -249,9 +251,9 @@ class MUSCLFiniteVolumeMethod:
 
             if not refBLK.is_cartesian:
                 utils.rotate(refBLK.mesh.face.E.theta, _stateE)
-                utils.rotate(refBLK.mesh.face.W.theta - np.pi, _stateW)
-                utils.rotate(refBLK.mesh.get_east_face_angle(), _ghostE)
-                utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
+                utils.rotate(refBLK.mesh.face.W.theta , _stateW)
+                utils.rotate(refBLK.mesh.east_boundary_angle(), _ghostE)
+                utils.rotate(refBLK.mesh.west_boundary_angle(), _ghostW)
 
             sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _ghostE, _ghostW, _stateE, _stateW)
             fluxEW = self.flux_function_X(WL=sL, WR=sR)
@@ -260,7 +262,7 @@ class MUSCLFiniteVolumeMethod:
 
             if not refBLK.is_cartesian:
                 utils.unrotate(refBLK.mesh.face.E.theta, self.Flux.E[nqp])
-                utils.unrotate(refBLK.mesh.face.W.theta - np.pi, self.Flux.W[nqp])
+                utils.unrotate(refBLK.mesh.face.W.theta, self.Flux.W[nqp])
 
     def evaluate_flux_y(self, refBLK: QuadBlock) -> None:
         for nqp, (qn, qs) in enumerate(zip(refBLK.QP.N, refBLK.QP.S)):
@@ -273,9 +275,9 @@ class MUSCLFiniteVolumeMethod:
                 utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
             else:
                 utils.rotate(refBLK.mesh.face.N.theta, _stateN)
-                utils.rotate(refBLK.mesh.face.S.theta - np.pi, _stateS)
-                utils.rotate(refBLK.mesh.get_north_face_angle(), _ghostN)
-                utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
+                utils.rotate(refBLK.mesh.face.S.theta, _stateS)
+                utils.rotate(refBLK.mesh.north_boundary_angle(), _ghostN)
+                utils.rotate(refBLK.mesh.south_boundary_angle(), _ghostS)
 
             sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _ghostN, _ghostS, _stateN, _stateS)
             fluxNS = self.flux_function_Y(WL=sL, WR=sR).transpose((1, 0, 2))
@@ -286,7 +288,7 @@ class MUSCLFiniteVolumeMethod:
                 utils.unrotate90(self.Flux.N[nqp], self.Flux.S[nqp])
             else:
                 utils.unrotate(refBLK.mesh.face.N.theta, self.Flux.N[nqp])
-                utils.unrotate(refBLK.mesh.face.S.theta - np.pi, self.Flux.S[nqp])
+                utils.unrotate(refBLK.mesh.face.S.theta, self.Flux.S[nqp])
 
     def evaluate_flux(self, refBLK: QuadBlock) -> None:
         """
