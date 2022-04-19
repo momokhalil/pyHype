@@ -19,6 +19,8 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
+
 from abc import abstractmethod
 
 from pyHype.limiters import limiters
@@ -241,7 +243,7 @@ class MUSCLFiniteVolumeMethod:
         return _stateL, _stateR
 
     def evaluate_flux_x(self, refBLK: QuadBlock) -> None:
-        for nqp, (qe, qw) in enumerate(zip(refBLK.QP.E, refBLK.QP.W)):
+        for qe, qw, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, self.Flux.E,  self.Flux.W):
             _ghostE = refBLK.reconBlk.ghost.E.col(0, copy=True)
             _ghostW = refBLK.reconBlk.ghost.W.col(-1, copy=True)
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
@@ -249,21 +251,21 @@ class MUSCLFiniteVolumeMethod:
 
             if not refBLK.is_cartesian:
                 utils.rotate(refBLK.mesh.face.E.theta, _stateE)
-                utils.rotate(refBLK.mesh.face.W.theta - np.pi, _stateW)
-                utils.rotate(refBLK.mesh.get_east_face_angle(), _ghostE)
-                utils.rotate(refBLK.mesh.get_west_face_angle(), _ghostW)
+                utils.rotate(refBLK.mesh.face.W.theta , _stateW)
+                utils.rotate(refBLK.mesh.east_boundary_angle(), _ghostE)
+                utils.rotate(refBLK.mesh.west_boundary_angle(), _ghostW)
 
             sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _ghostE, _ghostW, _stateE, _stateW)
             fluxEW = self.flux_function_X(WL=sL, WR=sR)
-            self.Flux.E[nqp][:] = fluxEW[:, 1:, :]
-            self.Flux.W[nqp][:] = fluxEW[:, :-1, :]
+            fluxE[:] = fluxEW[:, 1:, :]
+            fluxW[:] = fluxEW[:, :-1, :]
 
             if not refBLK.is_cartesian:
-                utils.unrotate(refBLK.mesh.face.E.theta, self.Flux.E[nqp])
-                utils.unrotate(refBLK.mesh.face.W.theta - np.pi, self.Flux.W[nqp])
+                utils.unrotate(refBLK.mesh.face.E.theta, fluxE)
+                utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
 
     def evaluate_flux_y(self, refBLK: QuadBlock) -> None:
-        for nqp, (qn, qs) in enumerate(zip(refBLK.QP.N, refBLK.QP.S)):
+        for qn, qs, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, self.Flux.N,  self.Flux.S):
             _ghostN = refBLK.reconBlk.ghost.N.row(0, copy=True)
             _ghostS = refBLK.reconBlk.ghost.S.row(-1, copy=True)
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
@@ -273,20 +275,20 @@ class MUSCLFiniteVolumeMethod:
                 utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
             else:
                 utils.rotate(refBLK.mesh.face.N.theta, _stateN)
-                utils.rotate(refBLK.mesh.face.S.theta - np.pi, _stateS)
-                utils.rotate(refBLK.mesh.get_north_face_angle(), _ghostN)
-                utils.rotate(refBLK.mesh.get_south_face_angle(), _ghostS)
+                utils.rotate(refBLK.mesh.face.S.theta, _stateS)
+                utils.rotate(refBLK.mesh.north_boundary_angle(), _ghostN)
+                utils.rotate(refBLK.mesh.south_boundary_angle(), _ghostS)
 
             sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _ghostN, _ghostS, _stateN, _stateS)
             fluxNS = self.flux_function_Y(WL=sL, WR=sR).transpose((1, 0, 2))
-            self.Flux.N[nqp][:] = fluxNS[1:, :, :]
-            self.Flux.S[nqp][:] = fluxNS[:-1, :, :]
+            fluxN[:] = fluxNS[1:, :, :]
+            fluxS[:] = fluxNS[:-1, :, :]
 
             if refBLK.is_cartesian:
-                utils.unrotate90(self.Flux.N[nqp], self.Flux.S[nqp])
+                utils.unrotate90(fluxN, fluxS)
             else:
-                utils.unrotate(refBLK.mesh.face.N.theta, self.Flux.N[nqp])
-                utils.unrotate(refBLK.mesh.face.S.theta - np.pi, self.Flux.S[nqp])
+                utils.unrotate(refBLK.mesh.face.N.theta, fluxN)
+                utils.unrotate(refBLK.mesh.face.S.theta, fluxS)
 
     def evaluate_flux(self, refBLK: QuadBlock) -> None:
         """
