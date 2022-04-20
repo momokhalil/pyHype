@@ -202,3 +202,39 @@ class DirectionalContainerBase:
         self.W = west_obj
         self.N = north_obj
         self.S = south_obj
+
+class NumpySlice:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def col(index: int):
+        return np.s_[:, index, None, :]
+
+    @staticmethod
+    def row(index: int):
+        return np.s_[index, None, :, :]
+
+    @staticmethod
+    def cols(start: int = None, end: int = None):
+        return np.s_[:, start:end, :]
+
+    @staticmethod
+    def rows(start: int = None, end: int = None):
+        return np.s_[start:end, :, :]
+
+    @classmethod
+    def east_boundary(cls):
+        return cls.col(-1)
+
+    @classmethod
+    def west_boundary(cls):
+        return cls.col(0)
+
+    @classmethod
+    def north_boundary(cls):
+        return cls.row(-1)
+
+    @classmethod
+    def south_boundary(cls):
+        return cls.row(0)
