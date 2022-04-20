@@ -29,6 +29,7 @@ from pyHype.fvm import FirstOrderMUSCL, SecondOrderMUSCL
 from pyHype.mesh.QuadMesh import QuadMesh
 from pyHype.mesh import quadratures as qp
 from pyHype.mesh.base import BlockDescription
+from pyHype.utils.utils import NumpySlice
 from pyHype.blocks.base import Neighbors, BaseBlock, BaseBlock_Only_State
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 from pyHype.blocks.ghost import GhostBlocks
