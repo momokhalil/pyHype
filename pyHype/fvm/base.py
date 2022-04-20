@@ -173,17 +173,27 @@ class MUSCLFiniteVolumeMethod:
 
     @staticmethod
     @abstractmethod
-    def high_order_term(refBLK: QuadBlock, qp: QuadraturePoint) -> np.ndarray:
+    def high_order_term(refBLK: QuadBlock,
+                        qp: QuadraturePoint,
+                        slicer=None
+                        ) -> np.ndarray:
         raise NotImplementedError
 
     @abstractmethod
-    def limited_solution_at_quadrature_point(self, state: State, gradients: GradientsContainer,
-                                             qp: QuadraturePoint
+    def limited_solution_at_quadrature_point(self,
+                                             state: State,
+                                             gradients: GradientsContainer,
+                                             qp: QuadraturePoint,
+                                             slicer=None,
                                              ) -> np.ndarray:
         raise NotImplementedError
 
     @abstractmethod
-    def unlimited_solution_at_quadrature_point(self, state: State, gradients: GradientsContainer, qp: QuadraturePoint
+    def unlimited_solution_at_quadrature_point(self,
+                                               state: State,
+                                               gradients: GradientsContainer,
+                                               qp: QuadraturePoint,
+                                               slicer=None,
                                                ) -> np.ndarray:
         raise NotImplementedError
 
