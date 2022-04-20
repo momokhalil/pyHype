@@ -405,8 +405,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         Return:
             - (np.ndarray): Numpy array containing the flux values for the east face.
         """
-
-        return self.fvm.Flux_E
+        return self.fvm.Flux.E
 
     @property
     def Flux_W(self):
@@ -419,7 +418,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         Return:
             - (np.ndarray): Numpy array containing the flux values for the west face.
         """
-        return self.fvm.Flux_W
+        return self.fvm.Flux.W
 
     @property
     def Flux_N(self):
@@ -432,7 +431,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         Return:
             - (np.ndarray): Numpy array containing the flux values for the north face.
         """
-        return self.fvm.Flux_N
+        return self.fvm.Flux.N
 
     @property
     def Flux_S(self):
@@ -445,7 +444,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         Return:
             - (np.ndarray): Numpy array containing the flux values for the south face.
         """
-        return self.fvm.Flux_S
+        return self.fvm.Flux.S
 
     def __getitem__(self, index):
 
