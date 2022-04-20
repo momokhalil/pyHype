@@ -175,7 +175,7 @@ class MUSCLFiniteVolumeMethod:
     @abstractmethod
     def high_order_term(refBLK: QuadBlock,
                         qp: QuadraturePoint,
-                        slicer=None
+                        slicer: slice or tuple or int = None
                         ) -> np.ndarray:
         raise NotImplementedError
 
@@ -184,7 +184,7 @@ class MUSCLFiniteVolumeMethod:
                                              state: State,
                                              gradients: GradientsContainer,
                                              qp: QuadraturePoint,
-                                             slicer=None,
+                                             slicer: slice or tuple or int = None,
                                              ) -> np.ndarray:
         raise NotImplementedError
 
@@ -193,7 +193,7 @@ class MUSCLFiniteVolumeMethod:
                                                state: State,
                                                gradients: GradientsContainer,
                                                qp: QuadraturePoint,
-                                               slicer=None,
+                                               slicer: slice or tuple or int = None,
                                                ) -> np.ndarray:
         raise NotImplementedError
 
