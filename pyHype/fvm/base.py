@@ -243,7 +243,7 @@ class MUSCLFiniteVolumeMethod:
         return _stateL, _stateR
 
     def evaluate_flux_x(self, refBLK: QuadBlock) -> None:
-        for qe, qw, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, self.Flux.E,  self.Flux.W):
+        for qe, qw, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, self.Flux.E, self.Flux.W):
             _ghostE = refBLK.reconBlk.ghost.E.col(0, copy=True)
             _ghostW = refBLK.reconBlk.ghost.W.col(-1, copy=True)
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
@@ -265,7 +265,7 @@ class MUSCLFiniteVolumeMethod:
                 utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
 
     def evaluate_flux_y(self, refBLK: QuadBlock) -> None:
-        for qn, qs, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, self.Flux.N,  self.Flux.S):
+        for qn, qs, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, self.Flux.N, self.Flux.S):
             _ghostN = refBLK.reconBlk.ghost.N.row(0, copy=True)
             _ghostS = refBLK.reconBlk.ghost.S.row(-1, copy=True)
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
