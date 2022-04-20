@@ -258,14 +258,14 @@ class GhostBlockEast(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.E.get_west_ghost()
+        self.state.U = self.refBLK.neighbors.E.get_west_ghost_states()
 
     def set_BC_reflection(self):
         """
         Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_east_ghost()
+        state = self.refBLK.get_east_ghost_states()
         self.reflect(state, self.refBLK.mesh.east_boundary_angle())
         self.state.U = state
 
@@ -274,7 +274,7 @@ class GhostBlockEast(GhostBlock):
         Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_east_ghost()
+        state = self.refBLK.get_east_ghost_states()
         self.reflect(state, self.refBLK.mesh.east_boundar_angle())
         self.state.U = state
 
@@ -295,7 +295,7 @@ class GhostBlockEast(GhostBlock):
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_east_ghost()
+        self.state.U = self.refBLK.get_east_ghost_states()
 
     def set_BC_inlet_riemann(self):
         return NotImplementedError
@@ -331,14 +331,14 @@ class GhostBlockWest(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.W.get_east_ghost()
+        self.state.U = self.refBLK.neighbors.W.get_east_ghost_states()
 
     def set_BC_reflection(self):
         """
         Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_west_ghost()
+        state = self.refBLK.get_west_ghost_states()
         self.reflect(state, self.refBLK.mesh.west_boundary_angle())
         self.state.U = state
 
@@ -347,7 +347,7 @@ class GhostBlockWest(GhostBlock):
         Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_west_ghost()
+        state = self.refBLK.get_west_ghost_states()
         self.reflect(state, self.refBLK.mesh.west_boundary_angle())
         self.state.U = state
 
@@ -368,7 +368,7 @@ class GhostBlockWest(GhostBlock):
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_west_ghost()
+        self.state.U = self.refBLK.get_west_ghost_states()
 
     def set_BC_inlet_riemann(self):
         return NotImplementedError
@@ -404,14 +404,14 @@ class GhostBlockNorth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.N.get_south_ghost()
+        self.state.U = self.refBLK.neighbors.N.get_south_ghost_states()
 
     def set_BC_reflection(self):
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_north_ghost()
+        state = self.refBLK.get_north_ghost_states()
         self.reflect(state, self.refBLK.mesh.north_boundary_angle())
         self.state.U = state
 
@@ -420,7 +420,7 @@ class GhostBlockNorth(GhostBlock):
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_north_ghost()
+        state = self.refBLK.get_north_ghost_states()
         self.reflect(state, self.refBLK.mesh.north_boundary_angle())
         self.state.U = state
 
@@ -441,7 +441,7 @@ class GhostBlockNorth(GhostBlock):
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_north_ghost()
+        self.state.U = self.refBLK.get_north_ghost_states()
 
     def set_BC_inlet_riemann(self):
         return NotImplementedError
@@ -477,14 +477,14 @@ class GhostBlockSouth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.S.get_north_ghost()
+        self.state.U = self.refBLK.neighbors.S.get_north_ghost_states()
 
     def set_BC_reflection(self):
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_south_ghost()
+        state = self.refBLK.get_south_ghost_states()
         self.reflect(state, self.refBLK.mesh.south_boundary_angle())
         self.state.U = state
 
@@ -493,7 +493,7 @@ class GhostBlockSouth(GhostBlock):
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_south_ghost()
+        state = self.refBLK.get_south_ghost_states()
         self.reflect(state, self.refBLK.mesh.south_boundary_angle())
         self.state.U = state
 
@@ -514,7 +514,7 @@ class GhostBlockSouth(GhostBlock):
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_south_ghost()
+        self.state.U = self.refBLK.get_south_ghost_states()
 
     def set_BC_inlet_riemann(self):
         return NotImplementedError

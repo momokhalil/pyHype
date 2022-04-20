@@ -39,7 +39,8 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
 
     @staticmethod
     def high_order_term(refBLK: QuadBlock,
-                        qp: QuadraturePoint
+                        qp: QuadraturePoint,
+                        slicer=None
                         ) -> np.ndarray:
         """
         Compute the high order term used for the state reconstruction at the quadrature point on a specified face.
@@ -53,12 +54,16 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         :rtype: np.ndarray
         :return: Unlimited high order term
         """
+        if slicer:
+            return refBLK.grad.x[slicer] * (qp.x[slicer] - refBLK.mesh.x[slicer]) + \
+                   refBLK.grad.y[slicer] * (qp.y[slicer] - refBLK.mesh.y[slicer])
         return refBLK.grad.x * (qp.x - refBLK.mesh.x) + refBLK.grad.y * (qp.y - refBLK.mesh.y)
 
     def unlimited_solution_at_quadrature_point(self,
                                                state: State,
                                                refBLK: QuadBlock,
-                                               qp: QuadraturePoint
+                                               qp: QuadraturePoint,
+                                               slicer=None
                                                ) -> np.ndarray:
         """
         Returns the unlimited reconstructed solution at a specific quadrature point based on the given solution state
@@ -76,12 +81,15 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         :rtype: np.ndarray
         :return: Unlimited reconstructed solution at the quadrature point
         """
+        if slicer:
+            return state[slicer] + self.high_order_term(refBLK, qp, slicer)
         return state + self.high_order_term(refBLK, qp)
 
     def limited_solution_at_quadrature_point(self,
                                              state: State,
                                              refBLK: QuadBlock,
                                              qp: QuadraturePoint,
+                                             slicer=None
                                              ) -> np.ndarray:
         """
         Returns the limited reconstructed solution at a specific quadrature point based on the given solution state and
@@ -99,6 +107,8 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         :rtype: np.ndarray
         :return: Limited reconstructed solution at the quadrature point
         """
+        if slicer:
+            return state[slicer] + refBLK.fvm.limiter.phi[slicer] * self.high_order_term(refBLK, qp, slicer)
         return state + refBLK.fvm.limiter.phi * self.high_order_term(refBLK, qp)
 
     def compute_limiter(self, refBLK: QuadBlock) -> None:

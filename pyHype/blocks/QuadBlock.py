@@ -183,6 +183,11 @@ class BaseBlock_With_Ghost(BaseBlock_Only_State):
 
 
 class QuadBlock(BaseBlock_With_Ghost):
+    EAST_FACE_IDX = NumpySlice.east_boundary()
+    WEST_FACE_IDX = NumpySlice.west_boundary()
+    NORTH_FACE_IDX = NumpySlice.north_boundary()
+    SOUTH_FACE_IDX = NumpySlice.south_boundary()
+
     def __init__(self,
                  inputs: ProblemInput,
                  block_data: BlockDescription
@@ -197,6 +202,11 @@ class QuadBlock(BaseBlock_With_Ghost):
         self.nx                 = inputs.nx
         self.ny                 = inputs.ny
         self.grad               = GradientsFactory.create_gradients(inputs)
+
+        self.EAST_GHOST_IDX = NumpySlice.cols(-self.inputs.nghost, None)
+        self.WEST_GHOST_IDX = NumpySlice.cols(None, self.inputs.nghost)
+        self.NORTH_GHOST_IDX = NumpySlice.rows(-self.inputs.nghost, None)
+        self.SOUTH_GHOST_IDX = NumpySlice.rows(None, self.inputs.nghost)
 
         super().__init__(inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self)
 
@@ -501,7 +511,71 @@ class QuadBlock(BaseBlock_With_Ghost):
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS,
                                    NE=NeighborNE, NW=NeighborNW, SE=NeighborSE, SW=NeighborSW)
 
-    def get_east_ghost(self) -> np.ndarray:
+    def get_east_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's east boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _east_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpe,
+                slicer=self.EAST_FACE_IDX)
+            for qpe in self.QP.E)
+        return _east_states
+
+    def get_west_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's west boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _west_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpw,
+                slicer=self.WEST_FACE_IDX)
+            for qpw in self.QP.W)
+        return _west_states
+
+    def get_north_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's north boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _north_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpn,
+                slicer=self.NORTH_FACE_IDX)
+            for qpn in self.QP.N)
+        return _north_states
+
+    def get_south_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's south boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _south_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qps,
+                slicer=self.SOUTH_FACE_IDX)
+            for qps in self.QP.S)
+        return _south_states
+
+    def get_east_ghost_states(self) -> np.ndarray:
         """
         Return the solution data used to build the WEST boundary condition for this block's EAST neighbor. The shape of
         the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
@@ -509,9 +583,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third last column on the block's state will be returned.
             - general case, return -(nghost + 1):-1 columns
         """
-        return self.state.U[:, -self.mesh.nghost:, :].copy()
+        return self.state.U[self.EAST_GHOST_IDX].copy()
 
-    def get_west_ghost(self) -> np.ndarray:
+    def get_west_ghost_states(self) -> np.ndarray:
         """
         Return the solution data used to build the EAST boundary condition for this block's WEST neighbor. The shape of
         the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
@@ -519,9 +593,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third column on the block's state will be returned.
             - general case, return 1:(nghost + 1) columns
         """
-        return self.state.U[:, :self.mesh.nghost, :].copy()
+        return self.state.U[self.WEST_GHOST_IDX].copy()
 
-    def get_north_ghost(self) -> np.ndarray:
+    def get_north_ghost_states(self) -> np.ndarray:
         """
         Return the solution data used to build the SOUTH boundary condition for this block's NORTH neighbor. The shape
         of the required data is dependent on the number of ghost blocks selected in the input file (nghost).
@@ -530,9 +604,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third last rows on the block's state will be returned.
             - general case, return -(nghost + 1):-1 rows
         """
-        return self.state.U[-self.mesh.nghost:, :, :].copy()
+        return self.state.U[self.NORTH_GHOST_IDX].copy()
 
-    def get_south_ghost(self) -> np.ndarray:
+    def get_south_ghost_states(self) -> np.ndarray:
         """
         Return the solution data used to build the NORTH boundary condition for this block's SOUTH neighbor. The shape
         of the required data is dependent on the number of ghost blocks selected in the input file (nghost).
@@ -541,63 +615,7 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third rows on the block's state will be returned.
             - general case, return 1:(nghost + 1) rows
         """
-        return self.state.U[:self.mesh.nghost, :, :].copy()
-
-    def get_east_edge(self) -> np.ndarray:
-        """
-        Returns data from the Block's state along the east edge of the mesh.
-
-        Parameters:
-            N.A
-
-        Return:
-            - np.ndarray: ny * 1 * 4 numpy ndarray with the east edge data
-
-        """
-
-        return self.state.U[:, -1:, :].copy()
-
-    def get_west_edge(self) -> np.ndarray:
-        """
-        Returns data from the Block's state along the west edge of the mesh.
-
-        Parameters:
-            N.A
-
-        Return:
-            - np.ndarray: ny * 1 * 4 numpy ndarray with the west edge data
-
-        """
-
-        return self.state.U[:, 0:1, :].copy()
-
-    def get_north_edge(self) -> np.ndarray:
-        """
-        Returns data from the Block's state along the north edge of the mesh.
-
-        Parameters:
-            N.A
-
-        Return:
-            - np.ndarray: 1 * nx * 4 numpy ndarray with the north edge data
-
-        """
-
-        return self.state.U[-1:, :, :].copy()
-
-    def get_south_edge(self) -> np.ndarray:
-        """
-        Returns data from the Block's state along the south edge of the mesh.
-
-        Parameters:
-            N.A
-
-        Return:
-            - np.ndarray: 1 * nx * 4 numpy ndarray with the south edge data
-
-        """
-
-        return self.state.U[0:1, :, :].copy()
+        return self.state.U[self.SOUTH_GHOST_IDX].copy()
 
     def row(self,
             index: int,
