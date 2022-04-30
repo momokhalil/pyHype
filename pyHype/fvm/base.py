@@ -154,21 +154,61 @@ class MUSCLFiniteVolumeMethod:
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def integrate_flux_E(self, refBLK):
-        raise NotImplementedError
+    def integrate_flux_E(self,
+                         refBLK: QuadBlock
+                         ) -> np.ndarray:
+        """
+        Integrates the east face fluxes using an n-point gauss gradrature rule.
 
-    @abstractmethod
-    def integrate_flux_W(self, refBLK):
-        raise NotImplementedError
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block with flux data for integration
 
-    @abstractmethod
-    def integrate_flux_N(self, refBLK):
-        raise NotImplementedError
+        :rtype: np.ndarray
+        :return: East face integrated fluxes
+        """
+        return 0.5 * refBLK.mesh.face.E.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.E, self.Flux.E)))
 
-    @abstractmethod
-    def integrate_flux_S(self, refBLK):
-        raise NotImplementedError
+    def integrate_flux_W(self,
+                         refBLK: QuadBlock
+                         ) -> np.ndarray:
+        """
+        Integrates the west face fluxes using an n-point gauss gradrature rule.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block with flux data for integration
+
+        :rtype: np.ndarray
+        :return: West face integrated fluxes
+        """
+        return 0.5 * refBLK.mesh.face.W.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.W, self.Flux.W)))
+
+    def integrate_flux_N(self,
+                         refBLK: QuadBlock
+                         ) -> np.ndarray:
+        """
+        Integrates the north face fluxes using an n-point gauss gradrature rule.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block with flux data for integration
+
+        :rtype: np.ndarray
+        :return: North face integrated fluxes
+        """
+        return 0.5 * refBLK.mesh.face.N.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.N, self.Flux.N)))
+
+    def integrate_flux_S(self,
+                         refBLK: QuadBlock
+                         ) -> np.ndarray:
+        """
+        Integrates the south face fluxes using an n-point gauss gradrature rule.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block with flux data for integration
+
+        :rtype: np.ndarray
+        :return: South face integrated fluxes
+        """
+        return 0.5 * refBLK.mesh.face.S.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.S, self.Flux.S)))
 
     @staticmethod
     @abstractmethod
