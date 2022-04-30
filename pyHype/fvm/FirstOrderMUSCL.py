@@ -54,29 +54,16 @@ class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
         """
 
         # Compute limited values at quadrature points
-        stateE = refBLK.state.U.copy()
-        stateW = refBLK.state.U.copy()
-        stateN = refBLK.state.U.copy()
-        stateS = refBLK.state.U.copy()
+        _stateE = refBLK.state.U.copy()
+        stateE = [_stateE for _ in refBLK.QP.E]
+
+        _stateW = refBLK.state.U.copy()
+        stateW = [_stateW for _ in refBLK.QP.W]
+
+        _stateN = refBLK.state.U.copy()
+        stateN = [_stateN for _ in refBLK.QP.N]
+
+        _stateS = refBLK.state.U.copy()
+        stateS = [_stateS for _ in refBLK.QP.S]
 
         return stateE, stateW, stateN, stateS
-
-    def integrate_flux_E(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
-        return self.Flux_E * refBLK.mesh.faceE.L
-
-    def integrate_flux_W(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
-        return -self.Flux_W * refBLK.mesh.faceW.L
-
-    def integrate_flux_N(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
-        return self.Flux_N * refBLK.mesh.faceN.L
-
-    def integrate_flux_S(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
-        return -self.Flux_S * refBLK.mesh.faceS.L
