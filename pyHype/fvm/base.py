@@ -33,7 +33,8 @@ import pyHype.utils.utils as utils
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyHype.blocks.QuadBlock import QuadBlock, GradientsContainer
+    from pyHype.blocks.QuadBlock import QuadBlock
+    from pyHype.blocks.base import GradientsContainer
     from pyHype.states.base import State
     from pyHype.states.states import PrimitiveState, ConservativeState
     from pyHype.mesh.quadratures import QuadraturePoint
@@ -42,7 +43,6 @@ if TYPE_CHECKING:
 class MUSCLFiniteVolumeMethod:
     def __init__(self,
                  inputs,
-                 global_nBLK: int
                  ) -> None:
         """
         Solves the euler equations using a MUSCL-type finite volume scheme.
@@ -85,7 +85,6 @@ class MUSCLFiniteVolumeMethod:
         self.nx = inputs.nx
         self.ny = inputs.ny
         self.inputs = inputs
-        self.global_nBLK = global_nBLK
 
         # Flux storage arrays
         self.Flux = DirectionalContainerBase(
@@ -253,19 +252,24 @@ class MUSCLFiniteVolumeMethod:
         return _stateL, _stateR
 
     def evaluate_flux_x(self, refBLK: QuadBlock) -> None:
-        for qe, qw, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, self.Flux.E, self.Flux.W):
-            _ghostE = refBLK.reconBlk.ghost.E.col(0, copy=True)
-            _ghostW = refBLK.reconBlk.ghost.W.col(-1, copy=True)
+        condE = refBLK.ghost.E.BCtype is not 'None'
+        condW = refBLK.ghost.W.BCtype is not 'None'
+        bndE = refBLK.get_east_boundary_states() if condE else refBLK.ghost.E.get_west_boundary_states()
+        bndW = refBLK.get_west_boundary_states() if condW else refBLK.ghost.W.get_east_boundary_states()
+
+        for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W):
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
             _stateW = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qw)
+            refBLK.ghost.E.set_BC(_bndE)
+            refBLK.ghost.W.set_BC(_bndW)
 
             if not refBLK.is_cartesian:
                 utils.rotate(refBLK.mesh.face.E.theta, _stateE)
-                utils.rotate(refBLK.mesh.face.W.theta , _stateW)
-                utils.rotate(refBLK.mesh.east_boundary_angle(), _ghostE)
-                utils.rotate(refBLK.mesh.west_boundary_angle(), _ghostW)
+                utils.rotate(refBLK.mesh.face.W.theta, _stateW)
+                utils.rotate(refBLK.mesh.east_boundary_angle(), _bndE)
+                utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW)
 
-            sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _ghostE, _ghostW, _stateE, _stateW)
+            sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _bndE, _bndW, _stateE, _stateW)
             fluxEW = self.flux_function_X(WL=sL, WR=sR)
             fluxE[:] = fluxEW[:, 1:, :]
             fluxW[:] = fluxEW[:, :-1, :]
@@ -275,21 +279,25 @@ class MUSCLFiniteVolumeMethod:
                 utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
 
     def evaluate_flux_y(self, refBLK: QuadBlock) -> None:
-        for qn, qs, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, self.Flux.N, self.Flux.S):
-            _ghostN = refBLK.reconBlk.ghost.N.row(0, copy=True)
-            _ghostS = refBLK.reconBlk.ghost.S.row(-1, copy=True)
+        condN = refBLK.ghost.N.BCtype is not 'None'
+        condS = refBLK.ghost.S.BCtype is not 'None'
+        bndN = refBLK.get_north_boundary_states() if condN else refBLK.ghost.N.get_south_boundary_states()
+        bndS = refBLK.get_south_boundary_states() if condS else refBLK.ghost.S.get_north_boundary_states()
+        for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S):
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
             _stateS = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qs)
+            refBLK.ghost.N.set_BC(_bndN)
+            refBLK.ghost.S.set_BC(_bndS)
 
             if refBLK.is_cartesian:
-                utils.rotate90(_stateN, _stateS, _ghostN, _ghostS)
+                utils.rotate90(_stateN, _stateS, _bndN, _bndS)
             else:
                 utils.rotate(refBLK.mesh.face.N.theta, _stateN)
                 utils.rotate(refBLK.mesh.face.S.theta, _stateS)
-                utils.rotate(refBLK.mesh.north_boundary_angle(), _ghostN)
-                utils.rotate(refBLK.mesh.south_boundary_angle(), _ghostS)
+                utils.rotate(refBLK.mesh.north_boundary_angle(), _bndN)
+                utils.rotate(refBLK.mesh.south_boundary_angle(), _bndS)
 
-            sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _ghostN, _ghostS, _stateN, _stateS)
+            sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _bndN, _bndS, _stateN, _stateS)
             fluxNS = self.flux_function_Y(WL=sL, WR=sR).transpose((1, 0, 2))
             fluxN[:] = fluxNS[1:, :, :]
             fluxS[:] = fluxNS[:-1, :, :]

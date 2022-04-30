@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 class SlopeLimiter:
     def __init__(self, inputs):
         self.inputs = inputs
-        self.phi = None
+        self.phi = np.zeros((inputs.ny, inputs.nx, 4))
 
     def __call__(self,
                  refBLK: QuadBlock,

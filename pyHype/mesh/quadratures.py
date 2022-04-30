@@ -29,13 +29,15 @@ if TYPE_CHECKING:
     from pyHype.states import State, PrimitiveState, ConservativeState
 
 
+# Define quadrature sets
 _QUAD_1 = {0: 2}
-_QUAD_2 = {1/np.sqrt(3): 1, -1/np.sqrt(3): 1}
+_QUAD_2 = {-1/np.sqrt(3): 1, 1/np.sqrt(3): 1}
 _QUAD_3 = {-np.sqrt(3/5): 5/9, 0: 8/9, np.sqrt(3/5): 5/9}
 
 _QUADS = {1: _QUAD_1,
           2: _QUAD_2,
           3: _QUAD_3}
+
 
 class QuadraturePoint:
     def __init__(self, inputs: ProblemInput, x: np.ndarray = None, y: np.ndarray = None, w: Union[np.ndarray, float, int] = None):

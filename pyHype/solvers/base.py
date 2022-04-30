@@ -201,9 +201,35 @@ class Solver:
                                                  + '_blk_' + str(block.global_nBLK),
                                             block.state.U)
 
+    def plot_func_selector(self, state) -> np.ndarray:
+        """
+        Evaluates a function based on the solution data in state for plotting.
+        :param state: State object to plot
+        :return: Array of the evaluation function
+        """
+        if 'plot_function' in self.inputs.__dict__:
+            if self.inputs.plot_function == 'Mach Number':
+                return state.Ma()
+            if self.inputs.plot_function == 'Density':
+                return state.rho
+            if self.inputs.plot_function == 'X velocity':
+                return state.u
+            if self.inputs.plot_function == 'Y velocity':
+                return state.v
+            if self.inputs.plot_function == 'Pressure':
+                return state.p
+            if self.inputs.plot_function == 'Energy':
+                return state.e
+        else:
+            # Default to density
+            return state.rho
+
+
     def real_plot(self):
         if self.numTimeStep % self.inputs.plot_every == 0:
-            data = [(block.mesh.x[:, :, 0], block.mesh.y[:, :, 0], block.state.rho)  for block in self.blocks]
+            data = [(block.mesh.x[:, :, 0], block.mesh.y[:, :, 0], self.plot_func_selector(block.state))
+                    for block in self.blocks]
+
             for _vars in data:
                 self.realplot.contourf(*_vars, 50, cmap='magma',
                                        vmax=max([np.max(v[2]) for v in data]),

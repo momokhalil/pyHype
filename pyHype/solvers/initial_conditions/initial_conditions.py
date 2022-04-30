@@ -167,7 +167,7 @@ def supersonic_flood(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U = Q
+        block.state.U[:, :, :] = Q
         block.state.non_dim()
 
 def subsonic_flood(blocks, **kwargs):
@@ -213,7 +213,7 @@ def supersonic_rest(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U = Q
+        block.state.U[:, :, :] = Q
         block.state.non_dim()
 
 def subsonic_rest(blocks, **kwargs):

@@ -24,52 +24,20 @@ from itertools import chain
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-
-from pyHype.fvm import FirstOrderMUSCL, SecondOrderMUSCL
-from pyHype.mesh.QuadMesh import QuadMesh
 from pyHype.mesh import quadratures as qp
+from pyHype.mesh.QuadMesh import QuadMesh
 from pyHype.mesh.base import BlockDescription
 from pyHype.utils.utils import NumpySlice
-from pyHype.blocks.base import Neighbors, BaseBlock, BaseBlock_Only_State
+from pyHype.blocks.base import Neighbors, BaseBlock_FVM
 from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
 from pyHype.blocks.ghost import GhostBlocks
 
 if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
+    from pyHype.blocks.base import BaseBlock
 
-class GradientsContainer:
-    def __init__(self, inputs: ProblemInput):
-        self.inputs = inputs
 
-    def check_gradients(self):
-        pass
-
-class FirstOrderGradients(GradientsContainer):
-    def __init__(self, inputs: ProblemInput):
-        super().__init__(inputs)
-        self.x = np.empty(shape=(inputs.ny, inputs.nx, 4))
-        self.y = np.empty(shape=(inputs.ny, inputs.nx, 4))
-
-class SecondOrderGradients(GradientsContainer):
-    def __init__(self, inputs: ProblemInput):
-        super().__init__(inputs)
-        self.x = np.empty(shape=(inputs.ny, inputs.nx, 4))
-        self.y = np.empty(shape=(inputs.ny, inputs.nx, 4))
-        self.xx = np.empty(shape=(inputs.ny, inputs.nx, 4))
-        self.yy = np.empty(shape=(inputs.ny, inputs.nx, 4))
-        self.xy = np.empty(shape=(inputs.ny, inputs.nx, 4))
-
-class GradientsFactory:
-    @staticmethod
-    def create_gradients(inputs: ProblemInput):
-        if inputs.fvm_spatial_order == 1:
-            return FirstOrderGradients(inputs)
-        if inputs.fvm_spatial_order == 2:
-            return SecondOrderGradients(inputs)
-        raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
-                         'extended for the given order.')
-
-class BaseBlock_With_Ghost(BaseBlock_Only_State):
+class BaseBlock_With_Ghost(BaseBlock_FVM):
 
     def __init__(self, inputs: ProblemInput, nx: int, ny: int, block_data: BlockDescription, refBLK: BaseBlock,
                  state_type: str = 'conservative') -> None:
@@ -97,7 +65,13 @@ class BaseBlock_With_Ghost(BaseBlock_Only_State):
         :return: None
         """
         super().__init__(inputs, nx, ny, state_type=state_type)
-        self.ghost = GhostBlocks(inputs, block_data, refBLK=refBLK, state_type=state_type)
+
+        self.ghost = GhostBlocks(inputs, block_data=block_data, refBLK=refBLK, state_type=state_type)
+
+        self.EAST_GHOST_IDX = NumpySlice.cols(-self.inputs.nghost, None)
+        self.WEST_GHOST_IDX = NumpySlice.cols(None, self.inputs.nghost)
+        self.NORTH_GHOST_IDX = NumpySlice.rows(-self.inputs.nghost, None)
+        self.SOUTH_GHOST_IDX = NumpySlice.rows(None, self.inputs.nghost)
 
     def to_primitive(self) -> None:
         """
@@ -183,11 +157,6 @@ class BaseBlock_With_Ghost(BaseBlock_Only_State):
 
 
 class QuadBlock(BaseBlock_With_Ghost):
-    EAST_FACE_IDX = NumpySlice.east_boundary()
-    WEST_FACE_IDX = NumpySlice.west_boundary()
-    NORTH_FACE_IDX = NumpySlice.north_boundary()
-    SOUTH_FACE_IDX = NumpySlice.south_boundary()
-
     def __init__(self,
                  inputs: ProblemInput,
                  block_data: BlockDescription
@@ -195,35 +164,18 @@ class QuadBlock(BaseBlock_With_Ghost):
 
         self.inputs             = inputs
         self.block_data         = block_data
-        self.mesh               = QuadMesh(inputs, block_data)
         self.global_nBLK        = block_data.nBLK
+        self.mesh               = QuadMesh(inputs, block_data)
         self.ghost              = None
         self.neighbors          = None
         self.nx                 = inputs.nx
         self.ny                 = inputs.ny
-        self.grad               = GradientsFactory.create_gradients(inputs)
-
-        self.EAST_GHOST_IDX = NumpySlice.cols(-self.inputs.nghost, None)
-        self.WEST_GHOST_IDX = NumpySlice.cols(None, self.inputs.nghost)
-        self.NORTH_GHOST_IDX = NumpySlice.rows(-self.inputs.nghost, None)
-        self.SOUTH_GHOST_IDX = NumpySlice.rows(None, self.inputs.nghost)
 
         super().__init__(inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self)
 
         # Create reconstruction block
         self.reconBlk = BaseBlock_With_Ghost(inputs, inputs.nx, inputs.ny, block_data=block_data, refBLK=self,
                                              state_type=self.inputs.reconstruction_type)
-        # Set finite volume method
-        if self.inputs.fvm_type == 'MUSCL':
-            if self.inputs.fvm_spatial_order == 1:
-                self.fvm = FirstOrderMUSCL(self.inputs, self.global_nBLK)
-            elif self.inputs.fvm_spatial_order == 2:
-                self.fvm = SecondOrderMUSCL(self.inputs, self.global_nBLK)
-            else:
-                raise ValueError('No MUSCL finite volume method has been specialized with order '
-                                 + str(self.inputs.fvm_spatial_order))
-        else:
-            raise ValueError('Specified finite volume method has not been specialized.')
 
         # Set time integrator
         if self.inputs.time_integrator   == 'ExplicitEuler1':
@@ -251,11 +203,11 @@ class QuadBlock(BaseBlock_With_Ghost):
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
 
-        # is block cartesian
-        self.is_cartesian = self._is_cartesian()
-
         # Quadrature
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
+
+        # is block cartesian
+        self.is_cartesian = self._is_cartesian()
 
 
     def _is_cartesian(self) -> bool:
@@ -509,70 +461,6 @@ class QuadBlock(BaseBlock_With_Ghost):
         """
         self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS,
                                    NE=NeighborNE, NW=NeighborNW, SE=NeighborSE, SW=NeighborSW)
-
-    def get_east_boundary_states(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's east boundary at each quadrature point.
-
-        :rtype: None
-        :return: None
-        """
-        _east_states = tuple(
-            self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpe,
-                slicer=self.EAST_FACE_IDX)
-            for qpe in self.QP.E)
-        return _east_states
-
-    def get_west_boundary_states(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's west boundary at each quadrature point.
-
-        :rtype: None
-        :return: None
-        """
-        _west_states = tuple(
-            self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpw,
-                slicer=self.WEST_FACE_IDX)
-            for qpw in self.QP.W)
-        return _west_states
-
-    def get_north_boundary_states(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's north boundary at each quadrature point.
-
-        :rtype: None
-        :return: None
-        """
-        _north_states = tuple(
-            self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpn,
-                slicer=self.NORTH_FACE_IDX)
-            for qpn in self.QP.N)
-        return _north_states
-
-    def get_south_boundary_states(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's south boundary at each quadrature point.
-
-        :rtype: None
-        :return: None
-        """
-        _south_states = tuple(
-            self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qps,
-                slicer=self.SOUTH_FACE_IDX)
-            for qps in self.QP.S)
-        return _south_states
 
     def get_east_ghost_states(self) -> np.ndarray:
         """

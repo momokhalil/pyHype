@@ -22,6 +22,9 @@ import functools
 import numpy as np
 import matplotlib.pyplot as plt
 import pyHype.blocks.QuadBlock as Qb
+import pyHype.fvm as FVM
+from abc import abstractmethod
+from pyHype.utils.utils import NumpySlice
 from pyHype.states import PrimitiveState, ConservativeState
 
 from typing import TYPE_CHECKING, Callable
@@ -136,6 +139,86 @@ class NormalVector:
         return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
 
 
+class GradientsContainer:
+    def __init__(self):
+        pass
+
+    def check_gradients(self):
+        pass
+
+    @abstractmethod
+    def get_high_order_term(self,
+                            xc: np.ndarray,
+                            yc: np.ndarray,
+                            xp: np.ndarray,
+                            yp: np.ndarray,
+                            slicer: slice or tuple or int = None
+                            ):
+        return NotImplementedError
+
+class FirstOrderGradients(GradientsContainer):
+    def __init__(self, nx: int, ny: int):
+        super().__init__()
+        self.x = np.zeros(shape=(ny, nx, 4))
+        self.y = np.zeros(shape=(ny, nx, 4))
+
+    def get_high_order_term(self,
+                            xc: np.ndarray,
+                            yc: np.ndarray,
+                            xp: np.ndarray,
+                            yp: np.ndarray,
+                            slicer: slice or tuple or int = None
+                            ) -> np.ndarray:
+        if slicer is None:
+            x = (xc - xp)
+            y = (yc - yp)
+            return self.x * x + self.y * y
+
+        x = (xc[slicer] - xp[slicer])
+        y = (yp[slicer] - yp[slicer])
+        return self.x[slicer] * x + self.y[slicer] * y
+
+class SecondOrderGradients(GradientsContainer):
+    def __init__(self, nx: int, ny: int):
+        super().__init__()
+        self.x  = np.zeros(shape=(ny, nx, 4))
+        self.y  = np.zeros(shape=(ny, nx, 4))
+        self.xx = np.zeros(shape=(ny, nx, 4))
+        self.yy = np.zeros(shape=(ny, nx, 4))
+        self.xy = np.zeros(shape=(ny, nx, 4))
+
+    def get_high_order_term(self,
+                            xc: np.ndarray,
+                            yc: np.ndarray,
+                            xp: np.ndarray,
+                            yp: np.ndarray,
+                            slicer: slice or tuple or int = None
+                            ) -> np.ndarray:
+        if slicer is None:
+            x = (xc - xp)
+            y = (yc - yp)
+            return self.x * x + self.y * y + self.xx * x ** 2 + self.yy * y ** 2 + self.xy * x * y
+
+        x = (xc[slicer] - xp[slicer])
+        y = (yp[slicer] - yp[slicer])
+        return self.x[slicer]  * x + \
+               self.y[slicer]  * y + \
+               self.xy[slicer] * x * y + \
+               self.xx[slicer] * x ** 2 + \
+               self.yy[slicer] * y ** 2
+
+
+class GradientsFactory:
+    @staticmethod
+    def create_gradients(order: int, nx: int, ny: int) -> GradientsContainer:
+        if order == 1:
+            return FirstOrderGradients(nx, ny)
+        if order == 2:
+            return SecondOrderGradients(nx, ny)
+        raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
+                         'extended for the given order.')
+
+
 class Blocks:
     def __init__(self,
                  inputs
@@ -234,6 +317,11 @@ class BaseBlock:
 
 
 class BaseBlock_Only_State(BaseBlock):
+    EAST_FACE_IDX = NumpySlice.east_boundary()
+    WEST_FACE_IDX = NumpySlice.west_boundary()
+    NORTH_FACE_IDX = NumpySlice.north_boundary()
+    SOUTH_FACE_IDX = NumpySlice.south_boundary()
+
     def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
         super().__init__(inputs)
         if state_type == 'conservative':
@@ -242,3 +330,124 @@ class BaseBlock_Only_State(BaseBlock):
             self.state = PrimitiveState(inputs, nx=nx, ny=ny)
         else:
             raise TypeError('BaseBlock_Only_State.__init__(): Undefined state type.')
+
+
+class BaseBlock_State_Grad(BaseBlock_Only_State):
+    def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
+        super().__init__(inputs, nx, ny, state_type=state_type)
+        self.grad = GradientsFactory.create_gradients(order=inputs.fvm_spatial_order, nx=nx, ny=ny)
+
+    def high_order_term_at_location(self,
+                                    xc: np.ndarray,
+                                    yc: np.ndarray,
+                                    xp: np.ndarray,
+                                    yp: np.ndarray,
+                                    slicer: slice or tuple or int = None
+                                    ) -> np.ndarray:
+        return self.grad.get_high_order_term(xc, xp, yc, yp, slicer)
+
+    def limited_reconstruction_at_location(self,
+                                           xc: np.ndarray,
+                                           yc: np.ndarray,
+                                           xp: np.ndarray,
+                                           yp: np.ndarray,
+                                           slicer: slice or tuple or int = None
+                                           ) -> np.ndarray:
+        if slicer is None:
+            return self.state + \
+                   self.fvm.limiter.phi * self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+        return self.state[slicer] + \
+               self.fvm.limiter.phi[slicer] * self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+
+class BaseBlock_FVM(BaseBlock_State_Grad):
+    def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
+        super().__init__(inputs, nx, ny, state_type=state_type)
+
+        # Set finite volume method
+        if self.inputs.fvm_type == 'MUSCL':
+            if self.inputs.fvm_spatial_order == 1:
+                self.fvm = FVM.FirstOrderMUSCL(self.inputs)
+            elif self.inputs.fvm_spatial_order == 2:
+                self.fvm = FVM.SecondOrderMUSCL(self.inputs)
+            else:
+                raise ValueError('No MUSCL finite volume method has been specialized with order '
+                                 + str(self.inputs.fvm_spatial_order))
+        else:
+            raise ValueError('Specified finite volume method has not been specialized.')
+
+
+
+    def unlimited_reconstruction_at_location(self,
+                                             xc: np.ndarray,
+                                             yc: np.ndarray,
+                                             xp: np.ndarray,
+                                             yp: np.ndarray,
+                                             slicer: slice or tuple or int = None
+                                             ) -> np.ndarray:
+        if slicer is None:
+            return self.state + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+        return self.state[slicer] + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+
+    def get_east_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's east boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _east_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpe,
+                slicer=self.EAST_FACE_IDX)
+            for qpe in self.QP.E)
+        return _east_states
+
+    def get_west_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's west boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _west_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpw,
+                slicer=self.WEST_FACE_IDX)
+            for qpw in self.QP.W)
+        return _west_states
+
+    def get_north_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's north boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _north_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpn,
+                slicer=self.NORTH_FACE_IDX)
+            for qpn in self.QP.N)
+        return _north_states
+
+    def get_south_boundary_states(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's south boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _south_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qps,
+                slicer=self.SOUTH_FACE_IDX)
+            for qps in self.QP.S)
+        return _south_states
