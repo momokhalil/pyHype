@@ -32,10 +32,10 @@ np.set_printoptions(precision=3)
 
 
 class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
-    def __init__(self, inputs, global_nBLK):
+    def __init__(self, inputs):
         if inputs.nghost != 1:
             raise ValueError('Number of ghost cells must be equal to 1 for this method.')
-        super().__init__(inputs, global_nBLK)
+        super().__init__(inputs)
 
     def reconstruct_state(self,
                           refBLK: QuadBlock

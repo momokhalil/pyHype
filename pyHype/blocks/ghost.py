@@ -24,7 +24,8 @@ from abc import abstractmethod
 from pyHype.utils import utils
 from pyHype.mesh.QuadMesh import QuadMesh
 from typing import TYPE_CHECKING, Union
-from pyHype.blocks.base import BaseBlock_Only_State
+from pyHype.mesh import quadratures as qp
+from pyHype.blocks.base import BaseBlock_FVM
 
 if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
@@ -56,8 +57,29 @@ class GhostBlocks:
     def __call__(self):
         return self.__dict__.values()
 
+class BoundaryConditionFunctions:
+    def __init__(self):
+        pass
 
-class GhostBlock(BaseBlock_Only_State):
+    @staticmethod
+    def BC_reflection(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
+        """
+        Flips the sign of the u velocity along the wall. Rotates the state from global to wall frame and back to ensure
+        coordinate alignment.
+
+        Parameters:
+            - state (np.ndarray): Ghost cell state arrays
+            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
+
+        Returns:
+            - None
+        """
+        utils.rotate(wall_angle, state)
+        state[:, :, 1] = -state[:, :, 1]
+        utils.unrotate(wall_angle, state)
+
+
+class GhostBlock(BaseBlock_FVM, BoundaryConditionFunctions):
     def __init__(self,
                  inputs: ProblemInput,
                  BCtype: str,
@@ -77,6 +99,7 @@ class GhostBlock(BaseBlock_Only_State):
         self.mesh = None
         self.theta = None
 
+        self.set_BC = None
         # Assign the BCset method to avoid checking type everytime
         if self.BCtype == 'None':
             self.set_BC = self.set_BC_none
@@ -163,23 +186,6 @@ class GhostBlock(BaseBlock_Only_State):
         _col = self.state.Q[:, None, index, :]
         return _col.copy() if copy else _col
 
-    @staticmethod
-    def reflect(state: np.ndarray, wall_angle: Union[np.ndarray, int, float]) -> None:
-        """
-        Flips the sign of the u velocity along the wall. Rotates the state from global to wall frame and back to ensure
-        coordinate alignment.
-
-        Parameters:
-            - state (np.ndarray): Ghost cell state arrays
-            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
-
-        Returns:
-            - None
-        """
-        utils.rotate(wall_angle, state)
-        state[:, :, 1] = -state[:, :, 1]
-        utils.unrotate(wall_angle, state)
-
     @abstractmethod
     def set_BC_none(self):
         """
@@ -252,55 +258,68 @@ class GhostBlockEast(GhostBlock):
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
                              nx=inputs.nghost, ny=self.refBLK.ny)
+        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self):
+    def set_BC_none(self, state: np.ndarray = None):
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.E.get_west_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.neighbors.E.get_west_ghost_states()
 
-    def set_BC_reflection(self):
+    def set_BC_reflection(self, state: np.ndarray = None):
         """
         Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_east_ghost_states()
-        self.reflect(state, self.refBLK.mesh.east_boundary_angle())
-        self.state.U = state
+        _state = self.refBLK.get_east_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.east_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_slipwall(self):
+    def set_BC_slipwall(self, state: np.ndarray = None):
         """
         Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_east_ghost_states()
-        self.reflect(state, self.refBLK.mesh.east_boundar_angle())
-        self.state.U = state
+        _state = self.refBLK.get_east_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.east_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self):
+    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
         """
         Set dirichlet inlet boundary condition on the eastern face.
         """
-        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_east_rho
-        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_east_rho * self.inputs.BC_inlet_east_u
-        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_east_rho * self.inputs.BC_inlet_east_v
-        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_east_p / (self.inputs.gamma - 1) \
-                                                + 0.5 * self.inputs.BC_inlet_east_rho \
-                                                      * (self.inputs.BC_inlet_east_u ** 2 +
-                                                         self.inputs.BC_inlet_east_v ** 2)
+        _g = self.inputs.gamma - 1
+        _r = self.inputs.BC_inlet_east_rho
+        _u = self.inputs.BC_inlet_east_u
+        _v = self.inputs.BC_inlet_east_v
+        _p = self.inputs.BC_inlet_east_p
+        _U = np.array([_r,
+                       _r * _u,
+                       _r * _v,
+                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
+                      ).reshape((1, 1, 4))
 
-    def set_BC_outlet_dirichlet(self):
+        if state is not None:
+            state[:, :, :] = _U
+        else:
+            self.state.U[:, :, :] = _U
+
+    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_east_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.get_east_ghost_states()
 
-    def set_BC_inlet_riemann(self):
+    def set_BC_inlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self):
+    def set_BC_outlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
 
 
@@ -325,55 +344,68 @@ class GhostBlockWest(GhostBlock):
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
                              nx=inputs.nghost, ny=self.refBLK.ny)
+        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self):
+    def set_BC_none(self, state: np.ndarray = None):
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.W.get_east_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.neighbors.W.get_east_ghost_states()
 
-    def set_BC_reflection(self):
+    def set_BC_reflection(self, state: np.ndarray = None):
         """
         Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_west_ghost_states()
-        self.reflect(state, self.refBLK.mesh.west_boundary_angle())
-        self.state.U = state
+        _state = self.refBLK.get_west_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.west_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_slipwall(self):
+    def set_BC_slipwall(self, state: np.ndarray = None):
         """
         Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_west_ghost_states()
-        self.reflect(state, self.refBLK.mesh.west_boundary_angle())
-        self.state.U = state
+        _state = self.refBLK.get_west_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.west_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self):
+    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
         """
         Set dirichlet inlet boundary condition on the eastern face.
         """
-        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_west_rho
-        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_west_rho * self.inputs.BC_inlet_west_u
-        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_west_rho * self.inputs.BC_inlet_west_v
-        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_west_p / (self.inputs.gamma - 1) \
-                                                + 0.5 * self.inputs.BC_inlet_west_rho \
-                                                      * (self.inputs.BC_inlet_west_u ** 2 +
-                                                         self.inputs.BC_inlet_west_v ** 2)
+        _g = self.inputs.gamma - 1
+        _r = self.inputs.BC_inlet_west_rho
+        _u = self.inputs.BC_inlet_west_u
+        _v = self.inputs.BC_inlet_west_v
+        _p = self.inputs.BC_inlet_west_p
+        _U = np.array([_r,
+                       _r * _u,
+                       _r * _v,
+                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
+                      ).reshape((1, 1, 4))
 
-    def set_BC_outlet_dirichlet(self):
+        if state is not None:
+            state[:, :, :] = _U
+        else:
+            self.state.U[:, :, :] = _U
+
+    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_west_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.get_east_ghost_states()
 
-    def set_BC_inlet_riemann(self):
+    def set_BC_inlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self):
+    def set_BC_outlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
 
 
@@ -398,55 +430,68 @@ class GhostBlockNorth(GhostBlock):
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
                              nx=self.refBLK.ny, ny=inputs.nghost)
+        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self):
+    def set_BC_none(self, state: np.ndarray = None):
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.N.get_south_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.neighbors.N.get_south_ghost_states()
 
-    def set_BC_reflection(self):
+    def set_BC_reflection(self, state: np.ndarray = None):
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_north_ghost_states()
-        self.reflect(state, self.refBLK.mesh.north_boundary_angle())
-        self.state.U = state
+        _state = self.refBLK.get_north_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.north_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_slipwall(self):
+    def set_BC_slipwall(self, state: np.ndarray = None):
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_north_ghost_states()
-        self.reflect(state, self.refBLK.mesh.north_boundary_angle())
-        self.state.U = state
+        _state = self.refBLK.get_north_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.north_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self):
+    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
         """
         Set dirichlet inlet boundary condition on the northern face.
         """
-        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_north_rho
-        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_north_rho * self.inputs.BC_inlet_north_u
-        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_north_rho * self.inputs.BC_inlet_north_v
-        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_north_p / (self.inputs.gamma - 1) \
-                                                + 0.5 * self.inputs.BC_inlet_north_rho \
-                                                      * (self.inputs.BC_inlet_north_u ** 2 +
-                                                         self.inputs.BC_inlet_north_v ** 2)
+        _g = self.inputs.gamma - 1
+        _r = self.inputs.BC_inlet_north_rho
+        _u = self.inputs.BC_inlet_north_u
+        _v = self.inputs.BC_inlet_north_v
+        _p = self.inputs.BC_inlet_north_p
+        _U = np.array([_r,
+                       _r * _u,
+                       _r * _v,
+                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
+                      ).reshape((1, 1, 4))
 
-    def set_BC_outlet_dirichlet(self):
+        if state is not None:
+            state[:, :, :] = _U
+        else:
+            self.state.U[:, :, :] = _U
+
+    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_north_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.get_north_ghost_states()
 
-    def set_BC_inlet_riemann(self):
+    def set_BC_inlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self):
+    def set_BC_outlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
 
 
@@ -471,53 +516,66 @@ class GhostBlockSouth(GhostBlock):
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
                              nx=self.refBLK.ny, ny=inputs.nghost)
+        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self):
+    def set_BC_none(self, state: np.ndarray = None):
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        self.state.U = self.refBLK.neighbors.S.get_north_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.neighbors.S.get_north_ghost_states()
 
-    def set_BC_reflection(self):
+    def set_BC_reflection(self, state: np.ndarray = None):
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        state = self.refBLK.get_south_ghost_states()
-        self.reflect(state, self.refBLK.mesh.south_boundary_angle())
-        self.state.U = state
+        _state = self.refBLK.get_south_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.south_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_slipwall(self):
+    def set_BC_slipwall(self, state: np.ndarray = None):
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        state = self.refBLK.get_south_ghost_states()
-        self.reflect(state, self.refBLK.mesh.south_boundary_angle())
-        self.state.U = state
+        _state = self.refBLK.get_south_ghost_states() if state is None else state
+        self.BC_reflection(_state, self.refBLK.mesh.south_boundary_angle())
+        if state is None:
+            self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self):
+    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
         """
         Set dirichlet inlet boundary condition on the southern face.
         """
-        self.state.U[:, :, self.state.RHO_IDX]  = self.inputs.BC_inlet_south_rho
-        self.state.U[:, :, self.state.RHOU_IDX] = self.inputs.BC_inlet_south_rho * self.inputs.BC_inlet_south_u
-        self.state.U[:, :, self.state.RHOV_IDX] = self.inputs.BC_inlet_south_rho * self.inputs.BC_inlet_south_v
-        self.state.U[:, :, self.state.E_IDX]    = self.inputs.BC_inlet_south_p / (self.inputs.gamma - 1) \
-                                                + 0.5 * self.inputs.BC_inlet_south_rho \
-                                                      * (self.inputs.BC_inlet_south_u ** 2 +
-                                                         self.inputs.BC_inlet_south_v ** 2)
+        _g = self.inputs.gamma - 1
+        _r = self.inputs.BC_inlet_south_rho
+        _u = self.inputs.BC_inlet_south_u
+        _v = self.inputs.BC_inlet_south_v
+        _p = self.inputs.BC_inlet_south_p
+        _U = np.array([_r,
+                       _r * _u,
+                       _r * _v,
+                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
+                      ).reshape((1, 1, 4))
 
-    def set_BC_outlet_dirichlet(self):
+        if state is not None:
+            state[:, :, :] = _U
+        else:
+            self.state.U[:, :, :] = _U
+
+    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        self.state.U = self.refBLK.get_south_ghost_states()
+        if state is None:
+            self.state.U = self.refBLK.get_south_ghost_states()
 
-    def set_BC_inlet_riemann(self):
+    def set_BC_inlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self):
+    def set_BC_outlet_riemann(self, state: np.ndarray = None):
         return NotImplementedError
