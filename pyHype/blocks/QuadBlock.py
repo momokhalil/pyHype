@@ -156,6 +156,20 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
         return interfaceEW[:, 1:, :], interfaceEW[:, :-1, :], interfaceNS[1:, :, :], interfaceNS[:-1, :, :]
 
 
+class ReconstructionBlock(BaseBlock_With_Ghost):
+    def __init__(self,
+                 inputs: ProblemInput,
+                 block_data: BlockDescription,
+                 QP,
+                 mesh,
+                 ) -> None:
+        # Track Quadrature points and mesh from parent block
+        self.QP = QP
+        self.mesh = mesh
+
+        super().__init__(inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self,
+                         state_type=inputs.reconstruction_type)
+
 class QuadBlock(BaseBlock_With_Ghost):
     def __init__(self,
                  inputs: ProblemInput,
@@ -168,14 +182,14 @@ class QuadBlock(BaseBlock_With_Ghost):
         self.mesh               = QuadMesh(inputs, block_data)
         self.ghost              = None
         self.neighbors          = None
-        self.nx                 = inputs.nx
-        self.ny                 = inputs.ny
+
+        # Quadrature Points and Data
+        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
         super().__init__(inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self)
 
         # Create reconstruction block
-        self.reconBlk = BaseBlock_With_Ghost(inputs, inputs.nx, inputs.ny, block_data=block_data, refBLK=self,
-                                             state_type=self.inputs.reconstruction_type)
+        self.reconBlk = ReconstructionBlock(inputs, block_data, QP=self.QP, mesh=self.mesh)
 
         # Set time integrator
         if self.inputs.time_integrator   == 'ExplicitEuler1':
@@ -202,9 +216,6 @@ class QuadBlock(BaseBlock_With_Ghost):
             self._time_integrator   = Erk.DormandPrince5(self.inputs)
         else:
             raise ValueError('Specified time marching scheme has not been specialized.')
-
-        # Quadrature
-        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
         # is block cartesian
         self.is_cartesian = self._is_cartesian()
