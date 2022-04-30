@@ -164,19 +164,15 @@ class FirstOrderGradients(SolutionGradients):
 
     def get_high_order_term(self,
                             xc: np.ndarray,
-                            yc: np.ndarray,
                             xp: np.ndarray,
+                            yc: np.ndarray,
                             yp: np.ndarray,
                             slicer: slice or tuple or int = None
                             ) -> np.ndarray:
         if slicer is None:
-            x = (xc - xp)
-            y = (yc - yp)
-            return self.x * x + self.y * y
+            return self.x * (xp - xc) + self.y * (yp - yc)
 
-        x = (xc[slicer] - xp[slicer])
-        y = (yp[slicer] - yp[slicer])
-        return self.x[slicer] * x + self.y[slicer] * y
+        return self.x[slicer] * (xp[slicer] - xc[slicer]) + self.y[slicer] * (yp[slicer] - yc[slicer])
 
 class SecondOrderGradients(SolutionGradients):
     def __init__(self, nx: int, ny: int):
@@ -189,18 +185,18 @@ class SecondOrderGradients(SolutionGradients):
 
     def get_high_order_term(self,
                             xc: np.ndarray,
-                            yc: np.ndarray,
                             xp: np.ndarray,
+                            yc: np.ndarray,
                             yp: np.ndarray,
                             slicer: slice or tuple or int = None
                             ) -> np.ndarray:
         if slicer is None:
-            x = (xc - xp)
-            y = (yc - yp)
+            x = (xp - xc)
+            y = (yp - yc)
             return self.x * x + self.y * y + self.xx * x ** 2 + self.yy * y ** 2 + self.xy * x * y
 
-        x = (xc[slicer] - xp[slicer])
-        y = (yp[slicer] - yp[slicer])
+        x = (xp[slicer] - xc[slicer])
+        y = (yp[slicer] - yc[slicer])
         return self.x[slicer]  * x + \
                self.y[slicer]  * y + \
                self.xy[slicer] * x * y + \
