@@ -223,12 +223,23 @@ class MUSCLFiniteVolumeMethod:
         is created by concatenating the east ghost-cell state and the west face state. After concatenation, the arrays
         are reshaped to produce a (1, n, 4) shaped array.
 
+        :type state_type: str
         :param state_type: variable basis of the state data in the the input arrays
+
+        :type ghostE: np.ndarray
         :param ghostE: east ghost cell state array
+
+        :type ghostW: np.ndarray
         :param ghostW: west ghost cell state array
+
+        :type stateE: np.ndarray
         :param stateE: east state array
+
+        :type stateW: np.ndarray
         :param stateW: west state array
-        :return:
+
+        :rtype: tuple(PrimitiveState, PrimitiveState)
+        :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
         _arrL = np.concatenate((ghostW, stateE), axis=1)
         _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
@@ -244,6 +255,30 @@ class MUSCLFiniteVolumeMethod:
                                     stateN: np.ndarray,
                                     stateS: np.ndarray,
                                     ) -> [PrimitiveState]:
+        """
+        Compute and return the left and right states used for the North-South inviscid flux calculation. The left state
+        is created by concatenating the south ghost-cell state and the north face state. The right state
+        is created by concatenating the north ghost-cell state and the south face state. After concatenation, the arrays
+        are reshaped to produce a (1, n, 4) shaped array.
+
+        :type state_type: str
+        :param state_type: variable basis of the state data in the the input arrays
+
+        :type ghostN: np.ndarray
+        :param ghostN: north ghost cell state array
+
+        :type ghostS: np.ndarray
+        :param ghostS: south ghost cell state array
+
+        :type stateN: np.ndarray
+        :param stateN: north state array
+
+        :type stateS: np.ndarray
+        :param stateS: south state array
+
+        :rtype: tuple(PrimitiveState, PrimitiveState)
+        :return: PrimitiveStates that hold the left and right states for the flux calculation
+        """
         _arrL = np.concatenate((ghostS, stateN), axis=0).transpose((1, 0, 2))
         _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
 
@@ -251,11 +286,27 @@ class MUSCLFiniteVolumeMethod:
         _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
         return _stateL, _stateR
 
-    def evaluate_flux_x(self, refBLK: QuadBlock) -> None:
+    def evaluate_flux_EW(self, refBLK: QuadBlock) -> None:
+        """
+        Evaluates the fluxes at each east-west cell boundary. The following steps are followed:
+            1. Get list of reconstructed boundary states at each quadrature point on the east boundary
+            2. Get list of reconstructed boundary states at each quadrature point on the west boundary
+            3. Loop through each quadrature point on the east and west faces and calculate the reconstructed solution
+               states at each q-point
+            4. Rotate states if the block is not cartesian
+            5. Compute left and right states
+            6. Compute fluxes
+
+        :type refBLK: QuadBlock
+        :param refBLK: Block that holds solution state
+
+        :rtype: None
+        :return: None
+        """
         condE = refBLK.ghost.E.BCtype is not 'None'
         condW = refBLK.ghost.W.BCtype is not 'None'
-        bndE = refBLK.get_east_boundary_states() if condE else refBLK.ghost.E.get_west_boundary_states()
-        bndW = refBLK.get_west_boundary_states() if condW else refBLK.ghost.W.get_east_boundary_states()
+        bndE = refBLK.get_east_boundary_states_at_qp() if condE else refBLK.ghost.E.get_west_boundary_states_at_qp()
+        bndW = refBLK.get_west_boundary_states_at_qp() if condW else refBLK.ghost.W.get_east_boundary_states_at_qp()
 
         for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W):
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
@@ -278,11 +329,29 @@ class MUSCLFiniteVolumeMethod:
                 utils.unrotate(refBLK.mesh.face.E.theta, fluxE)
                 utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
 
-    def evaluate_flux_y(self, refBLK: QuadBlock) -> None:
+    def evaluate_flux_NS(self, refBLK: QuadBlock) -> None:
+        """
+        Evaluates the fluxes at each north-south cell boundary. The following steps are followed:
+            1. Get list of reconstructed boundary states at each quadrature point on the north boundary
+            2. Get list of reconstructed boundary states at each quadrature point on the south boundary
+            3. Loop through each quadrature point on the north and south faces and calculate the reconstructed solution
+               states at each q-point
+            4. Rotate states if the block is not cartesian
+            5. Compute left and right states
+            6. Compute fluxes
+
+        :type refBLK: QuadBlock
+        :param refBLK: Block that holds solution state
+
+        :rtype: None
+        :return: None
+        """
+
         condN = refBLK.ghost.N.BCtype is not 'None'
         condS = refBLK.ghost.S.BCtype is not 'None'
-        bndN = refBLK.get_north_boundary_states() if condN else refBLK.ghost.N.get_south_boundary_states()
-        bndS = refBLK.get_south_boundary_states() if condS else refBLK.ghost.S.get_north_boundary_states()
+        bndN = refBLK.get_north_boundary_states_at_qp() if condN else refBLK.ghost.N.get_south_boundary_states_at_qp()
+        bndS = refBLK.get_south_boundary_states_at_qp() if condS else refBLK.ghost.S.get_north_boundary_states_at_qp()
+
         for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S):
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
             _stateS = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qs)
@@ -313,12 +382,13 @@ class MUSCLFiniteVolumeMethod:
         Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all of the rows and columns
         of cells on the blocks in a sweeping (but unsplit) fashion.
 
-        Parameters:
-            - refBLK (QuadBlock): QuadBlock that needs its fluxes calculated.
+        :type refBLK: QuadBlock
+        :param refBLK: QuadBlock that holds the solution data for the flux calculation
 
-        Return:
-            - N/A
+        :rtype: None
+        :return: None
         """
+        
         self.reconstruct(refBLK)
-        self.evaluate_flux_x(refBLK)
-        self.evaluate_flux_y(refBLK)
+        self.evaluate_flux_EW(refBLK)
+        self.evaluate_flux_NS(refBLK)

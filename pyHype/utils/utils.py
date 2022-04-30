@@ -217,11 +217,21 @@ class NumpySlice:
 
     @staticmethod
     def cols(start: int = None, end: int = None):
-        return np.s_[:, start:end, :]
+        if start and end:
+            return np.s_[:, start:end, :]
+        if start:
+            return np.s_[:, start:, :]
+        if end:
+            return np.s_[:, :end, :]
 
     @staticmethod
     def rows(start: int = None, end: int = None):
-        return np.s_[start:end, :, :]
+        if start and end:
+            return np.s_[start:end, :, :]
+        if start:
+            return np.s_[start:, :, :]
+        if end:
+            return np.s_[:end, :, :]
 
     @classmethod
     def east_boundary(cls):
@@ -238,3 +248,19 @@ class NumpySlice:
     @classmethod
     def south_boundary(cls):
         return cls.row(0)
+
+    @classmethod
+    def east_face(cls):
+        return cls.cols(start=1)
+
+    @classmethod
+    def west_face(cls):
+        return cls.cols(end=-1)
+
+    @classmethod
+    def north_face(cls):
+        return cls.rows(start=1)
+
+    @classmethod
+    def south_face(cls):
+        return cls.rows(end=-1)
