@@ -190,7 +190,7 @@ def subsonic_flood(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U = Q
+        block.state.U[:, :, :] = Q
         block.state.non_dim()
 
 def supersonic_rest(blocks, **kwargs):
@@ -236,7 +236,7 @@ def subsonic_rest(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.U = Q
+        block.state.U[:, :, :] = Q
         block.state.non_dim()
 
 def explosion_trapezoid(blocks, **kwargs):
