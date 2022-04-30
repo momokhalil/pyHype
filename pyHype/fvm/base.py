@@ -82,16 +82,14 @@ class MUSCLFiniteVolumeMethod:
                           . . .
         ... to be continued.
         """
-        self.nx = inputs.nx
-        self.ny = inputs.ny
         self.inputs = inputs
 
         # Flux storage arrays
         self.Flux = DirectionalContainerBase(
-            east_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
-            west_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
-            north_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
-            south_obj=tuple(np.empty((self.ny, self.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            east_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            west_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            north_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            south_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
         )
         # Set flux function
         if self.inputs.fvm_flux_function == 'Roe':
@@ -345,8 +343,8 @@ class MUSCLFiniteVolumeMethod:
         """
         condE = refBLK.ghost.E.BCtype is not 'None'
         condW = refBLK.ghost.W.BCtype is not 'None'
-        bndE = refBLK.get_east_boundary_states_at_qp() if condE else refBLK.ghost.E.get_west_boundary_states_at_qp()
-        bndW = refBLK.get_west_boundary_states_at_qp() if condW else refBLK.ghost.W.get_east_boundary_states_at_qp()
+        bndE = refBLK.reconBlk.get_east_boundary_states_at_qp() if condE else refBLK.reconBlk.ghost.E.get_west_boundary_states_at_qp()
+        bndW = refBLK.reconBlk.get_west_boundary_states_at_qp() if condW else refBLK.reconBlk.ghost.W.get_east_boundary_states_at_qp()
 
         for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W):
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
@@ -389,8 +387,8 @@ class MUSCLFiniteVolumeMethod:
 
         condN = refBLK.ghost.N.BCtype is not 'None'
         condS = refBLK.ghost.S.BCtype is not 'None'
-        bndN = refBLK.get_north_boundary_states_at_qp() if condN else refBLK.ghost.N.get_south_boundary_states_at_qp()
-        bndS = refBLK.get_south_boundary_states_at_qp() if condS else refBLK.ghost.S.get_north_boundary_states_at_qp()
+        bndN = refBLK.reconBlk.get_north_boundary_states_at_qp() if condN else refBLK.reconBlk.ghost.N.get_south_boundary_states_at_qp()
+        bndS = refBLK.reconBlk.get_south_boundary_states_at_qp() if condS else refBLK.reconBlk.ghost.S.get_north_boundary_states_at_qp()
 
         for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S):
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)

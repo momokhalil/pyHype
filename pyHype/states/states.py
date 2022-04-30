@@ -80,7 +80,7 @@ class PrimitiveState(State):
             _nx, _ny = int(nx), int(ny)
         elif _vec_given:
             if state:
-                _nx, _ny = state.nx, state.ny
+                _nx, _ny = state.inputs.nx, state.inputs.ny
             elif U_vector is not None:
                 _nx, _ny = int(U_vector.shape[1]), int(U_vector.shape[0])
             elif W_vector is not None:
@@ -485,7 +485,7 @@ class ConservativeState(State):
             _nx, _ny = int(nx), int(ny)
         elif _vec_given:
             if state:
-                _nx, _ny = state.nx, state.ny
+                _nx, _ny = state.inputs.nx, state.inputs.ny
             elif U_vector is not None:
                 _nx, _ny = int(U_vector.shape[1]), int(U_vector.shape[0])
             elif W_vector is not None:

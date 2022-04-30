@@ -91,8 +91,6 @@ class GhostBlock(BaseBlock_FVM, BoundaryConditionFunctions):
         super().__init__(inputs, nx, ny, state_type=state_type)
 
         self.BCtype = BCtype
-        self.nx = inputs.nx
-        self.ny = inputs.ny
         self.nghost = inputs.nghost
         self.refBLK = refBLK
 
@@ -257,7 +255,7 @@ class GhostBlockEast(GhostBlock):
                                        yr=self.refBLK.mesh.nodes.y[0, -1 - self.inputs.nghost])
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
-                             nx=inputs.nghost, ny=self.refBLK.ny)
+                             nx=inputs.nghost, ny=inputs.ny)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(self, state: np.ndarray = None):
@@ -343,7 +341,7 @@ class GhostBlockWest(GhostBlock):
                                        yr=self.refBLK.mesh.nodes.y[0, self.inputs.nghost])
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
-                             nx=inputs.nghost, ny=self.refBLK.ny)
+                             nx=inputs.nghost, ny=inputs.ny)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(self, state: np.ndarray = None):
@@ -429,7 +427,7 @@ class GhostBlockNorth(GhostBlock):
                                        yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, -1])
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
-                             nx=self.refBLK.nx, ny=inputs.nghost)
+                             nx=inputs.nx, ny=inputs.nghost)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(self, state: np.ndarray = None):
@@ -515,7 +513,7 @@ class GhostBlockSouth(GhostBlock):
                                        yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, -1])
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
-                             nx=self.refBLK.nx, ny=inputs.nghost)
+                             nx=inputs.nx, ny=inputs.nghost)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(self, state: np.ndarray = None):

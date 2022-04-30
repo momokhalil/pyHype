@@ -48,10 +48,7 @@ class State:
             g           (gamma) specific heat ratio \n
         """
 
-        # Private
         self.inputs = inputs
-        self.nx = nx
-        self.ny = ny
         self.g = inputs.gamma
         self._Q = np.zeros((ny, nx, 4), dtype=float)
         self.g_over_gm = self.g / (self.g - 1)
@@ -114,7 +111,7 @@ class State:
         return self
 
     def dcopy(self):
-        _copy = State(self.inputs, self.nx, self.ny)
+        _copy = State(self.inputs, self.inputs.nx, self.inputs.ny)
         _copy.Q = self.Q.copy()
 
     def __getitem__(self, index: int) -> np.ndarray:
@@ -163,7 +160,7 @@ class State:
         if shape:
             self.Q = np.zeros(shape=shape, dtype=float)
         else:
-            self.Q = np.zeros((self.ny, self.nx, 4), dtype=float)
+            self.Q = np.zeros((self.inputs.ny, self.inputs.nx, 4), dtype=float)
 
     @abstractmethod
     def non_dim(self):
