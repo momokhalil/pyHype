@@ -429,7 +429,7 @@ class GhostBlockNorth(GhostBlock):
                                        yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, -1])
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
-                             nx=self.refBLK.ny, ny=inputs.nghost)
+                             nx=self.refBLK.nx, ny=inputs.nghost)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(self, state: np.ndarray = None):
@@ -515,7 +515,7 @@ class GhostBlockSouth(GhostBlock):
                                        yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, -1])
         # Construct Mesh
         self.mesh = QuadMesh(self.inputs, NE=(NEx, NEy), NW=(NWx, NWy), SE=(SEx, SEy), SW=(SWx, SWy),
-                             nx=self.refBLK.ny, ny=inputs.nghost)
+                             nx=self.refBLK.nx, ny=inputs.nghost)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(self, state: np.ndarray = None):
