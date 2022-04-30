@@ -139,7 +139,7 @@ class NormalVector:
         return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
 
 
-class GradientsContainer:
+class SolutionGradients:
     def __init__(self):
         pass
 
@@ -156,7 +156,7 @@ class GradientsContainer:
                             ):
         return NotImplementedError
 
-class FirstOrderGradients(GradientsContainer):
+class FirstOrderGradients(SolutionGradients):
     def __init__(self, nx: int, ny: int):
         super().__init__()
         self.x = np.zeros(shape=(ny, nx, 4))
@@ -178,7 +178,7 @@ class FirstOrderGradients(GradientsContainer):
         y = (yp[slicer] - yp[slicer])
         return self.x[slicer] * x + self.y[slicer] * y
 
-class SecondOrderGradients(GradientsContainer):
+class SecondOrderGradients(SolutionGradients):
     def __init__(self, nx: int, ny: int):
         super().__init__()
         self.x  = np.zeros(shape=(ny, nx, 4))
@@ -317,10 +317,15 @@ class BaseBlock:
 
 
 class BaseBlock_Only_State(BaseBlock):
-    EAST_FACE_IDX = NumpySlice.east_boundary()
-    WEST_FACE_IDX = NumpySlice.west_boundary()
-    NORTH_FACE_IDX = NumpySlice.north_boundary()
-    SOUTH_FACE_IDX = NumpySlice.south_boundary()
+    EAST_BOUND_IDX = NumpySlice.east_boundary()
+    WEST_BOUND_IDX = NumpySlice.west_boundary()
+    NORTH_BOUND_IDX = NumpySlice.north_boundary()
+    SOUTH_BOUND_IDX = NumpySlice.south_boundary()
+
+    EAST_FACE_IDX = NumpySlice.east_face()
+    WEST_FACE_IDX = NumpySlice.west_face()
+    NORTH_FACE_IDX = NumpySlice.north_face()
+    SOUTH_FACE_IDX = NumpySlice.south_face()
 
     def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
         super().__init__(inputs)
@@ -388,7 +393,71 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             return self.state + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
         return self.state[slicer] + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
 
-    def get_east_boundary_states(self) -> tuple[np.ndarray]:
+    def get_east_boundary_states_at_qp(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's east boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _east_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpe,
+                slicer=self.EAST_BOUND_IDX)
+            for qpe in self.QP.E)
+        return _east_states
+
+    def get_west_boundary_states_at_qp(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's west boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _west_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpw,
+                slicer=self.WEST_BOUND_IDX)
+            for qpw in self.QP.W)
+        return _west_states
+
+    def get_north_boundary_states_at_qp(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's north boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _north_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qpn,
+                slicer=self.NORTH_BOUND_IDX)
+            for qpn in self.QP.N)
+        return _north_states
+
+    def get_south_boundary_states_at_qp(self) -> tuple[np.ndarray]:
+        """
+        Return the solution state data in the cells along the block's south boundary at each quadrature point.
+
+        :rtype: None
+        :return: None
+        """
+        _south_states = tuple(
+            self.fvm.limited_solution_at_quadrature_point(
+                state=self.state,
+                refBLK=self,
+                qp=qps,
+                slicer=self.SOUTH_BOUND_IDX)
+            for qps in self.QP.S)
+        return _south_states
+
+    def get_east_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
         Return the solution state data in the cells along the block's east boundary at each quadrature point.
 
@@ -404,7 +473,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             for qpe in self.QP.E)
         return _east_states
 
-    def get_west_boundary_states(self) -> tuple[np.ndarray]:
+    def get_west_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
         Return the solution state data in the cells along the block's west boundary at each quadrature point.
 
@@ -420,7 +489,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             for qpw in self.QP.W)
         return _west_states
 
-    def get_north_boundary_states(self) -> tuple[np.ndarray]:
+    def get_north_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
         Return the solution state data in the cells along the block's north boundary at each quadrature point.
 
@@ -436,7 +505,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             for qpn in self.QP.N)
         return _north_states
 
-    def get_south_boundary_states(self) -> tuple[np.ndarray]:
+    def get_south_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
         Return the solution state data in the cells along the block's south boundary at each quadrature point.
 
