@@ -1,10 +1,6 @@
 from pyHype.solvers import Euler2D
 import numpy as np
 
-a = np.ones((10, 10))
-np.reshape(a, (100, ))
-
-print(a)
 
 block1 = {'nBLK': 1,
           'NW': [0, 2], 'NE': [2, 2],
@@ -37,7 +33,7 @@ mesh = {1: block1,
 # Solver settings
 settings = {'problem_type':             'supersonic_flood',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'conservative',
+            'reconstruction_type':      'primitive',
             'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
             'write_solution_name':      'super_wedge',
@@ -51,8 +47,8 @@ settings = {'problem_type':             'supersonic_flood',
             'rho_inf':                  1.0,
             'a_inf':                    1.0,
             'R':                        287.0,
-            'nx':                       100,
-            'ny':                       100,
+            'nx':                       60,
+            'ny':                       60,
             'nghost':                   1,
             'BC_inlet_west_rho':        1.0,
             'BC_inlet_west_u':          2.0,
