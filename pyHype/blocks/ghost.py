@@ -25,6 +25,7 @@ from pyHype.utils import utils
 from pyHype.mesh.QuadMesh import QuadMesh
 from typing import TYPE_CHECKING, Union
 from pyHype.mesh import quadratures as qp
+from pyHype.states.states import PrimitiveState
 from pyHype.blocks.base import BaseBlock_FVM
 
 if TYPE_CHECKING:
@@ -295,16 +296,20 @@ class GhostBlockEast(GhostBlock):
         _u = self.inputs.BC_inlet_east_u
         _v = self.inputs.BC_inlet_east_v
         _p = self.inputs.BC_inlet_east_p
-        _U = np.array([_r,
-                       _r * _u,
-                       _r * _v,
-                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
-                      ).reshape((1, 1, 4))
+
+        _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
+
+        if self.inputs.reconstruction_type == 'conservative':
+            state_bc = _W.to_conservative_state()
+        elif self.inputs.reconstruction_type == 'primitive':
+            state_bc = _W
+        else:
+            raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
 
         if state is not None:
-            state[:, :, :] = _U
+            state[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = _U
+            self.state.U[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
@@ -381,16 +386,20 @@ class GhostBlockWest(GhostBlock):
         _u = self.inputs.BC_inlet_west_u
         _v = self.inputs.BC_inlet_west_v
         _p = self.inputs.BC_inlet_west_p
-        _U = np.array([_r,
-                       _r * _u,
-                       _r * _v,
-                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
-                      ).reshape((1, 1, 4))
+
+        _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
+
+        if self.inputs.reconstruction_type == 'conservative':
+            state_bc = _W.to_conservative_state()
+        elif self.inputs.reconstruction_type == 'primitive':
+            state_bc = _W
+        else:
+            raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
 
         if state is not None:
-            state[:, :, :] = _U
+            state[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = _U
+            self.state.U[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
@@ -467,16 +476,20 @@ class GhostBlockNorth(GhostBlock):
         _u = self.inputs.BC_inlet_north_u
         _v = self.inputs.BC_inlet_north_v
         _p = self.inputs.BC_inlet_north_p
-        _U = np.array([_r,
-                       _r * _u,
-                       _r * _v,
-                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
-                      ).reshape((1, 1, 4))
+
+        _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
+
+        if self.inputs.reconstruction_type == 'conservative':
+            state_bc = _W.to_conservative_state()
+        elif self.inputs.reconstruction_type == 'primitive':
+            state_bc = _W
+        else:
+            raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
 
         if state is not None:
-            state[:, :, :] = _U
+            state[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = _U
+            self.state.U[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
@@ -553,16 +566,20 @@ class GhostBlockSouth(GhostBlock):
         _u = self.inputs.BC_inlet_south_u
         _v = self.inputs.BC_inlet_south_v
         _p = self.inputs.BC_inlet_south_p
-        _U = np.array([_r,
-                       _r * _u,
-                       _r * _v,
-                       _p / _g + 0.5 * _r * (_u ** 2 + _v ** 2)]
-                      ).reshape((1, 1, 4))
+
+        _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
+
+        if self.inputs.reconstruction_type == 'conservative':
+            state_bc = _W.to_conservative_state()
+        elif self.inputs.reconstruction_type == 'primitive':
+            state_bc = _W
+        else:
+            raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
 
         if state is not None:
-            state[:, :, :] = _U
+            state[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = _U
+            self.state.U[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
         """
