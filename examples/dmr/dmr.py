@@ -25,7 +25,6 @@ _mesh = QuadMeshGenerator(nx_blk=4, ny_blk=1,
 settings = {'problem_type':             'mach_reflection',
             'interface_interpolation':  'arithmetic_average',
             'reconstruction_type':      'conservative',
-            'upwind_mode':              'conservative',
             'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
             'write_solution_name':      'machref',
@@ -49,13 +48,15 @@ settings = {'problem_type':             'mach_reflection',
             }
 
 # Create solver
-exp = Euler2D(fvm='SecondOrderPWL',
-              gradient='GreenGauss',
-              flux_function='HLLL',
-              limiter='Venkatakrishnan',
-              integrator='RK2',
+exp = Euler2D(fvm_type='MUSCL',
+              fvm_spatial_order=2,
+              fvm_num_quadrature_points=1,
+              fvm_gradient_type='GreenGauss',
+              fvm_flux_function='HLLL',
+              fvm_slope_limiter='Venkatakrishnan',
+              time_integrator='RK2',
               settings=settings,
-              mesh=_mesh)
+              mesh_inputs=_mesh)
 
 # Solve
 exp.solve()
