@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import os
 import numba as nb
+import numpy as np
+
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 from abc import abstractmethod
 
@@ -69,7 +71,6 @@ class LeastSquares9Point:
 
 
 class GreenGauss(Gradient):
-
     def _get_gradient_NUMPY(self, refBLK: QuadBlock) -> None:
         interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
         # Get each face's contribution to dUdx
@@ -92,31 +93,29 @@ class GreenGauss(Gradient):
 
     def _get_gradient(self, refBLK: QuadBlock) -> None:
         interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
-        self._get_gradinet_JIT(interfaceE, interfaceW, interfaceN, interfaceS,
-                               refBLK.mesh.face.E.L, refBLK.mesh.face.W.L, refBLK.mesh.face.N.L, refBLK.mesh.face.S.L,
+        E = interfaceE * refBLK.mesh.face.E.L
+        W = interfaceW * refBLK.mesh.face.W.L
+        N = interfaceN * refBLK.mesh.face.N.L
+        S = interfaceS * refBLK.mesh.face.S.L
+        self._get_gradinet_JIT(E, W, N, S,
                                refBLK.mesh.face.E.xnorm, refBLK.mesh.face.W.xnorm, refBLK.mesh.face.N.xnorm, refBLK.mesh.face.S.xnorm,
                                refBLK.mesh.face.E.ynorm, refBLK.mesh.face.W.ynorm, refBLK.mesh.face.N.ynorm, refBLK.mesh.face.S.ynorm,
                                refBLK.mesh.A, refBLK.grad.x, refBLK.grad.y)
 
     @staticmethod
     @nb.njit(cache=True)
-    def _get_gradinet_JIT(E, W, N, S, EL, WL, NL, SL, xE, xW, xN, xS, yE, yW, yN, yS, A, gx, gy):
-        _a = 1.0
+    def _get_gradinet_JIT(E, W, N, S, xE, xW, xN, xS, yE, yW, yN, yS, A, gx, gy):
         for i in range(E.shape[0]):
             for j in range(E.shape[1]):
                 for k in range(E.shape[2]):
-                    _a = 1.0 / A[i, j, 0]
-                    e = E[i, j, k] * EL[i, j, k]
-                    w = W[i, j, k] * WL[i, j, k]
-                    n = N[i, j, k] * NL[i, j, k]
-                    gx[i, j, k] = (e * xE[i, j, 0] +
-                                   w * xW[i, j, 0] +
-                                   n * xN[i, j, 0] +
-                                   S[i, j, k] * SL[i, j, k] * xS[i, j, 0]
-                                   ) * _a
-
-                    gy[i, j, k] = (e * yE[i, j, 0] +
-                                   w * yW[i, j, 0] +
-                                   n * yN[i, j, 0] +
-                                   S[i, j, k] * SL[i, j, k] * yS[i, j, 0]
-                                   ) * _a
+                    a = 1 / A[i, j, 0]
+                    gx[i, j, k] = (E[i, j, k] * xE[i, j, 0] +
+                                   W[i, j, k] * xW[i, j, 0] +
+                                   N[i, j, k] * xN[i, j, 0] +
+                                   S[i, j, k] * xS[i, j, 0]
+                                   ) * a
+                    gy[i, j, k] = (E[i, j, k] * yE[i, j, 0] +
+                                   W[i, j, k] * yW[i, j, 0] +
+                                   N[i, j, k] * yN[i, j, 0] +
+                                   S[i, j, k] * yS[i, j, 0]
+                                   ) * a
