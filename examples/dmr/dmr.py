@@ -24,7 +24,7 @@ _mesh = QuadMeshGenerator(nx_blk=4, ny_blk=1,
 # Solver settings
 settings = {'problem_type':             'mach_reflection',
             'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'conservative',
+            'reconstruction_type':      'primitive',
             'write_solution':           False,
             'write_solution_mode':      'every_n_timesteps',
             'write_solution_name':      'machref',
