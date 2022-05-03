@@ -57,10 +57,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         :rtype: np.ndarray
         :return: Unlimited high order term
         """
-        if slicer:
-            return refBLK.grad.x[slicer] * (qp.x[slicer] - refBLK.mesh.x[slicer]) + \
-                   refBLK.grad.y[slicer] * (qp.y[slicer] - refBLK.mesh.y[slicer])
-        return refBLK.grad.x * (qp.x - refBLK.mesh.x) + refBLK.grad.y * (qp.y - refBLK.mesh.y)
+        return refBLK.grad.get_high_order_term(refBLK.mesh.x, qp.x, refBLK.mesh.y, qp.y, slicer=slicer)
 
     def unlimited_solution_at_quadrature_point(self,
                                                state: State,
