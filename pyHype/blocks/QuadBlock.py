@@ -155,6 +155,10 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
 
         return interfaceEW[:, 1:, :], interfaceEW[:, :-1, :], interfaceNS[1:, :, :], interfaceNS[:-1, :, :]
 
+    def clear_cache(self):
+        self.state.clear_cache()
+        self.ghost.clear_cache()
+
 
 class ReconstructionBlock(BaseBlock_With_Ghost):
     def __init__(self,
