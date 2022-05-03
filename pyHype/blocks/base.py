@@ -156,6 +156,9 @@ class SolutionGradients:
                             ):
         return NotImplementedError
 
+    def get_high_order_term_mesh_qp(self, mesh: QuadMesh, qp: QuadraturePoint, slicer: slice or tuple or int):
+        return self.get_high_order_term(mesh.x, qp.x, mesh.y, qp.y, slicer)
+
 class FirstOrderGradients(SolutionGradients):
     def __init__(self, nx: int, ny: int):
         super().__init__()
@@ -207,9 +210,9 @@ class SecondOrderGradients(SolutionGradients):
 class GradientsFactory:
     @staticmethod
     def create_gradients(order: int, nx: int, ny: int) -> GradientsContainer:
-        if order == 1:
-            return FirstOrderGradients(nx, ny)
         if order == 2:
+            return FirstOrderGradients(nx, ny)
+        if order == 4:
             return SecondOrderGradients(nx, ny)
         raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
                          'extended for the given order.')
