@@ -55,6 +55,8 @@ class ExplicitRungeKutta(TimeIntegrator):
                     _intermediate_state = _intermediate_state + dt * self.a[stage][step] * _stage_residuals[step]
             refBLK.state.U = _intermediate_state
             refBLK.set_BC()
+            refBLK.clear_cache()
+            refBLK.reconBlk.clear_cache()
 
     @classmethod
     def ExplicitEuler1(cls, inputs):
