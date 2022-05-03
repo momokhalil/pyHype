@@ -58,6 +58,12 @@ class GhostBlocks:
     def __call__(self):
         return self.__dict__.values()
 
+    def clear_cache(self):
+        self.E.state.clear_cache()
+        self.W.state.clear_cache()
+        self.N.state.clear_cache()
+        self.S.state.clear_cache()
+
 class BoundaryConditionFunctions:
     def __init__(self):
         pass
