@@ -341,8 +341,8 @@ class MUSCLFiniteVolumeMethod:
         :rtype: None
         :return: None
         """
-        condE = refBLK.ghost.E.BCtype is not 'None'
-        condW = refBLK.ghost.W.BCtype is not 'None'
+        condE = refBLK.ghost.E.BCtype != 'None'
+        condW = refBLK.ghost.W.BCtype != 'None'
         bndE = refBLK.reconBlk.get_east_boundary_states_at_qp() if condE else refBLK.reconBlk.ghost.E.get_west_boundary_states_at_qp()
         bndW = refBLK.reconBlk.get_west_boundary_states_at_qp() if condW else refBLK.reconBlk.ghost.W.get_east_boundary_states_at_qp()
 
@@ -385,8 +385,8 @@ class MUSCLFiniteVolumeMethod:
         :return: None
         """
 
-        condN = refBLK.ghost.N.BCtype is not 'None'
-        condS = refBLK.ghost.S.BCtype is not 'None'
+        condN = refBLK.ghost.N.BCtype != 'None'
+        condS = refBLK.ghost.S.BCtype != 'None'
         bndN = refBLK.reconBlk.get_north_boundary_states_at_qp() if condN else refBLK.reconBlk.ghost.N.get_south_boundary_states_at_qp()
         bndS = refBLK.reconBlk.get_south_boundary_states_at_qp() if condS else refBLK.reconBlk.ghost.S.get_north_boundary_states_at_qp()
 
