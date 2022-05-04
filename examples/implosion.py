@@ -35,6 +35,7 @@ settings = {'problem_type':             'implosion',
             'nx':                       50,
             'ny':                       50,
             'nghost':                   1,
+            'use_JIT':                  True,
             }
 
 # Create solver
