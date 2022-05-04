@@ -38,8 +38,8 @@ class FluxHLLL(FluxFunction):
         # Left and right fluxes
         UR = WR.to_conservative_state()
         UL = WL.to_conservative_state()
-        FluxR = WR.F()
-        FluxL = WL.F()
+        FluxR = WR.F(U=UR)
+        FluxL = WL.F(U=UL)
         return self._HLLL_flux_JIT(Wroe.u, Wroe.a(), FluxL, FluxR, UL.U, UR.U, L_minus, L_plus)
 
     @staticmethod
