@@ -56,7 +56,8 @@ class ProblemInput:
                     'R',
                     'nx',
                     'ny',
-                    'nghost'
+                    'nghost',
+                    'use_JIT'
                     ]
 
 

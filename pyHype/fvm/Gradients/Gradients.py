@@ -36,11 +36,29 @@ class Gradient:
     def __call__(self,
                  refBLK: QuadBlock
                  ) -> None:
+        """
+        Interface to call the gradient algorithm.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Solution block containing state solution and mesh geometry data
+
+        :rtype: None
+        :return: None
+        """
         self._get_gradient(refBLK)
 
     @staticmethod
     @abstractmethod
     def _get_gradient(refBLK: QuadBlock) -> None:
+        """
+        Implementation of the gradient algorithm.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Solution block containing state solution and mesh geometry data
+
+        :rtype: None
+        :return: None
+        """
         raise NotImplementedError
 
 
