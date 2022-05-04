@@ -20,6 +20,7 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import functools
 import numpy as np
+import numba as nb
 import matplotlib.pyplot as plt
 import pyHype.blocks.QuadBlock as Qb
 import pyHype.fvm as FVM
@@ -140,8 +141,8 @@ class NormalVector:
 
 
 class SolutionGradients:
-    def __init__(self):
-        pass
+    def __init__(self, inputs):
+        self.use_JIT = inputs.use_JIT
 
     def check_gradients(self):
         pass
@@ -160,8 +161,8 @@ class SolutionGradients:
         return self.get_high_order_term(mesh.x, qp.x, mesh.y, qp.y, slicer)
 
 class FirstOrderGradients(SolutionGradients):
-    def __init__(self, nx: int, ny: int):
-        super().__init__()
+    def __init__(self, inputs, nx: int, ny: int):
+        super().__init__(inputs)
         self.x = np.zeros(shape=(ny, nx, 4))
         self.y = np.zeros(shape=(ny, nx, 4))
 
@@ -172,14 +173,34 @@ class FirstOrderGradients(SolutionGradients):
                             yp: np.ndarray,
                             slicer: slice or tuple or int = None
                             ) -> np.ndarray:
+        if self.use_JIT:
+            if slicer is None:
+                return self.get_high_order_term_JIT(self.x, self.y, xc, xp, yc, yp)
+            return self.get_high_order_term_JIT(self.x[slicer], self.y[slicer],
+                                                xc[slicer], xp[slicer], yc[slicer], yp[slicer])
         if slicer is None:
             return self.x * (xp - xc) + self.y * (yp - yc)
-
         return self.x[slicer] * (xp[slicer] - xc[slicer]) + self.y[slicer] * (yp[slicer] - yc[slicer])
 
+    @staticmethod
+    @nb.njit(cache=True)
+    def get_high_order_term_JIT(gx: np.ndarray,
+                                gy: np.ndarray,
+                                xc: np.ndarray,
+                                xp: np.ndarray,
+                                yc: np.ndarray,
+                                yp: np.ndarray):
+        term = np.zeros_like(xc)
+        for i in range(xc.shape[0]):
+            for j in range(xc.shape[1]):
+                for k in range(xc.shape[2]):
+                    term[i, j, k] = gx[i, j, k] * (xp[i, j, 0] - xc[i, j, 0]) + \
+                                    gy[i, j, k] * (yp[i, j, 0] - yc[i, j, 0])
+        return term
+
 class SecondOrderGradients(SolutionGradients):
-    def __init__(self, nx: int, ny: int):
-        super().__init__()
+    def __init__(self, inputs, nx: int, ny: int):
+        super().__init__(inputs)
         self.x  = np.zeros(shape=(ny, nx, 4))
         self.y  = np.zeros(shape=(ny, nx, 4))
         self.xx = np.zeros(shape=(ny, nx, 4))
@@ -209,11 +230,11 @@ class SecondOrderGradients(SolutionGradients):
 
 class GradientsFactory:
     @staticmethod
-    def create_gradients(order: int, nx: int, ny: int) -> GradientsContainer:
+    def create_gradients(inputs, order: int, nx: int, ny: int) -> GradientsContainer:
         if order == 2:
-            return FirstOrderGradients(nx, ny)
+            return FirstOrderGradients(inputs, nx, ny)
         if order == 4:
-            return SecondOrderGradients(nx, ny)
+            return SecondOrderGradients(inputs, nx, ny)
         raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
                          'extended for the given order.')
 
@@ -339,7 +360,7 @@ class BaseBlock_Only_State(BaseBlock):
 class BaseBlock_State_Grad(BaseBlock_Only_State):
     def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
         super().__init__(inputs, nx, ny, state_type=state_type)
-        self.grad = GradientsFactory.create_gradients(order=inputs.fvm_spatial_order, nx=nx, ny=ny)
+        self.grad = GradientsFactory.create_gradients(inputs=inputs, order=inputs.fvm_spatial_order, nx=nx, ny=ny)
 
     def high_order_term_at_location(self,
                                     xc: np.ndarray,
