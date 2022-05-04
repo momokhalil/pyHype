@@ -42,6 +42,7 @@ settings = {'problem_type':             'supersonic_flood',
             'nx':                       20,
             'ny':                       20,
             'nghost':                   1,
+            'use_JIT':                  True,
             'BC_inlet_west_rho':        1.0,
             'BC_inlet_west_u':          2.0,
             'BC_inlet_west_v':          0.0,
@@ -49,12 +50,14 @@ settings = {'problem_type':             'supersonic_flood',
             }
 
 # Create solver
-exp = Euler2D(fvm='SecondOrderPWL',
-              gradient='GreenGauss',
-              flux_function='Roe',
-              limiter='Venkatakrishnan',
-              integrator='RK2',
+exp = Euler2D(fvm_type='MUSCL',
+              fvm_spatial_order=2,
+              fvm_num_quadrature_points=1,
+              fvm_gradient_type='GreenGauss',
+              fvm_flux_function='Roe',
+              fvm_slope_limiter='Venkatakrishnan',
+              time_integrator='RK2',
               settings=settings,
-              mesh=_mesh)
+              mesh_inputs=_mesh)
 # Solve
 exp.solve()

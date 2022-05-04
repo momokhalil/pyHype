@@ -71,40 +71,64 @@ class LeastSquares9Point:
 
 
 class GreenGauss(Gradient):
-    def _get_gradient_NUMPY(self, refBLK: QuadBlock) -> None:
+    @staticmethod
+    def _get_gradient_NUMPY(refBLK: QuadBlock) -> None:
+        """
+        Compute the x and y direction gradients using the Green-Gauss method, implemeted fully in numpy.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Solution block containing state solution and mesh geometry data
+
+        :rtype: None
+        :return: None
+        """
+        face = refBLK.mesh.face
         interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
+
         # Get each face's contribution to dUdx
-        E = interfaceE * refBLK.mesh.face.E.L
-        W = interfaceW * refBLK.mesh.face.W.L
-        N = interfaceN * refBLK.mesh.face.N.L
-        S = interfaceS * refBLK.mesh.face.S.L
+        E = interfaceE * face.E.L
+        W = interfaceW * face.W.L
+        N = interfaceN * face.N.L
+        S = interfaceS * face.S.L
+
         # Compute dUdx
-        refBLK.grad.x = (E * refBLK.mesh.face.E.xnorm +
-                         W * refBLK.mesh.face.W.xnorm +
-                         N * refBLK.mesh.face.N.xnorm +
-                         S * refBLK.mesh.face.S.xnorm
-                         ) / refBLK.mesh.A
+        refBLK.grad.x = (E * face.E.xnorm + W * face.W.xnorm + N * face.N.xnorm + S * face.S.xnorm) / refBLK.mesh.A
         # Compute dUdy
-        refBLK.grad.y = (E * refBLK.mesh.face.E.ynorm +
-                         W * refBLK.mesh.face.W.ynorm +
-                         N * refBLK.mesh.face.N.ynorm +
-                         S * refBLK.mesh.face.S.ynorm
-                         ) / refBLK.mesh.A
+        refBLK.grad.y = (E * face.E.ynorm + W * face.W.ynorm + N * face.N.ynorm + S * face.S.ynorm) / refBLK.mesh.A
 
     def _get_gradient(self, refBLK: QuadBlock) -> None:
+        """
+        Compute the x and y direction gradients using the Green-Gauss method, implemented with numba JIT.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Solution block containing state solution and mesh geometry data
+
+        :rtype: None
+        :return: None
+        """
         interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
-        E = interfaceE * refBLK.mesh.face.E.L
-        W = interfaceW * refBLK.mesh.face.W.L
-        N = interfaceN * refBLK.mesh.face.N.L
-        S = interfaceS * refBLK.mesh.face.S.L
-        self._get_gradinet_JIT(E, W, N, S,
-                               refBLK.mesh.face.E.xnorm, refBLK.mesh.face.W.xnorm, refBLK.mesh.face.N.xnorm, refBLK.mesh.face.S.xnorm,
-                               refBLK.mesh.face.E.ynorm, refBLK.mesh.face.W.ynorm, refBLK.mesh.face.N.ynorm, refBLK.mesh.face.S.ynorm,
-                               refBLK.mesh.A, refBLK.grad.x, refBLK.grad.y)
+        self._get_gradinet_JIT(interfaceE * refBLK.mesh.face.E.L,
+                               interfaceW * refBLK.mesh.face.W.L,
+                               interfaceN * refBLK.mesh.face.N.L,
+                               interfaceS * refBLK.mesh.face.S.L,
+                               refBLK.mesh.face.E.xnorm,
+                               refBLK.mesh.face.W.xnorm,
+                               refBLK.mesh.face.N.xnorm,
+                               refBLK.mesh.face.S.xnorm,
+                               refBLK.mesh.face.E.ynorm,
+                               refBLK.mesh.face.W.ynorm,
+                               refBLK.mesh.face.N.ynorm,
+                               refBLK.mesh.face.S.ynorm,
+                               refBLK.mesh.A,
+                               refBLK.grad.x,
+                               refBLK.grad.y)
 
     @staticmethod
     @nb.njit(cache=True)
-    def _get_gradinet_JIT(E, W, N, S, xE, xW, xN, xS, yE, yW, yN, yS, A, gx, gy):
+    def _get_gradinet_JIT(E: np.ndarray, W: np.ndarray, N: np.ndarray, S: np.ndarray,
+                          xE: np.ndarray, xW: np.ndarray, xN: np.ndarray, xS: np.ndarray,
+                          yE: np.ndarray, yW: np.ndarray, yN: np.ndarray, yS: np.ndarray,
+                          A: np.ndarray, gx: np.ndarray, gy: np.ndarray):
         for i in range(E.shape[0]):
             for j in range(E.shape[1]):
                 for k in range(E.shape[2]):

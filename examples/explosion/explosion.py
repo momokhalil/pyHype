@@ -36,6 +36,7 @@ settings = {'problem_type':             'explosion',
             'nx':                       600,
             'ny':                       600,
             'nghost':                   1,
+            'use_JIT':                  True
             }
 
 # Create solver
