@@ -112,7 +112,7 @@ def shockbox(blocks, **kwargs):
     for block in blocks:
         _cond_1 = np.logical_and(block.mesh.x <= 5, block.mesh.y <= 5)
         _cond_2 = np.logical_and(block.mesh.x > 5, block.mesh.y > 5)
-        block.state.U = np.where(np.logical_and(_cond_1, _cond_2), QR, QL)
+        block.state.U = np.where(np.logical_or(_cond_1, _cond_2), QR, QL)
         block.state.non_dim()
 
 
