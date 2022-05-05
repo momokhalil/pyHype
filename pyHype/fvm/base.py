@@ -349,8 +349,8 @@ class MUSCLFiniteVolumeMethod:
         for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W):
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
             _stateW = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qw)
-            refBLK.ghost.E.set_BC(_bndE)
-            refBLK.ghost.W.set_BC(_bndW)
+            refBLK.ghost.E.set_BC(_bndE, state_type=self.inputs.reconstruction_type)
+            refBLK.ghost.W.set_BC(_bndW, state_type=self.inputs.reconstruction_type)
 
             if not refBLK.is_cartesian:
                 utils.rotate(refBLK.mesh.face.E.theta, _stateE)
@@ -393,8 +393,8 @@ class MUSCLFiniteVolumeMethod:
         for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S):
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
             _stateS = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qs)
-            refBLK.ghost.N.set_BC(_bndN)
-            refBLK.ghost.S.set_BC(_bndS)
+            refBLK.ghost.N.set_BC(_bndN, state_type=self.inputs.reconstruction_type)
+            refBLK.ghost.S.set_BC(_bndS, state_type=self.inputs.reconstruction_type)
 
             if refBLK.is_cartesian:
                 utils.rotate90(_stateN, _stateS, _bndN, _bndS)

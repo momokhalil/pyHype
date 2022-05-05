@@ -265,7 +265,10 @@ class GhostBlockEast(GhostBlock):
                              nx=inputs.nghost, ny=inputs.ny)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self, state: np.ndarray = None):
+    def set_BC_none(self, 
+                    state: np.ndarray = None, 
+                    state_type: str = 'conservative'
+                    ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
@@ -273,7 +276,10 @@ class GhostBlockEast(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.neighbors.E.get_west_ghost_states()
 
-    def set_BC_reflection(self, state: np.ndarray = None):
+    def set_BC_reflection(self,
+                          state: np.ndarray = None,
+                          state_type: str = 'conservative'
+                          ) -> None:
         """
         Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
         sign of the normal component.
@@ -283,7 +289,10 @@ class GhostBlockEast(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_slipwall(self, state: np.ndarray = None):
+    def set_BC_slipwall(self,
+                        state: np.ndarray = None,
+                        state_type: str = 'conservative'
+                        ) -> None:
         """
         Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
         normal component.
@@ -293,7 +302,10 @@ class GhostBlockEast(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_inlet_dirichlet(self,
+                               state: np.ndarray = None,
+                               state_type: str = 'conservative'
+                               ) -> None:
         """
         Set dirichlet inlet boundary condition on the eastern face.
         """
@@ -305,9 +317,9 @@ class GhostBlockEast(GhostBlock):
 
         _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
 
-        if self.inputs.reconstruction_type == 'conservative':
+        if state_type == 'conservative':
             state_bc = _W.to_conservative_state()
-        elif self.inputs.reconstruction_type == 'primitive':
+        elif state_type == 'primitive':
             state_bc = _W
         else:
             raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
@@ -317,7 +329,10 @@ class GhostBlockEast(GhostBlock):
         else:
             self.state.U[:, :, :] = state_bc.Q
 
-    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_outlet_dirichlet(self,
+                                state: np.ndarray = None,
+                                state_type: str = 'conservative'
+                                ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
@@ -325,10 +340,15 @@ class GhostBlockEast(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.get_east_ghost_states()
 
-    def set_BC_inlet_riemann(self, state: np.ndarray = None):
+    def set_BC_inlet_riemann(self,
+                             state: np.ndarray = None,
+                             state_type: str = 'conservative'
+                             ):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self, state: np.ndarray = None):
+    def set_BC_outlet_riemann(self,
+                              state: np.ndarray = None,
+                              state_type: str = 'conservative'):
         return NotImplementedError
 
 
@@ -355,7 +375,10 @@ class GhostBlockWest(GhostBlock):
                              nx=inputs.nghost, ny=inputs.ny)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self, state: np.ndarray = None):
+    def set_BC_none(self,
+                    state: np.ndarray = None,
+                    state_type: str = 'conservative'
+                    ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
@@ -363,7 +386,10 @@ class GhostBlockWest(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.neighbors.W.get_east_ghost_states()
 
-    def set_BC_reflection(self, state: np.ndarray = None):
+    def set_BC_reflection(self,
+                          state: np.ndarray = None,
+                          state_type: str = 'conservative'
+                          ) -> None:
         """
         Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
         sign of the normal component.
@@ -373,7 +399,10 @@ class GhostBlockWest(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_slipwall(self, state: np.ndarray = None):
+    def set_BC_slipwall(self,
+                        state: np.ndarray = None,
+                        state_type: str = 'conservative'
+                        ) -> None:
         """
         Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
         normal component.
@@ -383,7 +412,10 @@ class GhostBlockWest(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_inlet_dirichlet(self,
+                               state: np.ndarray = None,
+                               state_type: str = 'conservative'
+                               ) -> None:
         """
         Set dirichlet inlet boundary condition on the eastern face.
         """
@@ -395,9 +427,9 @@ class GhostBlockWest(GhostBlock):
 
         _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
 
-        if self.inputs.reconstruction_type == 'conservative':
+        if state_type == 'conservative':
             state_bc = _W.to_conservative_state()
-        elif self.inputs.reconstruction_type == 'primitive':
+        elif state_type == 'primitive':
             state_bc = _W
         else:
             raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
@@ -407,7 +439,10 @@ class GhostBlockWest(GhostBlock):
         else:
             self.state.U[:, :, :] = state_bc.Q
 
-    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_outlet_dirichlet(self,
+                                state: np.ndarray = None,
+                                state_type: str = 'conservative'
+                                ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
@@ -415,10 +450,10 @@ class GhostBlockWest(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.get_east_ghost_states()
 
-    def set_BC_inlet_riemann(self, state: np.ndarray = None):
+    def set_BC_inlet_riemann(self, state: np.ndarray = None, state_type: str = 'conservative'):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self, state: np.ndarray = None):
+    def set_BC_outlet_riemann(self, state: np.ndarray = None, state_type: str = 'conservative'):
         return NotImplementedError
 
 
@@ -445,7 +480,10 @@ class GhostBlockNorth(GhostBlock):
                              nx=inputs.nx, ny=inputs.nghost)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self, state: np.ndarray = None):
+    def set_BC_none(self,
+                    state: np.ndarray = None,
+                    state_type: str = 'conservative'
+                    ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
@@ -453,7 +491,10 @@ class GhostBlockNorth(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.neighbors.N.get_south_ghost_states()
 
-    def set_BC_reflection(self, state: np.ndarray = None):
+    def set_BC_reflection(self,
+                          state: np.ndarray = None,
+                          state_type: str = 'conservative'
+                          ) -> None:
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
@@ -463,7 +504,10 @@ class GhostBlockNorth(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_slipwall(self, state: np.ndarray = None):
+    def set_BC_slipwall(self,
+                        state: np.ndarray = None,
+                        state_type: str = 'conservative'
+                        ) -> None:
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
@@ -473,7 +517,10 @@ class GhostBlockNorth(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_inlet_dirichlet(self,
+                               state: np.ndarray = None,
+                               state_type: str = 'conservative'
+                               ) -> None:
         """
         Set dirichlet inlet boundary condition on the northern face.
         """
@@ -485,9 +532,9 @@ class GhostBlockNorth(GhostBlock):
 
         _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
 
-        if self.inputs.reconstruction_type == 'conservative':
+        if state_type == 'conservative':
             state_bc = _W.to_conservative_state()
-        elif self.inputs.reconstruction_type == 'primitive':
+        elif state_type == 'primitive':
             state_bc = _W
         else:
             raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
@@ -497,7 +544,10 @@ class GhostBlockNorth(GhostBlock):
         else:
             self.state.U[:, :, :] = state_bc.Q
 
-    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_outlet_dirichlet(self,
+                                state: np.ndarray = None,
+                                state_type: str = 'conservative'
+                                ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
@@ -505,10 +555,10 @@ class GhostBlockNorth(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.get_north_ghost_states()
 
-    def set_BC_inlet_riemann(self, state: np.ndarray = None):
+    def set_BC_inlet_riemann(self, state: np.ndarray = None, state_type: str = 'conservative'):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self, state: np.ndarray = None):
+    def set_BC_outlet_riemann(self, state: np.ndarray = None, state_type: str = 'conservative'):
         return NotImplementedError
 
 
@@ -535,7 +585,10 @@ class GhostBlockSouth(GhostBlock):
                              nx=inputs.nx, ny=inputs.nghost)
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-    def set_BC_none(self, state: np.ndarray = None):
+    def set_BC_none(self,
+                    state: np.ndarray = None,
+                    state_type: str = 'conservative'
+                    ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
@@ -543,7 +596,10 @@ class GhostBlockSouth(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.neighbors.S.get_north_ghost_states()
 
-    def set_BC_reflection(self, state: np.ndarray = None):
+    def set_BC_reflection(self,
+                          state: np.ndarray = None,
+                          state_type: str = 'conservative'
+                          ) -> None:
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
@@ -553,7 +609,10 @@ class GhostBlockSouth(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_slipwall(self, state: np.ndarray = None):
+    def set_BC_slipwall(self,
+                        state: np.ndarray = None,
+                        state_type: str = 'conservative'
+                        ) -> None:
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
@@ -563,7 +622,10 @@ class GhostBlockSouth(GhostBlock):
         if state is None:
             self.state.U = _state
 
-    def set_BC_inlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_inlet_dirichlet(self,
+                               state: np.ndarray = None,
+                               state_type: str = 'conservative'
+                               ) -> None:
         """
         Set dirichlet inlet boundary condition on the southern face.
         """
@@ -575,9 +637,9 @@ class GhostBlockSouth(GhostBlock):
 
         _W = PrimitiveState(self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4)))
 
-        if self.inputs.reconstruction_type == 'conservative':
+        if state_type == 'conservative':
             state_bc = _W.to_conservative_state()
-        elif self.inputs.reconstruction_type == 'primitive':
+        elif state_type == 'primitive':
             state_bc = _W
         else:
             raise TypeError("set_BC_inlet_dirichlet() Error! Unknown reconstruction_type")
@@ -587,7 +649,10 @@ class GhostBlockSouth(GhostBlock):
         else:
             self.state.U[:, :, :] = state_bc.Q
 
-    def set_BC_outlet_dirichlet(self, state: np.ndarray = None):
+    def set_BC_outlet_dirichlet(self,
+                                state: np.ndarray = None,
+                                state_type: str = 'conservative'
+                                ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
@@ -595,8 +660,14 @@ class GhostBlockSouth(GhostBlock):
         if state is None:
             self.state.U = self.refBLK.get_south_ghost_states()
 
-    def set_BC_inlet_riemann(self, state: np.ndarray = None):
+    def set_BC_inlet_riemann(self,
+                             state: np.ndarray = None,
+                             state_type: str = 'conservative'
+                             ):
         return NotImplementedError
 
-    def set_BC_outlet_riemann(self, state: np.ndarray = None):
+    def set_BC_outlet_riemann(self,
+                              state: np.ndarray = None,
+                              state_type: str = 'conservative'
+                              ):
         return NotImplementedError
