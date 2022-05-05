@@ -190,10 +190,10 @@ class FirstOrderGradients(SolutionGradients):
                                 xp: np.ndarray,
                                 yc: np.ndarray,
                                 yp: np.ndarray):
-        term = np.zeros_like(xc)
-        for i in range(xc.shape[0]):
-            for j in range(xc.shape[1]):
-                for k in range(xc.shape[2]):
+        term = np.zeros_like(gx)
+        for i in range(gx.shape[0]):
+            for j in range(gx.shape[1]):
+                for k in range(gx.shape[2]):
                     term[i, j, k] = gx[i, j, k] * (xp[i, j, 0] - xc[i, j, 0]) + \
                                     gy[i, j, k] * (yp[i, j, 0] - yc[i, j, 0])
         return term
