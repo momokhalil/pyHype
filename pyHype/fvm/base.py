@@ -341,10 +341,10 @@ class MUSCLFiniteVolumeMethod:
         :rtype: None
         :return: None
         """
-        condE = refBLK.ghost.E.BCtype != 'None'
-        condW = refBLK.ghost.W.BCtype != 'None'
-        bndE = refBLK.reconBlk.get_east_boundary_states_at_qp() if condE else refBLK.reconBlk.ghost.E.get_west_boundary_states_at_qp()
-        bndW = refBLK.reconBlk.get_west_boundary_states_at_qp() if condW else refBLK.reconBlk.ghost.W.get_east_boundary_states_at_qp()
+        bndE = refBLK.reconBlk.get_east_boundary_states_at_qp() if refBLK.ghost.E.BCtype != 'None' else \
+               refBLK.reconBlk.ghost.E.get_west_boundary_states_at_qp()
+        bndW = refBLK.reconBlk.get_west_boundary_states_at_qp() if refBLK.ghost.W.BCtype != 'None' else \
+               refBLK.reconBlk.ghost.W.get_east_boundary_states_at_qp()
 
         for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W):
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
@@ -384,11 +384,10 @@ class MUSCLFiniteVolumeMethod:
         :rtype: None
         :return: None
         """
-
-        condN = refBLK.ghost.N.BCtype != 'None'
-        condS = refBLK.ghost.S.BCtype != 'None'
-        bndN = refBLK.reconBlk.get_north_boundary_states_at_qp() if condN else refBLK.reconBlk.ghost.N.get_south_boundary_states_at_qp()
-        bndS = refBLK.reconBlk.get_south_boundary_states_at_qp() if condS else refBLK.reconBlk.ghost.S.get_north_boundary_states_at_qp()
+        bndN = refBLK.reconBlk.get_north_boundary_states_at_qp() if refBLK.ghost.N.BCtype != 'None' else \
+               refBLK.reconBlk.ghost.N.get_south_boundary_states_at_qp()
+        bndS = refBLK.reconBlk.get_south_boundary_states_at_qp() if refBLK.ghost.S.BCtype != 'None' else \
+               refBLK.reconBlk.ghost.S.get_north_boundary_states_at_qp()
 
         for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S):
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
