@@ -2,14 +2,9 @@
 
 # [pyHype](https://github.com/momokhalil/pyHype): Computational Fluid Dynamics in Python
 
-pyHype is a Python framework for developing parallelized Computational Fluid Dynamics software to solve the hyperbolic 2D Euler equations on distributed, multi-block structured grids. I started writing pyHype as a challenge to try and achieve high performance computing in scientific applications traditionally written in low level languages like C/C++ and FORTRAN. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! pyHype is in early stages of development, I will be updating it regularly, along with its documentation.
+pyHype is a Python framework for developing parallelized Computational Fluid Dynamics software to solve the hyperbolic 2D Euler equations on distributed, multi-block structured grids. I started writing pyHype in python as a challenge to achieve high performance in scientific applications traditionally written in low level languages like C/C++ and FORTRAN. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! pyHype is in early stages of development, I will be updating it regularly, along with its documentation.
 
 The core idea behind pyHype is flexibility and modularity. pyHype offers a plug-n-play approach to CFD software, where every component of the CFD pipeline is modelled as a class with a set interface that allows it to communicate and interact with other components. This enables easy development of new components, since the developer does not have to worry about interfacing with other components. For example, if a developer is interested in developing a new approximate riemann solver technique, they only need to provide the implementation of the `FluxFunction` abstract class, without having to worry about how the rest of the code works in detail.
-
-**NEW**: Geometry not alligned with the cartesian axes is now supported!\
-**NEW**: 60% efficiency improvement!\
-**COMING UP**: Examples of simulations on various airfoil geometries, and a presentation of the newly added mesh optimization techniques.\
-**COMING UP**: Examples of simulations on multi-block meshes.
 
 ## Explosion Simulation
 Here is an example of an explosion simulation performed on one block. The simulation was performed with the following: 
