@@ -141,6 +141,8 @@ class NormalVector:
 
 
 class SolutionGradients:
+    ALL_IDX = np.s_[:, :, :]
+
     def __init__(self, inputs):
         self.use_JIT = inputs.use_JIT
 
@@ -171,15 +173,11 @@ class FirstOrderGradients(SolutionGradients):
                             xp: np.ndarray,
                             yc: np.ndarray,
                             yp: np.ndarray,
-                            slicer: slice or tuple or int = None
+                            slicer: slice or tuple or int = SolutionGradients.ALL_IDX
                             ) -> np.ndarray:
         if self.use_JIT:
-            if slicer is None:
-                return self.get_high_order_term_JIT(self.x, self.y, xc, xp, yc, yp)
             return self.get_high_order_term_JIT(self.x[slicer], self.y[slicer],
                                                 xc[slicer], xp[slicer], yc[slicer], yp[slicer])
-        if slicer is None:
-            return self.x * (xp - xc) + self.y * (yp - yc)
         return self.x[slicer] * (xp[slicer] - xc[slicer]) + self.y[slicer] * (yp[slicer] - yc[slicer])
 
     @staticmethod

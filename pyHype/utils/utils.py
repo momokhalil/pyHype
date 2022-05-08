@@ -18,6 +18,7 @@ os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import functools
 import numpy as np
+import numba as nb
 from typing import Union, Callable
 
 
@@ -50,11 +51,25 @@ def rotate(theta: Union[float, np.ndarray],
         raise RuntimeError('theta cannot have more than 3 dimensions.')
 
     for array in arrays:
-        u = array[:, :, 1] * np.cos(theta) + array[:, :, 2] * np.sin(theta)
-        v = array[:, :, 2] * np.cos(theta) - array[:, :, 1] * np.sin(theta)
-
+        u, v = rotate_JIT(array, theta)
         array[:, :, 1] = u
         array[:, :, 2] = v
+
+@nb.njit(cache=True)
+def rotate_JIT(array, theta):
+    u = np.zeros_like(theta)
+    v = np.zeros_like(theta)
+    for i in range(array.shape[0]):
+        for j in range(array.shape[1]):
+            _theta  = theta[i, j]
+            _u      = array[i, j, 1]
+            _v      = array[i, j, 2]
+            s       = np.sin(_theta)
+            c       = np.cos(_theta)
+            u[i, j] = _u * c + _v * s
+            v[i, j] = _v * c - _u * s
+
+    return u, v
 
 
 def rotate90(*arrays: Union[np.ndarray]) -> None:
@@ -115,11 +130,25 @@ def unrotate(theta: float,
         raise RuntimeError('theta cannot have more than 3 dimensions.')
 
     for array in arrays:
-        u = array[:, :, 1] * np.cos(theta) - array[:, :, 2] * np.sin(theta)
-        v = array[:, :, 2] * np.cos(theta) + array[:, :, 1] * np.sin(theta)
-
+        u, v = unrotate_JIT(array, theta)
         array[:, :, 1] = u
         array[:, :, 2] = v
+
+@nb.njit(cache=True)
+def unrotate_JIT(array, theta):
+    u = np.zeros_like(theta)
+    v = np.zeros_like(theta)
+    for i in range(array.shape[0]):
+        for j in range(array.shape[1]):
+            _theta  = theta[i, j]
+            _u      = array[i, j, 1]
+            _v      = array[i, j, 2]
+            s       = np.sin(_theta)
+            c       = np.cos(_theta)
+            u[i, j] = _u * c - _v * s
+            v[i, j] = _v * c + _u * s
+
+    return u, v
 
 def unrotate90(*arrays: Union[np.ndarray]) -> None:
     """

@@ -19,6 +19,7 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+import numba as nb
 np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 
 from abc import abstractmethod
@@ -41,6 +42,8 @@ if TYPE_CHECKING:
 
 
 class MUSCLFiniteVolumeMethod:
+    ALL_IDX = np.s_[:, :, :]
+
     def __init__(self,
                  inputs,
                  ) -> None:
@@ -246,7 +249,20 @@ class MUSCLFiniteVolumeMethod:
         fluxW = self.integrate_flux_W(refBLK)
         fluxN = self.integrate_flux_N(refBLK)
         fluxS = self.integrate_flux_S(refBLK)
+        if self.inputs.use_JIT:
+            return self._dUdt_JIT(fluxE, fluxW, fluxN, fluxS, refBLK.mesh.A)
         return (fluxW - fluxE + fluxS - fluxN) / refBLK.mesh.A
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _dUdt_JIT(fluxE, fluxW, fluxN, fluxS, A):
+        dUdt = np.zeros_like(fluxE)
+        for i in range(fluxE.shape[0]):
+            for j in range(fluxE.shape[1]):
+                a = A[i, j, 0]
+                for k in range(fluxE.shape[2]):
+                    dUdt[i, j, k] = (fluxW[i, j, k] - fluxE[i, j, k] + fluxS[i, j, k] - fluxN[i, j, k]) / a
+        return dUdt
 
     def get_LR_states_for_EW_fluxes(self,
                                     state_type: str,

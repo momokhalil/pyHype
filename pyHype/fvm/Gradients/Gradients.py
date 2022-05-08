@@ -125,39 +125,53 @@ class GreenGauss(Gradient):
         :return: None
         """
         interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
-        self._get_gradinet_JIT(interfaceE * refBLK.mesh.face.E.L,
-                               interfaceW * refBLK.mesh.face.W.L,
-                               interfaceN * refBLK.mesh.face.N.L,
-                               interfaceS * refBLK.mesh.face.S.L,
-                               refBLK.mesh.face.E.xnorm,
-                               refBLK.mesh.face.W.xnorm,
-                               refBLK.mesh.face.N.xnorm,
-                               refBLK.mesh.face.S.xnorm,
-                               refBLK.mesh.face.E.ynorm,
-                               refBLK.mesh.face.W.ynorm,
-                               refBLK.mesh.face.N.ynorm,
-                               refBLK.mesh.face.S.ynorm,
-                               refBLK.mesh.A,
+        self._get_gradinet_JIT(interfaceE,
+                               interfaceW,
+                               interfaceN,
+                               interfaceS,
+                               refBLK.mesh.face.E.L[:, :, 0],
+                               refBLK.mesh.face.W.L[:, :, 0],
+                               refBLK.mesh.face.N.L[:, :, 0],
+                               refBLK.mesh.face.S.L[:, :, 0],
+                               refBLK.mesh.face.E.xnorm[:, :, 0],
+                               refBLK.mesh.face.W.xnorm[:, :, 0],
+                               refBLK.mesh.face.N.xnorm[:, :, 0],
+                               refBLK.mesh.face.S.xnorm[:, :, 0],
+                               refBLK.mesh.face.E.ynorm[:, :, 0],
+                               refBLK.mesh.face.W.ynorm[:, :, 0],
+                               refBLK.mesh.face.N.ynorm[:, :, 0],
+                               refBLK.mesh.face.S.ynorm[:, :, 0],
+                               refBLK.mesh.A[:, :, 0],
                                refBLK.grad.x,
                                refBLK.grad.y)
 
     @staticmethod
     @nb.njit(cache=True)
     def _get_gradinet_JIT(E: np.ndarray, W: np.ndarray, N: np.ndarray, S: np.ndarray,
+                          lE: np.ndarray, lW: np.ndarray, lN: np.ndarray, lS: np.ndarray,
                           xE: np.ndarray, xW: np.ndarray, xN: np.ndarray, xS: np.ndarray,
                           yE: np.ndarray, yW: np.ndarray, yN: np.ndarray, yS: np.ndarray,
                           A: np.ndarray, gx: np.ndarray, gy: np.ndarray):
+
         for i in range(E.shape[0]):
             for j in range(E.shape[1]):
+                _lE = lE[i, j]
+                _lW = lW[i, j]
+                _lN = lN[i, j]
+                _lS = lS[i, j]
+                xlE = _lE * xE[i, j]
+                xlW = _lW * xW[i, j]
+                xlN = _lN * xN[i, j]
+                xlS = _lS * xS[i, j]
+                ylE = _lE * yE[i, j]
+                ylW = _lW * yW[i, j]
+                ylN = _lN * yN[i, j]
+                ylS = _lS * yS[i, j]
+                a = 1.0 / A[i, j]
                 for k in range(E.shape[2]):
-                    a = 1 / A[i, j, 0]
-                    gx[i, j, k] = (E[i, j, k] * xE[i, j, 0] +
-                                   W[i, j, k] * xW[i, j, 0] +
-                                   N[i, j, k] * xN[i, j, 0] +
-                                   S[i, j, k] * xS[i, j, 0]
-                                   ) * a
-                    gy[i, j, k] = (E[i, j, k] * yE[i, j, 0] +
-                                   W[i, j, k] * yW[i, j, 0] +
-                                   N[i, j, k] * yN[i, j, 0] +
-                                   S[i, j, k] * yS[i, j, 0]
-                                   ) * a
+                    e = E[i, j, k]
+                    w = W[i, j, k]
+                    n = N[i, j, k]
+                    s = S[i, j, k]
+                    gx[i, j, k] = (e * xlE + w * xlW + n * xlN + s * xlS) * a
+                    gy[i, j, k] = (e * ylE + w * ylW + n * ylN + s * ylS) * a

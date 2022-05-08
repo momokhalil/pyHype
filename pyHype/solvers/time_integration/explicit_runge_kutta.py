@@ -16,6 +16,8 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+import numpy as np
+import numba as nb
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 from pyHype.solvers.time_integration.base import TimeIntegrator
@@ -45,18 +47,32 @@ class ExplicitRungeKutta(TimeIntegrator):
         Return:
             - N/A
         """
-        U = refBLK.state.U.copy()
         _stage_residuals = {}
+        U = refBLK.state.U.copy()
+        temp_state = np.zeros_like(refBLK.state.U)
         for stage in range(self.num_stages):
             _stage_residuals[stage] = refBLK.dUdt()
             _intermediate_state = U
             for step in range(stage + 1):
                 if self.a[stage][step] != 0:
-                    _intermediate_state = _intermediate_state + dt * self.a[stage][step] * _stage_residuals[step]
+                    #_intermediate_state = _intermediate_state + dt * self.a[stage][step] * _stage_residuals[step]
+                    _intermediate_state = self._update_state(temp_state,
+                                                             _intermediate_state,
+                                                             dt * self.a[stage][step],
+                                                             _stage_residuals[step])
             refBLK.state.U = _intermediate_state
             refBLK.set_BC()
             refBLK.clear_cache()
             refBLK.reconBlk.clear_cache()
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _update_state(update, state, dta, residual):
+        for i in range(state.shape[0]):
+            for j in range(state.shape[1]):
+                for k in range(state.shape[2]):
+                    update[i, j, k] = state[i, j, k] + dta * residual[i, j, k]
+        return update
 
     @classmethod
     def ExplicitEuler1(cls, inputs):

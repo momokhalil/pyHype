@@ -17,6 +17,7 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+import numba as nb
 from pyHype.limiters import SlopeLimiter
 
 
@@ -27,11 +28,24 @@ class BarthJespersen(SlopeLimiter):
 
 
 class Venkatakrishnan(SlopeLimiter):
-    @staticmethod
-    def _limiter_func(slope: np.ndarray) -> np.ndarray:
+    def _limiter_func(self, slope: np.ndarray) -> np.ndarray:
+        if self.inputs.use_JIT:
+            return self._venkata(slope)
         s2 = slope ** 2
         return (s2 + 2 * slope) / (s2 + slope + 2)
 
+    @staticmethod
+    @nb.njit(cache=True)
+    def _venkata(slope: np.ndarray):
+        s = np.zeros_like(slope)
+        _s = 0.0
+        for i in range(slope.shape[0]):
+            for j in range(slope.shape[1]):
+                for k in range(slope.shape[2]):
+                    _s = slope[i, j, k]
+                    s2 = _s * _s
+                    s[i, j, k] = (s2 + 2 * _s) / (s2 + _s + 2)
+        return s
 
 class VanAlbada(SlopeLimiter):
     @staticmethod
