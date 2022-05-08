@@ -70,13 +70,13 @@ class SlopeLimiter:
         :return: lists containing the solution slopes at each quadraure point for each face
         """
         # Concatenate block solution state with ghost block solution states
-        _EW = np.concatenate((refBLK.ghost.W.state.Q, refBLK.state.Q, refBLK.ghost.E.state.Q), axis=1)
-        _NS = np.concatenate((refBLK.ghost.S.state.Q, refBLK.state.Q, refBLK.ghost.N.state.Q), axis=0)
+        EW = np.concatenate((refBLK.ghost.W.state.Q, refBLK.state.Q, refBLK.ghost.E.state.Q), axis=1)
+        NS = np.concatenate((refBLK.ghost.S.state.Q, refBLK.state.Q, refBLK.ghost.N.state.Q), axis=0)
         # Values for min/max evaluation
-        _vals = (refBLK.state.Q, _EW[:, :-2], _EW[:, 2:], _NS[:-2, :], _NS[2:, :])
+        vals = (refBLK.state.Q, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])
         # Difference between largest/smallest value and average value
-        dmax = np.maximum.reduce(_vals) - refBLK.state.Q
-        dmin = np.minimum.reduce(_vals) - refBLK.state.Q
+        dmax = np.maximum.reduce(vals) - refBLK.state.Q
+        dmin = np.minimum.reduce(vals) - refBLK.state.Q
         # Difference between quadrature points and average value
         dE = [_gqpE - refBLK.state.Q for _gqpE in gqpE]
         dW = [_gqpW - refBLK.state.Q for _gqpW in gqpW]
@@ -156,9 +156,9 @@ class SlopeLimiter:
             for j in range(davg.shape[1]):
                 for v in range(davg.shape[2]):
                     if davg[i, j, v] > 0:
-                        _s[i, j, v] = dmax[i, j, v] / (davg[i, j, v] + 1e-12)
+                        _s[i, j, v] = dmax[i, j, v] / davg[i, j, v]
                     elif davg[i, j, v] < 0:
-                        _s[i, j, v] = dmin[i, j, v] / (davg[i, j, v] + 1e-12)
+                        _s[i, j, v] = dmin[i, j, v] / davg[i, j, v]
         return _s
 
     @staticmethod
