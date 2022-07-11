@@ -134,12 +134,22 @@ class FluxRoe(FluxFunction):
                    ua: np.ndarray = None,
                    ) -> None:
         """
+        Computes the right eigenvectors of the euler equations linear eigensystem.
 
-        :param Wroe:
-        :param Lm:
-        :param Lp:
-        :param ua:
-        :return:
+        :type Wroe: PrimitiveState
+        :param Wroe: Roe primitive state
+
+        :type Lm: np.ndarray
+        :param Lm: Slow wave speed
+
+        :type Lp: np.ndarray
+        :param Lp: Fast wave speed
+
+        :type ua: np.ndarray
+        :param ua: flow velocity * speed of sound
+
+        :rtype: None
+        :return: None
         """
 
         H   = Wroe.H()
