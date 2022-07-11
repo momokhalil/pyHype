@@ -369,18 +369,6 @@ class BaseBlock_State_Grad(BaseBlock_Only_State):
                                     ) -> np.ndarray:
         return self.grad.get_high_order_term(xc, xp, yc, yp, slicer)
 
-    def limited_reconstruction_at_location(self,
-                                           xc: np.ndarray,
-                                           yc: np.ndarray,
-                                           xp: np.ndarray,
-                                           yp: np.ndarray,
-                                           slicer: slice or tuple or int = None
-                                           ) -> np.ndarray:
-        if slicer is None:
-            return self.state + \
-                   self.fvm.limiter.phi * self.high_order_term_at_location(xc, xp, yc, yp, slicer)
-        return self.state[slicer] + \
-               self.fvm.limiter.phi[slicer] * self.high_order_term_at_location(xc, xp, yc, yp, slicer)
 
 class BaseBlock_FVM(BaseBlock_State_Grad):
     def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
@@ -398,8 +386,6 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         else:
             raise ValueError('Specified finite volume method has not been specialized.')
 
-
-
     def unlimited_reconstruction_at_location(self,
                                              xc: np.ndarray,
                                              yc: np.ndarray,
@@ -410,6 +396,18 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         if slicer is None:
             return self.state + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
         return self.state[slicer] + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+
+    def limited_reconstruction_at_location(self,
+                                           xc: np.ndarray,
+                                           yc: np.ndarray,
+                                           xp: np.ndarray,
+                                           yp: np.ndarray,
+                                           slicer: slice or tuple or int = None
+                                           ) -> np.ndarray:
+        _high_order_term = self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+        if slicer is None:
+            return self.state + self.fvm.limiter.phi * _high_order_term
+        return self.state[slicer] + self.fvm.limiter.phi[slicer] * _high_order_term
 
     def get_east_boundary_states_at_qp(self) -> tuple[np.ndarray]:
         """
