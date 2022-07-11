@@ -18,6 +18,7 @@ import os
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
 
 import numpy as np
+from profilehooks import profile
 np.set_printoptions(linewidth=200)
 np.set_printoptions(precision=3)
 from scipy.sparse import coo_matrix as coo
@@ -36,6 +37,7 @@ class FluxRoe(FluxFunction):
         # Matrix size
         self.size = size
         self.sweeps = sweeps
+        self.num = (self.size + 1) * self.sweeps
 
         # X-direction eigensystem data vectors
         vec = XDIR_EIGENSYSTEM_VECTORS(self.inputs, size, sweeps)
@@ -67,7 +69,7 @@ class FluxRoe(FluxFunction):
                                   self.Lp_d0,                           # Diagonal
                                   self.Lp_p1, self.Lp_p2, self.Lp_p3))  # Superdiagonals
         # Eigenvalue data container
-        L_data = np.zeros((4 * (size + 1) * sweeps), dtype=float)
+        L_data = np.zeros((4 * self.num), dtype=float)
 
         # Build sparse matrices
         self.Jac    = coo((A_data, (self.Ai, self.Aj)))
@@ -109,24 +111,21 @@ class FluxRoe(FluxFunction):
         u2 = Wroe.u ** 2
         ghek = self.gh * Ek
 
-        _sz = (self.size + 1) * self.sweeps
-
         # -3 subdiagonal entries
-        self.Jac.data[0  * _sz:1  * _sz] = Wroe.u * (ghek - H)
+        self.Jac.data[0  * self.num:1  * self.num] = Wroe.u * (ghek - H)
         # -2 subdiagonal entries
-        self.Jac.data[1  * _sz:2  * _sz] = -uv
-        self.Jac.data[2  * _sz:3  * _sz] = H - self.gh * u2
+        self.Jac.data[1  * self.num:2  * self.num] = -uv
+        self.Jac.data[2  * self.num:3  * self.num] = H - self.gh * u2
         # -1 subdiagonal entries
-        self.Jac.data[3  * _sz:4  * _sz] = ghek - u2
-        self.Jac.data[4  * _sz:5  * _sz] = Wroe.v
-        self.Jac.data[5  * _sz:6  * _sz] = -self.gh * uv
+        self.Jac.data[3  * self.num:4  * self.num] = ghek - u2
+        self.Jac.data[4  * self.num:5  * self.num] = Wroe.v
+        self.Jac.data[5  * self.num:6  * self.num] = -self.gh * uv
         # diagonal entries
-        self.Jac.data[6  * _sz:7  * _sz] = self.gb * Wroe.u
-        self.Jac.data[7  * _sz:8  * _sz] = Wroe.u
-        self.Jac.data[8  * _sz:9  * _sz] = self.g * Wroe.u
+        self.Jac.data[6  * self.num:7  * self.num] = self.gb * Wroe.u
+        self.Jac.data[7  * self.num:8  * self.num] = Wroe.u
+        self.Jac.data[8  * self.num:9  * self.num] = self.g * Wroe.u
         # +1 subdiagonal entries
-        self.Jac.data[10 * _sz:11 * _sz] = -ghv
-
+        self.Jac.data[10 * self.num:11 * self.num] = -ghv
 
     def compute_Rc(self,
                    Wroe: RoePrimitiveState,
@@ -134,64 +133,65 @@ class FluxRoe(FluxFunction):
                    Lp: np.ndarray,
                    ua: np.ndarray = None,
                    ) -> None:
+        """
+
+        :param Wroe:
+        :param Lm:
+        :param Lp:
+        :param ua:
+        :return:
+        """
 
         H   = Wroe.H()
         Ek  = Wroe.Ek()
         ua  = Wroe.u * Wroe.a() if ua is None else ua
 
-        _sz = (self.size + 1) * self.sweeps
-
         # -3 subdiagonal entries
-        self.Rc.data[0 * _sz:1 * _sz]   = H - ua
+        self.Rc.data[0  * self.num:1  * self.num] = H - ua
         # -2 subdiagonal entries
-        self.Rc.data[1 * _sz:2 * _sz]   = Wroe.v
-        self.Rc.data[2 * _sz:3 * _sz]   = Ek
+        self.Rc.data[1  * self.num:2  * self.num] = Wroe.v
+        self.Rc.data[2  * self.num:3  * self.num] = Ek
         # -1 subdiagonal entries
-        self.Rc.data[3 * _sz:4 * _sz]   = Lm
-        self.Rc.data[4 * _sz:5 * _sz]   = Wroe.v
-        self.Rc.data[5 * _sz:6 * _sz]   = Wroe.v
+        self.Rc.data[3  * self.num:4  * self.num] = Lm
+        self.Rc.data[4  * self.num:5  * self.num] = Wroe.v
+        self.Rc.data[5  * self.num:6  * self.num] = Wroe.v
         # diagonal entries
-        self.Rc.data[7 * _sz:8 * _sz]   = Wroe.u
-        self.Rc.data[9 * _sz:10 * _sz]  = H + ua
+        self.Rc.data[7  * self.num:8  * self.num] = Wroe.u
+        self.Rc.data[9  * self.num:10 * self.num] = H + ua
         # +1 subdiagonal entries
-        self.Rc.data[11 * _sz:12 * _sz] = Wroe.v
+        self.Rc.data[11 * self.num:12 * self.num] = Wroe.v
         # +2 subdiagonal entries
-        self.Rc.data[12 * _sz:13 * _sz] = Lp
-
+        self.Rc.data[12 * self.num:13 * self.num] = Lp
 
     def compute_Lp(self,
                    Wroe: RoePrimitiveState,
                    ) -> None:
 
-        a = Wroe.a()
-        r2a = Wroe.rho / (2 * a)
-        one_a2 = 1 / (a ** 2)
-
-        _sz = (self.size + 1) * self.sweeps
+        _a          = 1.0 / Wroe.a()
+        one_a2      = _a * _a
+        h_one_a2    = 0.5 * one_a2
+        r2a         = 0.5 * Wroe.rho * _a
 
         # -2 subdiagonal entries
-        self.Lp.data[0 * _sz:1 * _sz] = r2a
+        self.Lp.data[0 * self.num:1 * self.num] = r2a
         # -1 subdiagonal entries
-        self.Lp.data[3 * _sz:4 * _sz] = 0.5 * one_a2
+        self.Lp.data[3 * self.num:4 * self.num] = h_one_a2
         # +1 subdiagonal entries
-        self.Lp.data[4 * _sz:5 * _sz] = -r2a
+        self.Lp.data[4 * self.num:5 * self.num] = -r2a
         # +2 subdiagonal entries
-        self.Lp.data[5 * _sz:6 * _sz] = -one_a2
+        self.Lp.data[5 * self.num:6 * self.num] = -one_a2
         # +3 subdiagonal entries
-        self.Lp.data[6 * _sz:7 * _sz] = 0.5 * one_a2
-
+        self.Lp.data[6 * self.num:7 * self.num] = h_one_a2
 
     def compute_eigenvalues(self,
                             Wroe: RoePrimitiveState,
                             Lp: np.ndarray,
                             Lm: np.ndarray) -> None:
 
-        _sz = (self.size + 1) * self.sweeps
-
-        self.Lambda.data[0  * _sz:1  * _sz] = Lm
-        self.Lambda.data[1  * _sz:2  * _sz] = Wroe.u
-        self.Lambda.data[2  * _sz:3  * _sz] = Wroe.u
-        self.Lambda.data[3  * _sz:4  * _sz] = Lp
+        self.Lambda.data[0  * self.num:1  * self.num] = Lm
+        self.Lambda.data[1  * self.num:2  * self.num] = Wroe.u
+        self.Lambda.data[2  * self.num:3  * self.num] = Wroe.u
+        self.Lambda.data[3  * self.num:4  * self.num] = Lp
 
     def compute_flux(self,
                      WL: PrimitiveState,
@@ -230,18 +230,21 @@ class FluxRoe(FluxFunction):
         to be continued...
 
         """
-        WR.reshape((1, (self.nx + 1) * self.ny, 4))
-        WL.reshape((1, (self.nx + 1) * self.ny, 4))
+        _new_shape = (1, (self.nx + 1) * self.ny, 4)
+        WR.reshape(_new_shape)
+        WL.reshape(_new_shape)
         flux = 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux(WL, WR)
-        return flux.reshape((self.ny,  (self.nx+1), 4))
+        return flux.reshape((self.ny,  (self.nx + 1), 4))
 
     def get_upwind_flux(self,
                         WL: PrimitiveState,
                         WR: PrimitiveState,
                         ) -> np.ndarray:
-        self.diagonalize(RoePrimitiveState(self.inputs, WL, WR), WL, WR)
+        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+        self.diagonalize(Wroe, WL, WR)
+        dW = (WR - WL).flatten()
         self.Lambda.data = np.absolute(self.Lambda.data)
-        return 0.5 * (self.Rc * (self.Lambda * (self.Lp * (WR - WL).flatten()))).reshape(1, -1, 4)
+        return 0.5 * (self.Rc * (self.Lambda * (self.Lp * dW))).reshape(1, -1, 4)
 
     def diagonalize(self,
                     Wroe: RoePrimitiveState,
