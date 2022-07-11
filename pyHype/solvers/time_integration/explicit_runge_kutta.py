@@ -55,7 +55,6 @@ class ExplicitRungeKutta(TimeIntegrator):
             _intermediate_state = U
             for step in range(stage + 1):
                 if self.a[stage][step] != 0:
-                    #_intermediate_state = _intermediate_state + dt * self.a[stage][step] * _stage_residuals[step]
                     _intermediate_state = self._update_state(temp_state,
                                                              _intermediate_state,
                                                              dt * self.a[stage][step],
@@ -255,7 +254,7 @@ class ExplicitRungeKutta(TimeIntegrator):
     def DormandPrince5(cls, inputs):
         """
         Defines the Dormand-Prince fifth order explicit Runge-Kutta method for time integrations.
-        Order: 4
+        Order: 5
 
         Butcher Tableau:
         1/5
