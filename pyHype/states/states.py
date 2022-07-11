@@ -404,15 +404,15 @@ class PrimitiveState(State):
             return F
 
         if U_vector is not None:
-            F = np.zeros_like(self.W, dtype=float)
-            ru = U_vector[:, :, ConservativeState.RHOU_IDX]
-            e = U_vector[:, :, ConservativeState.E_IDX]
+            F   = np.zeros_like(self.W, dtype=float)
+            ru  = U_vector[:, :, ConservativeState.RHOU_IDX]
 
             F[:, :, 0] = ru
             F[:, :, 1] = ru * self.u + self.p
             F[:, :, 2] = ru * self.v
-            F[:, :, 3] = self.u * (e + self.p)
+            F[:, :, 3] = self.u * (U_vector[:, :, ConservativeState.E_IDX] + self.p)
             return F
+
         return self._F_from_prim_JIT(self._Q, self.ek(), self.one_over_gm)
 
     @staticmethod
@@ -428,8 +428,7 @@ class PrimitiveState(State):
                 _F[i, j, 0] = _ru
                 _F[i, j, 1] = _ru * _u + W[i, j, 3]
                 _F[i, j, 2] = _ru * W[i, j, 2]
-                _e = k * W[i, j, 3] + ek[i, j]
-                _F[i, j, 3] = _u * (_e + W[i, j, 3])
+                _F[i, j, 3] = _u * (k * W[i, j, 3] + ek[i, j] + W[i, j, 3])
         return _F
 
     def realizable(self):
