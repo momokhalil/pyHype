@@ -177,6 +177,16 @@ class FluxRoe(FluxFunction):
                    Wroe: RoePrimitiveState,
                    ) -> None:
 
+        """
+        Computes the left eigenvectors of the euler equations linear eigensystem.
+
+        :type Wroe: PrimitiveState
+        :param Wroe: Roe primitive state
+        
+        :rtype: None
+        :return: None
+        """
+
         _a          = 1.0 / Wroe.a()
         one_a2      = _a * _a
         h_one_a2    = 0.5 * one_a2
