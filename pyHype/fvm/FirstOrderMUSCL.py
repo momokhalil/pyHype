@@ -16,7 +16,8 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 from typing import TYPE_CHECKING
 
@@ -34,12 +35,14 @@ np.set_printoptions(precision=3)
 class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs):
         if inputs.nghost != 1:
-            raise ValueError('Number of ghost cells must be equal to 1 for this method.')
+            raise ValueError(
+                "Number of ghost cells must be equal to 1 for this method."
+            )
         super().__init__(inputs)
 
-    def reconstruct_state(self,
-                          refBLK: QuadBlock
-                          ) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def reconstruct_state(
+        self, refBLK: QuadBlock
+    ) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Returns the cell average values at each quadrature point on all cell faces.
 

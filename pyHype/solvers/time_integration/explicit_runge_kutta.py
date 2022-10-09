@@ -18,19 +18,23 @@ from __future__ import annotations
 import os
 import numpy as np
 import numba as nb
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 from pyHype.solvers.time_integration.base import TimeIntegrator
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pyHype.blocks import QuadBlock
 
+
 class ExplicitRungeKutta(TimeIntegrator):
-    def __init__(self,
-                 inputs,
-                 a: list[list] = None,
-                 ):
+    def __init__(
+        self,
+        inputs,
+        a: list[list] = None,
+    ):
 
         super().__init__(inputs)
         self.a = a
@@ -55,10 +59,12 @@ class ExplicitRungeKutta(TimeIntegrator):
             _intermediate_state = U
             for step in range(stage + 1):
                 if self.a[stage][step] != 0:
-                    _intermediate_state = self._update_state(temp_state,
-                                                             _intermediate_state,
-                                                             dt * self.a[stage][step],
-                                                             _stage_residuals[step])
+                    _intermediate_state = self._update_state(
+                        temp_state,
+                        _intermediate_state,
+                        dt * self.a[stage][step],
+                        _stage_residuals[step],
+                    )
             refBLK.state.U = _intermediate_state
             refBLK.set_BC()
             refBLK.clear_cache()
@@ -83,8 +89,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         1
 
         """
-        return cls(inputs,
-                   a=[[1]])
+        return cls(inputs, a=[[1]])
 
     @classmethod
     def Generic2(cls, inputs):
@@ -98,9 +103,7 @@ class ExplicitRungeKutta(TimeIntegrator):
 
         """
         a = inputs.alpha
-        return cls(inputs,
-                   a=[[a],
-                      [1 - 1 / (2 * a), 1 / (2 * a)]])
+        return cls(inputs, a=[[a], [1 - 1 / (2 * a), 1 / (2 * a)]])
 
     @classmethod
     def RK2(cls, inputs):
@@ -113,10 +116,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         0   1
 
         """
-        return cls(inputs,
-                   a=[[0.5],
-                      [0, 1]])
-
+        return cls(inputs, a=[[0.5], [0, 1]])
 
     @classmethod
     def Ralston2(cls, inputs):
@@ -129,10 +129,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/4 3/4
 
         """
-        return cls(inputs,
-                   a=[[2 / 3],
-                      [1 / 4, 3 / 4]])
-
+        return cls(inputs, a=[[2 / 3], [1 / 4, 3 / 4]])
 
     @classmethod
     def Generic3(cls, inputs):
@@ -148,15 +145,18 @@ class ExplicitRungeKutta(TimeIntegrator):
         """
         a = inputs.alpha
 
-        if a in (0, 2/3, 1):
-            raise ValueError('Value of alpha parameter is not allowd.')
+        if a in (0, 2 / 3, 1):
+            raise ValueError("Value of alpha parameter is not allowd.")
 
         k = (1 - a) / a / (3 * a - 2)
-        return cls(inputs,
-                   a=[[a],
-                      [1 + k, -k],
-                      [0.5 - 1 / (6 * a), 1 / (6 * a * (1 - a)), (2 - 3 * a) / (6 * (1 - a))]])
-
+        return cls(
+            inputs,
+            a=[
+                [a],
+                [1 + k, -k],
+                [0.5 - 1 / (6 * a), 1 / (6 * a * (1 - a)), (2 - 3 * a) / (6 * (1 - a))],
+            ],
+        )
 
     @classmethod
     def RK3(cls, inputs):
@@ -170,11 +170,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/6	2/3	1/6
 
         """
-        return cls(inputs,
-                   a=[[0.5],
-                      [-1, 2],
-                      [1 / 6, 2 / 3, 1 / 6]])
-
+        return cls(inputs, a=[[0.5], [-1, 2], [1 / 6, 2 / 3, 1 / 6]])
 
     @classmethod
     def RK3SSP(cls, inputs):
@@ -188,11 +184,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/6	1/6	2/3
 
         """
-        return cls(inputs,
-                   a=[[1],
-                      [1 / 4, 1 / 4],
-                      [1 / 6, 1 / 6, 2 / 3]])
-
+        return cls(inputs, a=[[1], [1 / 4, 1 / 4], [1 / 6, 1 / 6, 2 / 3]])
 
     @classmethod
     def Ralston3(cls, inputs):
@@ -206,10 +198,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         2/9 1/3 4/9
 
         """
-        return cls(inputs,
-                   a=[[1 / 2],
-                      [0, 3 / 4],
-                      [2 / 9, 1 / 3, 4 / 9]])
+        return cls(inputs, a=[[1 / 2], [0, 3 / 4], [2 / 9, 1 / 3, 4 / 9]])
 
     @classmethod
     def RK4(cls, inputs):
@@ -223,12 +212,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/6	1/3	1/3	1/6
 
         """
-        return cls(inputs,
-                   a=[[0.5],
-                      [0, 0.5],
-                      [0, 0, 1],
-                      [1 / 6, 1 / 3, 1 / 3, 1 / 6]])
-
+        return cls(inputs, a=[[0.5], [0, 0.5], [0, 0, 1], [1 / 6, 1 / 3, 1 / 3, 1 / 6]])
 
     @classmethod
     def Ralston4(cls, inputs):
@@ -243,12 +227,15 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/6	1/3	1/3	1/6
 
         """
-        return cls(inputs,
-                   a=[[0.4],
-                      [0.29697761, 0.15875964],
-                      [0.21810040, -3.05096516, 3.83286476],
-                      [0.17476028, -.55148066, 1.20553560, 0.17118478]])
-
+        return cls(
+            inputs,
+            a=[
+                [0.4],
+                [0.29697761, 0.15875964],
+                [0.21810040, -3.05096516, 3.83286476],
+                [0.17476028, -0.55148066, 1.20553560, 0.17118478],
+            ],
+        )
 
     @classmethod
     def DormandPrince5(cls, inputs):
@@ -265,10 +252,14 @@ class ExplicitRungeKutta(TimeIntegrator):
         35/384	0	500/1113	125/192	    −2187/6784	11/84
 
         """
-        return cls(inputs,
-                   a=[[1 / 5],
-                      [3 / 40, 9 / 40],
-                      [44 / 45, -56 / 15, 32 / 9],
-                      [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729],
-                      [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656],
-                      [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]])
+        return cls(
+            inputs,
+            a=[
+                [1 / 5],
+                [3 / 40, 9 / 40],
+                [44 / 45, -56 / 15, 32 / 9],
+                [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729],
+                [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656],
+                [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84],
+            ],
+        )

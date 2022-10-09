@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import functools
 import numpy as np
@@ -22,9 +23,10 @@ import numba as nb
 from typing import Union, Callable
 
 
-def rotate(theta: Union[float, np.ndarray],
-           *arrays: Union[np.ndarray, list[np.ndarray]],
-           ) -> None:
+def rotate(
+    theta: Union[float, np.ndarray],
+    *arrays: Union[np.ndarray, list[np.ndarray]],
+) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees counterclockwise.
     The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
@@ -48,12 +50,13 @@ def rotate(theta: Union[float, np.ndarray],
     if np.ndim(theta) == 3:
         theta = theta[:, :, 0]
     elif np.ndim(theta) > 3:
-        raise RuntimeError('theta cannot have more than 3 dimensions.')
+        raise RuntimeError("theta cannot have more than 3 dimensions.")
 
     for array in arrays:
         u, v = rotate_JIT(array, theta)
         array[:, :, 1] = u
         array[:, :, 2] = v
+
 
 @nb.njit(cache=True)
 def rotate_JIT(array, theta):
@@ -61,11 +64,11 @@ def rotate_JIT(array, theta):
     v = np.zeros_like(theta)
     for i in range(array.shape[0]):
         for j in range(array.shape[1]):
-            _theta  = theta[i, j]
-            _u      = array[i, j, 1]
-            _v      = array[i, j, 2]
-            s       = np.sin(_theta)
-            c       = np.cos(_theta)
+            _theta = theta[i, j]
+            _u = array[i, j, 1]
+            _v = array[i, j, 2]
+            s = np.sin(_theta)
+            c = np.cos(_theta)
             u[i, j] = _u * c + _v * s
             v[i, j] = _v * c - _u * s
 
@@ -101,9 +104,10 @@ def rotate90(*arrays: Union[np.ndarray]) -> None:
         array[:, :, 1], array[:, :, 2] = u, v
 
 
-def unrotate(theta: float,
-             *arrays: Union[np.ndarray, list[np.ndarray]],
-             ) -> None:
+def unrotate(
+    theta: float,
+    *arrays: Union[np.ndarray, list[np.ndarray]],
+) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees clockwise. Basically the
     inverse of rotate_row(). The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
@@ -127,12 +131,13 @@ def unrotate(theta: float,
     if np.ndim(theta) == 3:
         theta = theta[:, :, 0]
     elif np.ndim(theta) > 3:
-        raise RuntimeError('theta cannot have more than 3 dimensions.')
+        raise RuntimeError("theta cannot have more than 3 dimensions.")
 
     for array in arrays:
         u, v = unrotate_JIT(array, theta)
         array[:, :, 1] = u
         array[:, :, 2] = v
+
 
 @nb.njit(cache=True)
 def unrotate_JIT(array, theta):
@@ -140,15 +145,16 @@ def unrotate_JIT(array, theta):
     v = np.zeros_like(theta)
     for i in range(array.shape[0]):
         for j in range(array.shape[1]):
-            _theta  = theta[i, j]
-            _u      = array[i, j, 1]
-            _v      = array[i, j, 2]
-            s       = np.sin(_theta)
-            c       = np.cos(_theta)
+            _theta = theta[i, j]
+            _u = array[i, j, 1]
+            _v = array[i, j, 2]
+            s = np.sin(_theta)
+            c = np.cos(_theta)
             u[i, j] = _u * c - _v * s
             v[i, j] = _v * c + _u * s
 
     return u, v
+
 
 def unrotate90(*arrays: Union[np.ndarray]) -> None:
     """
@@ -177,13 +183,9 @@ def unrotate90(*arrays: Union[np.ndarray]) -> None:
         array[:, :, 1], array[:, :, 2] = u, v
 
 
-def reflect_point(x1: float,
-                  y1: float,
-                  x2: float,
-                  y2: float,
-                  xr: float,
-                  yr: float
-                  ) -> [float]:
+def reflect_point(
+    x1: float, y1: float, x2: float, y2: float, xr: float, yr: float
+) -> [float]:
 
     if y1 == y2:
         return xr, 2 * y1 - yr
@@ -192,8 +194,8 @@ def reflect_point(x1: float,
     m = (y1 - y2) / (x1 - x2)
     b = 0.5 * (y1 + y2 - m * (x1 + x2))
 
-    xp = ((1 - m ** 2) * xr + 2 * m * yr - 2 * m * b) / (1 + m ** 2)
-    yp = (2 * m * xr - (1 - m ** 2) * yr + 2 * b) / (1 + m ** 2)
+    xp = ((1 - m**2) * xr + 2 * m * yr - 2 * m * b) / (1 + m**2)
+    yp = (2 * m * xr - (1 - m**2) * yr + 2 * b) / (1 + m**2)
 
     return xp, yp
 
@@ -204,6 +206,7 @@ def cache(func: Callable):
         if func.__name__ not in self.cache.keys():
             self.cache[func.__name__] = func(self, *args, **kwargs)
         return self.cache[func.__name__]
+
     return _wrapper
 
 
@@ -222,15 +225,18 @@ class Cache:
 
 
 class DirectionalContainerBase:
-    def __init__(self,
-                 east_obj: object or list or tuple = None,
-                 west_obj: object or list or tuple = None,
-                 north_obj: object or list or tuple = None,
-                 south_obj: object or list or tuple = None):
+    def __init__(
+        self,
+        east_obj: object or list or tuple = None,
+        west_obj: object or list or tuple = None,
+        north_obj: object or list or tuple = None,
+        south_obj: object or list or tuple = None,
+    ):
         self.E = east_obj
         self.W = west_obj
         self.N = north_obj
         self.S = south_obj
+
 
 class NumpySlice:
     def __init__(self):

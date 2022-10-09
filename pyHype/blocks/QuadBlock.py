@@ -18,7 +18,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 from itertools import chain
 
 import numpy as np
@@ -29,7 +30,9 @@ from pyHype.mesh.QuadMesh import QuadMesh
 from pyHype.mesh.base import BlockDescription
 from pyHype.utils.utils import NumpySlice
 from pyHype.blocks.base import Neighbors, BaseBlock_FVM
-from pyHype.solvers.time_integration.explicit_runge_kutta import ExplicitRungeKutta as Erk
+from pyHype.solvers.time_integration.explicit_runge_kutta import (
+    ExplicitRungeKutta as Erk,
+)
 from pyHype.blocks.ghost import GhostBlocks
 
 if TYPE_CHECKING:
@@ -38,9 +41,15 @@ if TYPE_CHECKING:
 
 
 class BaseBlock_With_Ghost(BaseBlock_FVM):
-
-    def __init__(self, inputs: ProblemInput, nx: int, ny: int, block_data: BlockDescription, refBLK: BaseBlock,
-                 state_type: str = 'conservative') -> None:
+    def __init__(
+        self,
+        inputs: ProblemInput,
+        nx: int,
+        ny: int,
+        block_data: BlockDescription,
+        refBLK: BaseBlock,
+        state_type: str = "conservative",
+    ) -> None:
         """
         Constructs instance of class BaseBlock_With_Ghost.
 
@@ -66,7 +75,9 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
         """
         super().__init__(inputs, nx, ny, state_type=state_type)
 
-        self.ghost = GhostBlocks(inputs, block_data=block_data, refBLK=refBLK, state_type=state_type)
+        self.ghost = GhostBlocks(
+            inputs, block_data=block_data, refBLK=refBLK, state_type=state_type
+        )
 
         self.EAST_GHOST_IDX = NumpySlice.cols(-self.inputs.nghost, None)
         self.WEST_GHOST_IDX = NumpySlice.cols(None, self.inputs.nghost)
@@ -129,10 +140,15 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
         :rtype: (np.ndarray, np.ndarray, np.ndarray, np.ndarray)
         :return: Arrays containing interface values on each face
         """
-        if self.inputs.interface_interpolation == 'arithmetic_average':
-            interfaceE, interfaceW, interfaceN, interfaceS = self.get_interface_values_arithmetic()
+        if self.inputs.interface_interpolation == "arithmetic_average":
+            (
+                interfaceE,
+                interfaceW,
+                interfaceN,
+                interfaceS,
+            ) = self.get_interface_values_arithmetic()
         else:
-            raise ValueError('Interface Interpolation method is not defined.')
+            raise ValueError("Interface Interpolation method is not defined.")
 
         return interfaceE, interfaceW, interfaceN, interfaceS
 
@@ -146,14 +162,23 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
         """
 
         # Concatenate ghost cell and state values in the East-West and North-South directions
-        catx = np.concatenate((self.ghost.W.state.Q, self.state.Q, self.ghost.E.state.Q), axis=1)
-        caty = np.concatenate((self.ghost.S.state.Q, self.state.Q, self.ghost.N.state.Q), axis=0)
+        catx = np.concatenate(
+            (self.ghost.W.state.Q, self.state.Q, self.ghost.E.state.Q), axis=1
+        )
+        caty = np.concatenate(
+            (self.ghost.S.state.Q, self.state.Q, self.ghost.N.state.Q), axis=0
+        )
 
         # Compute arithmetic mean
         interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
         interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
 
-        return interfaceEW[:, 1:, :], interfaceEW[:, :-1, :], interfaceNS[1:, :, :], interfaceNS[:-1, :, :]
+        return (
+            interfaceEW[:, 1:, :],
+            interfaceEW[:, :-1, :],
+            interfaceNS[1:, :, :],
+            interfaceNS[:-1, :, :],
+        )
 
     def clear_cache(self):
         self.state.clear_cache()
@@ -161,69 +186,77 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
 
 
 class ReconstructionBlock(BaseBlock_With_Ghost):
-    def __init__(self,
-                 inputs: ProblemInput,
-                 block_data: BlockDescription,
-                 QP,
-                 mesh,
-                 ) -> None:
+    def __init__(
+        self,
+        inputs: ProblemInput,
+        block_data: BlockDescription,
+        QP,
+        mesh,
+    ) -> None:
         # Track Quadrature points and mesh from parent block
         self.QP = QP
         self.mesh = mesh
 
-        super().__init__(inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self,
-                         state_type=inputs.reconstruction_type)
+        super().__init__(
+            inputs,
+            nx=inputs.nx,
+            ny=inputs.ny,
+            block_data=block_data,
+            refBLK=self,
+            state_type=inputs.reconstruction_type,
+        )
+
 
 class QuadBlock(BaseBlock_With_Ghost):
-    def __init__(self,
-                 inputs: ProblemInput,
-                 block_data: BlockDescription
-                 ) -> None:
+    def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
 
-        self.inputs             = inputs
-        self.block_data         = block_data
-        self.global_nBLK        = block_data.nBLK
-        self.mesh               = QuadMesh(inputs, block_data)
-        self.ghost              = None
-        self.neighbors          = None
+        self.inputs = inputs
+        self.block_data = block_data
+        self.global_nBLK = block_data.nBLK
+        self.mesh = QuadMesh(inputs, block_data)
+        self.ghost = None
+        self.neighbors = None
 
         # Quadrature Points and Data
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
-        super().__init__(inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self)
+        super().__init__(
+            inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self
+        )
 
         # Create reconstruction block
-        self.reconBlk = ReconstructionBlock(inputs, block_data, QP=self.QP, mesh=self.mesh)
+        self.reconBlk = ReconstructionBlock(
+            inputs, block_data, QP=self.QP, mesh=self.mesh
+        )
 
         # Set time integrator
-        if self.inputs.time_integrator   == 'ExplicitEuler1':
-            self._time_integrator   = Erk.ExplicitEuler1(self.inputs)
-        elif self.inputs.time_integrator == 'RK2':
-            self._time_integrator   = Erk.RK2(self.inputs)
-        elif self.inputs.time_integrator == 'Generic2':
-            self._time_integrator   = Erk.Generic2(self.inputs)
-        elif self.inputs.time_integrator == 'Ralston2':
-            self._time_integrator   = Erk.Ralston2(self.inputs)
-        elif self.inputs.time_integrator == 'Generic3':
-            self._time_integrator   = Erk.Generic3(self.inputs)
-        elif self.inputs.time_integrator == 'RK3':
-            self._time_integrator   = Erk.RK3(self.inputs)
-        elif self.inputs.time_integrator == 'RK3SSP':
-            self._time_integrator   = Erk.RK3SSP(self.inputs)
-        elif self.inputs.time_integrator == 'Ralston3':
-            self._time_integrator   = Erk.Ralston3(self.inputs)
-        elif self.inputs.time_integrator == 'RK4':
-            self._time_integrator   = Erk.RK4(self.inputs)
-        elif self.inputs.time_integrator == 'Ralston4':
-            self._time_integrator   = Erk.Ralston4(self.inputs)
-        elif self.inputs.time_integrator == 'DormandPrince5':
-            self._time_integrator   = Erk.DormandPrince5(self.inputs)
+        if self.inputs.time_integrator == "ExplicitEuler1":
+            self._time_integrator = Erk.ExplicitEuler1(self.inputs)
+        elif self.inputs.time_integrator == "RK2":
+            self._time_integrator = Erk.RK2(self.inputs)
+        elif self.inputs.time_integrator == "Generic2":
+            self._time_integrator = Erk.Generic2(self.inputs)
+        elif self.inputs.time_integrator == "Ralston2":
+            self._time_integrator = Erk.Ralston2(self.inputs)
+        elif self.inputs.time_integrator == "Generic3":
+            self._time_integrator = Erk.Generic3(self.inputs)
+        elif self.inputs.time_integrator == "RK3":
+            self._time_integrator = Erk.RK3(self.inputs)
+        elif self.inputs.time_integrator == "RK3SSP":
+            self._time_integrator = Erk.RK3SSP(self.inputs)
+        elif self.inputs.time_integrator == "Ralston3":
+            self._time_integrator = Erk.Ralston3(self.inputs)
+        elif self.inputs.time_integrator == "RK4":
+            self._time_integrator = Erk.RK4(self.inputs)
+        elif self.inputs.time_integrator == "Ralston4":
+            self._time_integrator = Erk.Ralston4(self.inputs)
+        elif self.inputs.time_integrator == "DormandPrince5":
+            self._time_integrator = Erk.DormandPrince5(self.inputs)
         else:
-            raise ValueError('Specified time marching scheme has not been specialized.')
+            raise ValueError("Specified time marching scheme has not been specialized.")
 
         # is block cartesian
         self.is_cartesian = self._is_cartesian()
-
 
     def _is_cartesian(self) -> bool:
         """
@@ -236,10 +269,12 @@ class QuadBlock(BaseBlock_With_Ghost):
             - _is_cartesian (bool): Boolean that is True if the block is cartesian and False if it isnt
         """
 
-        _is_cartesian = (self.mesh.vertices.NE[1] == self.mesh.vertices.NW[1]) and \
-                        (self.mesh.vertices.SE[1] == self.mesh.vertices.SW[1]) and \
-                        (self.mesh.vertices.SE[0] == self.mesh.vertices.NE[0]) and \
-                        (self.mesh.vertices.SW[0] == self.mesh.vertices.NW[0])
+        _is_cartesian = (
+            (self.mesh.vertices.NE[1] == self.mesh.vertices.NW[1])
+            and (self.mesh.vertices.SE[1] == self.mesh.vertices.SW[1])
+            and (self.mesh.vertices.SE[0] == self.mesh.vertices.NE[0])
+            and (self.mesh.vertices.SW[0] == self.mesh.vertices.NW[0])
+        )
 
         return _is_cartesian
 
@@ -257,9 +292,7 @@ class QuadBlock(BaseBlock_With_Ghost):
 
         return self.inputs.reconstruction_type
 
-    def plot(self,
-             ax: plt.axes = None,
-             show_cell_centre: bool = False):
+    def plot(self, ax: plt.axes = None, show_cell_centre: bool = False):
         """
         # FOR DEBUGGING
 
@@ -278,82 +311,88 @@ class QuadBlock(BaseBlock_With_Ghost):
             _, ax = plt.subplots(1, 1)
 
         # Create scatter plots for nodes
-        ax.scatter(self.mesh.nodes.x[:, :, 0],
-                    self.mesh.nodes.y[:, :, 0],
-                    color='black',
-                    s=0)
+        ax.scatter(
+            self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0], color="black", s=0
+        )
 
         # Create nodes mesh for LineCollection
-        east = np.stack((self.mesh.nodes.x[:, -1, None, 0],
-                          self.mesh.nodes.y[:, -1, None, 0]),
-                         axis=2)
+        east = np.stack(
+            (self.mesh.nodes.x[:, -1, None, 0], self.mesh.nodes.y[:, -1, None, 0]),
+            axis=2,
+        )
 
-        west = np.stack((self.mesh.nodes.x[:, 0, None, 0],
-                         self.mesh.nodes.y[:, 0, None, 0]),
-                        axis=2)
+        west = np.stack(
+            (self.mesh.nodes.x[:, 0, None, 0], self.mesh.nodes.y[:, 0, None, 0]), axis=2
+        )
 
-        north = np.stack((self.mesh.nodes.x[-1, None, :, 0],
-                         self.mesh.nodes.y[-1, None, :, 0]),
-                         axis=2)
+        north = np.stack(
+            (self.mesh.nodes.x[-1, None, :, 0], self.mesh.nodes.y[-1, None, :, 0]),
+            axis=2,
+        )
 
-        south = np.stack((self.mesh.nodes.x[0, None, :, 0],
-                         self.mesh.nodes.y[0, None, :, 0]),
-                         axis=2)
+        south = np.stack(
+            (self.mesh.nodes.x[0, None, :, 0], self.mesh.nodes.y[0, None, :, 0]), axis=2
+        )
 
         block_sides = chain((east, west, north, south))
 
-        body = np.stack((self.mesh.nodes.x[:, :, 0],
-                         self.mesh.nodes.y[:, :, 0]),
-                        axis=2)
+        body = np.stack(
+            (self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0]), axis=2
+        )
 
         # Create LineCollection for nodes
-        ax.add_collection(LineCollection(body,
-                                         colors='black',
-                                         linewidths=1,
-                                         alpha=1))
-        ax.add_collection(LineCollection(body.transpose((1, 0, 2)),
-                                         colors='black',
-                                         linewidths=1,
-                                         alpha=1))
+        ax.add_collection(LineCollection(body, colors="black", linewidths=1, alpha=1))
+        ax.add_collection(
+            LineCollection(
+                body.transpose((1, 0, 2)), colors="black", linewidths=1, alpha=1
+            )
+        )
 
         for side in block_sides:
 
-            ax.add_collection(LineCollection(side,
-                                             colors='black',
-                                             linewidths=2,
-                                             alpha=1))
-            ax.add_collection(LineCollection(side.transpose((1, 0, 2)),
-                                             colors='black',
-                                             linewidths=2,
-                                             alpha=1))
-
+            ax.add_collection(
+                LineCollection(side, colors="black", linewidths=2, alpha=1)
+            )
+            ax.add_collection(
+                LineCollection(
+                    side.transpose((1, 0, 2)), colors="black", linewidths=2, alpha=1
+                )
+            )
 
         if show_cell_centre:
 
             # Create scatter plots cell centers
-            ax.scatter(self.mesh.x[:, :, 0],
-                       self.mesh.y[:, :, 0],
-                       color='mediumslateblue',
-                       s=0,
-                       alpha=0.5)
+            ax.scatter(
+                self.mesh.x[:, :, 0],
+                self.mesh.y[:, :, 0],
+                color="mediumslateblue",
+                s=0,
+                alpha=0.5,
+            )
 
             # Create cell center mesh for LineCollection
-            segs1 = np.stack((self.mesh.x[:, :, 0],
-                              self.mesh.y[:, :, 0]),
-                             axis=2)
+            segs1 = np.stack((self.mesh.x[:, :, 0], self.mesh.y[:, :, 0]), axis=2)
             segs2 = segs1.transpose((1, 0, 2))
 
             # Create LineCollection for cell centers
-            ax.add_collection(LineCollection(segs1,
-                                                    colors='mediumslateblue',
-                                                    linestyles='--',
-                                                    linewidths=1,
-                                                    alpha=0.5))
-            ax.add_collection(LineCollection(segs2,
-                                                    colors='mediumslateblue',
-                                                    linestyles='--',
-                                                    linewidths=1,
-                                                    alpha=0.5))
+            ax.add_collection(
+                LineCollection(
+                    segs1,
+                    colors="mediumslateblue",
+                    linestyles="--",
+                    linewidths=1,
+                    alpha=0.5,
+                )
+            )
+            ax.add_collection(
+                LineCollection(
+                    segs2,
+                    colors="mediumslateblue",
+                    linestyles="--",
+                    linewidths=1,
+                    alpha=0.5,
+                )
+            )
         if _show:
             # Show Plot
             plt.show()
@@ -426,7 +465,7 @@ class QuadBlock(BaseBlock_With_Ghost):
             return self.ghost.N.state[0, x, var]
         if self._index_in_south_ghost_block(x, y):
             return self.ghost.N.state[0, x, var]
-        raise ValueError('Incorrect indexing')
+        raise ValueError("Incorrect indexing")
 
     def _index_in_west_ghost_block(self, x, y):
         return x < 0 and 0 <= y <= self.mesh.ny
@@ -455,16 +494,17 @@ class QuadBlock(BaseBlock_With_Ghost):
         _ty = self.mesh.dy[:, :, 0] / (np.absolute(self.state.v) + a)
         return self.inputs.CFL * np.amin(np.minimum(_tx, _ty))
 
-    def connect(self,
-                NeighborE: QuadBlock,
-                NeighborW: QuadBlock,
-                NeighborN: QuadBlock,
-                NeighborS: QuadBlock,
-                NeighborNE: QuadBlock,
-                NeighborNW: QuadBlock,
-                NeighborSE: QuadBlock,
-                NeighborSW: QuadBlock,
-                ) -> None:
+    def connect(
+        self,
+        NeighborE: QuadBlock,
+        NeighborW: QuadBlock,
+        NeighborN: QuadBlock,
+        NeighborS: QuadBlock,
+        NeighborNE: QuadBlock,
+        NeighborNW: QuadBlock,
+        NeighborSE: QuadBlock,
+        NeighborSW: QuadBlock,
+    ) -> None:
         """
         Create the Neighbors class used to set references to the neighbor blocks in each direction.
 
@@ -474,8 +514,16 @@ class QuadBlock(BaseBlock_With_Ghost):
         Return:
             - None
         """
-        self.neighbors = Neighbors(E=NeighborE, W=NeighborW, N=NeighborN, S=NeighborS,
-                                   NE=NeighborNE, NW=NeighborNW, SE=NeighborSE, SW=NeighborSW)
+        self.neighbors = Neighbors(
+            E=NeighborE,
+            W=NeighborW,
+            N=NeighborN,
+            S=NeighborS,
+            NE=NeighborNE,
+            NW=NeighborNW,
+            SE=NeighborSE,
+            SW=NeighborSW,
+        )
 
     def get_east_ghost_states(self) -> np.ndarray:
         """
@@ -519,10 +567,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         """
         return self.state.U[self.SOUTH_GHOST_IDX].copy()
 
-    def row(self,
-            index: int,
-            copy: bool = False
-            ) -> np.ndarray:
+    def row(self, index: int, copy: bool = False) -> np.ndarray:
         """
         Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
         most-bottom row of the mesh will be returned.
@@ -537,10 +582,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         _row = self.state.U[index, None, :, :]
         return _row.copy() if copy else _row
 
-    def fullrow(self,
-                index: int,
-                copy: bool = False
-                ) -> np.ndarray:
+    def fullrow(self, index: int, copy: bool = False) -> np.ndarray:
         """
         Return the solution stored in the index-th full row of the mesh. A full row is defined as the row plus the ghost
         cells on either side of the column.
@@ -552,16 +594,17 @@ class QuadBlock(BaseBlock_With_Ghost):
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th full row being returned.
         """
-        _fullrow = np.concatenate((self.ghost.W[index, None, :, :],
-                                   self.row(index),
-                                   self.ghost.E[index, None, :, :]),
-                                  axis=1)
+        _fullrow = np.concatenate(
+            (
+                self.ghost.W[index, None, :, :],
+                self.row(index),
+                self.ghost.E[index, None, :, :],
+            ),
+            axis=1,
+        )
         return _fullrow.copy() if copy else _fullrow
 
-    def col(self,
-            index: int,
-            copy: bool = False
-            ) -> np.ndarray:
+    def col(self, index: int, copy: bool = False) -> np.ndarray:
         """
         Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
         left-most column of the mesh will be returned.
@@ -576,10 +619,7 @@ class QuadBlock(BaseBlock_With_Ghost):
         _col = self.state.U[None, :, index, :]
         return _col.copy() if copy else _col
 
-    def fullcol(self,
-                index: int,
-                copy: bool = False
-                ) -> np.ndarray:
+    def fullcol(self, index: int, copy: bool = False) -> np.ndarray:
         """
         Return the solution stored in the index-th full column of the mesh. A full column is defined as the row plus the
         ghost cells on either side of the column.
@@ -591,10 +631,14 @@ class QuadBlock(BaseBlock_With_Ghost):
         Return:
             - (np.ndarray): The numpy array containing the solution at the index-th full column being returned.
         """
-        _fullcol = np.concatenate((self.ghost.S[:, index, None, :],
-                                   self.col(index),
-                                   self.ghost.N[:, index, None, :]),
-                                  axis=1)
+        _fullcol = np.concatenate(
+            (
+                self.ghost.S[:, index, None, :],
+                self.col(index),
+                self.ghost.N[:, index, None, :],
+            ),
+            axis=1,
+        )
         return _fullcol.copy() if copy else _fullcol
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -614,7 +658,9 @@ class QuadBlock(BaseBlock_With_Ghost):
         """
         self._time_integrator(self, dt)
         if not self.realizable():
-            raise ValueError('Negative or zero pressure, density, or energy. Terminating simulation.')
+            raise ValueError(
+                "Negative or zero pressure, density, or energy. Terminating simulation."
+            )
 
     def get_flux(self) -> None:
         """
@@ -696,7 +742,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - du_dx (np.ndarray): Derivative of u with respect to the x direction.
         """
 
-        return (self.gradx[:, :, 1, None] - self.state.u * self.drho_dx()) / self.state.rho
+        return (
+            self.gradx[:, :, 1, None] - self.state.u * self.drho_dx()
+        ) / self.state.rho
 
     def dv_dx(self) -> np.ndarray:
         """
@@ -719,7 +767,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - dv_dx (np.ndarray): Derivative of v with respect to the x direction.
         """
 
-        return (self.gradx[:, :, 2, None] - self.state.v * self.drho_dx()) / self.state.rho
+        return (
+            self.gradx[:, :, 2, None] - self.state.v * self.drho_dx()
+        ) / self.state.rho
 
     def de_dx(self) -> np.ndarray:
         """
@@ -769,7 +819,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - du_dy (np.ndarray): Derivative of u with respect to the y direction.
         """
 
-        return (self.grady[:, :, 1, None] - self.state.u * self.drho_dx()) / self.state.rho
+        return (
+            self.grady[:, :, 1, None] - self.state.u * self.drho_dx()
+        ) / self.state.rho
 
     def dv_dy(self) -> np.ndarray:
         """
@@ -792,7 +844,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - dv_dy (np.ndarray): Derivative of v with respect to the y direction.
         """
 
-        return (self.grady[:, :, 2, None] - self.state.v * self.drho_dx()) / self.state.rho
+        return (
+            self.grady[:, :, 2, None] - self.state.v * self.drho_dx()
+        ) / self.state.rho
 
     def de_dy(self) -> np.ndarray:
         """
@@ -808,41 +862,39 @@ class QuadBlock(BaseBlock_With_Ghost):
 
         return self.grady[:, :, -1, None]
 
+    def get_nodal_solution(
+        self,
+        interpolation: str = "piecewise_linear",
+        formulation: str = "primitive",
+    ) -> np.ndarray:
 
-    def get_nodal_solution(self,
-                           interpolation: str = 'piecewise_linear',
-                           formulation: str = 'primitive',
-                           ) -> np.ndarray:
+        if interpolation == "piecewise_linear":
 
-        if interpolation == 'piecewise_linear':
-
-            if formulation == 'primitive':
+            if formulation == "primitive":
                 return self._get_nodal_solution_piecewise_linear_primitive()
-            if formulation == 'conservative':
+            if formulation == "conservative":
                 return self._get_nodal_solution_piecewise_linear_conservative()
-            raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
+            raise ValueError("Formulation " + str(interpolation) + "is not defined.")
 
-        if interpolation == 'cell_average':
+        if interpolation == "cell_average":
 
-            if formulation == 'primitive':
+            if formulation == "primitive":
                 return self._get_nodal_solution_cell_average_primitive()
-            if formulation == 'conservative':
+            if formulation == "conservative":
                 return self._get_nodal_solution_cell_average_conservative()
-            raise ValueError('Formulation ' + str(interpolation) + 'is not defined.')
-        raise ValueError('Interpolation method ' + str(interpolation) + 'has not been specialized.')
-
+            raise ValueError("Formulation " + str(interpolation) + "is not defined.")
+        raise ValueError(
+            "Interpolation method " + str(interpolation) + "has not been specialized."
+        )
 
     def _get_nodal_solution_piecewise_linear_primitive(self) -> np.ndarray:
         pass
 
-
     def _get_nodal_solution_piecewise_linear_conservative(self) -> np.ndarray:
         pass
 
-
     def _get_nodal_solution_cell_average_primitive(self) -> np.ndarray:
         pass
-
 
     def _get_nodal_solution_cell_average_conservative(self) -> np.ndarray:
 
@@ -869,28 +921,32 @@ class QuadBlock(BaseBlock_With_Ghost):
         U[1:-1, 0, :] = 0.5 * (self.state.U[1:, 0, :] + self.state.U[:-1, 0, :])
         # North edge
         if self.neighbors.N:
-            U[-1, 1:-1, :] = 0.25 * (self.state.U[-1, 1:, :] +
-                                     self.state.U[-1, :-1, :] +
-                                     self.neighbors.N.state.U[0, 1:, :] +
-                                     self.neighbors.N.state.U[0, :-1, :])
+            U[-1, 1:-1, :] = 0.25 * (
+                self.state.U[-1, 1:, :]
+                + self.state.U[-1, :-1, :]
+                + self.neighbors.N.state.U[0, 1:, :]
+                + self.neighbors.N.state.U[0, :-1, :]
+            )
         else:
-            U[-1, 1:-1, :] = 0.5 * (self.state.U[-1, 1:, :] +
-                                     self.state.U[-1, :-1, :])
+            U[-1, 1:-1, :] = 0.5 * (self.state.U[-1, 1:, :] + self.state.U[-1, :-1, :])
         # South edge
         if self.neighbors.S:
-            U[0, 1:-1, :] = 0.25 * (self.state.U[0, 1:, :] +
-                                    self.state.U[0, :-1, :] +
-                                    self.neighbors.S.state.U[-1, 1:, :] +
-                                    self.neighbors.S.state.U[-1, :-1, :])
+            U[0, 1:-1, :] = 0.25 * (
+                self.state.U[0, 1:, :]
+                + self.state.U[0, :-1, :]
+                + self.neighbors.S.state.U[-1, 1:, :]
+                + self.neighbors.S.state.U[-1, :-1, :]
+            )
         else:
-            U[0, 1:-1, :] = 0.5 * (self.state.U[0, 1:, :] +
-                                   self.state.U[0, :-1, :])
+            U[0, 1:-1, :] = 0.5 * (self.state.U[0, 1:, :] + self.state.U[0, :-1, :])
 
         # Kernel
-        U[1:-1, 1:-1, :] = 0.25 * (self.state.U[1:, 1:, :] +
-                                   self.state.U[:-1, :-1, :] +
-                                   self.state.U[1:, :-1, :] +
-                                   self.state.U[:-1, 1:, :])
+        U[1:-1, 1:-1, :] = 0.25 * (
+            self.state.U[1:, 1:, :]
+            + self.state.U[:-1, :-1, :]
+            + self.state.U[1:, :-1, :]
+            + self.state.U[:-1, 1:, :]
+        )
 
         return U
 

@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import os
 
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
+
 np.set_printoptions(precision=3)
 
 from typing import TYPE_CHECKING
@@ -34,14 +35,17 @@ if TYPE_CHECKING:
 class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
     def __init__(self, inputs):
         if inputs.nghost != 1:
-            raise ValueError('Number of ghost cells must be equal to 1 for this method.')
+            raise ValueError(
+                "Number of ghost cells must be equal to 1 for this method."
+            )
         super().__init__(inputs)
 
     @staticmethod
-    def high_order_term(refBLK: BaseBlock_FVM,
-                        qp: QuadraturePoint,
-                        slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX
-                        ) -> np.ndarray:
+    def high_order_term(
+        refBLK: BaseBlock_FVM,
+        qp: QuadraturePoint,
+        slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
+    ) -> np.ndarray:
         """
         Compute the high order term used for the state reconstruction at the quadrature point on a specified face.
 
@@ -57,14 +61,17 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         :rtype: np.ndarray
         :return: Unlimited high order term
         """
-        return refBLK.grad.get_high_order_term(refBLK.mesh.x, qp.x, refBLK.mesh.y, qp.y, slicer=slicer)
+        return refBLK.grad.get_high_order_term(
+            refBLK.mesh.x, qp.x, refBLK.mesh.y, qp.y, slicer=slicer
+        )
 
-    def unlimited_solution_at_quadrature_point(self,
-                                               state: State,
-                                               refBLK: BaseBlock_FVM,
-                                               qp: QuadraturePoint,
-                                               slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX
-                                               ) -> np.ndarray:
+    def unlimited_solution_at_quadrature_point(
+        self,
+        state: State,
+        refBLK: BaseBlock_FVM,
+        qp: QuadraturePoint,
+        slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
+    ) -> np.ndarray:
         """
         Returns the unlimited reconstructed solution at a specific quadrature point based on the given solution state
         and mesh geometry from a reference block.
@@ -86,12 +93,13 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         """
         return state[slicer] + self.high_order_term(refBLK, qp, slicer)
 
-    def limited_solution_at_quadrature_point(self,
-                                             state: State,
-                                             refBLK: BaseBlock_FVM,
-                                             qp: QuadraturePoint,
-                                             slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX
-                                             ) -> np.ndarray:
+    def limited_solution_at_quadrature_point(
+        self,
+        state: State,
+        refBLK: BaseBlock_FVM,
+        qp: QuadraturePoint,
+        slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
+    ) -> np.ndarray:
         """
         Returns the limited reconstructed solution at a specific quadrature point based on the given solution state and
         slope limiter values and mesh geometry from a reference block.
@@ -111,7 +119,9 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         :rtype: np.ndarray
         :return: Limited reconstructed solution at the quadrature point
         """
-        return state[slicer] + refBLK.fvm.limiter.phi[slicer] * self.high_order_term(refBLK, qp, slicer)
+        return state[slicer] + refBLK.fvm.limiter.phi[slicer] * self.high_order_term(
+            refBLK, qp, slicer
+        )
 
     def compute_limiter(self, refBLK: QuadBlock) -> None:
         """
@@ -124,8 +134,30 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         :rtype: None
         :return: None
         """
-        unlimE = [self.unlimited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qp) for qp in refBLK.QP.E]
-        unlimW = [self.unlimited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qp) for qp in refBLK.QP.W]
-        unlimN = [self.unlimited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qp) for qp in refBLK.QP.N]
-        unlimS = [self.unlimited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qp) for qp in refBLK.QP.S]
-        self.limiter(refBLK.reconBlk, gqpE=unlimE, gqpW=unlimW, gqpN=unlimN, gqpS=unlimS)
+        unlimE = [
+            self.unlimited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qp
+            )
+            for qp in refBLK.QP.E
+        ]
+        unlimW = [
+            self.unlimited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qp
+            )
+            for qp in refBLK.QP.W
+        ]
+        unlimN = [
+            self.unlimited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qp
+            )
+            for qp in refBLK.QP.N
+        ]
+        unlimS = [
+            self.unlimited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qp
+            )
+            for qp in refBLK.QP.S
+        ]
+        self.limiter(
+            refBLK.reconBlk, gqpE=unlimE, gqpW=unlimW, gqpN=unlimN, gqpS=unlimS
+        )

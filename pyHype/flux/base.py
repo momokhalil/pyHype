@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 import numba as nb
 from abc import abstractmethod
-from pyHype.states.states import PrimitiveState,    \
-                                 RoePrimitiveState
+from pyHype.states.states import PrimitiveState, RoePrimitiveState
+
 
 class FluxFunction:
     def __init__(self, inputs, nx, ny):
@@ -30,14 +31,15 @@ class FluxFunction:
         self.ny = ny
         self.n = inputs.n
 
-    def __call__(self,
-                 WL: PrimitiveState,
-                 WR: PrimitiveState,
-                 *args, **kwargs):
+    def __call__(self, WL: PrimitiveState, WR: PrimitiveState, *args, **kwargs):
         if not isinstance(WL, PrimitiveState):
-            raise TypeError('FluxFunction.__call__() Error, WL must be a PrimitiveState.')
+            raise TypeError(
+                "FluxFunction.__call__() Error, WL must be a PrimitiveState."
+            )
         if not isinstance(WR, PrimitiveState):
-            raise TypeError('FluxFunction.__call__() Error, WR must be a PrimitiveState.')
+            raise TypeError(
+                "FluxFunction.__call__() Error, WR must be a PrimitiveState."
+            )
         return self.compute_flux(WL, WR)
 
     @staticmethod
@@ -60,20 +62,20 @@ class FluxFunction:
             # Compute wavespeeds
             slow, fast = W.u - a, W.u + a
             return slow, fast
-        raise TypeError('Input is not PrimitiveState.')
+        raise TypeError("Input is not PrimitiveState.")
 
-
-    def harten_correction_x(self,
-                            Wroe: RoePrimitiveState,
-                            WL: PrimitiveState,
-                            WR: PrimitiveState,
-                            Roe_p: np.ndarray = None,
-                            Roe_m: np.ndarray = None,
-                            L_p: np.ndarray = None,
-                            L_m: np.ndarray = None,
-                            R_p: np.ndarray = None,
-                            R_m: np.ndarray = None,
-                            ) -> [np.ndarray]:
+    def harten_correction_x(
+        self,
+        Wroe: RoePrimitiveState,
+        WL: PrimitiveState,
+        WR: PrimitiveState,
+        Roe_p: np.ndarray = None,
+        Roe_m: np.ndarray = None,
+        L_p: np.ndarray = None,
+        L_m: np.ndarray = None,
+        R_p: np.ndarray = None,
+        R_m: np.ndarray = None,
+    ) -> [np.ndarray]:
         """
         Perform the Harten correction to eliminate expansion shocks when using approximate riemann solvers.
 
@@ -141,18 +143,18 @@ class FluxFunction:
         theta_m = theta_m * (theta_m > 0)
 
         # Corrected fast and slow Roe wavespeeds
-        Roe_p[:, :] = np.where(np.absolute(Roe_p) < theta_p,
-                               0.5 * ((Roe_p ** 2) / (theta_p + 1e-8) + theta_p),
-                               Roe_p)
+        Roe_p[:, :] = np.where(
+            np.absolute(Roe_p) < theta_p,
+            0.5 * ((Roe_p**2) / (theta_p + 1e-8) + theta_p),
+            Roe_p,
+        )
 
-        Roe_m[:, :] = np.where(np.absolute(Roe_m) < theta_m,
-                               0.5 * ((Roe_m ** 2) / (theta_m + 1e-8) + theta_m),
-                               Roe_m)
-
+        Roe_m[:, :] = np.where(
+            np.absolute(Roe_m) < theta_m,
+            0.5 * ((Roe_m**2) / (theta_m + 1e-8) + theta_m),
+            Roe_m,
+        )
 
     @abstractmethod
-    def compute_flux(self,
-                     WL: PrimitiveState,
-                     WR: PrimitiveState
-                     ) -> np.ndarray:
+    def compute_flux(self, WL: PrimitiveState, WR: PrimitiveState) -> np.ndarray:
         raise NotImplementedError

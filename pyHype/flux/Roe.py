@@ -15,10 +15,11 @@ limitations under the License.
 """
 import os
 
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 from profilehooks import profile
+
 np.set_printoptions(linewidth=200)
 np.set_printoptions(precision=3)
 from scipy.sparse import coo_matrix as coo
@@ -41,12 +42,39 @@ class FluxRoe(FluxFunction):
 
         # X-direction eigensystem data vectors
         vec = XDIR_EIGENSYSTEM_VECTORS(self.inputs, size, sweeps)
-        self.A_d0, self.A_m1, self.A_m2, self.A_m3, self.A_p1, self.A_p2 \
-            = vec.A_d0, vec.A_m1, vec.A_m2, vec.A_m3, vec.A_p1, vec.A_p2
-        self.Rc_d0, self.Rc_m1, self.Rc_m2, self.Rc_m3, self.Rc_p1, self.Rc_p2, self.Rc_p3 \
-            = vec.Rc_d0, vec.Rc_m1, vec.Rc_m2, vec.Rc_m3, vec.Rc_p1, vec.Rc_p2, vec.Rc_p3
-        self.Lp_m2, self.Lp_m1, self.Lp_d0, self.Lp_p1, self.Lp_p2, self.Lp_p3 \
-            = vec.Lp_m2, vec.Lp_m1, vec.Lp_d0, vec.Lp_p1, vec.Lp_p2, vec.Lp_p3
+        self.A_d0, self.A_m1, self.A_m2, self.A_m3, self.A_p1, self.A_p2 = (
+            vec.A_d0,
+            vec.A_m1,
+            vec.A_m2,
+            vec.A_m3,
+            vec.A_p1,
+            vec.A_p2,
+        )
+        (
+            self.Rc_d0,
+            self.Rc_m1,
+            self.Rc_m2,
+            self.Rc_m3,
+            self.Rc_p1,
+            self.Rc_p2,
+            self.Rc_p3,
+        ) = (
+            vec.Rc_d0,
+            vec.Rc_m1,
+            vec.Rc_m2,
+            vec.Rc_m3,
+            vec.Rc_p1,
+            vec.Rc_p2,
+            vec.Rc_p3,
+        )
+        self.Lp_m2, self.Lp_m1, self.Lp_d0, self.Lp_p1, self.Lp_p2, self.Lp_p3 = (
+            vec.Lp_m2,
+            vec.Lp_m1,
+            vec.Lp_d0,
+            vec.Lp_p1,
+            vec.Lp_p2,
+            vec.Lp_p3,
+        )
         self.lam = vec.lam
 
         # X-direction eigensystem indices
@@ -57,31 +85,54 @@ class FluxRoe(FluxFunction):
         self.Li, self.Lj = idx.Li, idx.Lj
 
         # Flux jacobian data container
-        A_data = np.concatenate((self.A_m3, self.A_m2, self.A_m1,       # Subdiagonals
-                                 self.A_d0,                             # Diagonal
-                                 self.A_p1, self.A_p2))                 # Superdiagonals
+        A_data = np.concatenate(
+            (
+                self.A_m3,      # Subdiagonals
+                self.A_m2,      # Subdiagonals
+                self.A_m1,      # Subdiagonals
+                self.A_d0,      # Diagonal
+                self.A_p1,      # Superdiagonals
+                self.A_p2,      # Superdiagonals
+            )
+        )
         # Right eigenvectors data container
-        Rc_data = np.concatenate((self.Rc_m3, self.Rc_m2, self.Rc_m1,   # Subdiagonals
-                                  self.Rc_d0,                           # Diagonal
-                                  self.Rc_p1, self.Rc_p2, self.Rc_p3))  # Superdiagonals
+        Rc_data = np.concatenate(
+            (
+                self.Rc_m3,     # Subdiagonals
+                self.Rc_m2,     # Subdiagonals
+                self.Rc_m1,     # Subdiagonals
+                self.Rc_d0,     # Diagonal
+                self.Rc_p1,     # Superdiagonals
+                self.Rc_p2,     # Superdiagonals
+                self.Rc_p3,     # Superdiagonals
+            )
+        )
         # Left eigenvectors primitive data container
-        Lp_data = np.concatenate((self.Lp_m2, self.Lp_m1,               # Subdiagonals
-                                  self.Lp_d0,                           # Diagonal
-                                  self.Lp_p1, self.Lp_p2, self.Lp_p3))  # Superdiagonals
+        Lp_data = np.concatenate(
+            (
+                self.Lp_m2,     # Subdiagonals
+                self.Lp_m1,     # Subdiagonals
+                self.Lp_d0,     # Diagonal
+                self.Lp_p1,     # Superdiagonals
+                self.Lp_p2,     # Superdiagonals
+                self.Lp_p3,     # Superdiagonals
+            )
+        )
         # Eigenvalue data container
         L_data = np.zeros((4 * self.num), dtype=float)
 
         # Build sparse matrices
-        self.Jac    = coo((A_data, (self.Ai, self.Aj)))
-        self.Rc     = coo((Rc_data, (self.Rci, self.Rcj)))
-        self.Lp     = coo((Lp_data, (self.Lpi, self.Lpj)))
+        self.Jac = coo((A_data, (self.Ai, self.Aj)))
+        self.Rc = coo((Rc_data, (self.Rci, self.Rcj)))
+        self.Lp = coo((Lp_data, (self.Lpi, self.Lpj)))
         self.Lambda = coo((L_data, (self.Li, self.Lj)))
 
-    def compute_flux_jacobian(self,
-                              Wroe: RoePrimitiveState,
-                              uv: np.ndarray = None,
-                              ghv: np.ndarray = None,
-                              ) -> None:
+    def compute_flux_jacobian(
+        self,
+        Wroe: RoePrimitiveState,
+        uv: np.ndarray = None,
+        ghv: np.ndarray = None,
+    ) -> None:
         """
         Calculate the x-direction sparse flux jacobian matrix A. A is defined as:
 
@@ -108,31 +159,32 @@ class FluxRoe(FluxFunction):
         uv = Wroe.u * Wroe.v if uv is None else uv
         Ek = Wroe.Ek()
         H = Wroe.H()
-        u2 = Wroe.u ** 2
+        u2 = Wroe.u**2
         ghek = self.gh * Ek
 
         # -3 subdiagonal entries
-        self.Jac.data[0  * self.num:1  * self.num] = Wroe.u * (ghek - H)
+        self.Jac.data[0 * self.num : 1 * self.num] = Wroe.u * (ghek - H)
         # -2 subdiagonal entries
-        self.Jac.data[1  * self.num:2  * self.num] = -uv
-        self.Jac.data[2  * self.num:3  * self.num] = H - self.gh * u2
+        self.Jac.data[1 * self.num : 2 * self.num] = -uv
+        self.Jac.data[2 * self.num : 3 * self.num] = H - self.gh * u2
         # -1 subdiagonal entries
-        self.Jac.data[3  * self.num:4  * self.num] = ghek - u2
-        self.Jac.data[4  * self.num:5  * self.num] = Wroe.v
-        self.Jac.data[5  * self.num:6  * self.num] = -self.gh * uv
+        self.Jac.data[3 * self.num : 4 * self.num] = ghek - u2
+        self.Jac.data[4 * self.num : 5 * self.num] = Wroe.v
+        self.Jac.data[5 * self.num : 6 * self.num] = -self.gh * uv
         # diagonal entries
-        self.Jac.data[6  * self.num:7  * self.num] = self.gb * Wroe.u
-        self.Jac.data[7  * self.num:8  * self.num] = Wroe.u
-        self.Jac.data[8  * self.num:9  * self.num] = self.g * Wroe.u
+        self.Jac.data[6 * self.num : 7 * self.num] = self.gb * Wroe.u
+        self.Jac.data[7 * self.num : 8 * self.num] = Wroe.u
+        self.Jac.data[8 * self.num : 9 * self.num] = self.g * Wroe.u
         # +1 subdiagonal entries
-        self.Jac.data[10 * self.num:11 * self.num] = -ghv
+        self.Jac.data[10 * self.num : 11 * self.num] = -ghv
 
-    def compute_Rc(self,
-                   Wroe: RoePrimitiveState,
-                   Lm: np.ndarray,
-                   Lp: np.ndarray,
-                   ua: np.ndarray = None,
-                   ) -> None:
+    def compute_Rc(
+        self,
+        Wroe: RoePrimitiveState,
+        Lm: np.ndarray,
+        Lp: np.ndarray,
+        ua: np.ndarray = None,
+    ) -> None:
         """
         Computes the right eigenvectors of the euler equations linear eigensystem.
 
@@ -152,71 +204,68 @@ class FluxRoe(FluxFunction):
         :return: None
         """
 
-        H   = Wroe.H()
-        Ek  = Wroe.Ek()
-        ua  = Wroe.u * Wroe.a() if ua is None else ua
+        H = Wroe.H()
+        Ek = Wroe.Ek()
+        ua = Wroe.u * Wroe.a() if ua is None else ua
 
         # -3 subdiagonal entries
-        self.Rc.data[0  * self.num:1  * self.num] = H - ua
+        self.Rc.data[0 * self.num : 1 * self.num] = H - ua
         # -2 subdiagonal entries
-        self.Rc.data[1  * self.num:2  * self.num] = Wroe.v
-        self.Rc.data[2  * self.num:3  * self.num] = Ek
+        self.Rc.data[1 * self.num : 2 * self.num] = Wroe.v
+        self.Rc.data[2 * self.num : 3 * self.num] = Ek
         # -1 subdiagonal entries
-        self.Rc.data[3  * self.num:4  * self.num] = Lm
-        self.Rc.data[4  * self.num:5  * self.num] = Wroe.v
-        self.Rc.data[5  * self.num:6  * self.num] = Wroe.v
+        self.Rc.data[3 * self.num : 4 * self.num] = Lm
+        self.Rc.data[4 * self.num : 5 * self.num] = Wroe.v
+        self.Rc.data[5 * self.num : 6 * self.num] = Wroe.v
         # diagonal entries
-        self.Rc.data[7  * self.num:8  * self.num] = Wroe.u
-        self.Rc.data[9  * self.num:10 * self.num] = H + ua
+        self.Rc.data[7 * self.num : 8 * self.num] = Wroe.u
+        self.Rc.data[9 * self.num : 10 * self.num] = H + ua
         # +1 subdiagonal entries
-        self.Rc.data[11 * self.num:12 * self.num] = Wroe.v
+        self.Rc.data[11 * self.num : 12 * self.num] = Wroe.v
         # +2 subdiagonal entries
-        self.Rc.data[12 * self.num:13 * self.num] = Lp
+        self.Rc.data[12 * self.num : 13 * self.num] = Lp
 
-    def compute_Lp(self,
-                   Wroe: RoePrimitiveState,
-                   ) -> None:
+    def compute_Lp(
+        self,
+        Wroe: RoePrimitiveState,
+    ) -> None:
 
         """
         Computes the left eigenvectors of the euler equations linear eigensystem.
 
         :type Wroe: PrimitiveState
         :param Wroe: Roe primitive state
-        
+
         :rtype: None
         :return: None
         """
 
-        _a          = 1.0 / Wroe.a()
-        one_a2      = _a * _a
-        h_one_a2    = 0.5 * one_a2
-        r2a         = 0.5 * Wroe.rho * _a
+        _a = 1.0 / Wroe.a()
+        one_a2 = _a * _a
+        h_one_a2 = 0.5 * one_a2
+        r2a = 0.5 * Wroe.rho * _a
 
         # -2 subdiagonal entries
-        self.Lp.data[0 * self.num:1 * self.num] = r2a
+        self.Lp.data[0 * self.num : 1 * self.num] = r2a
         # -1 subdiagonal entries
-        self.Lp.data[3 * self.num:4 * self.num] = h_one_a2
+        self.Lp.data[3 * self.num : 4 * self.num] = h_one_a2
         # +1 subdiagonal entries
-        self.Lp.data[4 * self.num:5 * self.num] = -r2a
+        self.Lp.data[4 * self.num : 5 * self.num] = -r2a
         # +2 subdiagonal entries
-        self.Lp.data[5 * self.num:6 * self.num] = -one_a2
+        self.Lp.data[5 * self.num : 6 * self.num] = -one_a2
         # +3 subdiagonal entries
-        self.Lp.data[6 * self.num:7 * self.num] = h_one_a2
+        self.Lp.data[6 * self.num : 7 * self.num] = h_one_a2
 
-    def compute_eigenvalues(self,
-                            Wroe: RoePrimitiveState,
-                            Lp: np.ndarray,
-                            Lm: np.ndarray) -> None:
+    def compute_eigenvalues(
+        self, Wroe: RoePrimitiveState, Lp: np.ndarray, Lm: np.ndarray
+    ) -> None:
 
-        self.Lambda.data[0  * self.num:1  * self.num] = Lm
-        self.Lambda.data[1  * self.num:2  * self.num] = Wroe.u
-        self.Lambda.data[2  * self.num:3  * self.num] = Wroe.u
-        self.Lambda.data[3  * self.num:4  * self.num] = Lp
+        self.Lambda.data[0 * self.num : 1 * self.num] = Lm
+        self.Lambda.data[1 * self.num : 2 * self.num] = Wroe.u
+        self.Lambda.data[2 * self.num : 3 * self.num] = Wroe.u
+        self.Lambda.data[3 * self.num : 4 * self.num] = Lp
 
-    def compute_flux(self,
-                     WL: PrimitiveState,
-                     WR: PrimitiveState
-                     ) -> np.ndarray:
+    def compute_flux(self, WL: PrimitiveState, WR: PrimitiveState) -> np.ndarray:
         """
         Computes the flux using the Roe approximate riemann solver. First, the Roe average state is computed based on
         the given left and right states, and then, the euler eigensystem is computed by diagonalization. The
@@ -254,23 +303,22 @@ class FluxRoe(FluxFunction):
         WR.reshape(_new_shape)
         WL.reshape(_new_shape)
         flux = 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux(WL, WR)
-        return flux.reshape((self.ny,  (self.nx + 1), 4))
+        return flux.reshape((self.ny, (self.nx + 1), 4))
 
-    def get_upwind_flux(self,
-                        WL: PrimitiveState,
-                        WR: PrimitiveState,
-                        ) -> np.ndarray:
+    def get_upwind_flux(
+        self,
+        WL: PrimitiveState,
+        WR: PrimitiveState,
+    ) -> np.ndarray:
         Wroe = RoePrimitiveState(self.inputs, WL, WR)
         self.diagonalize(Wroe, WL, WR)
         dW = (WR - WL).flatten()
         self.Lambda.data = np.absolute(self.Lambda.data)
         return 0.5 * (self.Rc * (self.Lambda * (self.Lp * dW))).reshape(1, -1, 4)
 
-    def diagonalize(self,
-                    Wroe: RoePrimitiveState,
-                    WL: PrimitiveState,
-                    WR: PrimitiveState
-                    ) -> None:
+    def diagonalize(
+        self, Wroe: RoePrimitiveState, WL: PrimitiveState, WR: PrimitiveState
+    ) -> None:
         """
         Diagonalization of the Euler equations in primitive form. First, the Harten correction is applied to prevent
         expansion shocks, and then, the right-conservative, left-primitive primitive eigenvectors, and eigenvalues are

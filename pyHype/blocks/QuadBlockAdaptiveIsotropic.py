@@ -18,7 +18,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import matplotlib.pyplot as plt
 
 from pyHype.blocks import QuadBlock

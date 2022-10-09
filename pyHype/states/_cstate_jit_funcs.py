@@ -18,7 +18,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 import numba as nb
@@ -26,28 +27,33 @@ import numba as nb
 
 @nb.jit(nopython=True, cache=True)
 def ek(rho, rhou, rhov):
-    _ek = 0.5 * (rhou ** 2 + rhov ** 2) / rho
+    _ek = 0.5 * (rhou**2 + rhov**2) / rho
     return _ek
+
 
 @nb.jit(nopython=True, cache=True)
 def Ek(rho, rhou, rhov):
     _ek = ek(rho, rhou, rhov)
     return _ek / rho
 
+
 @nb.jit(nopython=True, cache=True)
 def h(g, rho, rhou, rhov, e):
     _ek = ek(rho, rhou, rhov)
     return g * (e - _ek) + _ek
+
 
 @nb.jit(nopython=True, cache=True)
 def H(g, rho, rhou, rhov, e):
     _h = h(g, rho, rhou, rhov, e)
     return _h / rho
 
+
 @nb.jit(nopython=True, cache=True)
 def p(g, rho, rhou, rhov, e):
     _ek = ek(rho, rhou, rhov)
     return (g - 1) * (e - _ek)
+
 
 @nb.jit(nopython=True, cache=True)
 def a(g, rho, rhou, rhov, e):

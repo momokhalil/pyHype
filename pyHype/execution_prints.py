@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-pyhype = '                                                                                      \n\
+pyhype = "                                                                                      \n\
                               ***       ***   ***       ***   ***********     *************     \n\
                               ***       ***    ***     ***    *************   *************     \n\
 **********     ***      ***   ***       ***     ***   ***     ***       ***   ***               \n\
@@ -27,9 +27,9 @@ pyhype = '                                                                      
 ***                 ***                                                                         \n\
                                                                                                 \n\
 A Python framework for developing parallelized Computational Fluid Dynamics software to solve   \n\
-the hyperbolic 2D Euler equations on distributed, multi-block structured grids.'
+the hyperbolic 2D Euler equations on distributed, multi-block structured grids."
 
-lice = '''
+lice = """
 **********************************************************************************************
 *                                                                                            *
 *                               Copyright 2021 Mohamed Khalil                                *
@@ -37,7 +37,7 @@ lice = '''
 *               Licensed under the Apache License, Version 2.0 (the "License");              *
 *               you may not use this file except in compliance with the License.             *
 *                                                                                            *
-**********************************************************************************************\n'''
+**********************************************************************************************\n"""
 
 
-began_solving = 'Beginning solution to specified problem of type: '
+began_solving = "Beginning solution to specified problem of type: "
