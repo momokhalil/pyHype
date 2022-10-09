@@ -87,35 +87,35 @@ class FluxRoe(FluxFunction):
         # Flux jacobian data container
         A_data = np.concatenate(
             (
-                self.A_m3,      # Subdiagonals
-                self.A_m2,      # Subdiagonals
-                self.A_m1,      # Subdiagonals
-                self.A_d0,      # Diagonal
-                self.A_p1,      # Superdiagonals
-                self.A_p2,      # Superdiagonals
+                self.A_m3,  # Subdiagonals
+                self.A_m2,  # Subdiagonals
+                self.A_m1,  # Subdiagonals
+                self.A_d0,  # Diagonal
+                self.A_p1,  # Superdiagonals
+                self.A_p2,  # Superdiagonals
             )
         )
         # Right eigenvectors data container
         Rc_data = np.concatenate(
             (
-                self.Rc_m3,     # Subdiagonals
-                self.Rc_m2,     # Subdiagonals
-                self.Rc_m1,     # Subdiagonals
-                self.Rc_d0,     # Diagonal
-                self.Rc_p1,     # Superdiagonals
-                self.Rc_p2,     # Superdiagonals
-                self.Rc_p3,     # Superdiagonals
+                self.Rc_m3,  # Subdiagonals
+                self.Rc_m2,  # Subdiagonals
+                self.Rc_m1,  # Subdiagonals
+                self.Rc_d0,  # Diagonal
+                self.Rc_p1,  # Superdiagonals
+                self.Rc_p2,  # Superdiagonals
+                self.Rc_p3,  # Superdiagonals
             )
         )
         # Left eigenvectors primitive data container
         Lp_data = np.concatenate(
             (
-                self.Lp_m2,     # Subdiagonals
-                self.Lp_m1,     # Subdiagonals
-                self.Lp_d0,     # Diagonal
-                self.Lp_p1,     # Superdiagonals
-                self.Lp_p2,     # Superdiagonals
-                self.Lp_p3,     # Superdiagonals
+                self.Lp_m2,  # Subdiagonals
+                self.Lp_m1,  # Subdiagonals
+                self.Lp_d0,  # Diagonal
+                self.Lp_p1,  # Superdiagonals
+                self.Lp_p2,  # Superdiagonals
+                self.Lp_p3,  # Superdiagonals
             )
         )
         # Eigenvalue data container
