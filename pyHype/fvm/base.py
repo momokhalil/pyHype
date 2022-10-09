@@ -16,11 +16,13 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 import numba as nb
-np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
+
+np.set_printoptions(formatter={"float": "{: 0.3f}".format})
 
 from abc import abstractmethod
 
@@ -44,9 +46,10 @@ if TYPE_CHECKING:
 class MUSCLFiniteVolumeMethod:
     ALL_IDX = np.s_[:, :, :]
 
-    def __init__(self,
-                 inputs,
-                 ) -> None:
+    def __init__(
+        self,
+        inputs,
+    ) -> None:
         """
         Solves the euler equations using a MUSCL-type finite volume scheme.
 
@@ -89,45 +92,73 @@ class MUSCLFiniteVolumeMethod:
 
         # Flux storage arrays
         self.Flux = DirectionalContainerBase(
-            east_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
-            west_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
-            north_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
-            south_obj=tuple(np.empty((self.inputs.ny, self.inputs.nx, 4)) for _ in range(self.inputs.fvm_num_quadrature_points)),
+            east_obj=tuple(
+                np.empty((self.inputs.ny, self.inputs.nx, 4))
+                for _ in range(self.inputs.fvm_num_quadrature_points)
+            ),
+            west_obj=tuple(
+                np.empty((self.inputs.ny, self.inputs.nx, 4))
+                for _ in range(self.inputs.fvm_num_quadrature_points)
+            ),
+            north_obj=tuple(
+                np.empty((self.inputs.ny, self.inputs.nx, 4))
+                for _ in range(self.inputs.fvm_num_quadrature_points)
+            ),
+            south_obj=tuple(
+                np.empty((self.inputs.ny, self.inputs.nx, 4))
+                for _ in range(self.inputs.fvm_num_quadrature_points)
+            ),
         )
         # Set flux function
-        if self.inputs.fvm_flux_function == 'Roe':
-            self.flux_function_X = flux.FluxRoe(self.inputs, size=self.inputs.nx, sweeps=self.inputs.ny)
-            self.flux_function_Y = flux.FluxRoe(self.inputs, size=self.inputs.ny, sweeps=self.inputs.nx)
-        elif self.inputs.fvm_flux_function == 'HLLE':
-            self.flux_function_X = flux.FluxHLLE(self.inputs, nx=self.inputs.nx, ny=self.inputs.ny)
-            self.flux_function_Y = flux.FluxHLLE(self.inputs, nx=self.inputs.ny, ny=self.inputs.nx)
-        elif self.inputs.fvm_flux_function == 'HLLL':
-            self.flux_function_X = flux.FluxHLLL(self.inputs, nx=self.inputs.nx, ny=self.inputs.ny)
-            self.flux_function_Y = flux.FluxHLLL(self.inputs, nx=self.inputs.ny, ny=self.inputs.nx)
+        if self.inputs.fvm_flux_function == "Roe":
+            self.flux_function_X = flux.FluxRoe(
+                self.inputs, size=self.inputs.nx, sweeps=self.inputs.ny
+            )
+            self.flux_function_Y = flux.FluxRoe(
+                self.inputs, size=self.inputs.ny, sweeps=self.inputs.nx
+            )
+        elif self.inputs.fvm_flux_function == "HLLE":
+            self.flux_function_X = flux.FluxHLLE(
+                self.inputs, nx=self.inputs.nx, ny=self.inputs.ny
+            )
+            self.flux_function_Y = flux.FluxHLLE(
+                self.inputs, nx=self.inputs.ny, ny=self.inputs.nx
+            )
+        elif self.inputs.fvm_flux_function == "HLLL":
+            self.flux_function_X = flux.FluxHLLL(
+                self.inputs, nx=self.inputs.nx, ny=self.inputs.ny
+            )
+            self.flux_function_Y = flux.FluxHLLL(
+                self.inputs, nx=self.inputs.ny, ny=self.inputs.nx
+            )
         else:
-            raise ValueError('MUSCLFiniteVolumeMethod: Flux function type not specified.')
+            raise ValueError(
+                "MUSCLFiniteVolumeMethod: Flux function type not specified."
+            )
 
         # Set slope limiter
-        if self.inputs.fvm_slope_limiter == 'VanLeer':
+        if self.inputs.fvm_slope_limiter == "VanLeer":
             self.limiter = limiters.VanLeer(self.inputs)
-        elif self.inputs.fvm_slope_limiter == 'VanAlbada':
+        elif self.inputs.fvm_slope_limiter == "VanAlbada":
             self.limiter = limiters.VanAlbada(self.inputs)
-        elif self.inputs.fvm_slope_limiter == 'Venkatakrishnan':
+        elif self.inputs.fvm_slope_limiter == "Venkatakrishnan":
             self.limiter = limiters.Venkatakrishnan(self.inputs)
-        elif self.inputs.fvm_slope_limiter == 'BarthJespersen':
+        elif self.inputs.fvm_slope_limiter == "BarthJespersen":
             self.limiter = limiters.BarthJespersen(self.inputs)
         else:
-            raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
+            raise ValueError(
+                "MUSCLFiniteVolumeMethod: Slope limiter type not specified."
+            )
 
         # Set gradient algorithm
-        if self.inputs.fvm_gradient_type == 'GreenGauss':
+        if self.inputs.fvm_gradient_type == "GreenGauss":
             self.gradient = Grads.GreenGauss(self.inputs)
         else:
-            raise ValueError('MUSCLFiniteVolumeMethod: Slope limiter type not specified.')
+            raise ValueError(
+                "MUSCLFiniteVolumeMethod: Slope limiter type not specified."
+            )
 
-    def reconstruct(self,
-                    refBLK: QuadBlock
-                    ) -> None:
+    def reconstruct(self, refBLK: QuadBlock) -> None:
         """
         This method performs the steps needed to complete the spatial reconstruction of the solution state, which is
         part of the spatial discretization required to solve the finite volume problem. The reconstruction process has
@@ -147,17 +178,13 @@ class MUSCLFiniteVolumeMethod:
         self.compute_limiter(refBLK)
 
     @abstractmethod
-    def compute_limiter(self,
-                        refBLK: QuadBlock
-                        ) -> [np.ndarray]:
+    def compute_limiter(self, refBLK: QuadBlock) -> [np.ndarray]:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
         raise NotImplementedError
 
-    def integrate_flux_E(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_E(self, refBLK: QuadBlock) -> np.ndarray:
         """
         Integrates the east face fluxes using an n-point gauss gradrature rule.
 
@@ -167,11 +194,13 @@ class MUSCLFiniteVolumeMethod:
         :rtype: np.ndarray
         :return: East face integrated fluxes
         """
-        return 0.5 * refBLK.mesh.face.E.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.E, self.Flux.E)))
+        return (
+            0.5
+            * refBLK.mesh.face.E.L
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.E, self.Flux.E)))
+        )
 
-    def integrate_flux_W(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_W(self, refBLK: QuadBlock) -> np.ndarray:
         """
         Integrates the west face fluxes using an n-point gauss gradrature rule.
 
@@ -181,11 +210,13 @@ class MUSCLFiniteVolumeMethod:
         :rtype: np.ndarray
         :return: West face integrated fluxes
         """
-        return 0.5 * refBLK.mesh.face.W.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.W, self.Flux.W)))
+        return (
+            0.5
+            * refBLK.mesh.face.W.L
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.W, self.Flux.W)))
+        )
 
-    def integrate_flux_N(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_N(self, refBLK: QuadBlock) -> np.ndarray:
         """
         Integrates the north face fluxes using an n-point gauss gradrature rule.
 
@@ -195,11 +226,13 @@ class MUSCLFiniteVolumeMethod:
         :rtype: np.ndarray
         :return: North face integrated fluxes
         """
-        return 0.5 * refBLK.mesh.face.N.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.N, self.Flux.N)))
+        return (
+            0.5
+            * refBLK.mesh.face.N.L
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.N, self.Flux.N)))
+        )
 
-    def integrate_flux_S(self,
-                         refBLK: QuadBlock
-                         ) -> np.ndarray:
+    def integrate_flux_S(self, refBLK: QuadBlock) -> np.ndarray:
         """
         Integrates the south face fluxes using an n-point gauss gradrature rule.
 
@@ -209,32 +242,37 @@ class MUSCLFiniteVolumeMethod:
         :rtype: np.ndarray
         :return: South face integrated fluxes
         """
-        return 0.5 * refBLK.mesh.face.S.L * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.S, self.Flux.S)))
+        return (
+            0.5
+            * refBLK.mesh.face.S.L
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.S, self.Flux.S)))
+        )
 
     @staticmethod
     @abstractmethod
-    def high_order_term(refBLK: QuadBlock,
-                        qp: QuadraturePoint,
-                        slicer: slice or tuple or int = None
-                        ) -> np.ndarray:
+    def high_order_term(
+        refBLK: QuadBlock, qp: QuadraturePoint, slicer: slice or tuple or int = None
+    ) -> np.ndarray:
         raise NotImplementedError
 
     @abstractmethod
-    def limited_solution_at_quadrature_point(self,
-                                             state: State,
-                                             gradients: GradientsContainer,
-                                             qp: QuadraturePoint,
-                                             slicer: slice or tuple or int = None,
-                                             ) -> np.ndarray:
+    def limited_solution_at_quadrature_point(
+        self,
+        state: State,
+        gradients: GradientsContainer,
+        qp: QuadraturePoint,
+        slicer: slice or tuple or int = None,
+    ) -> np.ndarray:
         raise NotImplementedError
 
     @abstractmethod
-    def unlimited_solution_at_quadrature_point(self,
-                                               state: State,
-                                               gradients: GradientsContainer,
-                                               qp: QuadraturePoint,
-                                               slicer: slice or tuple or int = None,
-                                               ) -> np.ndarray:
+    def unlimited_solution_at_quadrature_point(
+        self,
+        state: State,
+        gradients: GradientsContainer,
+        qp: QuadraturePoint,
+        slicer: slice or tuple or int = None,
+    ) -> np.ndarray:
         raise NotImplementedError
 
     def dUdt(self, refBLK: QuadBlock):
@@ -261,16 +299,22 @@ class MUSCLFiniteVolumeMethod:
             for j in range(fluxE.shape[1]):
                 a = A[i, j, 0]
                 for k in range(fluxE.shape[2]):
-                    dUdt[i, j, k] = (fluxW[i, j, k] - fluxE[i, j, k] + fluxS[i, j, k] - fluxN[i, j, k]) / a
+                    dUdt[i, j, k] = (
+                        fluxW[i, j, k]
+                        - fluxE[i, j, k]
+                        + fluxS[i, j, k]
+                        - fluxN[i, j, k]
+                    ) / a
         return dUdt
 
-    def get_LR_states_for_EW_fluxes(self,
-                                    state_type: str,
-                                    ghostE: np.ndarray,
-                                    ghostW: np.ndarray,
-                                    stateE: np.ndarray,
-                                    stateW: np.ndarray,
-                                    ) -> [PrimitiveState]:
+    def get_LR_states_for_EW_fluxes(
+        self,
+        state_type: str,
+        ghostE: np.ndarray,
+        ghostW: np.ndarray,
+        stateE: np.ndarray,
+        stateW: np.ndarray,
+    ) -> [PrimitiveState]:
         """
         Compute and return the left and right states used for the East-West inviscid flux calculation. The left state
         is created by concatenating the west ghost-cell state and the east face state. The right state
@@ -296,19 +340,24 @@ class MUSCLFiniteVolumeMethod:
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
         _arrL = np.concatenate((ghostW, stateE), axis=1)
-        _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
+        _stateL = sf.create_primitive_from_array(
+            array=_arrL, array_state_type=state_type, inputs=self.inputs
+        )
 
         _arrR = np.concatenate((stateW, ghostE), axis=1)
-        _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
+        _stateR = sf.create_primitive_from_array(
+            array=_arrR, array_state_type=state_type, inputs=self.inputs
+        )
         return _stateL, _stateR
 
-    def get_LR_states_for_NS_fluxes(self,
-                                    state_type: str,
-                                    ghostN: np.ndarray,
-                                    ghostS: np.ndarray,
-                                    stateN: np.ndarray,
-                                    stateS: np.ndarray,
-                                    ) -> [PrimitiveState]:
+    def get_LR_states_for_NS_fluxes(
+        self,
+        state_type: str,
+        ghostN: np.ndarray,
+        ghostS: np.ndarray,
+        stateN: np.ndarray,
+        stateS: np.ndarray,
+    ) -> [PrimitiveState]:
         """
         Compute and return the left and right states used for the North-South inviscid flux calculation. The left state
         is created by concatenating the south ghost-cell state and the north face state. The right state
@@ -334,10 +383,14 @@ class MUSCLFiniteVolumeMethod:
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
         _arrL = np.concatenate((ghostS, stateN), axis=0).transpose((1, 0, 2))
-        _stateL = sf.create_primitive_from_array(array=_arrL, array_state_type=state_type, inputs=self.inputs)
+        _stateL = sf.create_primitive_from_array(
+            array=_arrL, array_state_type=state_type, inputs=self.inputs
+        )
 
         _arrR = np.concatenate((stateS, ghostN), axis=0).transpose((1, 0, 2))
-        _stateR = sf.create_primitive_from_array(array=_arrR, array_state_type=state_type, inputs=self.inputs)
+        _stateR = sf.create_primitive_from_array(
+            array=_arrR, array_state_type=state_type, inputs=self.inputs
+        )
         return _stateL, _stateR
 
     def evaluate_flux_EW(self, refBLK: QuadBlock) -> None:
@@ -357,14 +410,26 @@ class MUSCLFiniteVolumeMethod:
         :rtype: None
         :return: None
         """
-        bndE = refBLK.reconBlk.get_east_boundary_states_at_qp() if refBLK.ghost.E.BCtype != 'None' else \
-               refBLK.reconBlk.ghost.E.get_west_boundary_states_at_qp()
-        bndW = refBLK.reconBlk.get_west_boundary_states_at_qp() if refBLK.ghost.W.BCtype != 'None' else \
-               refBLK.reconBlk.ghost.W.get_east_boundary_states_at_qp()
+        bndE = (
+            refBLK.reconBlk.get_east_boundary_states_at_qp()
+            if refBLK.ghost.E.BCtype != "None"
+            else refBLK.reconBlk.ghost.E.get_west_boundary_states_at_qp()
+        )
+        bndW = (
+            refBLK.reconBlk.get_west_boundary_states_at_qp()
+            if refBLK.ghost.W.BCtype != "None"
+            else refBLK.reconBlk.ghost.W.get_east_boundary_states_at_qp()
+        )
 
-        for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W):
-            _stateE = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qe)
-            _stateW = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qw)
+        for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(
+            refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W
+        ):
+            _stateE = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qe
+            )
+            _stateW = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qw
+            )
             refBLK.ghost.E.set_BC(_bndE, state_type=self.inputs.reconstruction_type)
             refBLK.ghost.W.set_BC(_bndW, state_type=self.inputs.reconstruction_type)
 
@@ -374,7 +439,9 @@ class MUSCLFiniteVolumeMethod:
                 utils.rotate(refBLK.mesh.east_boundary_angle(), _bndE)
                 utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW)
 
-            sL, sR = self.get_LR_states_for_EW_fluxes(refBLK.reconstruction_type, _bndE, _bndW, _stateE, _stateW)
+            sL, sR = self.get_LR_states_for_EW_fluxes(
+                refBLK.reconstruction_type, _bndE, _bndW, _stateE, _stateW
+            )
             fluxEW = self.flux_function_X(WL=sL, WR=sR)
             fluxE[:] = fluxEW[:, 1:, :]
             fluxW[:] = fluxEW[:, :-1, :]
@@ -400,14 +467,26 @@ class MUSCLFiniteVolumeMethod:
         :rtype: None
         :return: None
         """
-        bndN = refBLK.reconBlk.get_north_boundary_states_at_qp() if refBLK.ghost.N.BCtype != 'None' else \
-               refBLK.reconBlk.ghost.N.get_south_boundary_states_at_qp()
-        bndS = refBLK.reconBlk.get_south_boundary_states_at_qp() if refBLK.ghost.S.BCtype != 'None' else \
-               refBLK.reconBlk.ghost.S.get_north_boundary_states_at_qp()
+        bndN = (
+            refBLK.reconBlk.get_north_boundary_states_at_qp()
+            if refBLK.ghost.N.BCtype != "None"
+            else refBLK.reconBlk.ghost.N.get_south_boundary_states_at_qp()
+        )
+        bndS = (
+            refBLK.reconBlk.get_south_boundary_states_at_qp()
+            if refBLK.ghost.S.BCtype != "None"
+            else refBLK.reconBlk.ghost.S.get_north_boundary_states_at_qp()
+        )
 
-        for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S):
-            _stateN = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qn)
-            _stateS = refBLK.fvm.limited_solution_at_quadrature_point(refBLK.reconBlk.state, refBLK, qs)
+        for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(
+            refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S
+        ):
+            _stateN = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qn
+            )
+            _stateS = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK.reconBlk.state, refBLK, qs
+            )
             refBLK.ghost.N.set_BC(_bndN, state_type=self.inputs.reconstruction_type)
             refBLK.ghost.S.set_BC(_bndS, state_type=self.inputs.reconstruction_type)
 
@@ -419,7 +498,9 @@ class MUSCLFiniteVolumeMethod:
                 utils.rotate(refBLK.mesh.north_boundary_angle(), _bndN)
                 utils.rotate(refBLK.mesh.south_boundary_angle(), _bndS)
 
-            sL, sR = self.get_LR_states_for_NS_fluxes(refBLK.reconstruction_type, _bndN, _bndS, _stateN, _stateS)
+            sL, sR = self.get_LR_states_for_NS_fluxes(
+                refBLK.reconstruction_type, _bndN, _bndS, _stateN, _stateS
+            )
             fluxNS = self.flux_function_Y(WL=sL, WR=sR).transpose((1, 0, 2))
             fluxN[:] = fluxNS[1:, :, :]
             fluxS[:] = fluxNS[:-1, :, :]
@@ -441,7 +522,7 @@ class MUSCLFiniteVolumeMethod:
         :rtype: None
         :return: None
         """
-        
+
         self.reconstruct(refBLK)
         self.evaluate_flux_EW(refBLK)
         self.evaluate_flux_NS(refBLK)

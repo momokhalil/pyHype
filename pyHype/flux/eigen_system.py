@@ -15,7 +15,8 @@ limitations under the License.
 """
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 
@@ -71,7 +72,6 @@ class XDIR_EIGENSYSTEM_INDICES:
         self._get_Lp_indices(nx, ny)
         # Eigenvalues indices
         self._get_eigenvalue_indices(nx, ny)
-
 
     def _get_flux_jacobian_indices(self, nx, ny):
         """
@@ -150,8 +150,12 @@ class XDIR_EIGENSYSTEM_INDICES:
         Rc_p3_i = self.get_indices(nx, ny, [0])
         Rc_p3_j = self.get_indices(nx, ny, [3])
 
-        self.Rci = np.hstack((Rc_m3_i, Rc_m2_i, Rc_m1_i, Rc_d0_i, Rc_p1_i, Rc_p2_i, Rc_p3_i))
-        self.Rcj = np.hstack((Rc_m3_j, Rc_m2_j, Rc_m1_j, Rc_d0_j, Rc_p1_j, Rc_p2_j, Rc_p3_j))
+        self.Rci = np.hstack(
+            (Rc_m3_i, Rc_m2_i, Rc_m1_i, Rc_d0_i, Rc_p1_i, Rc_p2_i, Rc_p3_i)
+        )
+        self.Rcj = np.hstack(
+            (Rc_m3_j, Rc_m2_j, Rc_m1_j, Rc_d0_j, Rc_p1_j, Rc_p2_j, Rc_p3_j)
+        )
 
     def _get_Lc_indices(self, nx, ny):
         """
@@ -191,8 +195,12 @@ class XDIR_EIGENSYSTEM_INDICES:
         Lc_p3_i = self.get_indices(nx, ny, [0])
         Lc_p3_j = self.get_indices(nx, ny, [3])
 
-        self.Lci = np.hstack((Lc_m3_i, Lc_m2_i, Lc_m1_i, Lc_d0_i, Lc_p1_i, Lc_p2_i, Lc_p3_i))
-        self.Lcj = np.hstack((Lc_m3_j, Lc_m2_j, Lc_m1_j, Lc_d0_j, Lc_p1_j, Lc_p2_j, Lc_p3_j))
+        self.Lci = np.hstack(
+            (Lc_m3_i, Lc_m2_i, Lc_m1_i, Lc_d0_i, Lc_p1_i, Lc_p2_i, Lc_p3_i)
+        )
+        self.Lcj = np.hstack(
+            (Lc_m3_j, Lc_m2_j, Lc_m1_j, Lc_d0_j, Lc_p1_j, Lc_p2_j, Lc_p3_j)
+        )
 
     def _get_Lp_indices(self, nx, ny):
         """
@@ -239,4 +247,6 @@ class XDIR_EIGENSYSTEM_INDICES:
 
     @staticmethod
     def get_indices(size: int, sweeps: int, num: list):
-        return np.concatenate([np.arange(n, 4 * (size + 1) * sweeps, 4, dtype=np.int) for n in num])
+        return np.concatenate(
+            [np.arange(n, 4 * (size + 1) * sweeps, 4, dtype=np.int) for n in num]
+        )

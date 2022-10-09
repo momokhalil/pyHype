@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 import numba as nb
@@ -31,7 +32,7 @@ class Venkatakrishnan(SlopeLimiter):
     def _limiter_func(self, slope: np.ndarray) -> np.ndarray:
         if self.inputs.use_JIT:
             return self._venkata(slope)
-        s2 = slope ** 2
+        s2 = slope**2
         return (s2 + 2 * slope) / (s2 + slope + 2)
 
     @staticmethod
@@ -47,10 +48,11 @@ class Venkatakrishnan(SlopeLimiter):
                     s[i, j, k] = (s2 + 2 * _s) / (s2 + _s + 2)
         return s
 
+
 class VanAlbada(SlopeLimiter):
     @staticmethod
     def _limiter_func(slope: np.ndarray) -> np.ndarray:
-        s2 = slope ** 2
+        s2 = slope**2
         return (s2 + slope) / (s2 + 1)
 
 

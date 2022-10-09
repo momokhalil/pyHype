@@ -14,32 +14,48 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 import matplotlib.pyplot as plt
 from pyHype.utils.utils import DirectionalContainerBase
 from matplotlib.collections import LineCollection
-from pyHype.mesh.base import _mesh_transfinite_gen, BlockDescription, Vertices, CellFace, GridLocation
+from pyHype.mesh.base import (
+    _mesh_transfinite_gen,
+    BlockDescription,
+    Vertices,
+    CellFace,
+    GridLocation,
+)
 
 
 class QuadMesh(_mesh_transfinite_gen):
-    def __init__(self,
-                 inputs,
-                 block_data: BlockDescription = None,
-                 NE: [float] = None,
-                 NW: [float] = None,
-                 SE: [float] = None,
-                 SW: [float] = None,
-                 nx: int = None,
-                 ny: int = None,
-                 ) -> None:
+    def __init__(
+        self,
+        inputs,
+        block_data: BlockDescription = None,
+        NE: [float] = None,
+        NW: [float] = None,
+        SE: [float] = None,
+        SW: [float] = None,
+        nx: int = None,
+        ny: int = None,
+    ) -> None:
 
-        if isinstance(block_data, BlockDescription) and (NE or NW or SE or SW or nx or ny):
-            raise ValueError('Cannot provide block_data of type BlockDescription and also vertices and/or cell count.')
-        if not isinstance(block_data, BlockDescription) and not (NE and NW and SE and SW and nx and ny):
-            raise ValueError('If block_data of type BlockDescription is not provided, then vertices for each corner'
-                             ' and cell count must be provided.')
+        if isinstance(block_data, BlockDescription) and (
+            NE or NW or SE or SW or nx or ny
+        ):
+            raise ValueError(
+                "Cannot provide block_data of type BlockDescription and also vertices and/or cell count."
+            )
+        if not isinstance(block_data, BlockDescription) and not (
+            NE and NW and SE and SW and nx and ny
+        ):
+            raise ValueError(
+                "If block_data of type BlockDescription is not provided, then vertices for each corner"
+                " and cell count must be provided."
+            )
 
         super().__init__()
 
@@ -57,10 +73,9 @@ class QuadMesh(_mesh_transfinite_gen):
             self.ny = ny
         else:
             # Initialize vertices class
-            self.vertices = Vertices(NW=block_data.NW,
-                                     NE=block_data.NE,
-                                     SW=block_data.SW,
-                                     SE=block_data.SE)
+            self.vertices = Vertices(
+                NW=block_data.NW, NE=block_data.NE, SW=block_data.SW, SE=block_data.SE
+            )
             # Number of cells in x and y directions
             self.nx = inputs.nx
             self.ny = inputs.ny
@@ -79,7 +94,6 @@ class QuadMesh(_mesh_transfinite_gen):
         self.A = None
         # Build mesh
         self.create_mesh()
-
 
     def create_mesh(self) -> None:
         """
@@ -102,8 +116,12 @@ class QuadMesh(_mesh_transfinite_gen):
 
         # Set x and y location for all nodes
         for i in range(self.ny + 1):
-            x[i, :] = np.linspace(Wx[i], Ex[i], self.nx + 1).reshape(-1, )
-            y[i, :] = np.linspace(Wy[i], Ey[i], self.nx + 1).reshape(-1, )
+            x[i, :] = np.linspace(Wx[i], Ex[i], self.nx + 1).reshape(
+                -1,
+            )
+            y[i, :] = np.linspace(Wy[i], Ey[i], self.nx + 1).reshape(
+                -1,
+            )
 
         # Create nodal location class
         self.nodes = GridLocation(x[:, :, np.newaxis], y[:, :, np.newaxis])
@@ -348,12 +366,13 @@ class QuadMesh(_mesh_transfinite_gen):
         s4 = self.south_face_length()
 
         # Diagonal squared
-        d2 = (self.nodes.x[1:, :-1] - self.nodes.x[:-1, 1:]) ** 2 + \
-             (self.nodes.y[1:, :-1] - self.nodes.y[:-1, 1:]) ** 2
+        d2 = (self.nodes.x[1:, :-1] - self.nodes.x[:-1, 1:]) ** 2 + (
+            self.nodes.y[1:, :-1] - self.nodes.y[:-1, 1:]
+        ) ** 2
 
         # Calculate opposite angles
-        a1 = np.arccos((s1 ** 2 + s4 ** 2 - d2) / (2 * s1 * s4))
-        a2 = np.arccos((s2 ** 2 + s3 ** 2 - d2) / (2 * s2 * s3))
+        a1 = np.arccos((s1**2 + s4**2 - d2) / (2 * s1 * s4))
+        a2 = np.arccos((s2**2 + s3**2 - d2) / (2 * s2 * s3))
 
         # Semiperimiter
         s = 0.5 * (s1 + s2 + s3 + s4)
@@ -364,11 +383,8 @@ class QuadMesh(_mesh_transfinite_gen):
 
         self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
 
-
     @staticmethod
-    def get_centroid_from_arrays(x: np.ndarray,
-                                 y: np.ndarray
-                                 ) -> [np.ndarray]:
+    def get_centroid_from_arrays(x: np.ndarray, y: np.ndarray) -> [np.ndarray]:
         """
         Calculates the centroid coordinates from the x and y nodal coordinates. This is a static method that works on
         any given x and y coordinate arrays.
@@ -396,15 +412,19 @@ class QuadMesh(_mesh_transfinite_gen):
         :return: Centroid coordinates from the x and y nodal coordinates
         """
         # Kernel of centroids x-coordinates
-        x = 0.25 * (self.nodes.x[1:, 0:-1] +
-                    self.nodes.x[1:, 1:] +
-                    self.nodes.x[0:-1, 0:-1] +
-                    self.nodes.x[0:-1, 1:])
+        x = 0.25 * (
+            self.nodes.x[1:, 0:-1]
+            + self.nodes.x[1:, 1:]
+            + self.nodes.x[0:-1, 0:-1]
+            + self.nodes.x[0:-1, 1:]
+        )
         # Kernel of centroids x-coordinates
-        y = 0.25 * (self.nodes.y[1:, 0:-1] +
-                    self.nodes.y[1:, 1:] +
-                    self.nodes.y[0:-1, 0:-1] +
-                    self.nodes.y[0:-1, 1:])
+        y = 0.25 * (
+            self.nodes.y[1:, 0:-1]
+            + self.nodes.y[1:, 1:]
+            + self.nodes.y[0:-1, 0:-1]
+            + self.nodes.y[0:-1, 1:]
+        )
         return x, y
 
     def compute_centroid(self) -> None:
@@ -417,7 +437,9 @@ class QuadMesh(_mesh_transfinite_gen):
         if isinstance(self.nodes, GridLocation):
             self.x, self.y = self.get_centroid()
         else:
-            raise AttributeError('Attribute nodes of class Mesh is not of type GridLocation.')
+            raise AttributeError(
+                "Attribute nodes of class Mesh is not of type GridLocation."
+            )
 
     def east_face_length(self) -> np.ndarray:
         """
@@ -426,8 +448,12 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: east face lengths
         """
-        return np.sqrt(((self.nodes.x[1:, 1:] - self.nodes.x[:-1, 1:]) ** 2 +
-                        (self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]) ** 2))
+        return np.sqrt(
+            (
+                (self.nodes.x[1:, 1:] - self.nodes.x[:-1, 1:]) ** 2
+                + (self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]) ** 2
+            )
+        )
 
     def west_face_length(self) -> np.ndarray:
         """
@@ -436,8 +462,12 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: west face lengths
         """
-        return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[:-1, :-1]) ** 2 +
-                        (self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]) ** 2))
+        return np.sqrt(
+            (
+                (self.nodes.x[1:, :-1] - self.nodes.x[:-1, :-1]) ** 2
+                + (self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]) ** 2
+            )
+        )
 
     def north_face_length(self) -> np.ndarray:
         """
@@ -446,8 +476,12 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: south north lengths
         """
-        return np.sqrt(((self.nodes.x[1:, :-1] - self.nodes.x[1:, 1:]) ** 2 +
-                        (self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]) ** 2))
+        return np.sqrt(
+            (
+                (self.nodes.x[1:, :-1] - self.nodes.x[1:, 1:]) ** 2
+                + (self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]) ** 2
+            )
+        )
 
     def south_face_length(self) -> np.ndarray:
         """
@@ -456,8 +490,12 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: south face lengths
         """
-        return np.sqrt(((self.nodes.x[:-1, :-1] - self.nodes.x[:-1, 1:]) ** 2 +
-                        (self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]) ** 2))
+        return np.sqrt(
+            (
+                (self.nodes.x[:-1, :-1] - self.nodes.x[:-1, 1:]) ** 2
+                + (self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]) ** 2
+            )
+        )
 
     def get_east_face_midpoint(self) -> [np.ndarray]:
         """
@@ -622,40 +660,76 @@ class QuadMesh(_mesh_transfinite_gen):
         :return: None
         """
         if ax is not None:
-            ax.scatter(self.nodes.x, self.nodes.y, color='black', s=15)
-            ax.scatter(self.x, self.y, color='mediumslateblue', s=15)
+            ax.scatter(self.nodes.x, self.nodes.y, color="black", s=15)
+            ax.scatter(self.x, self.y, color="mediumslateblue", s=15)
 
             segs1 = np.stack((self.nodes.x, self.nodes.y), axis=2)
 
             segs2 = segs1.transpose((1, 0, 2))
-            plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
-            plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
+            plt.gca().add_collection(
+                LineCollection(segs1, colors="black", linewidths=1)
+            )
+            plt.gca().add_collection(
+                LineCollection(segs2, colors="black", linewidths=1)
+            )
 
             segs1 = np.stack((self.x, self.y), axis=2)
             segs2 = segs1.transpose((1, 0, 2))
 
             plt.gca().add_collection(
-                LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+                LineCollection(
+                    segs1,
+                    colors="mediumslateblue",
+                    linestyles="--",
+                    linewidths=1,
+                    alpha=0.5,
+                )
+            )
             plt.gca().add_collection(
-                LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+                LineCollection(
+                    segs2,
+                    colors="mediumslateblue",
+                    linestyles="--",
+                    linewidths=1,
+                    alpha=0.5,
+                )
+            )
 
         else:
-            plt.scatter(self.nodes.x, self.nodes.y, color='black', s=15)
-            plt.scatter(self.x, self.y, color='mediumslateblue', s=15)
+            plt.scatter(self.nodes.x, self.nodes.y, color="black", s=15)
+            plt.scatter(self.x, self.y, color="mediumslateblue", s=15)
 
             segs1 = np.stack((self.nodes.x, self.nodes.y), axis=2)
             segs2 = segs1.transpose((1, 0, 2))
-            plt.gca().add_collection(LineCollection(segs1, colors='black', linewidths=1))
-            plt.gca().add_collection(LineCollection(segs2, colors='black', linewidths=1))
+            plt.gca().add_collection(
+                LineCollection(segs1, colors="black", linewidths=1)
+            )
+            plt.gca().add_collection(
+                LineCollection(segs2, colors="black", linewidths=1)
+            )
 
             segs1 = np.stack((self.x, self.y), axis=2)
             segs2 = segs1.transpose((1, 0, 2))
 
             plt.gca().add_collection(
-                LineCollection(segs1, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+                LineCollection(
+                    segs1,
+                    colors="mediumslateblue",
+                    linestyles="--",
+                    linewidths=1,
+                    alpha=0.5,
+                )
+            )
             plt.gca().add_collection(
-                LineCollection(segs2, colors='mediumslateblue', linestyles='--', linewidths=1, alpha=0.5))
+                LineCollection(
+                    segs2,
+                    colors="mediumslateblue",
+                    linestyles="--",
+                    linewidths=1,
+                    alpha=0.5,
+                )
+            )
 
-        plt.gca().set_aspect('equal', adjustable='box')
+        plt.gca().set_aspect("equal", adjustable="box")
         plt.show()
         plt.close()

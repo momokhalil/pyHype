@@ -16,10 +16,12 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 class NACA4:
 
@@ -29,13 +31,14 @@ class NACA4:
     a3 = 0.2843
     a4 = -0.1036
 
-    def __init__(self,
-                 airfoil: str = '2412',
-                 npt: int = 100,
-                 angle_start: float = 0,
-                 angle_end: float = 180,
-                 aoa:float = 0,
-                 ):
+    def __init__(
+        self,
+        airfoil: str = "2412",
+        npt: int = 100,
+        angle_start: float = 0,
+        angle_end: float = 180,
+        aoa: float = 0,
+    ):
 
         # Maximum camber
         self.M = int(airfoil[0]) / 100
@@ -45,22 +48,24 @@ class NACA4:
         self.T = int(airfoil[2:]) / 100
 
         # Angles from start to end for cosine spacing the x-coordinates
-        self.beta = np.linspace(np.pi * angle_start / 180,
-                                np.pi * angle_end / 180,
-                                npt)
+        self.beta = np.linspace(np.pi * angle_start / 180, np.pi * angle_end / 180, npt)
 
         # Cosine spaced x coordinates
         self.x_cam = 0.5 * (1 - np.cos(self.beta))
 
         # Camber
-        self.y_cam = np.where(self.x_cam < self.P,
-                              self.front_camber(self.x_cam),
-                              self.back_camber(self.x_cam))
+        self.y_cam = np.where(
+            self.x_cam < self.P,
+            self.front_camber(self.x_cam),
+            self.back_camber(self.x_cam),
+        )
 
         # Camber gradient wrt x
-        g_cam = np.where(self.x_cam < self.P,
-                         self.front_camber_grad(self.x_cam),
-                         self.back_camber_grad(self.x_cam))
+        g_cam = np.where(
+            self.x_cam < self.P,
+            self.front_camber_grad(self.x_cam),
+            self.back_camber_grad(self.x_cam),
+        )
 
         # Thickness distribution
         self.yt = self.thickess_dist(self.T, self.x_cam)
@@ -83,36 +88,31 @@ class NACA4:
             self.x_upper, self.y_upper = xu, yu
             self.x_lower, self.y_lower = xl, yl
 
-    def front_camber(self,
-                     x: np.ndarray
-                     ) -> np.ndarray:
-        return (self.M / self.P ** 2) * (2 * self.P * x - x ** 2)
+    def front_camber(self, x: np.ndarray) -> np.ndarray:
+        return (self.M / self.P**2) * (2 * self.P * x - x**2)
 
-    def front_camber_grad(self,
-                          x: np.ndarray
-                          ) -> np.ndarray:
-        return (2 * self.M / self.P ** 2) * (self.P - x)
+    def front_camber_grad(self, x: np.ndarray) -> np.ndarray:
+        return (2 * self.M / self.P**2) * (self.P - x)
 
-    def back_camber(self,
-                    x: np.ndarray
-                    ) -> np.ndarray:
-        return (self.M / (1 - self.P) ** 2) * (1 - 2 * self.P + 2 * self.P * x - x ** 2)
+    def back_camber(self, x: np.ndarray) -> np.ndarray:
+        return (self.M / (1 - self.P) ** 2) * (1 - 2 * self.P + 2 * self.P * x - x**2)
 
-    def back_camber_grad(self,
-                         x: np.ndarray
-                         ) -> np.ndarray:
+    def back_camber_grad(self, x: np.ndarray) -> np.ndarray:
         return (2 * self.M / (1 - self.P) ** 2) * (self.P - x)
 
-    def thickess_dist(self,
-                      T: float,
-                      x: np.ndarray
-                      ) -> np.ndarray:
+    def thickess_dist(self, T: float, x: np.ndarray) -> np.ndarray:
 
-        return T * (self.a0 * np.sqrt(x) +
-                    self.a1 * x +
-                    self.a2 * x ** 2 +
-                    self.a3 * x ** 3 +
-                    self.a4 * x ** 4) / 0.2
+        return (
+            T
+            * (
+                self.a0 * np.sqrt(x)
+                + self.a1 * x
+                + self.a2 * x**2
+                + self.a3 * x**3
+                + self.a4 * x**4
+            )
+            / 0.2
+        )
 
     @staticmethod
     def cluster_right(start, end, n, factor: float = 2.0):
@@ -133,9 +133,9 @@ class NACA4:
         return _s
 
     def plot(self):
-        plt.plot(self.x_upper, self.y_upper, color='black')
-        plt.plot(self.x_lower, self.y_lower, color='black')
-        plt.plot(self.x_cam, self.y_cam, color='blue')
+        plt.plot(self.x_upper, self.y_upper, color="black")
+        plt.plot(self.x_lower, self.y_lower, color="black")
+        plt.plot(self.x_cam, self.y_cam, color="blue")
 
         plt.show()
         plt.close()

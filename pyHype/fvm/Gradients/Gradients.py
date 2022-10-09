@@ -19,7 +19,7 @@ import os
 import numba as nb
 import numpy as np
 
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 from abc import abstractmethod
 
 from typing import TYPE_CHECKING
@@ -33,9 +33,7 @@ class Gradient:
     def __init__(self, inputs: ProblemInput):
         self.inputs = inputs
 
-    def __call__(self,
-                 refBLK: QuadBlock
-                 ) -> None:
+    def __call__(self, refBLK: QuadBlock) -> None:
         """
         Interface to call the gradient algorithm.
 
@@ -101,7 +99,12 @@ class GreenGauss(Gradient):
         :return: None
         """
         face = refBLK.mesh.face
-        interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
+        (
+            interfaceE,
+            interfaceW,
+            interfaceN,
+            interfaceS,
+        ) = refBLK.reconBlk.get_interface_values()
 
         # Get each face's contribution to dUdx
         E = interfaceE * face.E.L
@@ -110,9 +113,13 @@ class GreenGauss(Gradient):
         S = interfaceS * face.S.L
 
         # Compute dUdx
-        refBLK.grad.x = (E * face.E.xnorm + W * face.W.xnorm + N * face.N.xnorm + S * face.S.xnorm) / refBLK.mesh.A
+        refBLK.grad.x = (
+            E * face.E.xnorm + W * face.W.xnorm + N * face.N.xnorm + S * face.S.xnorm
+        ) / refBLK.mesh.A
         # Compute dUdy
-        refBLK.grad.y = (E * face.E.ynorm + W * face.W.ynorm + N * face.N.ynorm + S * face.S.ynorm) / refBLK.mesh.A
+        refBLK.grad.y = (
+            E * face.E.ynorm + W * face.W.ynorm + N * face.N.ynorm + S * face.S.ynorm
+        ) / refBLK.mesh.A
 
     def _get_gradient(self, refBLK: QuadBlock) -> None:
         """
@@ -124,34 +131,57 @@ class GreenGauss(Gradient):
         :rtype: None
         :return: None
         """
-        interfaceE, interfaceW, interfaceN, interfaceS = refBLK.reconBlk.get_interface_values()
-        self._get_gradinet_JIT(interfaceE,
-                               interfaceW,
-                               interfaceN,
-                               interfaceS,
-                               refBLK.mesh.face.E.L[:, :, 0],
-                               refBLK.mesh.face.W.L[:, :, 0],
-                               refBLK.mesh.face.N.L[:, :, 0],
-                               refBLK.mesh.face.S.L[:, :, 0],
-                               refBLK.mesh.face.E.xnorm[:, :, 0],
-                               refBLK.mesh.face.W.xnorm[:, :, 0],
-                               refBLK.mesh.face.N.xnorm[:, :, 0],
-                               refBLK.mesh.face.S.xnorm[:, :, 0],
-                               refBLK.mesh.face.E.ynorm[:, :, 0],
-                               refBLK.mesh.face.W.ynorm[:, :, 0],
-                               refBLK.mesh.face.N.ynorm[:, :, 0],
-                               refBLK.mesh.face.S.ynorm[:, :, 0],
-                               refBLK.mesh.A[:, :, 0],
-                               refBLK.grad.x,
-                               refBLK.grad.y)
+        (
+            interfaceE,
+            interfaceW,
+            interfaceN,
+            interfaceS,
+        ) = refBLK.reconBlk.get_interface_values()
+        self._get_gradinet_JIT(
+            interfaceE,
+            interfaceW,
+            interfaceN,
+            interfaceS,
+            refBLK.mesh.face.E.L[:, :, 0],
+            refBLK.mesh.face.W.L[:, :, 0],
+            refBLK.mesh.face.N.L[:, :, 0],
+            refBLK.mesh.face.S.L[:, :, 0],
+            refBLK.mesh.face.E.xnorm[:, :, 0],
+            refBLK.mesh.face.W.xnorm[:, :, 0],
+            refBLK.mesh.face.N.xnorm[:, :, 0],
+            refBLK.mesh.face.S.xnorm[:, :, 0],
+            refBLK.mesh.face.E.ynorm[:, :, 0],
+            refBLK.mesh.face.W.ynorm[:, :, 0],
+            refBLK.mesh.face.N.ynorm[:, :, 0],
+            refBLK.mesh.face.S.ynorm[:, :, 0],
+            refBLK.mesh.A[:, :, 0],
+            refBLK.grad.x,
+            refBLK.grad.y,
+        )
 
     @staticmethod
     @nb.njit(cache=True)
-    def _get_gradinet_JIT(E: np.ndarray, W: np.ndarray, N: np.ndarray, S: np.ndarray,
-                          lE: np.ndarray, lW: np.ndarray, lN: np.ndarray, lS: np.ndarray,
-                          xE: np.ndarray, xW: np.ndarray, xN: np.ndarray, xS: np.ndarray,
-                          yE: np.ndarray, yW: np.ndarray, yN: np.ndarray, yS: np.ndarray,
-                          A: np.ndarray, gx: np.ndarray, gy: np.ndarray):
+    def _get_gradinet_JIT(
+        E: np.ndarray,
+        W: np.ndarray,
+        N: np.ndarray,
+        S: np.ndarray,
+        lE: np.ndarray,
+        lW: np.ndarray,
+        lN: np.ndarray,
+        lS: np.ndarray,
+        xE: np.ndarray,
+        xW: np.ndarray,
+        xN: np.ndarray,
+        xS: np.ndarray,
+        yE: np.ndarray,
+        yW: np.ndarray,
+        yN: np.ndarray,
+        yS: np.ndarray,
+        A: np.ndarray,
+        gx: np.ndarray,
+        gy: np.ndarray,
+    ):
 
         for i in range(E.shape[0]):
             for j in range(E.shape[1]):

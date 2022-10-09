@@ -15,4 +15,3 @@ limitations under the License.
 """
 from .base import State
 from .states import PrimitiveState, ConservativeState, RoePrimitiveState
-

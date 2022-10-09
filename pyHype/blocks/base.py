@@ -16,7 +16,8 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import functools
 import numpy as np
@@ -29,6 +30,7 @@ from pyHype.utils.utils import NumpySlice
 from pyHype.states import PrimitiveState, ConservativeState
 
 from typing import TYPE_CHECKING, Callable
+
 if TYPE_CHECKING:
     from pyHype.blocks.QuadBlock import QuadBlock
     from pyHype.solvers.base import ProblemInput
@@ -48,16 +50,17 @@ class Neighbors:
     :ivar SW: Reference to the south-west neighbor
     """
 
-    def __init__(self,
-                 E: QuadBlock = None,
-                 W: QuadBlock = None,
-                 N: QuadBlock = None,
-                 S: QuadBlock = None,
-                 NE: QuadBlock = None,
-                 NW: QuadBlock = None,
-                 SE: QuadBlock = None,
-                 SW: QuadBlock = None
-                 ) -> None:
+    def __init__(
+        self,
+        E: QuadBlock = None,
+        W: QuadBlock = None,
+        N: QuadBlock = None,
+        S: QuadBlock = None,
+        NE: QuadBlock = None,
+        NW: QuadBlock = None,
+        SE: QuadBlock = None,
+        SW: QuadBlock = None,
+    ) -> None:
         """
 
         :type E: QuadBlock
@@ -104,9 +107,8 @@ class NormalVector:
     :ivar x: x-component of the normal vector
     :ivar y: x-component of the normal vector
     """
-    def __init__(self,
-                 theta: float
-                 ) -> None:
+
+    def __init__(self, theta: float) -> None:
         """
         Instantiates the class and calculates the x- and y-components based on the given angle theta.
 
@@ -137,7 +139,7 @@ class NormalVector:
         :rtype: str
         :return: String that decribes the class and provides the values of x and y
         """
-        return 'NormalVector object: [' + str(self.x) + ', ' + str(self.y) + ']'
+        return "NormalVector object: [" + str(self.x) + ", " + str(self.y) + "]"
 
 
 class SolutionGradients:
@@ -150,17 +152,21 @@ class SolutionGradients:
         pass
 
     @abstractmethod
-    def get_high_order_term(self,
-                            xc: np.ndarray,
-                            yc: np.ndarray,
-                            xp: np.ndarray,
-                            yp: np.ndarray,
-                            slicer: slice or tuple or int = None
-                            ):
+    def get_high_order_term(
+        self,
+        xc: np.ndarray,
+        yc: np.ndarray,
+        xp: np.ndarray,
+        yp: np.ndarray,
+        slicer: slice or tuple or int = None,
+    ):
         return NotImplementedError
 
-    def get_high_order_term_mesh_qp(self, mesh: QuadMesh, qp: QuadraturePoint, slicer: slice or tuple or int):
+    def get_high_order_term_mesh_qp(
+        self, mesh: QuadMesh, qp: QuadraturePoint, slicer: slice or tuple or int
+    ):
         return self.get_high_order_term(mesh.x, qp.x, mesh.y, qp.y, slicer)
+
 
 class FirstOrderGradients(SolutionGradients):
     def __init__(self, inputs, nx: int, ny: int):
@@ -168,62 +174,84 @@ class FirstOrderGradients(SolutionGradients):
         self.x = np.zeros(shape=(ny, nx, 4))
         self.y = np.zeros(shape=(ny, nx, 4))
 
-    def get_high_order_term(self,
-                            xc: np.ndarray,
-                            xp: np.ndarray,
-                            yc: np.ndarray,
-                            yp: np.ndarray,
-                            slicer: slice or tuple or int = SolutionGradients.ALL_IDX
-                            ) -> np.ndarray:
+    def get_high_order_term(
+        self,
+        xc: np.ndarray,
+        xp: np.ndarray,
+        yc: np.ndarray,
+        yp: np.ndarray,
+        slicer: slice or tuple or int = SolutionGradients.ALL_IDX,
+    ) -> np.ndarray:
         if self.use_JIT:
-            return self.get_high_order_term_JIT(self.x[slicer], self.y[slicer],
-                                                xc[slicer], xp[slicer], yc[slicer], yp[slicer])
-        return self.x[slicer] * (xp[slicer] - xc[slicer]) + self.y[slicer] * (yp[slicer] - yc[slicer])
+            return self.get_high_order_term_JIT(
+                self.x[slicer],
+                self.y[slicer],
+                xc[slicer],
+                xp[slicer],
+                yc[slicer],
+                yp[slicer],
+            )
+        return self.x[slicer] * (xp[slicer] - xc[slicer]) + self.y[slicer] * (
+            yp[slicer] - yc[slicer]
+        )
 
     @staticmethod
     @nb.njit(cache=True)
-    def get_high_order_term_JIT(gx: np.ndarray,
-                                gy: np.ndarray,
-                                xc: np.ndarray,
-                                xp: np.ndarray,
-                                yc: np.ndarray,
-                                yp: np.ndarray):
+    def get_high_order_term_JIT(
+        gx: np.ndarray,
+        gy: np.ndarray,
+        xc: np.ndarray,
+        xp: np.ndarray,
+        yc: np.ndarray,
+        yp: np.ndarray,
+    ):
         term = np.zeros_like(gx)
         for i in range(gx.shape[0]):
             for j in range(gx.shape[1]):
                 for k in range(gx.shape[2]):
-                    term[i, j, k] = gx[i, j, k] * (xp[i, j, 0] - xc[i, j, 0]) + \
-                                    gy[i, j, k] * (yp[i, j, 0] - yc[i, j, 0])
+                    term[i, j, k] = gx[i, j, k] * (xp[i, j, 0] - xc[i, j, 0]) + gy[
+                        i, j, k
+                    ] * (yp[i, j, 0] - yc[i, j, 0])
         return term
+
 
 class SecondOrderGradients(SolutionGradients):
     def __init__(self, inputs, nx: int, ny: int):
         super().__init__(inputs)
-        self.x  = np.zeros(shape=(ny, nx, 4))
-        self.y  = np.zeros(shape=(ny, nx, 4))
+        self.x = np.zeros(shape=(ny, nx, 4))
+        self.y = np.zeros(shape=(ny, nx, 4))
         self.xx = np.zeros(shape=(ny, nx, 4))
         self.yy = np.zeros(shape=(ny, nx, 4))
         self.xy = np.zeros(shape=(ny, nx, 4))
 
-    def get_high_order_term(self,
-                            xc: np.ndarray,
-                            xp: np.ndarray,
-                            yc: np.ndarray,
-                            yp: np.ndarray,
-                            slicer: slice or tuple or int = None
-                            ) -> np.ndarray:
+    def get_high_order_term(
+        self,
+        xc: np.ndarray,
+        xp: np.ndarray,
+        yc: np.ndarray,
+        yp: np.ndarray,
+        slicer: slice or tuple or int = None,
+    ) -> np.ndarray:
         if slicer is None:
-            x = (xp - xc)
-            y = (yp - yc)
-            return self.x * x + self.y * y + self.xx * x ** 2 + self.yy * y ** 2 + self.xy * x * y
+            x = xp - xc
+            y = yp - yc
+            return (
+                self.x * x
+                + self.y * y
+                + self.xx * x**2
+                + self.yy * y**2
+                + self.xy * x * y
+            )
 
-        x = (xp[slicer] - xc[slicer])
-        y = (yp[slicer] - yc[slicer])
-        return self.x[slicer]  * x + \
-               self.y[slicer]  * y + \
-               self.xy[slicer] * x * y + \
-               self.xx[slicer] * x ** 2 + \
-               self.yy[slicer] * y ** 2
+        x = xp[slicer] - xc[slicer]
+        y = yp[slicer] - yc[slicer]
+        return (
+            self.x[slicer] * x
+            + self.y[slicer] * y
+            + self.xy[slicer] * x * y
+            + self.xx[slicer] * x**2
+            + self.yy[slicer] * y**2
+        )
 
 
 class GradientsFactory:
@@ -233,14 +261,14 @@ class GradientsFactory:
             return FirstOrderGradients(inputs, nx, ny)
         if order == 4:
             return SecondOrderGradients(inputs, nx, ny)
-        raise ValueError('GradientsFactory.create_gradients(): Error, no gradients container class has been '
-                         'extended for the given order.')
+        raise ValueError(
+            "GradientsFactory.create_gradients(): Error, no gradients container class has been "
+            "extended for the given order."
+        )
 
 
 class Blocks:
-    def __init__(self,
-                 inputs
-                 ) -> None:
+    def __init__(self, inputs) -> None:
         # Set inputs
         self.inputs = inputs
         # Number of blocks
@@ -259,21 +287,19 @@ class Blocks:
         def _wrapper(self, *args, **kwargs):
             for block in self.blocks.values():
                 func(self, block, *args, **kwargs)
+
         return _wrapper
 
-    def __getitem__(self,
-                    blknum: int
-                    ) -> QuadBlock:
+    def __getitem__(self, blknum: int) -> QuadBlock:
         return self.blocks[blknum]
 
-    def add(self,
-            block: QuadBlock
-            ) -> None:
+    def add(self, block: QuadBlock) -> None:
         self.blocks[block.global_nBLK] = block
 
-    def update(self,
-               dt: float,
-               ) -> None:
+    def update(
+        self,
+        dt: float,
+    ) -> None:
         for block in self.blocks.values():
             block.update(dt)
 
@@ -293,27 +319,41 @@ class Blocks:
             Neighbor_N_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborN
             Neighbor_S_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborS
 
-            block.connect(NeighborE=self.blocks[Neighbor_E_n] if Neighbor_E_n is not None else None,
-                          NeighborW=self.blocks[Neighbor_W_n] if Neighbor_W_n is not None else None,
-                          NeighborN=self.blocks[Neighbor_N_n] if Neighbor_N_n is not None else None,
-                          NeighborS=self.blocks[Neighbor_S_n] if Neighbor_S_n is not None else None,
-                          NeighborNE=None,
-                          NeighborNW=None,
-                          NeighborSE=None,
-                          NeighborSW=None)
+            block.connect(
+                NeighborE=self.blocks[Neighbor_E_n]
+                if Neighbor_E_n is not None
+                else None,
+                NeighborW=self.blocks[Neighbor_W_n]
+                if Neighbor_W_n is not None
+                else None,
+                NeighborN=self.blocks[Neighbor_N_n]
+                if Neighbor_N_n is not None
+                else None,
+                NeighborS=self.blocks[Neighbor_S_n]
+                if Neighbor_S_n is not None
+                else None,
+                NeighborNE=None,
+                NeighborNW=None,
+                NeighborSE=None,
+                NeighborSW=None,
+            )
 
     def print_connectivity(self) -> None:
         for _, block in self.blocks.items():
-            print('-----------------------------------------')
-            print('CONNECTIVITY FOR GLOBAL BLOCK: ', block.global_nBLK, '<{}>'.format(block))
-            print('North: ', block.neighbors.N)
-            print('South: ', block.neighbors.S)
-            print('East:  ', block.neighbors.E)
-            print('West:  ', block.neighbors.W)
+            print("-----------------------------------------")
+            print(
+                "CONNECTIVITY FOR GLOBAL BLOCK: ",
+                block.global_nBLK,
+                "<{}>".format(block),
+            )
+            print("North: ", block.neighbors.N)
+            print("South: ", block.neighbors.S)
+            print("East:  ", block.neighbors.E)
+            print("West:  ", block.neighbors.W)
 
     def plot_mesh(self):
         _, ax = plt.subplots(1)
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
         for block in self.blocks.values():
             block.plot(ax=ax)
         plt.show()
@@ -345,65 +385,80 @@ class BaseBlock_Only_State(BaseBlock):
     NORTH_FACE_IDX = NumpySlice.north_face()
     SOUTH_FACE_IDX = NumpySlice.south_face()
 
-    def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
+    def __init__(
+        self, inputs: ProblemInput, nx: int, ny: int, state_type: str = "conservative"
+    ):
         super().__init__(inputs)
-        if state_type == 'conservative':
+        if state_type == "conservative":
             self.state = ConservativeState(inputs, nx=nx, ny=ny)
-        elif state_type == 'primitive':
+        elif state_type == "primitive":
             self.state = PrimitiveState(inputs, nx=nx, ny=ny)
         else:
-            raise TypeError('BaseBlock_Only_State.__init__(): Undefined state type.')
+            raise TypeError("BaseBlock_Only_State.__init__(): Undefined state type.")
 
 
 class BaseBlock_State_Grad(BaseBlock_Only_State):
-    def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
+    def __init__(
+        self, inputs: ProblemInput, nx: int, ny: int, state_type: str = "conservative"
+    ):
         super().__init__(inputs, nx, ny, state_type=state_type)
-        self.grad = GradientsFactory.create_gradients(inputs=inputs, order=inputs.fvm_spatial_order, nx=nx, ny=ny)
+        self.grad = GradientsFactory.create_gradients(
+            inputs=inputs, order=inputs.fvm_spatial_order, nx=nx, ny=ny
+        )
 
-    def high_order_term_at_location(self,
-                                    xc: np.ndarray,
-                                    yc: np.ndarray,
-                                    xp: np.ndarray,
-                                    yp: np.ndarray,
-                                    slicer: slice or tuple or int = None
-                                    ) -> np.ndarray:
+    def high_order_term_at_location(
+        self,
+        xc: np.ndarray,
+        yc: np.ndarray,
+        xp: np.ndarray,
+        yp: np.ndarray,
+        slicer: slice or tuple or int = None,
+    ) -> np.ndarray:
         return self.grad.get_high_order_term(xc, xp, yc, yp, slicer)
 
 
 class BaseBlock_FVM(BaseBlock_State_Grad):
-    def __init__(self, inputs: ProblemInput, nx: int, ny: int, state_type: str = 'conservative'):
+    def __init__(
+        self, inputs: ProblemInput, nx: int, ny: int, state_type: str = "conservative"
+    ):
         super().__init__(inputs, nx, ny, state_type=state_type)
 
         # Set finite volume method
-        if self.inputs.fvm_type == 'MUSCL':
+        if self.inputs.fvm_type == "MUSCL":
             if self.inputs.fvm_spatial_order == 1:
                 self.fvm = FVM.FirstOrderMUSCL(self.inputs)
             elif self.inputs.fvm_spatial_order == 2:
                 self.fvm = FVM.SecondOrderMUSCL(self.inputs)
             else:
-                raise ValueError('No MUSCL finite volume method has been specialized with order '
-                                 + str(self.inputs.fvm_spatial_order))
+                raise ValueError(
+                    "No MUSCL finite volume method has been specialized with order "
+                    + str(self.inputs.fvm_spatial_order)
+                )
         else:
-            raise ValueError('Specified finite volume method has not been specialized.')
+            raise ValueError("Specified finite volume method has not been specialized.")
 
-    def unlimited_reconstruction_at_location(self,
-                                             xc: np.ndarray,
-                                             yc: np.ndarray,
-                                             xp: np.ndarray,
-                                             yp: np.ndarray,
-                                             slicer: slice or tuple or int = None
-                                             ) -> np.ndarray:
+    def unlimited_reconstruction_at_location(
+        self,
+        xc: np.ndarray,
+        yc: np.ndarray,
+        xp: np.ndarray,
+        yp: np.ndarray,
+        slicer: slice or tuple or int = None,
+    ) -> np.ndarray:
         if slicer is None:
             return self.state + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
-        return self.state[slicer] + self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+        return self.state[slicer] + self.high_order_term_at_location(
+            xc, xp, yc, yp, slicer
+        )
 
-    def limited_reconstruction_at_location(self,
-                                           xc: np.ndarray,
-                                           yc: np.ndarray,
-                                           xp: np.ndarray,
-                                           yp: np.ndarray,
-                                           slicer: slice or tuple or int = None
-                                           ) -> np.ndarray:
+    def limited_reconstruction_at_location(
+        self,
+        xc: np.ndarray,
+        yc: np.ndarray,
+        xp: np.ndarray,
+        yp: np.ndarray,
+        slicer: slice or tuple or int = None,
+    ) -> np.ndarray:
         _high_order_term = self.high_order_term_at_location(xc, xp, yc, yp, slicer)
         if slicer is None:
             return self.state + self.fvm.limiter.phi * _high_order_term
@@ -418,11 +473,10 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _east_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpe,
-                slicer=self.EAST_BOUND_IDX)
-            for qpe in self.QP.E)
+                state=self.state, refBLK=self, qp=qpe, slicer=self.EAST_BOUND_IDX
+            )
+            for qpe in self.QP.E
+        )
         return _east_states
 
     def get_west_boundary_states_at_qp(self) -> tuple[np.ndarray]:
@@ -434,11 +488,10 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _west_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpw,
-                slicer=self.WEST_BOUND_IDX)
-            for qpw in self.QP.W)
+                state=self.state, refBLK=self, qp=qpw, slicer=self.WEST_BOUND_IDX
+            )
+            for qpw in self.QP.W
+        )
         return _west_states
 
     def get_north_boundary_states_at_qp(self) -> tuple[np.ndarray]:
@@ -450,11 +503,10 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _north_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpn,
-                slicer=self.NORTH_BOUND_IDX)
-            for qpn in self.QP.N)
+                state=self.state, refBLK=self, qp=qpn, slicer=self.NORTH_BOUND_IDX
+            )
+            for qpn in self.QP.N
+        )
         return _north_states
 
     def get_south_boundary_states_at_qp(self) -> tuple[np.ndarray]:
@@ -466,11 +518,10 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _south_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qps,
-                slicer=self.SOUTH_BOUND_IDX)
-            for qps in self.QP.S)
+                state=self.state, refBLK=self, qp=qps, slicer=self.SOUTH_BOUND_IDX
+            )
+            for qps in self.QP.S
+        )
         return _south_states
 
     def get_east_face_states_at_qp(self) -> tuple[np.ndarray]:
@@ -482,11 +533,10 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _east_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpe,
-                slicer=self.EAST_FACE_IDX)
-            for qpe in self.QP.E)
+                state=self.state, refBLK=self, qp=qpe, slicer=self.EAST_FACE_IDX
+            )
+            for qpe in self.QP.E
+        )
         return _east_states
 
     def get_west_face_states_at_qp(self) -> tuple[np.ndarray]:
@@ -498,11 +548,10 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _west_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpw,
-                slicer=self.WEST_FACE_IDX)
-            for qpw in self.QP.W)
+                state=self.state, refBLK=self, qp=qpw, slicer=self.WEST_FACE_IDX
+            )
+            for qpw in self.QP.W
+        )
         return _west_states
 
     def get_north_face_states_at_qp(self) -> tuple[np.ndarray]:
@@ -514,11 +563,10 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _north_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qpn,
-                slicer=self.NORTH_FACE_IDX)
-            for qpn in self.QP.N)
+                state=self.state, refBLK=self, qp=qpn, slicer=self.NORTH_FACE_IDX
+            )
+            for qpn in self.QP.N
+        )
         return _north_states
 
     def get_south_face_states_at_qp(self) -> tuple[np.ndarray]:
@@ -530,9 +578,8 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
         """
         _south_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qps,
-                slicer=self.SOUTH_FACE_IDX)
-            for qps in self.QP.S)
+                state=self.state, refBLK=self, qp=qps, slicer=self.SOUTH_FACE_IDX
+            )
+            for qps in self.QP.S
+        )
         return _south_states

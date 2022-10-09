@@ -16,7 +16,8 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
 import numpy as np
@@ -38,40 +39,41 @@ np.set_printoptions(threshold=sys.maxsize)
 
 
 class ProblemInput:
-    __REQUIRED__ = ['problem_type',
-                    'interface_interpolation',
-                    'reconstruction_type',
-                    'write_solution',
-                    'write_solution_mode',
-                    'write_solution_name',
-                    'write_every_n_timesteps',
-                    'plot_every',
-                    'CFL',
-                    't_final',
-                    'realplot',
-                    'profile',
-                    'gamma',
-                    'rho_inf',
-                    'a_inf',
-                    'R',
-                    'nx',
-                    'ny',
-                    'nghost',
-                    'use_JIT'
-                    ]
+    __REQUIRED__ = [
+        "problem_type",
+        "interface_interpolation",
+        "reconstruction_type",
+        "write_solution",
+        "write_solution_mode",
+        "write_solution_name",
+        "write_every_n_timesteps",
+        "plot_every",
+        "CFL",
+        "t_final",
+        "realplot",
+        "profile",
+        "gamma",
+        "rho_inf",
+        "a_inf",
+        "R",
+        "nx",
+        "ny",
+        "nghost",
+        "use_JIT",
+    ]
 
-
-    def __init__(self,
-                 fvm_type:                  str = 'MUSCL',
-                 fvm_spatial_order:         int = 2,
-                 fvm_num_quadrature_points: int = 1,
-                 fvm_gradient_type:         str = 'GreenGauss',
-                 fvm_flux_function:         str = 'Roe',
-                 fvm_slope_limiter:         str = 'Venkatakrishnan',
-                 time_integrator:           str = 'RK2',
-                 settings:                  dict = None,
-                 mesh_inputs:               Union[MeshGenerator, dict] = None,
-                 ) -> None:
+    def __init__(
+        self,
+        fvm_type: str = "MUSCL",
+        fvm_spatial_order: int = 2,
+        fvm_num_quadrature_points: int = 1,
+        fvm_gradient_type: str = "GreenGauss",
+        fvm_flux_function: str = "Roe",
+        fvm_slope_limiter: str = "Venkatakrishnan",
+        time_integrator: str = "RK2",
+        settings: dict = None,
+        mesh_inputs: Union[MeshGenerator, dict] = None,
+    ) -> None:
         """
         Sets required input parametes from input parameter dict. Initialized values to default, with the correct type
         """
@@ -88,68 +90,78 @@ class ProblemInput:
         self.fvm_flux_function = fvm_flux_function
         self.fvm_slope_limiter = fvm_slope_limiter
         self.time_integrator = time_integrator
-        self.n = settings['nx'] * settings['ny']
+        self.n = settings["nx"] * settings["ny"]
         self.mesh_inputs = mesh_inputs
 
         # Set all input parameters
         for key, val in settings.items():
             self.__setattr__(key, val)
 
-
     def _check_input_settings(self, input_dict: dict) -> None:
         for key in self.__REQUIRED__:
             if key not in input_dict.keys():
-                raise KeyError(key + ' not found in inputs.')
+                raise KeyError(key + " not found in inputs.")
 
 
 class Solver:
-    def __init__(self,
-                 fvm_type:                  str = 'MUSCL',
-                 fvm_spatial_order:         int = 2,
-                 fvm_num_quadrature_points: int = 1,
-                 fvm_gradient_type:         str = 'GreenGauss',
-                 fvm_flux_function:         str = 'Roe',
-                 fvm_slope_limiter:         str = 'Venkatakrishnan',
-                 time_integrator:           str = 'RK2',
-                 settings:                  dict = None,
-                 mesh_inputs:               Union[MeshGenerator, dict] = None,
-                 ) -> None:
+    def __init__(
+        self,
+        fvm_type: str = "MUSCL",
+        fvm_spatial_order: int = 2,
+        fvm_num_quadrature_points: int = 1,
+        fvm_gradient_type: str = "GreenGauss",
+        fvm_flux_function: str = "Roe",
+        fvm_slope_limiter: str = "Venkatakrishnan",
+        time_integrator: str = "RK2",
+        settings: dict = None,
+        mesh_inputs: Union[MeshGenerator, dict] = None,
+    ) -> None:
 
         print(execution_prints.pyhype)
         print(execution_prints.lice)
-        print('\n------------------------------------ Setting-Up Solver ---------------------------------------\n')
+        print(
+            "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
+        )
 
         self._settings_dict = settings
 
-        print('\t>>> Building Mesh Descriptors')
+        print("\t>>> Building Mesh Descriptors")
 
-        _mesh = mesh_inputs.dict if isinstance(mesh_inputs, MeshGenerator) else mesh_inputs
-        _mesh_inputs = {blk: BlockDescription(blkData,
-                                              nx=settings['nx'],
-                                              ny=settings['ny'],
-                                              nghost=settings['nghost']) for (blk, blkData) in _mesh.items()}
-        self.cmap = LinearSegmentedColormap.from_list('my_map', ['royalblue', 'midnightblue', 'black'])
+        _mesh = (
+            mesh_inputs.dict if isinstance(mesh_inputs, MeshGenerator) else mesh_inputs
+        )
+        _mesh_inputs = {
+            blk: BlockDescription(
+                blkData, nx=settings["nx"], ny=settings["ny"], nghost=settings["nghost"]
+            )
+            for (blk, blkData) in _mesh.items()
+        }
+        self.cmap = LinearSegmentedColormap.from_list(
+            "my_map", ["royalblue", "midnightblue", "black"]
+        )
 
-        print('\t>>> Checking all boundary condition types')
-        _bc_type_names = ['BCTypeE', 'BCTypeW', 'BCTypeN', 'BCTypeS']
+        print("\t>>> Checking all boundary condition types")
+        _bc_type_names = ["BCTypeE", "BCTypeW", "BCTypeN", "BCTypeS"]
         self._all_BC_types = []
         for blkdata in _mesh.values():
             for bc_name in _bc_type_names:
                 if blkdata[bc_name] not in self._all_BC_types:
                     self._all_BC_types.append(blkdata[bc_name])
 
-        print('\t>>> Building Settings Descriptors')
-        self.inputs = ProblemInput(fvm_type=fvm_type,
-                                   fvm_spatial_order=fvm_spatial_order,
-                                   fvm_num_quadrature_points=fvm_num_quadrature_points,
-                                   fvm_gradient_type=fvm_gradient_type,
-                                   fvm_flux_function=fvm_flux_function,
-                                   fvm_slope_limiter=fvm_slope_limiter,
-                                   time_integrator=time_integrator,
-                                   settings=settings,
-                                   mesh_inputs=_mesh_inputs)
+        print("\t>>> Building Settings Descriptors")
+        self.inputs = ProblemInput(
+            fvm_type=fvm_type,
+            fvm_spatial_order=fvm_spatial_order,
+            fvm_num_quadrature_points=fvm_num_quadrature_points,
+            fvm_gradient_type=fvm_gradient_type,
+            fvm_flux_function=fvm_flux_function,
+            fvm_slope_limiter=fvm_slope_limiter,
+            time_integrator=time_integrator,
+            settings=settings,
+            mesh_inputs=_mesh_inputs,
+        )
 
-        print('\t>>> Initializing basic solution attributes')
+        print("\t>>> Initializing basic solution attributes")
         self.t = 0
         self.dt = 0
         self.numTimeStep = 0
@@ -185,7 +197,6 @@ class Solver:
         _dt = min([block.get_dt() for block in self.blocks])
         return self.t_final - self.t if self.t_final - self.t < _dt else _dt
 
-
     def increment_time(self):
         self.t += self.dt
 
@@ -194,13 +205,18 @@ class Solver:
         np.save(file=filename, arr=array)
 
     def write_solution(self):
-        if self.inputs.write_solution_mode == 'every_n_timesteps':
+        if self.inputs.write_solution_mode == "every_n_timesteps":
             if self.numTimeStep % self.inputs.write_every_n_timesteps == 0:
                 for block in self.blocks:
-                    self.write_output_nodes('./' + self.inputs.write_solution_name
-                                                 + '_' + str(self.numTimeStep)
-                                                 + '_blk_' + str(block.global_nBLK),
-                                            block.state.U)
+                    self.write_output_nodes(
+                        "./"
+                        + self.inputs.write_solution_name
+                        + "_"
+                        + str(self.numTimeStep)
+                        + "_blk_"
+                        + str(block.global_nBLK),
+                        block.state.U,
+                    )
 
     def plot_func_selector(self, state) -> np.ndarray:
         """
@@ -208,34 +224,43 @@ class Solver:
         :param state: State object to plot
         :return: Array of the evaluation function
         """
-        if 'plot_function' in self.inputs.__dict__:
-            if self.inputs.plot_function == 'Mach Number':
+        if "plot_function" in self.inputs.__dict__:
+            if self.inputs.plot_function == "Mach Number":
                 return state.Ma()
-            if self.inputs.plot_function == 'Density':
+            if self.inputs.plot_function == "Density":
                 return state.rho
-            if self.inputs.plot_function == 'X velocity':
+            if self.inputs.plot_function == "X velocity":
                 return state.u
-            if self.inputs.plot_function == 'Y velocity':
+            if self.inputs.plot_function == "Y velocity":
                 return state.v
-            if self.inputs.plot_function == 'Pressure':
+            if self.inputs.plot_function == "Pressure":
                 return state.p
-            if self.inputs.plot_function == 'Energy':
+            if self.inputs.plot_function == "Energy":
                 return state.e
         else:
             # Default to density
             return state.rho
 
-
     def real_plot(self):
         if self.numTimeStep % self.inputs.plot_every == 0:
-            data = [(block.mesh.x[:, :, 0], block.mesh.y[:, :, 0], self.plot_func_selector(block.state))
-                    for block in self.blocks]
+            data = [
+                (
+                    block.mesh.x[:, :, 0],
+                    block.mesh.y[:, :, 0],
+                    self.plot_func_selector(block.state),
+                )
+                for block in self.blocks
+            ]
 
             for _vars in data:
-                self.realplot.contourf(*_vars, 50, cmap='magma',
-                                       vmax=max([np.max(v[2]) for v in data]),
-                                       vmin=min([np.min(v[2]) for v in data]))
-            self.realplot.set_aspect('equal')
+                self.realplot.contourf(
+                    *_vars,
+                    50,
+                    cmap="magma",
+                    vmax=max([np.max(v[2]) for v in data]),
+                    vmin=min([np.min(v[2]) for v in data]),
+                )
+            self.realplot.set_aspect("equal")
             plt.show()
             plt.pause(0.001)
             plt.cla()
