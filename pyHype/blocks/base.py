@@ -267,6 +267,34 @@ class GradientsFactory:
         )
 
 
+class BlockMixin:
+    def row(self, index: Union[int, slice]) -> State:
+        """
+        Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
+        most-bottom row of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which row needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
+        """
+        return self.state[index, None, :, :]
+
+    def col(self, index: int) -> State:
+        """
+        Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
+        left-most column of the mesh will be returned.
+
+        Parameters:
+            - index (int): The index that reperesents which column needs to be returned.
+
+        Return:
+            - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
+        """
+        return self.state[None, :, index, :]
+
+
 class Blocks:
     def __init__(self, inputs) -> None:
         # Set inputs
@@ -374,7 +402,7 @@ class BaseBlock:
         return all(map(lambda blk: isinstance(blk.state, PrimitiveState), blks))
 
 
-class BaseBlock_Only_State(BaseBlock):
+class BaseBlock_Only_State(BaseBlock, BlockMixin):
     EAST_BOUND_IDX = NumpySlice.east_boundary()
     WEST_BOUND_IDX = NumpySlice.west_boundary()
     NORTH_BOUND_IDX = NumpySlice.north_boundary()
@@ -390,9 +418,9 @@ class BaseBlock_Only_State(BaseBlock):
     ):
         super().__init__(inputs)
         if state_type == "conservative":
-            self.state = ConservativeState(inputs, nx=nx, ny=ny)
+            self.state = ConservativeState(inputs, shape=(ny, nx))
         elif state_type == "primitive":
-            self.state = PrimitiveState(inputs, nx=nx, ny=ny)
+            self.state = PrimitiveState(inputs, shape=(ny, nx))
         else:
             raise TypeError("BaseBlock_Only_State.__init__(): Undefined state type.")
 

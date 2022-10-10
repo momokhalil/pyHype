@@ -19,16 +19,18 @@ import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
-import numpy as np
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Union, overload
 
-from typing import TYPE_CHECKING
+import numpy as np
 
 if TYPE_CHECKING:
     from pyHype.solvers.base import ProblemInput
 
+StateCompatible = (int, float, np.ndarray)
 
-class State:
+
+class State(ABC):
     """
     # State
     Defines an abstract class for implementing primitive and conservative state classes. The core components of a state
@@ -39,7 +41,16 @@ class State:
     each physical discretization point.
     """
 
-    def __init__(self, inputs: ProblemInput, nx: int, ny: int):
+    converter = None
+
+    def __init__(
+        self,
+        inputs: ProblemInput,
+        state: State = None,
+        array: np.ndarray = None,
+        shape: tuple[int, int] = None,
+        fill: Union[float, int] = None,
+    ):
         """
         ## Attributes
 
@@ -53,9 +64,23 @@ class State:
 
         self.inputs = inputs
         self.g = inputs.gamma
-        self._Q = np.zeros((ny, nx, 4), dtype=float)
         self.g_over_gm = self.g / (self.g - 1)
         self.one_over_gm = 1 / (self.g - 1)
+
+        if state is not None:
+            self.from_state(state)
+        elif array is not None:
+            if array.ndim != 3 or array.shape[-1] != 4:
+                raise ValueError("Array must have 3 dims and a depth of 4.")
+            self._Q = array
+        elif shape is not None:
+            if fill is not None:
+                self._Q = np.full(shape=shape, fill_value=fill)
+            else:
+                self._Q = np.zeros(shape=shape)
+        else:
+            self._Q = np.zeros((0, 0))
+
         self.cache = {}
 
     @property
@@ -64,6 +89,10 @@ class State:
 
     @Q.setter
     def Q(self, Q):
+        if not isinstance(Q, np.ndarray):
+            raise TypeError(
+                f"Input array must be a numpy ndarray, but it is a {type(Q)}."
+            )
         self._Q = Q
         self.clear_cache()
 
@@ -107,63 +136,98 @@ class State:
     def p(self, p: np.ndarray) -> None:
         raise NotImplementedError
 
-    def clear_cache(self) -> None:
-        self.cache.clear()
+    def __getitem__(self, index: Union[int, slice]) -> State:
+        return type(self)(self.inputs, array=self.Q[index].copy())
 
-    def scopy(self):
-        return self
+    def __add__(self, other: Union[State, StateCompatible]) -> State:
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=self.Q + other.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=self.Q + other)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
 
-    def dcopy(self):
-        _copy = State(self.inputs, self.inputs.nx, self.inputs.ny)
-        _copy.Q = self.Q.copy()
+    def __radd__(self, other: Union[State, StateCompatible]) -> State:
+        return self.__add__(other)
 
-    def __getitem__(self, index: int) -> np.ndarray:
-        """
-        Overload __getitem__ method to return slice from W based on index slice object/indices
-        """
-        return self.Q[index]
+    def __sub__(self, other: Union[State, StateCompatible]) -> State:
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=self.Q - other.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=self.Q - other)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
 
-    def __add__(self, other: [State, np.ndarray]) -> np.ndarray:
-        """
-        Overload __add__ method to return the sum of self and other's state vectors
-        """
-        if isinstance(other, State):
-            return self.Q + other.Q
-        if isinstance(other, np.ndarray):
-            return self.Q + other
+    def __rsub__(self, other: Union[State, StateCompatible]) -> State:
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=other.Q - self.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=other - self.Q)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
 
-    def __radd__(self, other: [State, np.ndarray]) -> np.ndarray:
-        """
-        Overload __radd__ method to return the sum of self and other's state vectors
-        """
-        if isinstance(other, State):
-            return other.Q + self.Q
-        if isinstance(other, np.ndarray):
-            return other + self.Q
+    def __mul__(self, other: Union[State, StateCompatible]):
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=self.Q * other.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=self.Q * other)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
 
-    def __sub__(self, other: State) -> np.ndarray:
-        """
-        Overload __sub__ method to return the difference between self and other's state vectors
-        """
-        if isinstance(other, State):
-            return self.Q - other.Q
-        if isinstance(other, np.ndarray):
-            return self.Q - other
+    def __rmul__(self, other: Union[State, StateCompatible]):
+        return self.__mul__(other)
 
-    def __rsub__(self, other: [State, np.ndarray]) -> np.ndarray:
-        """
-        Overload __rsub__ method to return the sum of self and other's state vectors
-        """
-        if isinstance(other, State):
-            return other.Q - self.Q
-        if isinstance(other, np.ndarray):
-            return other - self.Q
+    def __truediv__(self, other: Union[State, StateCompatible]):
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=self.Q / other.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=self.Q / other)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
 
-    def reset(self, shape: [int] = None):
+    def __rtruediv__(self, other: Union[State, StateCompatible]):
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=other.Q / self.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=other / self.Q)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
+
+    def __pow__(self, other: Union[State, StateCompatible]):
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=self.Q**other.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=self.Q**other)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
+
+    def __rpow__(self, other: Union[State, StateCompatible]):
+        if isinstance(other, type(self)):
+            return type(self)(inputs=self.inputs, array=other.Q**self.Q)
+        if isinstance(other, StateCompatible):
+            return type(self)(inputs=self.inputs, array=other**self.Q)
+        raise TypeError(
+            f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
+        )
+
+    def reset(self, shape: tuple[int] = None):
         if shape:
             self.Q = np.zeros(shape=shape, dtype=float)
         else:
             self.Q = np.zeros((self.inputs.ny, self.inputs.nx, 4), dtype=float)
+
+    def clear_cache(self) -> None:
+        self.cache.clear()
+
+    def from_state(self, state: State):
+        self._Q = self.converter.convert(state=state)
 
     @abstractmethod
     def non_dim(self):

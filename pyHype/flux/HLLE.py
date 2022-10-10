@@ -15,7 +15,7 @@ limitations under the License.
 """
 import numpy as np
 from pyHype.flux.base import FluxFunction
-from pyHype.states.states import RoePrimitiveState, PrimitiveState
+from pyHype.states.primitive import RoePrimitiveState, PrimitiveState
 
 
 class FluxHLLE(FluxFunction):

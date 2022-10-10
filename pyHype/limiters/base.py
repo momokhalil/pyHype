@@ -91,10 +91,10 @@ class SlopeLimiter:
         dN = [_gqpN - refBLK.state.Q for _gqpN in gqpN]
         dS = [_gqpS - refBLK.state.Q for _gqpS in gqpS]
         # Calculate slopes for each face
-        sE = [self._compute_slope(dmax, dmin, _dE) for _dE in dE]
-        sW = [self._compute_slope(dmax, dmin, _dW) for _dW in dW]
-        sN = [self._compute_slope(dmax, dmin, _dN) for _dN in dN]
-        sS = [self._compute_slope(dmax, dmin, _dS) for _dS in dS]
+        sE = [self._compute_slope(dmax, dmin, _dE.Q) for _dE in dE]
+        sW = [self._compute_slope(dmax, dmin, _dW.Q) for _dW in dW]
+        sN = [self._compute_slope(dmax, dmin, _dN.Q) for _dN in dN]
+        sS = [self._compute_slope(dmax, dmin, _dS.Q) for _dS in dS]
         return sE, sW, sN, sS
 
     def _limit(

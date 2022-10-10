@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Copyright 2021 Mohamed Khalil
 
@@ -20,12 +22,15 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import functools
 import numpy as np
 import numba as nb
-from typing import Union, Callable
+from typing import Union, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyHype.states.base import State
 
 
 def rotate(
     theta: Union[float, np.ndarray],
-    *arrays: Union[np.ndarray, list[np.ndarray]],
+    *arrays: np.ndarray,
 ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees counterclockwise.
@@ -75,7 +80,7 @@ def rotate_JIT(array, theta):
     return u, v
 
 
-def rotate90(*arrays: Union[np.ndarray]) -> None:
+def rotate90(*arrays: np.ndarray) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by ninety degrees counterclockwise.
     The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
@@ -99,14 +104,14 @@ def rotate90(*arrays: Union[np.ndarray]) -> None:
     for array in arrays:
 
         u = array[:, :, 2].copy()
-        v = -array[:, :, 1].copy()
+        v = array[:, :, 1].copy()
 
-        array[:, :, 1], array[:, :, 2] = u, v
+        array[:, :, 1], array[:, :, 2] = u, -v
 
 
 def unrotate(
     theta: float,
-    *arrays: Union[np.ndarray, list[np.ndarray]],
+    *arrays: np.ndarray,
 ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees clockwise. Basically the
@@ -156,7 +161,7 @@ def unrotate_JIT(array, theta):
     return u, v
 
 
-def unrotate90(*arrays: Union[np.ndarray]) -> None:
+def unrotate90(*arrays: np.ndarray) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by ninety degrees clockwise.
     The contents of the array may be Conservative/Primitive state variables, Fluxes, etc...
@@ -178,9 +183,9 @@ def unrotate90(*arrays: Union[np.ndarray]) -> None:
     """
 
     for array in arrays:
-        u = -array[:, :, 2].copy()
+        u = array[:, :, 2].copy()
         v = array[:, :, 1].copy()
-        array[:, :, 1], array[:, :, 2] = u, v
+        array[:, :, 1], array[:, :, 2] = -u, v
 
 
 def reflect_point(

@@ -24,7 +24,7 @@ np.set_printoptions(linewidth=200)
 np.set_printoptions(precision=3)
 from scipy.sparse import coo_matrix as coo
 from pyHype.flux.base import FluxFunction
-from pyHype.states.states import RoePrimitiveState, PrimitiveState
+from pyHype.states.primitive import RoePrimitiveState, PrimitiveState
 from pyHype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_VECTORS
 
 
@@ -312,7 +312,7 @@ class FluxRoe(FluxFunction):
     ) -> np.ndarray:
         Wroe = RoePrimitiveState(self.inputs, WL, WR)
         self.diagonalize(Wroe, WL, WR)
-        dW = (WR - WL).flatten()
+        dW = (WR.Q - WL.Q).flatten()
         self.Lambda.data = np.absolute(self.Lambda.data)
         return 0.5 * (self.Rc * (self.Lambda * (self.Lp * dW))).reshape(1, -1, 4)
 

@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import os
 
@@ -36,6 +36,7 @@ from pyHype.solvers.time_integration.explicit_runge_kutta import (
 from pyHype.blocks.ghost import GhostBlocks
 
 if TYPE_CHECKING:
+    from pyHype.states.base import State
     from pyHype.solvers.base import ProblemInput
     from pyHype.blocks.base import BaseBlock
 
@@ -114,9 +115,9 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
 
         :return: None
         """
-        self.state.from_primitive_state(from_block.state)
+        self.state.from_state(from_block.state)
         for gblk, gblk_from in zip(self.ghost(), from_block.ghost()):
-            gblk.state.from_primitive_state(gblk_from.state)
+            gblk.state.from_state(gblk_from.state)
 
     def from_conservative(self, from_block: BaseBlock_With_Ghost) -> None:
         """
@@ -128,9 +129,9 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
 
         :return: None
         """
-        self.state.from_conservative_state(from_block.state)
+        self.state.from_state(from_block.state)
         for gblk, gblk_from in zip(self.ghost(), from_block.ghost()):
-            gblk.state.from_conservative_state(gblk_from.state)
+            gblk.state.from_state(gblk_from.state)
 
     def get_interface_values(self) -> [np.ndarray]:
         """
@@ -525,7 +526,7 @@ class QuadBlock(BaseBlock_With_Ghost):
             SW=NeighborSW,
         )
 
-    def get_east_ghost_states(self) -> np.ndarray:
+    def get_east_ghost_states(self) -> State:
         """
         Return the solution data used to build the WEST boundary condition for this block's EAST neighbor. The shape of
         the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
@@ -533,9 +534,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third last column on the block's state will be returned.
             - general case, return -(nghost + 1):-1 columns
         """
-        return self.state.U[self.EAST_GHOST_IDX].copy()
+        return self.state[self.EAST_GHOST_IDX]
 
-    def get_west_ghost_states(self) -> np.ndarray:
+    def get_west_ghost_states(self) -> State:
         """
         Return the solution data used to build the EAST boundary condition for this block's WEST neighbor. The shape of
         the required data is dependent on the number of ghost blocks selected in the input file (nghost). For example:
@@ -543,9 +544,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third column on the block's state will be returned.
             - general case, return 1:(nghost + 1) columns
         """
-        return self.state.U[self.WEST_GHOST_IDX].copy()
+        return self.state[self.WEST_GHOST_IDX]
 
-    def get_north_ghost_states(self) -> np.ndarray:
+    def get_north_ghost_states(self) -> State:
         """
         Return the solution data used to build the SOUTH boundary condition for this block's NORTH neighbor. The shape
         of the required data is dependent on the number of ghost blocks selected in the input file (nghost).
@@ -554,9 +555,9 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third last rows on the block's state will be returned.
             - general case, return -(nghost + 1):-1 rows
         """
-        return self.state.U[self.NORTH_GHOST_IDX].copy()
+        return self.state[self.NORTH_GHOST_IDX]
 
-    def get_south_ghost_states(self) -> np.ndarray:
+    def get_south_ghost_states(self) -> State:
         """
         Return the solution data used to build the NORTH boundary condition for this block's SOUTH neighbor. The shape
         of the required data is dependent on the number of ghost blocks selected in the input file (nghost).
@@ -565,81 +566,7 @@ class QuadBlock(BaseBlock_With_Ghost):
             - if nghost = 2, the second and third rows on the block's state will be returned.
             - general case, return 1:(nghost + 1) rows
         """
-        return self.state.U[self.SOUTH_GHOST_IDX].copy()
-
-    def row(self, index: int, copy: bool = False) -> np.ndarray:
-        """
-        Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
-        most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which row needs to be returned.
-            - copy (bool): To copy the numpy array pr return a view
-
-        Return:
-            - (np.ndarray): The numpy array containing the solution at the index-th row being returned.
-        """
-        _row = self.state.U[index, None, :, :]
-        return _row.copy() if copy else _row
-
-    def fullrow(self, index: int, copy: bool = False) -> np.ndarray:
-        """
-        Return the solution stored in the index-th full row of the mesh. A full row is defined as the row plus the ghost
-        cells on either side of the column.
-
-        Parameters:
-            - index (int): The index that reperesents which full row needs to be returned.
-            - copy (bool): To copy the numpy array pr return a view
-
-        Return:
-            - (np.ndarray): The numpy array containing the solution at the index-th full row being returned.
-        """
-        _fullrow = np.concatenate(
-            (
-                self.ghost.W[index, None, :, :],
-                self.row(index),
-                self.ghost.E[index, None, :, :],
-            ),
-            axis=1,
-        )
-        return _fullrow.copy() if copy else _fullrow
-
-    def col(self, index: int, copy: bool = False) -> np.ndarray:
-        """
-        Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
-        left-most column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which column needs to be returned.
-            - copy (bool): To copy the numpy array pr return a view
-
-        Return:
-            - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
-        """
-        _col = self.state.U[None, :, index, :]
-        return _col.copy() if copy else _col
-
-    def fullcol(self, index: int, copy: bool = False) -> np.ndarray:
-        """
-        Return the solution stored in the index-th full column of the mesh. A full column is defined as the row plus the
-        ghost cells on either side of the column.
-
-        Parameters:
-            - index (int): The index that reperesents which full column needs to be returned.
-            - copy (bool): To copy the numpy array pr return a view
-
-        Return:
-            - (np.ndarray): The numpy array containing the solution at the index-th full column being returned.
-        """
-        _fullcol = np.concatenate(
-            (
-                self.ghost.S[:, index, None, :],
-                self.col(index),
-                self.ghost.N[:, index, None, :],
-            ),
-            axis=1,
-        )
-        return _fullcol.copy() if copy else _fullcol
+        return self.state[self.SOUTH_GHOST_IDX]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Time stepping methods
