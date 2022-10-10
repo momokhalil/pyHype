@@ -25,10 +25,13 @@ from pyHype.utils import utils
 from pyHype.mesh.QuadMesh import QuadMesh
 from typing import TYPE_CHECKING, Union
 from pyHype.mesh import quadratures as qp
-from pyHype.states.states import PrimitiveState
+from pyHype.states.primitive import PrimitiveState
+from pyHype.states.conservative import ConservativeState
 from pyHype.blocks.base import BaseBlock_FVM
+from pyHype.blocks.base import BlockMixin
 
 if TYPE_CHECKING:
+    from pyHype.states.base import State
     from pyHype.solvers.base import ProblemInput
     from pyHype.blocks.base import QuadBlock, BaseBlock
     from pyHype.mesh.base import BlockDescription
@@ -74,14 +77,12 @@ class GhostBlocks:
         self.S.state.clear_cache()
 
 
-class BoundaryConditionFunctions:
+class BoundaryConditionMixin:
     def __init__(self):
         pass
 
     @staticmethod
-    def BC_reflection(
-        state: np.ndarray, wall_angle: Union[np.ndarray, int, float]
-    ) -> None:
+    def BC_reflection(state: State, wall_angle: Union[np.ndarray, int, float]) -> None:
         """
         Flips the sign of the u velocity along the wall. Rotates the state from global to wall frame and back to ensure
         coordinate alignment.
@@ -93,12 +94,12 @@ class BoundaryConditionFunctions:
         Returns:
             - None
         """
-        utils.rotate(wall_angle, state)
-        state[:, :, 1] = -state[:, :, 1]
-        utils.unrotate(wall_angle, state)
+        utils.rotate(wall_angle, state.Q)
+        state.Q[:, :, 1] = -state.Q[:, :, 1]
+        utils.unrotate(wall_angle, state.Q)
 
 
-class GhostBlock(BaseBlock_FVM, BoundaryConditionFunctions):
+class GhostBlock(BaseBlock_FVM, BoundaryConditionMixin, BlockMixin):
     def __init__(
         self,
         inputs: ProblemInput,
@@ -183,36 +184,6 @@ class GhostBlock(BaseBlock_FVM, BoundaryConditionFunctions):
 
     def realizable(self):
         return self.state.realizable()
-
-    def row(self, index: int, copy: bool = False) -> np.ndarray:
-        """
-        Return the solution stored in the index-th row of the mesh. For example, if index is 0, then the state at the
-        most-bottom row of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which row needs to be returned.
-            - copy (bool): To copy the numpy array pr return a view
-
-        Return:
-            - _row (np.ndarray): The numpy array containing the solution at the index-th row being returned.
-        """
-        _row = self.state.Q[None, index, :, :]
-        return _row.copy() if copy else _row
-
-    def col(self, index: int, copy: bool = False) -> np.ndarray:
-        """
-        Return the solution stored in the index-th column of the mesh. For example, if index is 0, then the state at the
-        left-most column of the mesh will be returned.
-
-        Parameters:
-            - index (int): The index that reperesents which column needs to be returned.
-            - copy (bool): To copy the numpy array pr return a view
-
-        Return:
-            - (np.ndarray): The numpy array containing the soution at the index-th column being returned.
-        """
-        _col = self.state.Q[:, None, index, :]
-        return _col.copy() if copy else _col
 
     @abstractmethod
     def set_BC_none(self):
@@ -317,17 +288,17 @@ class GhostBlockEast(GhostBlock):
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
         if state is None:
-            self.state.U = self.refBLK.neighbors.E.get_west_ghost_states()
+            self.state = self.refBLK.neighbors.E.get_west_ghost_states()
 
     def set_BC_reflection(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
@@ -336,10 +307,10 @@ class GhostBlockEast(GhostBlock):
         _state = self.refBLK.get_east_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.east_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_slipwall(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
@@ -348,10 +319,10 @@ class GhostBlockEast(GhostBlock):
         _state = self.refBLK.get_east_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.east_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_inlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the eastern face.
@@ -363,11 +334,11 @@ class GhostBlockEast(GhostBlock):
         _p = self.inputs.BC_inlet_east_p
 
         _W = PrimitiveState(
-            self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
+            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
         )
 
         if state_type == "conservative":
-            state_bc = _W.to_conservative_state()
+            state_bc = ConservativeState(self.inputs, state=_W)
         elif state_type == "primitive":
             state_bc = _W
         else:
@@ -376,27 +347,27 @@ class GhostBlockEast(GhostBlock):
             )
 
         if state is not None:
-            state[:, :, :] = state_bc.Q
+            state.Q[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = state_bc.Q
+            self.state.Q[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
         if state is None:
-            self.state.U = self.refBLK.get_east_ghost_states()
+            self.state = self.refBLK.get_east_ghost_states()
 
     def set_BC_inlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError
 
@@ -453,17 +424,17 @@ class GhostBlockWest(GhostBlock):
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
         if state is None:
-            self.state.U = self.refBLK.neighbors.W.get_east_ghost_states()
+            self.state = self.refBLK.neighbors.W.get_east_ghost_states()
 
     def set_BC_reflection(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
@@ -472,10 +443,10 @@ class GhostBlockWest(GhostBlock):
         _state = self.refBLK.get_west_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.west_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_slipwall(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
@@ -484,10 +455,10 @@ class GhostBlockWest(GhostBlock):
         _state = self.refBLK.get_west_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.west_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_inlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the eastern face.
@@ -499,11 +470,11 @@ class GhostBlockWest(GhostBlock):
         _p = self.inputs.BC_inlet_west_p
 
         _W = PrimitiveState(
-            self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
+            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
         )
 
         if state_type == "conservative":
-            state_bc = _W.to_conservative_state()
+            state_bc = ConservativeState(self.inputs, state=_W)
         elif state_type == "primitive":
             state_bc = _W
         else:
@@ -512,27 +483,27 @@ class GhostBlockWest(GhostBlock):
             )
 
         if state is not None:
-            state[:, :, :] = state_bc.Q
+            state.Q[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = state_bc.Q
+            self.state.Q[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
         if state is None:
-            self.state.U = self.refBLK.get_east_ghost_states()
+            self.state = self.refBLK.get_east_ghost_states()
 
     def set_BC_inlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError
 
@@ -589,17 +560,17 @@ class GhostBlockNorth(GhostBlock):
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
         if state is None:
-            self.state.U = self.refBLK.neighbors.N.get_south_ghost_states()
+            self.state = self.refBLK.neighbors.N.get_south_ghost_states()
 
     def set_BC_reflection(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
@@ -608,10 +579,10 @@ class GhostBlockNorth(GhostBlock):
         _state = self.refBLK.get_north_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.north_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_slipwall(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
@@ -620,10 +591,10 @@ class GhostBlockNorth(GhostBlock):
         _state = self.refBLK.get_north_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.north_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_inlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the northern face.
@@ -635,11 +606,11 @@ class GhostBlockNorth(GhostBlock):
         _p = self.inputs.BC_inlet_north_p
 
         _W = PrimitiveState(
-            self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
+            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
         )
 
         if state_type == "conservative":
-            state_bc = _W.to_conservative_state()
+            state_bc = ConservativeState(self.inputs, state=_W)
         elif state_type == "primitive":
             state_bc = _W
         else:
@@ -648,27 +619,27 @@ class GhostBlockNorth(GhostBlock):
             )
 
         if state is not None:
-            state[:, :, :] = state_bc.Q
+            state.Q[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = state_bc.Q
+            self.state[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
         if state is None:
-            self.state.U = self.refBLK.get_north_ghost_states()
+            self.state = self.refBLK.get_north_ghost_states()
 
     def set_BC_inlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError
 
@@ -725,17 +696,17 @@ class GhostBlockSouth(GhostBlock):
         self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
 
     def set_BC_none(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
         if state is None:
-            self.state.U = self.refBLK.neighbors.S.get_north_ghost_states()
+            self.state = self.refBLK.neighbors.S.get_north_ghost_states()
 
     def set_BC_reflection(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
@@ -744,10 +715,10 @@ class GhostBlockSouth(GhostBlock):
         _state = self.refBLK.get_south_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.south_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_slipwall(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
@@ -756,10 +727,10 @@ class GhostBlockSouth(GhostBlock):
         _state = self.refBLK.get_south_ghost_states() if state is None else state
         self.BC_reflection(_state, self.refBLK.mesh.south_boundary_angle())
         if state is None:
-            self.state.U = _state
+            self.state = _state
 
     def set_BC_inlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the southern face.
@@ -771,11 +742,11 @@ class GhostBlockSouth(GhostBlock):
         _p = self.inputs.BC_inlet_south_p
 
         _W = PrimitiveState(
-            self.inputs, W_vector=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
+            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
         )
 
         if state_type == "conservative":
-            state_bc = _W.to_conservative_state()
+            state_bc = ConservativeState(self.inputs, state=_W)
         elif state_type == "primitive":
             state_bc = _W
         else:
@@ -786,24 +757,24 @@ class GhostBlockSouth(GhostBlock):
         if state is not None:
             state[:, :, :] = state_bc.Q
         else:
-            self.state.U[:, :, :] = state_bc.Q
+            self.state[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
         if state is None:
-            self.state.U = self.refBLK.get_south_ghost_states()
+            self.state = self.refBLK.get_south_ghost_states()
 
     def set_BC_inlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
-        self, state: np.ndarray = None, state_type: str = "conservative"
+        self, state: State = None, state_type: str = "conservative"
     ):
         return NotImplementedError

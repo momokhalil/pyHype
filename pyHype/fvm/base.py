@@ -21,25 +21,26 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 import numba as nb
+from typing import TYPE_CHECKING
+from abc import abstractmethod
 
 np.set_printoptions(formatter={"float": "{: 0.3f}".format})
 
-from abc import abstractmethod
-
-from pyHype.limiters import limiters
-from pyHype.utils.utils import DirectionalContainerBase
 
 import pyHype.flux as flux
-import pyHype.fvm.Gradients as Grads
-from pyHype.states.states import StateFactory as sf
 import pyHype.utils.utils as utils
-from typing import TYPE_CHECKING
+import pyHype.fvm.Gradients as Grads
+
+from pyHype.limiters import limiters
+from pyHype.states.primitive import PrimitiveState
+from pyHype.states.conservative import ConservativeState
+from pyHype.utils.utils import DirectionalContainerBase
 
 if TYPE_CHECKING:
     from pyHype.blocks.QuadBlock import QuadBlock
     from pyHype.blocks.base import GradientsContainer
     from pyHype.states.base import State
-    from pyHype.states.states import PrimitiveState, ConservativeState
+    from pyHype.states.primitive import PrimitiveState
     from pyHype.mesh.quadratures import QuadraturePoint
 
 
@@ -157,6 +158,12 @@ class MUSCLFiniteVolumeMethod:
             raise ValueError(
                 "MUSCLFiniteVolumeMethod: Slope limiter type not specified."
             )
+
+    def basis_state(self):
+        if self.inputs.reconstruction_type == "primitive":
+            return PrimitiveState
+        if self.inputs.reconstruction_type == "conservative":
+            return ConservativeState
 
     def reconstruct(self, refBLK: QuadBlock) -> None:
         """
@@ -309,20 +316,16 @@ class MUSCLFiniteVolumeMethod:
 
     def get_LR_states_for_EW_fluxes(
         self,
-        state_type: str,
-        ghostE: np.ndarray,
-        ghostW: np.ndarray,
-        stateE: np.ndarray,
-        stateW: np.ndarray,
+        ghostE: State,
+        ghostW: State,
+        stateE: State,
+        stateW: State,
     ) -> [PrimitiveState]:
         """
         Compute and return the left and right states used for the East-West inviscid flux calculation. The left state
         is created by concatenating the west ghost-cell state and the east face state. The right state
         is created by concatenating the east ghost-cell state and the west face state. After concatenation, the arrays
         are reshaped to produce a (1, n, 4) shaped array.
-
-        :type state_type: str
-        :param state_type: variable basis of the state data in the the input arrays
 
         :type ghostE: np.ndarray
         :param ghostE: east ghost cell state array
@@ -339,33 +342,28 @@ class MUSCLFiniteVolumeMethod:
         :rtype: tuple(PrimitiveState, PrimitiveState)
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
-        _arrL = np.concatenate((ghostW, stateE), axis=1)
-        _stateL = sf.create_primitive_from_array(
-            array=_arrL, array_state_type=state_type, inputs=self.inputs
-        )
+        _arrL = np.concatenate((ghostW.Q, stateE.Q), axis=1)
+        _arrR = np.concatenate((stateW.Q, ghostE.Q), axis=1)
 
-        _arrR = np.concatenate((stateW, ghostE), axis=1)
-        _stateR = sf.create_primitive_from_array(
-            array=_arrR, array_state_type=state_type, inputs=self.inputs
-        )
+        _L = self.basis_state()(self.inputs, array=_arrL)
+        _R = self.basis_state()(self.inputs, array=_arrR)
+
+        _stateL = PrimitiveState(inputs=self.inputs, state=_L)
+        _stateR = PrimitiveState(inputs=self.inputs, state=_R)
         return _stateL, _stateR
 
     def get_LR_states_for_NS_fluxes(
         self,
-        state_type: str,
-        ghostN: np.ndarray,
-        ghostS: np.ndarray,
-        stateN: np.ndarray,
-        stateS: np.ndarray,
+        ghostN: State,
+        ghostS: State,
+        stateN: State,
+        stateS: State,
     ) -> [PrimitiveState]:
         """
         Compute and return the left and right states used for the North-South inviscid flux calculation. The left state
         is created by concatenating the south ghost-cell state and the north face state. The right state
         is created by concatenating the north ghost-cell state and the south face state. After concatenation, the arrays
         are reshaped to produce a (1, n, 4) shaped array.
-
-        :type state_type: str
-        :param state_type: variable basis of the state data in the the input arrays
 
         :type ghostN: np.ndarray
         :param ghostN: north ghost cell state array
@@ -382,15 +380,15 @@ class MUSCLFiniteVolumeMethod:
         :rtype: tuple(PrimitiveState, PrimitiveState)
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
-        _arrL = np.concatenate((ghostS, stateN), axis=0).transpose((1, 0, 2))
-        _stateL = sf.create_primitive_from_array(
-            array=_arrL, array_state_type=state_type, inputs=self.inputs
-        )
+        _arrL = np.concatenate((ghostS.Q, stateN.Q), axis=0).transpose((1, 0, 2))
+        _arrR = np.concatenate((stateS.Q, ghostN.Q), axis=0).transpose((1, 0, 2))
 
-        _arrR = np.concatenate((stateS, ghostN), axis=0).transpose((1, 0, 2))
-        _stateR = sf.create_primitive_from_array(
-            array=_arrR, array_state_type=state_type, inputs=self.inputs
-        )
+        _L = self.basis_state()(self.inputs, array=_arrL)
+        _R = self.basis_state()(self.inputs, array=_arrR)
+
+        _stateL = PrimitiveState(inputs=self.inputs, state=_L)
+        _stateR = PrimitiveState(inputs=self.inputs, state=_R)
+
         return _stateL, _stateR
 
     def evaluate_flux_EW(self, refBLK: QuadBlock) -> None:
@@ -434,21 +432,19 @@ class MUSCLFiniteVolumeMethod:
             refBLK.ghost.W.set_BC(_bndW, state_type=self.inputs.reconstruction_type)
 
             if not refBLK.is_cartesian:
-                utils.rotate(refBLK.mesh.face.E.theta, _stateE)
-                utils.rotate(refBLK.mesh.face.W.theta, _stateW)
-                utils.rotate(refBLK.mesh.east_boundary_angle(), _bndE)
-                utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW)
+                utils.rotate(refBLK.mesh.face.E.theta, _stateE.Q)
+                utils.rotate(refBLK.mesh.face.W.theta, _stateW.Q)
+                utils.rotate(refBLK.mesh.east_boundary_angle(), _bndE.Q)
+                utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW.Q)
 
-            sL, sR = self.get_LR_states_for_EW_fluxes(
-                refBLK.reconstruction_type, _bndE, _bndW, _stateE, _stateW
-            )
+            sL, sR = self.get_LR_states_for_EW_fluxes(_bndE, _bndW, _stateE, _stateW)
             fluxEW = self.flux_function_X(WL=sL, WR=sR)
             fluxE[:] = fluxEW[:, 1:, :]
             fluxW[:] = fluxEW[:, :-1, :]
 
             if not refBLK.is_cartesian:
-                utils.unrotate(refBLK.mesh.face.E.theta, fluxE)
-                utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
+                utils.unrotate(refBLK.mesh.face.E.theta, fluxE.Q)
+                utils.unrotate(refBLK.mesh.face.W.theta, fluxW.Q)
 
     def evaluate_flux_NS(self, refBLK: QuadBlock) -> None:
         """
@@ -491,16 +487,14 @@ class MUSCLFiniteVolumeMethod:
             refBLK.ghost.S.set_BC(_bndS, state_type=self.inputs.reconstruction_type)
 
             if refBLK.is_cartesian:
-                utils.rotate90(_stateN, _stateS, _bndN, _bndS)
+                utils.rotate90(_stateN.Q, _stateS.Q, _bndN.Q, _bndS.Q)
             else:
-                utils.rotate(refBLK.mesh.face.N.theta, _stateN)
-                utils.rotate(refBLK.mesh.face.S.theta, _stateS)
-                utils.rotate(refBLK.mesh.north_boundary_angle(), _bndN)
-                utils.rotate(refBLK.mesh.south_boundary_angle(), _bndS)
+                utils.rotate(refBLK.mesh.face.N.theta, _stateN.Q)
+                utils.rotate(refBLK.mesh.face.S.theta, _stateS.Q)
+                utils.rotate(refBLK.mesh.north_boundary_angle(), _bndN.Q)
+                utils.rotate(refBLK.mesh.south_boundary_angle(), _bndS.Q)
 
-            sL, sR = self.get_LR_states_for_NS_fluxes(
-                refBLK.reconstruction_type, _bndN, _bndS, _stateN, _stateS
-            )
+            sL, sR = self.get_LR_states_for_NS_fluxes(_bndN, _bndS, _stateN, _stateS)
             fluxNS = self.flux_function_Y(WL=sL, WR=sR).transpose((1, 0, 2))
             fluxN[:] = fluxNS[1:, :, :]
             fluxS[:] = fluxNS[:-1, :, :]
@@ -508,8 +502,8 @@ class MUSCLFiniteVolumeMethod:
             if refBLK.is_cartesian:
                 utils.unrotate90(fluxN, fluxS)
             else:
-                utils.unrotate(refBLK.mesh.face.N.theta, fluxN)
-                utils.unrotate(refBLK.mesh.face.S.theta, fluxS)
+                utils.unrotate(refBLK.mesh.face.N.theta, fluxN.Q)
+                utils.unrotate(refBLK.mesh.face.S.theta, fluxS.Q)
 
     def evaluate_flux(self, refBLK: QuadBlock) -> None:
         """
