@@ -1,4 +1,4 @@
-from pyHype.solvers import Euler2D
+from pyhype.solvers import Euler2D
 from mesh import step_ten_block
 
 mesh = step_ten_block()

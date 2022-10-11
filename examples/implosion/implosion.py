@@ -1,4 +1,4 @@
-from pyHype.solvers import Euler2D
+from pyhype.solvers import Euler2D
 
 block1 = {
     "nBLK": 1,

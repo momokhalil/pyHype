@@ -1,6 +1,6 @@
 import numpy as np
-from pyHype.solvers import Euler2D
-from pyHype.mesh.base import QuadMeshGenerator
+from pyhype.solvers import Euler2D
+from pyhype.mesh.base import QuadMeshGenerator
 
 k = 1
 a = 2 / np.sqrt(3)

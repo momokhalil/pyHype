@@ -1,5 +1,5 @@
-from pyHype.solvers import Euler2D
-from pyHype.mesh.base import QuadMeshGenerator
+from pyhype.solvers import Euler2D
+from pyhype.mesh.base import QuadMeshGenerator
 
 _left_x = [0.0, 0.0]
 _left_y = [0.0, 1.0]

@@ -19,7 +19,7 @@ Here is an example of an explosion simulation performed on one block. The simula
 The example in given in the file [examples/explosion/explosion.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion/explosion.py). The file is as follows:
 
 ```python
-from pyHype.solvers import Euler2D
+from pyhype.solvers import Euler2D
 
 block1 = {'nBLK': 1,
           'NW': [0, 20], 'NE': [10, 20],
@@ -35,28 +35,27 @@ block1 = {'nBLK': 1,
 
 mesh = {1: block1}
 
-
 # Solver settings
-settings = {'problem_type':             'explosion',
-            'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'conservative',
-            'upwind_mode':              'primitive',
-            'write_solution':           False,
-            'write_solution_mode':      'every_n_timesteps',
-            'write_solution_name':      'nozzle',
-            'write_every_n_timesteps':  40,
-            'plot_every':               20,
-            'CFL':                      0.8,
-            't_final':                  0.07,
-            'realplot':                 False,
-            'profile':                  True,
-            'gamma':                    1.4,
-            'rho_inf':                  1.0,
-            'a_inf':                    343.0,
-            'R':                        287.0,
-            'nx':                       600,
-            'ny':                       600,
-            'nghost':                   1,
+settings = {'problem_type': 'explosion',
+            'interface_interpolation': 'arithmetic_average',
+            'reconstruction_type': 'conservative',
+            'upwind_mode': 'primitive',
+            'write_solution': False,
+            'write_solution_mode': 'every_n_timesteps',
+            'write_solution_name': 'nozzle',
+            'write_every_n_timesteps': 40,
+            'plot_every': 20,
+            'CFL': 0.8,
+            't_final': 0.07,
+            'realplot': False,
+            'profile': True,
+            'gamma': 1.4,
+            'rho_inf': 1.0,
+            'a_inf': 343.0,
+            'R': 287.0,
+            'nx': 600,
+            'ny': 600,
+            'nghost': 1,
             }
 
 # Create solver
@@ -88,7 +87,7 @@ Here is an example of an shockbox simulation performed on one block. The simulat
 The example in given in the file [examples/shockbox/shockbox.py](https://github.com/momokhalil/pyHype/blob/main/examples/shockbox/shockbox.py). The file is as follows:
 
 ```python
-from pyHype.solvers import Euler2D
+from pyhype.solvers import Euler2D
 
 block1 = {'nBLK': 1,
           'NW': [0, 10], 'NE': [10, 10],
@@ -105,27 +104,27 @@ block1 = {'nBLK': 1,
 mesh = {1: block1}
 
 # Solver settings
-settings = {'problem_type':             'shockbox',
-            'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'conservative',
-            'upwind_mode':              'primitive',
-            'write_solution':           True,
-            'write_solution_mode':      'every_n_timesteps',
-            'write_solution_name':      'shockbox',
-            'write_every_n_timesteps':  30,
-            'plot_every':               10,
-            'CFL':                      0.4,
-            't_final':                  2.0,
-            'realplot':                 False,
-            'profile':                  False,
-            'gamma':                    1.4,
-            'rho_inf':                  1.0,
-            'a_inf':                    343.0,
-            'R':                        287.0,
-            'nx':                       500,
-            'ny':                       500,
-            'nghost':                   1,
-            'use_JIT':                  True,
+settings = {'problem_type': 'shockbox',
+            'interface_interpolation': 'arithmetic_average',
+            'reconstruction_type': 'conservative',
+            'upwind_mode': 'primitive',
+            'write_solution': True,
+            'write_solution_mode': 'every_n_timesteps',
+            'write_solution_name': 'shockbox',
+            'write_every_n_timesteps': 30,
+            'plot_every': 10,
+            'CFL': 0.4,
+            't_final': 2.0,
+            'realplot': False,
+            'profile': False,
+            'gamma': 1.4,
+            'rho_inf': 1.0,
+            'a_inf': 343.0,
+            'R': 287.0,
+            'nx': 500,
+            'ny': 500,
+            'nghost': 1,
+            'use_JIT': True,
             }
 
 # Create solver
@@ -157,8 +156,8 @@ The example in given in the file [examples/dmr/dmr.py](https://github.com/momokh
 
 ```python
 import numpy as np
-from pyHype.solvers import Euler2D
-from pyHype.mesh.base import QuadMeshGenerator
+from pyhype.solvers import Euler2D
+from pyhype.mesh.base import QuadMeshGenerator
 
 k = 1
 a = 2 / np.sqrt(3)
@@ -180,29 +179,29 @@ _mesh = QuadMeshGenerator(nx_blk=4, ny_blk=1,
                           left_x=_left_x, right_x=_right_x, left_y=_left_y, right_y=_right_y)
 
 # Solver settings
-settings = {'problem_type':             'mach_reflection',
-            'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'primitive',
-            'write_solution':           False,
-            'write_solution_mode':      'every_n_timesteps',
-            'write_solution_name':      'machref',
-            'write_every_n_timesteps':  20,
-            'plot_every':               10,
-            'CFL':                      0.4,
-            't_final':                  0.25,
-            'realplot':                 True,
-            'profile':                  False,
-            'gamma':                    1.4,
-            'rho_inf':                  1.0,
-            'a_inf':                    1.0,
-            'R':                        287.0,
-            'nx':                       500,
-            'ny':                       500,
-            'nghost':                   1,
-            'BC_inlet_west_rho':        8.0,
-            'BC_inlet_west_u':          8.25,
-            'BC_inlet_west_v':          0.0,
-            'BC_inlet_west_p':          116.5,
+settings = {'problem_type': 'mach_reflection',
+            'interface_interpolation': 'arithmetic_average',
+            'reconstruction_type': 'primitive',
+            'write_solution': False,
+            'write_solution_mode': 'every_n_timesteps',
+            'write_solution_name': 'machref',
+            'write_every_n_timesteps': 20,
+            'plot_every': 10,
+            'CFL': 0.4,
+            't_final': 0.25,
+            'realplot': True,
+            'profile': False,
+            'gamma': 1.4,
+            'rho_inf': 1.0,
+            'a_inf': 1.0,
+            'R': 287.0,
+            'nx': 500,
+            'ny': 500,
+            'nghost': 1,
+            'BC_inlet_west_rho': 8.0,
+            'BC_inlet_west_u': 8.25,
+            'BC_inlet_west_v': 0.0,
+            'BC_inlet_west_p': 116.5,
             }
 
 # Create solver
@@ -236,8 +235,8 @@ Here is an example of high-speed jet simulation performed on 5 blocks. The simul
 The example in given in the file [examples/jet/jet.py](https://github.com/momokhalil/pyHype/blob/main/examples/jet/jet.py). The file is as follows:
 
 ```python
-from pyHype.solvers import Euler2D
-from pyHype.mesh.base import QuadMeshGenerator
+from pyhype.solvers import Euler2D
+from pyhype.mesh.base import QuadMeshGenerator
 
 BCE = ['OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet']
 BCW = ['Slipwall', 'Slipwall', 'InletDirichlet', 'Slipwall', 'Slipwall']
@@ -249,30 +248,30 @@ _mesh = QuadMeshGenerator(nx_blk=1, ny_blk=5,
                           NE=(1, 0.5), SW=(0, 0), NW=(0, 0.5), SE=(1, 0))
 
 # Solver settings
-settings = {'problem_type':             'subsonic_rest',
-            'interface_interpolation':  'arithmetic_average',
-            'reconstruction_type':      'primitive',
-            'upwind_mode':              'conservative',
-            'write_solution':           False,
-            'write_solution_mode':      'every_n_timesteps',
-            'write_solution_name':      'kvi',
-            'write_every_n_timesteps':  20,
-            'plot_every':               10,
-            'CFL':                      0.4,
-            't_final':                  25.0,
-            'realplot':                 True,
-            'profile':                  False,
-            'gamma':                    1.4,
-            'rho_inf':                  1.0,
-            'a_inf':                    1.0,
-            'R':                        287.0,
-            'nx':                       1000,
-            'ny':                       100,
-            'nghost':                   1,
-            'BC_inlet_west_rho':        1.0,
-            'BC_inlet_west_u':          0.25,
-            'BC_inlet_west_v':          0.0,
-            'BC_inlet_west_p':          2.0 / 1.4,
+settings = {'problem_type': 'subsonic_rest',
+            'interface_interpolation': 'arithmetic_average',
+            'reconstruction_type': 'primitive',
+            'upwind_mode': 'conservative',
+            'write_solution': False,
+            'write_solution_mode': 'every_n_timesteps',
+            'write_solution_name': 'kvi',
+            'write_every_n_timesteps': 20,
+            'plot_every': 10,
+            'CFL': 0.4,
+            't_final': 25.0,
+            'realplot': True,
+            'profile': False,
+            'gamma': 1.4,
+            'rho_inf': 1.0,
+            'a_inf': 1.0,
+            'R': 287.0,
+            'nx': 1000,
+            'ny': 100,
+            'nghost': 1,
+            'BC_inlet_west_rho': 1.0,
+            'BC_inlet_west_u': 0.25,
+            'BC_inlet_west_v': 0.0,
+            'BC_inlet_west_p': 2.0 / 1.4,
             }
 
 # Create solver
