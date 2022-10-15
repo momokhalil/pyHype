@@ -22,12 +22,12 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
 from abc import abstractmethod
 from pyhype.utils import utils
-from pyhype.mesh.quad_mesh import QuadMesh
+from pyhype.mesh.quad_mesh import QuadMesh, BlockGeometry
 from typing import TYPE_CHECKING, Union
-from pyhype.mesh import quadratures as qp
+from pyhype.mesh import quadratures as quadratures
 from pyhype.states.primitive import PrimitiveState
 from pyhype.states.conservative import ConservativeState
-from pyhype.blocks.base import BaseBlock_FVM
+from pyhype.blocks.base import BaseBlockFVM
 from pyhype.blocks.base import BlockMixin
 
 if TYPE_CHECKING:
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from pyhype.solvers.base import ProblemInput
     from pyhype.blocks.base import QuadBlock, BaseBlock
     from pyhype.mesh.base import BlockDescription
+    from pyhype.mesh.quadratures import QuadraturePointData
 
 
 class GhostBlocks:
@@ -55,16 +56,28 @@ class GhostBlocks:
             - S: Reference to the south ghost block
         """
         self.E = GhostBlockEast(
-            inputs, BCtype=block_data.BCTypeE, refBLK=refBLK, state_type=state_type
+            inputs,
+            BCtype=block_data.bc.E,
+            refBLK=refBLK,
+            state_type=state_type,
         )
         self.W = GhostBlockWest(
-            inputs, BCtype=block_data.BCTypeW, refBLK=refBLK, state_type=state_type
+            inputs,
+            BCtype=block_data.bc.W,
+            refBLK=refBLK,
+            state_type=state_type,
         )
         self.N = GhostBlockNorth(
-            inputs, BCtype=block_data.BCTypeN, refBLK=refBLK, state_type=state_type
+            inputs,
+            BCtype=block_data.bc.N,
+            refBLK=refBLK,
+            state_type=state_type,
         )
         self.S = GhostBlockSouth(
-            inputs, BCtype=block_data.BCTypeS, refBLK=refBLK, state_type=state_type
+            inputs,
+            BCtype=block_data.bc.S,
+            refBLK=refBLK,
+            state_type=state_type,
         )
 
     def __call__(self):
@@ -78,9 +91,6 @@ class GhostBlocks:
 
 
 class BoundaryConditionMixin:
-    def __init__(self):
-        pass
-
     @staticmethod
     def BC_reflection(state: State, wall_angle: Union[np.ndarray, int, float]) -> None:
         """
@@ -99,18 +109,16 @@ class BoundaryConditionMixin:
         utils.unrotate(wall_angle, state.Q)
 
 
-class GhostBlock(BaseBlock_FVM, BoundaryConditionMixin, BlockMixin):
+class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
     def __init__(
         self,
         inputs: ProblemInput,
         BCtype: str,
         refBLK: BaseBlock,
-        nx: int,
-        ny: int,
+        mesh: QuadMesh = None,
+        qp: QuadraturePointData = None,
         state_type: str = "conservative",
     ):
-
-        super().__init__(inputs, nx, ny, state_type=state_type)
 
         self.BCtype = BCtype
         self.nghost = inputs.nghost
@@ -143,6 +151,8 @@ class GhostBlock(BaseBlock_FVM, BoundaryConditionMixin, BlockMixin):
                 + str(self.BCtype)
                 + " has not been specialized."
             )
+
+        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
 
     def _inlet_realizability_check(self):
         """
@@ -245,39 +255,29 @@ class GhostBlockEast(GhostBlock):
         state_type: str = "conservative",
     ) -> None:
 
-        super().__init__(
-            inputs,
-            BCtype,
-            refBLK,
-            nx=inputs.nghost,
-            ny=inputs.ny,
-            state_type=state_type,
-        )
-
         # Calculate coordinates of all four vertices
-        NWx = self.refBLK.mesh.nodes.x[-1, -1]
-        NWy = self.refBLK.mesh.nodes.y[-1, -1]
-        SWx = self.refBLK.mesh.nodes.x[0, -1]
-        SWy = self.refBLK.mesh.nodes.y[0, -1]
+        NWx = refBLK.mesh.nodes.x[-1, -1]
+        NWy = refBLK.mesh.nodes.y[-1, -1]
+        SWx = refBLK.mesh.nodes.x[0, -1]
+        SWy = refBLK.mesh.nodes.y[0, -1]
         NEx, NEy = utils.reflect_point(
             NWx,
             NWy,
             SWx,
             SWy,
-            xr=self.refBLK.mesh.nodes.x[-1, -1 - self.inputs.nghost],
-            yr=self.refBLK.mesh.nodes.y[-1, -1 - self.inputs.nghost],
+            xr=refBLK.mesh.nodes.x[-1, -1 - inputs.nghost],
+            yr=refBLK.mesh.nodes.y[-1, -1 - inputs.nghost],
         )
         SEx, SEy = utils.reflect_point(
             NWx,
             NWy,
             SWx,
             SWy,
-            xr=self.refBLK.mesh.nodes.x[0, -1 - self.inputs.nghost],
-            yr=self.refBLK.mesh.nodes.y[0, -1 - self.inputs.nghost],
+            xr=refBLK.mesh.nodes.x[0, -1 - inputs.nghost],
+            yr=refBLK.mesh.nodes.y[0, -1 - inputs.nghost],
         )
         # Construct Mesh
-        self.mesh = QuadMesh(
-            self.inputs,
+        block_geometry = BlockGeometry(
             NE=(NEx, NEy),
             NW=(NWx, NWy),
             SE=(SEx, SEy),
@@ -285,7 +285,17 @@ class GhostBlockEast(GhostBlock):
             nx=inputs.nghost,
             ny=inputs.ny,
         )
-        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
+        mesh = QuadMesh(inputs, block_geometry=block_geometry)
+        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+
+        super().__init__(
+            inputs,
+            BCtype,
+            refBLK,
+            mesh=mesh,
+            qp=qp,
+            state_type=state_type,
+        )
 
     def set_BC_none(
         self, state: State = None, state_type: str = "conservative"
@@ -380,40 +390,29 @@ class GhostBlockWest(GhostBlock):
         refBLK: Union[BaseBlock, QuadBlock],
         state_type: str = "conservative",
     ):
-
-        super().__init__(
-            inputs,
-            BCtype,
-            refBLK,
-            nx=inputs.nghost,
-            ny=inputs.ny,
-            state_type=state_type,
-        )
-
         # Calculate coordinates of all four vertices
-        NEx = self.refBLK.mesh.nodes.x[-1, 0]
-        NEy = self.refBLK.mesh.nodes.y[-1, 0]
-        SEx = self.refBLK.mesh.nodes.x[0, 0]
-        SEy = self.refBLK.mesh.nodes.y[0, 0]
+        NEx = refBLK.mesh.nodes.x[-1, 0]
+        NEy = refBLK.mesh.nodes.y[-1, 0]
+        SEx = refBLK.mesh.nodes.x[0, 0]
+        SEy = refBLK.mesh.nodes.y[0, 0]
         NWx, NWy = utils.reflect_point(
             NEx,
             NEy,
             SEx,
             SEy,
-            xr=self.refBLK.mesh.nodes.x[-1, self.inputs.nghost],
-            yr=self.refBLK.mesh.nodes.y[-1, self.inputs.nghost],
+            xr=refBLK.mesh.nodes.x[-1, inputs.nghost],
+            yr=refBLK.mesh.nodes.y[-1, inputs.nghost],
         )
         SWx, SWy = utils.reflect_point(
             NEx,
             NEy,
             SEx,
             SEy,
-            xr=self.refBLK.mesh.nodes.x[0, self.inputs.nghost],
-            yr=self.refBLK.mesh.nodes.y[0, self.inputs.nghost],
+            xr=refBLK.mesh.nodes.x[0, inputs.nghost],
+            yr=refBLK.mesh.nodes.y[0, inputs.nghost],
         )
         # Construct Mesh
-        self.mesh = QuadMesh(
-            self.inputs,
+        block_geometry = BlockGeometry(
             NE=(NEx, NEy),
             NW=(NWx, NWy),
             SE=(SEx, SEy),
@@ -421,7 +420,20 @@ class GhostBlockWest(GhostBlock):
             nx=inputs.nghost,
             ny=inputs.ny,
         )
-        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
+        mesh = QuadMesh(
+            inputs,
+            block_geometry=block_geometry,
+        )
+        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+
+        super().__init__(
+            inputs,
+            BCtype,
+            refBLK,
+            mesh=mesh,
+            qp=qp,
+            state_type=state_type,
+        )
 
     def set_BC_none(
         self, state: State = None, state_type: str = "conservative"
@@ -516,40 +528,29 @@ class GhostBlockNorth(GhostBlock):
         refBLK: Union[BaseBlock, QuadBlock],
         state_type: str = "conservative",
     ):
-
-        super().__init__(
-            inputs,
-            BCtype,
-            refBLK,
-            nx=inputs.nx,
-            ny=inputs.nghost,
-            state_type=state_type,
-        )
-
         # Calculate coordinates of all four vertices
-        SWx = self.refBLK.mesh.nodes.x[-1, 0]
-        SWy = self.refBLK.mesh.nodes.y[-1, 0]
-        SEx = self.refBLK.mesh.nodes.x[-1, -1]
-        SEy = self.refBLK.mesh.nodes.y[-1, -1]
+        SWx = refBLK.mesh.nodes.x[-1, 0]
+        SWy = refBLK.mesh.nodes.y[-1, 0]
+        SEx = refBLK.mesh.nodes.x[-1, -1]
+        SEy = refBLK.mesh.nodes.y[-1, -1]
         NWx, NWy = utils.reflect_point(
             SWx,
             SWy,
             SEx,
             SEy,
-            xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, 0],
-            yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, 0],
+            xr=refBLK.mesh.nodes.x[-1 - inputs.nghost, 0],
+            yr=refBLK.mesh.nodes.y[-1 - inputs.nghost, 0],
         )
         NEx, NEy = utils.reflect_point(
             SWx,
             SWy,
             SEx,
             SEy,
-            xr=self.refBLK.mesh.nodes.x[-1 - self.inputs.nghost, -1],
-            yr=self.refBLK.mesh.nodes.y[-1 - self.inputs.nghost, -1],
+            xr=refBLK.mesh.nodes.x[-1 - inputs.nghost, -1],
+            yr=refBLK.mesh.nodes.y[-1 - inputs.nghost, -1],
         )
         # Construct Mesh
-        self.mesh = QuadMesh(
-            self.inputs,
+        block_geometry = BlockGeometry(
             NE=(NEx, NEy),
             NW=(NWx, NWy),
             SE=(SEx, SEy),
@@ -557,7 +558,20 @@ class GhostBlockNorth(GhostBlock):
             nx=inputs.nx,
             ny=inputs.nghost,
         )
-        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
+        mesh = QuadMesh(
+            inputs,
+            block_geometry=block_geometry,
+        )
+        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+
+        super().__init__(
+            inputs,
+            BCtype,
+            refBLK,
+            mesh=mesh,
+            qp=qp,
+            state_type=state_type,
+        )
 
     def set_BC_none(
         self, state: State = None, state_type: str = "conservative"
@@ -652,40 +666,29 @@ class GhostBlockSouth(GhostBlock):
         refBLK: Union[BaseBlock, QuadBlock],
         state_type: str = "conservative",
     ) -> None:
-
-        super().__init__(
-            inputs,
-            BCtype,
-            refBLK,
-            nx=inputs.nx,
-            ny=inputs.nghost,
-            state_type=state_type,
-        )
-
         # Calculate coordinates of all four vertices
-        NWx = self.refBLK.mesh.nodes.x[0, 0]
-        NWy = self.refBLK.mesh.nodes.y[0, 0]
-        NEx = self.refBLK.mesh.nodes.x[0, -1]
-        NEy = self.refBLK.mesh.nodes.y[0, -1]
+        NWx = refBLK.mesh.nodes.x[0, 0]
+        NWy = refBLK.mesh.nodes.y[0, 0]
+        NEx = refBLK.mesh.nodes.x[0, -1]
+        NEy = refBLK.mesh.nodes.y[0, -1]
         SWx, SWy = utils.reflect_point(
             NWx,
             NWy,
             NEx,
             NEy,
-            xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, 0],
-            yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, 0],
+            xr=refBLK.mesh.nodes.x[inputs.nghost, 0],
+            yr=refBLK.mesh.nodes.y[inputs.nghost, 0],
         )
         SEx, SEy = utils.reflect_point(
             NWx,
             NWy,
             NEx,
             NEy,
-            xr=self.refBLK.mesh.nodes.x[self.inputs.nghost, -1],
-            yr=self.refBLK.mesh.nodes.y[self.inputs.nghost, -1],
+            xr=refBLK.mesh.nodes.x[inputs.nghost, -1],
+            yr=refBLK.mesh.nodes.y[inputs.nghost, -1],
         )
         # Construct Mesh
-        self.mesh = QuadMesh(
-            self.inputs,
+        block_geometry = BlockGeometry(
             NE=(NEx, NEy),
             NW=(NWx, NWy),
             SE=(SEx, SEy),
@@ -693,7 +696,20 @@ class GhostBlockSouth(GhostBlock):
             nx=inputs.nx,
             ny=inputs.nghost,
         )
-        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
+        mesh = QuadMesh(
+            inputs,
+            block_geometry=block_geometry,
+        )
+        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+
+        super().__init__(
+            inputs,
+            BCtype,
+            refBLK,
+            mesh=mesh,
+            qp=qp,
+            state_type=state_type,
+        )
 
     def set_BC_none(
         self, state: State = None, state_type: str = "conservative"

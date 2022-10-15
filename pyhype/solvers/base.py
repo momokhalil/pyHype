@@ -33,7 +33,7 @@ from typing import Iterable, Union
 from pyhype.mesh.base import MeshGenerator
 
 if TYPE_CHECKING:
-    from pyhype.blocks.QuadBlock import QuadBlock
+    from pyhype.blocks.quad_block import QuadBlock
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -117,8 +117,8 @@ class Solver:
         mesh_inputs: Union[MeshGenerator, dict] = None,
     ) -> None:
 
-        print(execution_prints.pyhype)
-        print(execution_prints.lice)
+        print(execution_prints.PYHYPE)
+        print(execution_prints.LICENSE)
         print(
             "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
         )
@@ -132,7 +132,10 @@ class Solver:
         )
         _mesh_inputs = {
             blk: BlockDescription(
-                blkData, nx=settings["nx"], ny=settings["ny"], nghost=settings["nghost"]
+                nx=settings["nx"],
+                ny=settings["ny"],
+                blk_input=blkData,
+                nghost=settings["nghost"],
             )
             for (blk, blkData) in _mesh.items()
         }
@@ -271,15 +274,15 @@ class Solver:
 
         blks = list(self.inputs.mesh_inputs.values())
 
-        sw_x = min([blk.SW[0] for blk in blks])
-        nw_x = min([blk.NW[0] for blk in blks])
-        sw_y = min([blk.SW[1] for blk in blks])
-        se_y = min([blk.SE[1] for blk in blks])
+        sw_x = min([blk.geometry.vertices.SW[0] for blk in blks])
+        nw_x = min([blk.geometry.vertices.NW[0] for blk in blks])
+        sw_y = min([blk.geometry.vertices.SW[1] for blk in blks])
+        se_y = min([blk.geometry.vertices.SE[1] for blk in blks])
 
-        se_x = max([blk.SE[0] for blk in blks])
-        ne_x = max([blk.NE[0] for blk in blks])
-        nw_y = max([blk.NW[1] for blk in blks])
-        ne_y = max([blk.NE[1] for blk in blks])
+        se_x = max([blk.geometry.vertices.SE[0] for blk in blks])
+        ne_x = max([blk.geometry.vertices.NE[0] for blk in blks])
+        nw_y = max([blk.geometry.vertices.NW[1] for blk in blks])
+        ne_y = max([blk.geometry.vertices.NE[1] for blk in blks])
 
         W = max(se_x, ne_x) - min(sw_x, nw_x)
         L = max(nw_y, ne_y) - min(sw_y, se_y)

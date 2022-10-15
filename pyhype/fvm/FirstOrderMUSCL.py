@@ -58,15 +58,15 @@ class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
 
         # Compute limited values at quadrature points
         _stateE = refBLK.state.U.copy()
-        stateE = [_stateE for _ in refBLK.QP.E]
+        stateE = [_stateE for _ in refBLK.qp.E]
 
         _stateW = refBLK.state.U.copy()
-        stateW = [_stateW for _ in refBLK.QP.W]
+        stateW = [_stateW for _ in refBLK.qp.W]
 
         _stateN = refBLK.state.U.copy()
-        stateN = [_stateN for _ in refBLK.QP.N]
+        stateN = [_stateN for _ in refBLK.qp.N]
 
         _stateS = refBLK.state.U.copy()
-        stateS = [_stateS for _ in refBLK.QP.S]
+        stateS = [_stateS for _ in refBLK.qp.S]
 
         return stateE, stateW, stateN, stateS

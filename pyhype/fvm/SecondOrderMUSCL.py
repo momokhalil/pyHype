@@ -138,25 +138,25 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
             self.unlimited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qp
             )
-            for qp in refBLK.QP.E
+            for qp in refBLK.qp.E
         ]
         unlimW = [
             self.unlimited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qp
             )
-            for qp in refBLK.QP.W
+            for qp in refBLK.qp.W
         ]
         unlimN = [
             self.unlimited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qp
             )
-            for qp in refBLK.QP.N
+            for qp in refBLK.qp.N
         ]
         unlimS = [
             self.unlimited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qp
             )
-            for qp in refBLK.QP.S
+            for qp in refBLK.qp.S
         ]
         self.limiter(
             refBLK.reconBlk, gqpE=unlimE, gqpW=unlimW, gqpN=unlimN, gqpS=unlimS

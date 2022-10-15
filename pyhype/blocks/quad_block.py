@@ -25,11 +25,11 @@ from itertools import chain
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from pyhype.mesh import quadratures as qp
+from pyhype.mesh import quadratures
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.mesh.base import BlockDescription
 from pyhype.utils.utils import NumpySlice
-from pyhype.blocks.base import Neighbors, BaseBlock_FVM
+from pyhype.blocks.base import Neighbors, BaseBlockFVM
 from pyhype.solvers.time_integration.explicit_runge_kutta import (
     ExplicitRungeKutta as Erk,
 )
@@ -37,18 +37,19 @@ from pyhype.blocks.ghost import GhostBlocks
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.solvers.base import ProblemInput
     from pyhype.blocks.base import BaseBlock
+    from pyhype.solvers.base import ProblemInput
+    from pyhype.mesh.quadratures import QuadraturePointData
 
 
-class BaseBlock_With_Ghost(BaseBlock_FVM):
+class BaseBlockGhost(BaseBlockFVM):
     def __init__(
         self,
         inputs: ProblemInput,
-        nx: int,
-        ny: int,
         block_data: BlockDescription,
         refBLK: BaseBlock,
+        mesh: QuadMesh,
+        qp: QuadraturePointData,
         state_type: str = "conservative",
     ) -> None:
         """
@@ -56,12 +57,6 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
 
         :type inputs: ProblemInputs
         :param inputs: Object that contains all the input parameters that decribe the problem.
-
-        :type nx: int
-        :param nx: Number of cells in the x direction
-
-        :type nx: int
-        :param ny: Number of cells in the y direction
 
         :type block_data: BlockDescription
         :param block_data: Object containing the parameters that describe the block
@@ -74,7 +69,7 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
 
         :return: None
         """
-        super().__init__(inputs, nx, ny, state_type=state_type)
+        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
 
         self.ghost = GhostBlocks(
             inputs, block_data=block_data, refBLK=refBLK, state_type=state_type
@@ -85,17 +80,7 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
         self.NORTH_GHOST_IDX = NumpySlice.rows(-self.inputs.nghost, None)
         self.SOUTH_GHOST_IDX = NumpySlice.rows(None, self.inputs.nghost)
 
-    def to_primitive(self) -> None:
-        """
-        Converts state in the interior and ghost blocks to `PrimitiveState`.
-
-        :return: None
-        """
-        self.state = self.state.to_primitive_state()
-        for gblk in self.ghost():
-            gblk.state = gblk.state.to_primitive_state()
-
-    def from_block(self, from_block: BaseBlock_With_Ghost) -> None:
+    def from_block(self, from_block: BaseBlockGhost) -> None:
         """
         Updates the state in the interior and ghost blocks, which may be any subclasss of `State`, using the state in
         the interior and ghost blocks from the input block, which is of type `PrimitiveState`.
@@ -162,49 +147,39 @@ class BaseBlock_With_Ghost(BaseBlock_FVM):
         self.ghost.clear_cache()
 
 
-class ReconstructionBlock(BaseBlock_With_Ghost):
+class ReconstructionBlock(BaseBlockGhost):
     def __init__(
         self,
         inputs: ProblemInput,
         block_data: BlockDescription,
-        QP,
-        mesh,
+        mesh: QuadMesh,
+        qp: QuadraturePointData,
     ) -> None:
-        # Track Quadrature points and mesh from parent block
-        self.QP = QP
-        self.mesh = mesh
-
         super().__init__(
             inputs,
-            nx=inputs.nx,
-            ny=inputs.ny,
             block_data=block_data,
             refBLK=self,
+            mesh=mesh,
+            qp=qp,
             state_type=inputs.reconstruction_type,
         )
 
 
-class QuadBlock(BaseBlock_With_Ghost):
+class QuadBlock(BaseBlockGhost):
     def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
 
         self.inputs = inputs
         self.block_data = block_data
-        self.global_nBLK = block_data.nBLK
-        self.mesh = QuadMesh(inputs, block_data)
-        self.ghost = None
-        self.neighbors = None
+        self.global_nBLK = block_data.info.nBLK
+        mesh = QuadMesh(inputs, block_data.geometry)
 
         # Quadrature Points and Data
-        self.QP = qp.QuadraturePointData(inputs, refMESH=self.mesh)
+        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
 
-        super().__init__(
-            inputs, nx=inputs.nx, ny=inputs.ny, block_data=block_data, refBLK=self
-        )
+        super().__init__(inputs, block_data=block_data, mesh=mesh, qp=qp, refBLK=self)
 
         # Create reconstruction block
-        self.reconBlk = ReconstructionBlock(
-            inputs, block_data, QP=self.QP, mesh=self.mesh
-        )
+        self.reconBlk = ReconstructionBlock(inputs, block_data, qp=qp, mesh=mesh)
 
         # Set time integrator
         if self.inputs.time_integrator == "ExplicitEuler1":

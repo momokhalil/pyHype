@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyhype.solvers.base import ProblemInput
-    from pyhype.blocks.QuadBlock import QuadBlock
+    from pyhype.blocks.quad_block import QuadBlock
 
 
 class Gradient:

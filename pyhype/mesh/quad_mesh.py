@@ -13,86 +13,55 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
 import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import matplotlib.pyplot as plt
-from pyhype.utils.utils import DirectionalContainerBase
+from pyhype.utils.utils import SidePropertyContainer
 from matplotlib.collections import LineCollection
 from pyhype.mesh.base import (
     _mesh_transfinite_gen,
-    BlockDescription,
-    Vertices,
+    BlockGeometry,
     CellFace,
     GridLocation,
 )
+
+if TYPE_CHECKING:
+    from pyhype.solvers.base import ProblemInput
 
 
 class QuadMesh(_mesh_transfinite_gen):
     def __init__(
         self,
-        inputs,
-        block_data: BlockDescription = None,
-        NE: [float] = None,
-        NW: [float] = None,
-        SE: [float] = None,
-        SW: [float] = None,
-        nx: int = None,
-        ny: int = None,
+        inputs: ProblemInput,
+        block_geometry: BlockGeometry = None,
     ) -> None:
-
-        if isinstance(block_data, BlockDescription) and (
-            NE or NW or SE or SW or nx or ny
-        ):
-            raise ValueError(
-                "Cannot provide block_data of type BlockDescription and also vertices and/or cell count."
-            )
-        if not isinstance(block_data, BlockDescription) and not (
-            NE and NW and SE and SW and nx and ny
-        ):
-            raise ValueError(
-                "If block_data of type BlockDescription is not provided, then vertices for each corner"
-                " and cell count must be provided."
-            )
 
         super().__init__()
 
-        # Initialize inputs class
         self.inputs = inputs
-        # Number of ghost cells
-        self.nghost = inputs.nghost
 
-        # If block_data is not given
-        if not isinstance(block_data, BlockDescription):
-            # Initialize vertices class
-            self.vertices = Vertices(NW=NW, NE=NE, SW=SW, SE=SE)
-            # Number of cells in x and y directions
-            self.nx = nx
-            self.ny = ny
-        else:
-            # Initialize vertices class
-            self.vertices = Vertices(
-                NW=block_data.NW, NE=block_data.NE, SW=block_data.SW, SE=block_data.SE
-            )
-            # Number of cells in x and y directions
-            self.nx = inputs.nx
-            self.ny = inputs.ny
+        self.nghost = block_geometry.nghost
+        self.nx = block_geometry.nx
+        self.ny = block_geometry.ny
+        self.vertices = block_geometry.vertices
 
         # x and y locations of each cell centroid
         self.x = np.zeros((self.ny, self.nx), dtype=float)
         self.y = np.zeros((self.ny, self.nx), dtype=float)
-        # Initialize nodes attribute
+
         self.nodes = None
-        # Initialize cell face attributes
-        self.face = DirectionalContainerBase()
-        # Initialize x and y direction cell sizes
+        self.face = None
         self.dx = None
         self.dy = None
-        # Initialize cell area attribute
         self.A = None
-        # Build mesh
+
         self.create_mesh()
 
     def create_mesh(self) -> None:
@@ -130,30 +99,32 @@ class QuadMesh(_mesh_transfinite_gen):
         self.compute_centroid()
 
         # Create cell face classes
+        self.face = SidePropertyContainer(
+            E=CellFace(),
+            W=CellFace(),
+            N=CellFace(),
+            S=CellFace(),
+        )
 
         # East Face
-        self.face.E = CellFace()
         self.face.E.L = self.east_face_length()
         self.compute_east_face_midpoint()
         self.compute_east_face_norm()
         self.compute_east_face_angle()
 
         # West Face
-        self.face.W = CellFace()
         self.face.W.L = self.west_face_length()
         self.compute_west_face_midpoint()
         self.compute_west_face_norm()
         self.compute_west_face_angle()
 
         # North Face
-        self.face.N = CellFace()
         self.face.N.L = self.north_face_length()
         self.compute_north_face_midpoint()
         self.compute_north_face_norm()
         self.compute_north_face_angle()
 
         # South Face
-        self.face.S = CellFace()
         self.face.S.L = self.south_face_length()
         self.compute_south_face_midpoint()
         self.compute_south_face_norm()

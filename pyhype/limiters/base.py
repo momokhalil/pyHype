@@ -26,7 +26,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.blocks.QuadBlock import QuadBlock
+    from pyhype.blocks.quad_block import QuadBlock
 
 
 class SlopeLimiter:

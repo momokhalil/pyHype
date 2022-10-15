@@ -16,16 +16,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-
-os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
-
 import functools
-import numpy as np
+from dataclasses import dataclass
+from typing import Union, Callable, TYPE_CHECKING, Any
+
 import numba as nb
-from typing import Union, Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+import numpy as np
 
 
 def rotate(
@@ -229,18 +230,25 @@ class Cache:
         return instance.cache[self.func]
 
 
-class DirectionalContainerBase:
-    def __init__(
-        self,
-        east_obj: object or list or tuple = None,
-        west_obj: object or list or tuple = None,
-        north_obj: object or list or tuple = None,
-        south_obj: object or list or tuple = None,
-    ):
-        self.E = east_obj
-        self.W = west_obj
-        self.N = north_obj
-        self.S = south_obj
+@dataclass
+class SidePropertyContainer:
+    E: Any
+    W: Any
+    N: Any
+    S: Any
+
+
+@dataclass
+class CornerPropertyContainer:
+    NE: Any
+    NW: Any
+    SE: Any
+    SW: Any
+
+
+@dataclass
+class FullPropertyContainer(SidePropertyContainer, CornerPropertyContainer):
+    pass
 
 
 class NumpySlice:

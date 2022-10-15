@@ -13,30 +13,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 from __future__ import annotations
 
 import os
-
-os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
-
 import functools
-import numpy as np
+from abc import abstractmethod
+from typing import TYPE_CHECKING, Callable, Union
+
 import numba as nb
 import matplotlib.pyplot as plt
-import pyhype.blocks.QuadBlock as Qb
-import pyhype.fvm as FVM
-from abc import abstractmethod
-from pyhype.utils.utils import NumpySlice
-from pyhype.states import PrimitiveState, ConservativeState
 
-from typing import TYPE_CHECKING, Callable, Union
+from pyhype import fvm
+from pyhype.utils.utils import NumpySlice
+from pyhype.blocks import quad_block as qb
+from pyhype.states import PrimitiveState, ConservativeState
 
 if TYPE_CHECKING:
     from pyhype.mesh.quad_mesh import QuadMesh
-    from pyhype.mesh.quadratures import QuadraturePoint
+    from pyhype.mesh.quadratures import QuadraturePointData, QuadraturePoint
     from pyhype.states.base import State
-    from pyhype.blocks.QuadBlock import QuadBlock
+    from pyhype.blocks.quad_block import QuadBlock
     from pyhype.solvers.base import ProblemInput
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+import numpy as np
 
 
 class Neighbors:
@@ -160,8 +161,8 @@ class SolutionGradients:
     def get_high_order_term(
         self,
         xc: np.ndarray,
-        yc: np.ndarray,
         xp: np.ndarray,
+        yc: np.ndarray,
         yp: np.ndarray,
         slicer: slice or tuple or int = None,
     ):
@@ -261,7 +262,9 @@ class SecondOrderGradients(SolutionGradients):
 
 class GradientsFactory:
     @staticmethod
-    def create_gradients(inputs, order: int, nx: int, ny: int) -> Union[FirstOrderGradients, SecondOrderGradients]:
+    def create_gradients(
+        inputs, order: int, nx: int, ny: int
+    ) -> Union[FirstOrderGradients, SecondOrderGradients]:
         if order == 2:
             return FirstOrderGradients(inputs, nx, ny)
         if order == 4:
@@ -351,15 +354,15 @@ class Blocks:
 
     def build(self) -> None:
         for BLK_data in self.inputs.mesh_inputs.values():
-            self.add(Qb.QuadBlock(self.inputs, BLK_data))
+            self.add(qb.QuadBlock(self.inputs, BLK_data))
 
         self.num_BLK = len(self.blocks)
 
         for block in self.blocks.values():
-            Neighbor_E_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborE
-            Neighbor_W_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborW
-            Neighbor_N_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborN
-            Neighbor_S_n = self.inputs.mesh_inputs.get(block.global_nBLK).NeighborS
+            Neighbor_E_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.E
+            Neighbor_W_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.W
+            Neighbor_N_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.N
+            Neighbor_S_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.S
 
             block.connect(
                 NeighborE=self.blocks[Neighbor_E_n]
@@ -416,7 +419,19 @@ class BaseBlock:
         return all(map(lambda blk: isinstance(blk.state, PrimitiveState), blks))
 
 
-class BaseBlock_Only_State(BaseBlock, BlockMixin):
+class BaseBlockMesh(BaseBlock):
+    def __init__(
+        self,
+        inputs: ProblemInput,
+        mesh: QuadMesh = None,
+        qp: QuadraturePointData = None,
+    ):
+        super().__init__(inputs=inputs)
+        self.mesh = mesh
+        self.qp = qp
+
+
+class BaseBlockState(BaseBlockMesh, BlockMixin):
     EAST_BOUND_IDX = NumpySlice.east_boundary()
     WEST_BOUND_IDX = NumpySlice.west_boundary()
     NORTH_BOUND_IDX = NumpySlice.north_boundary()
@@ -428,49 +443,61 @@ class BaseBlock_Only_State(BaseBlock, BlockMixin):
     SOUTH_FACE_IDX = NumpySlice.south_face()
 
     def __init__(
-        self, inputs: ProblemInput, nx: int, ny: int, state_type: str = "conservative"
+        self,
+        inputs: ProblemInput,
+        mesh: QuadMesh,
+        qp: QuadraturePointData,
+        state_type: str = "conservative",
     ):
-        super().__init__(inputs)
+        super().__init__(inputs=inputs, mesh=mesh, qp=qp)
         if state_type == "conservative":
-            self.state = ConservativeState(inputs, shape=(ny, nx))
+            self.state = ConservativeState(inputs, shape=(mesh.ny, mesh.nx))
         elif state_type == "primitive":
-            self.state = PrimitiveState(inputs, shape=(ny, nx))
+            self.state = PrimitiveState(inputs, shape=(mesh.ny, mesh.nx))
         else:
             raise TypeError("BaseBlock_Only_State.__init__(): Undefined state type.")
 
 
-class BaseBlock_State_Grad(BaseBlock_Only_State):
+class BaseBlockGrad(BaseBlockState):
     def __init__(
-        self, inputs: ProblemInput, nx: int, ny: int, state_type: str = "conservative"
+        self,
+        inputs: ProblemInput,
+        mesh: QuadMesh,
+        qp: QuadraturePointData,
+        state_type: str = "conservative",
     ):
-        super().__init__(inputs, nx, ny, state_type=state_type)
+        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
         self.grad = GradientsFactory.create_gradients(
-            inputs=inputs, order=inputs.fvm_spatial_order, nx=nx, ny=ny
+            inputs=inputs, order=inputs.fvm_spatial_order, nx=mesh.nx, ny=mesh.ny
         )
 
     def high_order_term_at_location(
         self,
         xc: np.ndarray,
-        yc: np.ndarray,
         xp: np.ndarray,
+        yc: np.ndarray,
         yp: np.ndarray,
         slicer: slice or tuple or int = None,
     ) -> np.ndarray:
         return self.grad.get_high_order_term(xc, xp, yc, yp, slicer)
 
 
-class BaseBlock_FVM(BaseBlock_State_Grad):
+class BaseBlockFVM(BaseBlockGrad):
     def __init__(
-        self, inputs: ProblemInput, nx: int, ny: int, state_type: str = "conservative"
+        self,
+        inputs: ProblemInput,
+        mesh: QuadMesh,
+        qp: QuadraturePointData,
+        state_type: str = "conservative",
     ):
-        super().__init__(inputs, nx, ny, state_type=state_type)
+        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
 
         # Set finite volume method
         if self.inputs.fvm_type == "MUSCL":
             if self.inputs.fvm_spatial_order == 1:
-                self.fvm = FVM.FirstOrderMUSCL(self.inputs)
+                self.fvm = fvm.FirstOrderMUSCL(self.inputs)
             elif self.inputs.fvm_spatial_order == 2:
-                self.fvm = FVM.SecondOrderMUSCL(self.inputs)
+                self.fvm = fvm.SecondOrderMUSCL(self.inputs)
             else:
                 raise ValueError(
                     "No MUSCL finite volume method has been specialized with order "
@@ -518,7 +545,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpe, slicer=self.EAST_BOUND_IDX
             )
-            for qpe in self.QP.E
+            for qpe in self.qp.E
         )
         return _east_states
 
@@ -534,7 +561,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpw, slicer=self.WEST_BOUND_IDX
             )
-            for qpw in self.QP.W
+            for qpw in self.qp.W
         )
         return _west_states
 
@@ -550,7 +577,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpn, slicer=self.NORTH_BOUND_IDX
             )
-            for qpn in self.QP.N
+            for qpn in self.qp.N
         )
         return _north_states
 
@@ -566,7 +593,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qps, slicer=self.SOUTH_BOUND_IDX
             )
-            for qps in self.QP.S
+            for qps in self.qp.S
         )
         return _south_states
 
@@ -582,7 +609,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpe, slicer=self.EAST_FACE_IDX
             )
-            for qpe in self.QP.E
+            for qpe in self.qp.E
         )
         return _east_states
 
@@ -598,7 +625,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpw, slicer=self.WEST_FACE_IDX
             )
-            for qpw in self.QP.W
+            for qpw in self.qp.W
         )
         return _west_states
 
@@ -614,7 +641,7 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpn, slicer=self.NORTH_FACE_IDX
             )
-            for qpn in self.QP.N
+            for qpn in self.qp.N
         )
         return _north_states
 
@@ -630,6 +657,6 @@ class BaseBlock_FVM(BaseBlock_State_Grad):
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qps, slicer=self.SOUTH_FACE_IDX
             )
-            for qps in self.QP.S
+            for qps in self.qp.S
         )
         return _south_states

@@ -10,10 +10,18 @@ block1 = {
     "NeighborW": None,
     "NeighborN": None,
     "NeighborS": None,
+    "NeighborNE": None,
+    "NeighborNW": None,
+    "NeighborSE": None,
+    "NeighborSW": None,
     "BCTypeE": "Reflection",
     "BCTypeW": "Reflection",
     "BCTypeN": "Reflection",
     "BCTypeS": "Reflection",
+    "BCTypeNE": None,
+    "BCTypeNW": None,
+    "BCTypeSE": None,
+    "BCTypeSW": None,
 }
 
 mesh = {1: block1}

@@ -34,10 +34,10 @@ import pyhype.fvm.Gradients as Grads
 from pyhype.limiters import limiters
 from pyhype.states.primitive import PrimitiveState
 from pyhype.states.conservative import ConservativeState
-from pyhype.utils.utils import DirectionalContainerBase
+from pyhype.utils.utils import SidePropertyContainer
 
 if TYPE_CHECKING:
-    from pyhype.blocks.QuadBlock import QuadBlock
+    from pyhype.blocks.quad_block import QuadBlock
     from pyhype.blocks.base import GradientsContainer
     from pyhype.states.base import State
     from pyhype.states.primitive import PrimitiveState
@@ -92,20 +92,20 @@ class MUSCLFiniteVolumeMethod:
         self.inputs = inputs
 
         # Flux storage arrays
-        self.Flux = DirectionalContainerBase(
-            east_obj=tuple(
+        self.Flux = SidePropertyContainer(
+            E=tuple(
                 np.empty((self.inputs.ny, self.inputs.nx, 4))
                 for _ in range(self.inputs.fvm_num_quadrature_points)
             ),
-            west_obj=tuple(
+            W=tuple(
                 np.empty((self.inputs.ny, self.inputs.nx, 4))
                 for _ in range(self.inputs.fvm_num_quadrature_points)
             ),
-            north_obj=tuple(
+            N=tuple(
                 np.empty((self.inputs.ny, self.inputs.nx, 4))
                 for _ in range(self.inputs.fvm_num_quadrature_points)
             ),
-            south_obj=tuple(
+            S=tuple(
                 np.empty((self.inputs.ny, self.inputs.nx, 4))
                 for _ in range(self.inputs.fvm_num_quadrature_points)
             ),
@@ -204,7 +204,7 @@ class MUSCLFiniteVolumeMethod:
         return (
             0.5
             * refBLK.mesh.face.E.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.E, self.Flux.E)))
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.E, self.Flux.E)))
         )
 
     def integrate_flux_W(self, refBLK: QuadBlock) -> np.ndarray:
@@ -220,7 +220,7 @@ class MUSCLFiniteVolumeMethod:
         return (
             0.5
             * refBLK.mesh.face.W.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.W, self.Flux.W)))
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.W, self.Flux.W)))
         )
 
     def integrate_flux_N(self, refBLK: QuadBlock) -> np.ndarray:
@@ -236,7 +236,7 @@ class MUSCLFiniteVolumeMethod:
         return (
             0.5
             * refBLK.mesh.face.N.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.N, self.Flux.N)))
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.N, self.Flux.N)))
         )
 
     def integrate_flux_S(self, refBLK: QuadBlock) -> np.ndarray:
@@ -252,7 +252,7 @@ class MUSCLFiniteVolumeMethod:
         return (
             0.5
             * refBLK.mesh.face.S.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.QP.S, self.Flux.S)))
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.S, self.Flux.S)))
         )
 
     @staticmethod
@@ -420,7 +420,7 @@ class MUSCLFiniteVolumeMethod:
         )
 
         for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(
-            refBLK.QP.E, refBLK.QP.W, bndE, bndW, self.Flux.E, self.Flux.W
+            refBLK.qp.E, refBLK.qp.W, bndE, bndW, self.Flux.E, self.Flux.W
         ):
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qe
@@ -475,7 +475,7 @@ class MUSCLFiniteVolumeMethod:
         )
 
         for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(
-            refBLK.QP.N, refBLK.QP.S, bndN, bndS, self.Flux.N, self.Flux.S
+            refBLK.qp.N, refBLK.qp.S, bndN, bndS, self.Flux.N, self.Flux.S
         ):
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qn

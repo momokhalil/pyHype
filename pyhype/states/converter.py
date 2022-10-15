@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class StateConverter(ABC):
-
     @staticmethod
     def from_state(state: states.State, from_state: states.State) -> None:
         converter = from_state.get_class_type_converter()
@@ -29,6 +28,7 @@ class StateConverter(ABC):
         array = converter.to(to_type)(state)
         created = to_type(inputs=inputs, array=array)
         return created
+
 
 class BaseConverter(ABC):
     """

@@ -14,50 +14,86 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-
-os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
-
-import numpy as np
-from typing import Union
 from abc import abstractmethod
 
+from pyhype.utils.utils import (
+    CornerPropertyContainer,
+    FullPropertyContainer,
+)
 
-class BlockDescription:
-    def __init__(self, blk_input: dict, nx: int, ny: int, nghost: int):
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+import numpy as np
 
-        # Set parameter attributes from input dict
-        self.nBLK = blk_input["nBLK"]
-        self.NeighborE = blk_input["NeighborE"]
-        self.NeighborW = blk_input["NeighborW"]
-        self.NeighborN = blk_input["NeighborN"]
-        self.NeighborS = blk_input["NeighborS"]
-        self.NE = blk_input["NE"]
-        self.NW = blk_input["NW"]
-        self.SE = blk_input["SE"]
-        self.SW = blk_input["SW"]
-        self.BCTypeE = blk_input["BCTypeE"]
-        self.BCTypeW = blk_input["BCTypeW"]
-        self.BCTypeN = blk_input["BCTypeN"]
-        self.BCTypeS = blk_input["BCTypeS"]
 
+class BlockGeometry:
+    def __init__(
+        self,
+        NE: [float] = None,
+        NW: [float] = None,
+        SE: [float] = None,
+        SW: [float] = None,
+        nx: int = None,
+        ny: int = None,
+        nghost: int = None,
+    ):
+        self.vertices = CornerPropertyContainer(NE=NE, NW=NW, SE=SE, SW=SW)
         self.n = nx * ny
         self.nx = nx
         self.ny = ny
         self.nghost = nghost
 
 
-class Vertices:
-    def __init__(
-        self,
-        NE: tuple[Union[float, int], Union[float, int]],
-        NW: tuple[Union[float, int], Union[float, int]],
-        SE: tuple[Union[float, int], Union[float, int]],
-        SW: tuple[Union[float, int], Union[float, int]],
-    ) -> None:
-        self.NW = NW
-        self.NE = NE
-        self.SW = SW
-        self.SE = SE
+class BlockInfo:
+    def __init__(self, blk_input: dict):
+        # Set parameter attributes from input dict
+        self.nBLK = blk_input["nBLK"]
+
+        self.neighbors = FullPropertyContainer(
+            E=blk_input["NeighborE"],
+            W=blk_input["NeighborW"],
+            N=blk_input["NeighborN"],
+            S=blk_input["NeighborS"],
+            NE=blk_input["NeighborNE"],
+            NW=blk_input["NeighborNW"],
+            SE=blk_input["NeighborSE"],
+            SW=blk_input["NeighborSW"],
+        )
+        self.bc = FullPropertyContainer(
+            E=blk_input["BCTypeE"],
+            W=blk_input["BCTypeW"],
+            N=blk_input["BCTypeN"],
+            S=blk_input["BCTypeS"],
+            NE=blk_input["BCTypeNE"],
+            NW=blk_input["BCTypeNW"],
+            SE=blk_input["BCTypeSE"],
+            SW=blk_input["BCTypeSW"],
+        )
+
+
+class BlockDescription:
+    def __init__(self, nx: int, ny: int, blk_input: dict = None, nghost: int = None):
+        # Set parameter attributes from input dict
+        self.info = None
+        if blk_input is not None:
+            self.info = BlockInfo(blk_input=blk_input)
+
+        self.geometry = BlockGeometry(
+            NE=blk_input["NE"],
+            NW=blk_input["NW"],
+            SE=blk_input["SE"],
+            SW=blk_input["SW"],
+            nx=nx,
+            ny=ny,
+            nghost=nghost,
+        )
+
+    @property
+    def neighbors(self):
+        return self.info.neighbors
+
+    @property
+    def bc(self):
+        return self.info.bc
 
 
 class GridLocation:
