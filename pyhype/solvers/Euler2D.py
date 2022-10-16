@@ -25,15 +25,13 @@ import cProfile
 import numpy as np
 from datetime import datetime
 from pyhype.blocks.base import Blocks
+from pyhype.solvers.base import ProblemInput
 import pyhype.solvers.initial_conditions.initial_conditions as ic
 
 from pyhype.solvers.base import Solver
 
 from typing import TYPE_CHECKING
-from typing import Union
 
-if TYPE_CHECKING:
-    from pyhype.mesh.base import MeshGenerator
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -41,38 +39,20 @@ np.set_printoptions(threshold=sys.maxsize)
 class Euler2D(Solver):
     def __init__(
         self,
-        fvm_type: str = "MUSCL",
-        fvm_spatial_order: int = 2,
-        fvm_num_quadrature_points: int = 1,
-        fvm_gradient_type: str = "GreenGauss",
-        fvm_flux_function: str = "Roe",
-        fvm_slope_limiter: str = "Venkatakrishnan",
-        time_integrator: str = "RK2",
-        settings: dict = None,
-        mesh_inputs: Union[MeshGenerator, dict] = None,
+        inputs: ProblemInput,
     ) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
         # Store mesh features required to create block descriptions
 
-        super().__init__(
-            fvm_type=fvm_type,
-            fvm_spatial_order=fvm_spatial_order,
-            fvm_num_quadrature_points=fvm_num_quadrature_points,
-            fvm_gradient_type=fvm_gradient_type,
-            fvm_flux_function=fvm_flux_function,
-            fvm_slope_limiter=fvm_slope_limiter,
-            time_integrator=time_integrator,
-            settings=settings,
-            mesh_inputs=mesh_inputs,
-        )
+        super().__init__(inputs=inputs)
 
         # Create Blocks
         print("\t>>> Building solution blocks")
         self._blocks = Blocks(self.inputs)
 
         print("\n\tSolver Details:\n")
-        print(str(self))
+        print(self)
 
         print("\n\tFinished setting up solver")
 
@@ -135,8 +115,7 @@ class Euler2D(Solver):
         )
 
         print("\nProblem Details: \n")
-        for k, v in self._settings_dict.items():
-            print("\t" + f"{(str(k) + ': '):<40} {str(v)}")
+        print(self.inputs)
 
         print()
         print("\t>>> Setting Initial Conditions")

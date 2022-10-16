@@ -28,7 +28,7 @@ from pyhype.fvm.base import MUSCLFiniteVolumeMethod
 
 if TYPE_CHECKING:
     from pyhype.mesh.quadratures import QuadraturePoint
-    from pyhype.blocks.base import QuadBlock, BaseBlock_FVM
+    from pyhype.blocks.base import QuadBlock, BaseBlockFVM
     from pyhype.states import State
 
 
@@ -42,7 +42,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
 
     @staticmethod
     def high_order_term(
-        refBLK: BaseBlock_FVM,
+        refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
     ) -> np.ndarray:
@@ -68,7 +68,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
     def unlimited_solution_at_quadrature_point(
         self,
         state: State,
-        refBLK: BaseBlock_FVM,
+        refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
     ) -> np.ndarray:
@@ -96,7 +96,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
     def limited_solution_at_quadrature_point(
         self,
         state: State,
-        refBLK: BaseBlock_FVM,
+        refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
     ) -> np.ndarray:

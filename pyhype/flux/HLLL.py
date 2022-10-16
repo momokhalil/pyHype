@@ -17,6 +17,7 @@ limitations under the License.
 import numba as nb
 import numpy as np
 from pyhype.flux.base import FluxFunction
+from pyhype.states.conservative import ConservativeState
 from pyhype.states.primitive import PrimitiveState, RoePrimitiveState
 
 
@@ -35,8 +36,8 @@ class FluxHLLL(FluxFunction):
         L_plus = np.maximum.reduce((R_m, Lm))[:, :, None]
         L_minus = np.minimum.reduce((L_p, Lp))[:, :, None]
         # Left and right fluxes
-        UR = WR.to_conservative_state()
-        UL = WL.to_conservative_state()
+        UR = ConservativeState(self.inputs, state=WR)
+        UL = ConservativeState(self.inputs, state=WL)
         FluxR = WR.F(U=UR)
         FluxL = WL.F(U=UL)
         return self._HLLL_flux_JIT(

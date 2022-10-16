@@ -27,10 +27,10 @@ from pyhype.utils.utils import SidePropertyContainer
 from matplotlib.collections import LineCollection
 from pyhype.mesh.base import (
     _mesh_transfinite_gen,
-    BlockGeometry,
     CellFace,
     GridLocation,
 )
+from pyhype.blocks.base import BlockGeometry
 
 if TYPE_CHECKING:
     from pyhype.solvers.base import ProblemInput

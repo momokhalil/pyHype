@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Type
 
 import os
 
@@ -27,9 +27,8 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from pyhype.mesh import quadratures
 from pyhype.mesh.quad_mesh import QuadMesh
-from pyhype.mesh.base import BlockDescription
 from pyhype.utils.utils import NumpySlice
-from pyhype.blocks.base import Neighbors, BaseBlockFVM
+from pyhype.blocks.base import Neighbors, BaseBlockFVM, BlockDescription
 from pyhype.solvers.time_integration.explicit_runge_kutta import (
     ExplicitRungeKutta as Erk,
 )
@@ -50,7 +49,7 @@ class BaseBlockGhost(BaseBlockFVM):
         refBLK: BaseBlock,
         mesh: QuadMesh,
         qp: QuadraturePointData,
-        state_type: str = "conservative",
+        state_type: Type[State],
     ) -> None:
         """
         Constructs instance of class BaseBlock_With_Ghost.
@@ -176,7 +175,14 @@ class QuadBlock(BaseBlockGhost):
         # Quadrature Points and Data
         qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
 
-        super().__init__(inputs, block_data=block_data, mesh=mesh, qp=qp, refBLK=self)
+        super().__init__(
+            inputs,
+            block_data=block_data,
+            mesh=mesh,
+            qp=qp,
+            refBLK=self,
+            state_type=self.inputs.reconstruction_type,
+        )
 
         # Create reconstruction block
         self.reconBlk = ReconstructionBlock(inputs, block_data, qp=qp, mesh=mesh)

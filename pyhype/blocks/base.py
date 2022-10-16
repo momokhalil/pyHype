@@ -19,13 +19,17 @@ from __future__ import annotations
 import os
 import functools
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Callable, Union
+from typing import TYPE_CHECKING, Callable, Union, Type
 
 import numba as nb
 import matplotlib.pyplot as plt
 
 from pyhype import fvm
-from pyhype.utils.utils import NumpySlice
+from pyhype.utils.utils import (
+    NumpySlice,
+    CornerPropertyContainer,
+    FullPropertyContainer,
+)
 from pyhype.blocks import quad_block as qb
 from pyhype.states import PrimitiveState, ConservativeState
 
@@ -353,30 +357,18 @@ class Blocks:
             block.set_BC()
 
     def build(self) -> None:
-        for BLK_data in self.inputs.mesh_inputs.values():
-            self.add(qb.QuadBlock(self.inputs, BLK_data))
+        for blk_data in self.inputs.mesh.values():
+            self.add(qb.QuadBlock(self.inputs, blk_data))
 
         self.num_BLK = len(self.blocks)
 
         for block in self.blocks.values():
-            Neighbor_E_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.E
-            Neighbor_W_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.W
-            Neighbor_N_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.N
-            Neighbor_S_n = self.inputs.mesh_inputs.get(block.global_nBLK).neighbors.S
-
+            neighbors = self.inputs.mesh[block.global_nBLK].neighbors
             block.connect(
-                NeighborE=self.blocks[Neighbor_E_n]
-                if Neighbor_E_n is not None
-                else None,
-                NeighborW=self.blocks[Neighbor_W_n]
-                if Neighbor_W_n is not None
-                else None,
-                NeighborN=self.blocks[Neighbor_N_n]
-                if Neighbor_N_n is not None
-                else None,
-                NeighborS=self.blocks[Neighbor_S_n]
-                if Neighbor_S_n is not None
-                else None,
+                NeighborE=self.blocks[neighbors.E] if neighbors.E is not None else None,
+                NeighborW=self.blocks[neighbors.W] if neighbors.W is not None else None,
+                NeighborN=self.blocks[neighbors.N] if neighbors.N is not None else None,
+                NeighborS=self.blocks[neighbors.S] if neighbors.S is not None else None,
                 NeighborNE=None,
                 NeighborNW=None,
                 NeighborSE=None,
@@ -447,15 +439,10 @@ class BaseBlockState(BaseBlockMesh, BlockMixin):
         inputs: ProblemInput,
         mesh: QuadMesh,
         qp: QuadraturePointData,
-        state_type: str = "conservative",
+        state_type: Type[State],
     ):
         super().__init__(inputs=inputs, mesh=mesh, qp=qp)
-        if state_type == "conservative":
-            self.state = ConservativeState(inputs, shape=(mesh.ny, mesh.nx))
-        elif state_type == "primitive":
-            self.state = PrimitiveState(inputs, shape=(mesh.ny, mesh.nx))
-        else:
-            raise TypeError("BaseBlock_Only_State.__init__(): Undefined state type.")
+        self.state = state_type(inputs, shape=(mesh.ny, mesh.nx))
 
 
 class BaseBlockGrad(BaseBlockState):
@@ -464,7 +451,7 @@ class BaseBlockGrad(BaseBlockState):
         inputs: ProblemInput,
         mesh: QuadMesh,
         qp: QuadraturePointData,
-        state_type: str = "conservative",
+        state_type: Type[State],
     ):
         super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
         self.grad = GradientsFactory.create_gradients(
@@ -488,7 +475,7 @@ class BaseBlockFVM(BaseBlockGrad):
         inputs: ProblemInput,
         mesh: QuadMesh,
         qp: QuadraturePointData,
-        state_type: str = "conservative",
+        state_type: Type[State],
     ):
         super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
 
@@ -660,3 +647,74 @@ class BaseBlockFVM(BaseBlockGrad):
             for qps in self.qp.S
         )
         return _south_states
+
+
+class BlockGeometry:
+    def __init__(
+        self,
+        NE: [float] = None,
+        NW: [float] = None,
+        SE: [float] = None,
+        SW: [float] = None,
+        nx: int = None,
+        ny: int = None,
+        nghost: int = None,
+    ):
+        self.vertices = CornerPropertyContainer(NE=NE, NW=NW, SE=SE, SW=SW)
+        self.n = nx * ny
+        self.nx = nx
+        self.ny = ny
+        self.nghost = nghost
+
+
+class BlockInfo:
+    def __init__(self, blk_input: dict):
+        # Set parameter attributes from input dict
+        self.nBLK = blk_input["nBLK"]
+
+        self.neighbors = FullPropertyContainer(
+            E=blk_input["NeighborE"],
+            W=blk_input["NeighborW"],
+            N=blk_input["NeighborN"],
+            S=blk_input["NeighborS"],
+            NE=blk_input["NeighborNE"],
+            NW=blk_input["NeighborNW"],
+            SE=blk_input["NeighborSE"],
+            SW=blk_input["NeighborSW"],
+        )
+        self.bc = FullPropertyContainer(
+            E=blk_input["BCTypeE"],
+            W=blk_input["BCTypeW"],
+            N=blk_input["BCTypeN"],
+            S=blk_input["BCTypeS"],
+            NE=blk_input["BCTypeNE"],
+            NW=blk_input["BCTypeNW"],
+            SE=blk_input["BCTypeSE"],
+            SW=blk_input["BCTypeSW"],
+        )
+
+
+class BlockDescription:
+    def __init__(self, nx: int, ny: int, blk_input: dict = None, nghost: int = None):
+        # Set parameter attributes from input dict
+        self.info = None
+        if blk_input is not None:
+            self.info = BlockInfo(blk_input=blk_input)
+
+        self.geometry = BlockGeometry(
+            NE=blk_input["NE"],
+            NW=blk_input["NW"],
+            SE=blk_input["SE"],
+            SW=blk_input["SW"],
+            nx=nx,
+            ny=ny,
+            nghost=nghost,
+        )
+
+    @property
+    def neighbors(self):
+        return self.info.neighbors
+
+    @property
+    def bc(self):
+        return self.info.bc

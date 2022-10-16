@@ -138,6 +138,10 @@ class State(ABC):
     def p(self, p: np.ndarray) -> None:
         raise NotImplementedError
 
+    @property
+    def shape(self):
+        return self._Q.shape
+
     def __getitem__(self, index: Union[int, slice]) -> State:
         return type(self)(self.inputs, array=self.Q[index].copy())
 
@@ -230,6 +234,9 @@ class State(ABC):
 
     def from_state(self, state: State):
         self.converter.from_state(state=self, from_state=state)
+
+    def transpose(self, axes: tuple[int]):
+        self._Q = self._Q.transpose(axes)
 
     @abstractmethod
     def non_dim(self):

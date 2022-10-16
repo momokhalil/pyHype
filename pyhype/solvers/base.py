@@ -24,22 +24,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from pyhype import execution_prints
-from pyhype.mesh.base import BlockDescription
+from pyhype.blocks.base import BlockDescription
+from pyhype.states import ConservativeState
 
 from abc import abstractmethod
 
 from typing import TYPE_CHECKING
-from typing import Iterable, Union
+from typing import Iterable, Union, Type
 from pyhype.mesh.base import MeshGenerator
 
 if TYPE_CHECKING:
     from pyhype.blocks.quad_block import QuadBlock
+    from pyhype.states import State
 
 np.set_printoptions(threshold=sys.maxsize)
 
 
 class ProblemInput:
-    __REQUIRED__ = [
+    __slots__ = [
+        "fvm_type",
+        "fvm_spatial_order",
+        "fvm_num_quadrature_points",
+        "fvm_gradient_type",
+        "fvm_flux_function",
+        "fvm_slope_limiter",
+        "time_integrator",
+        "mesh",
         "problem_type",
         "interface_interpolation",
         "reconstruction_type",
@@ -47,7 +57,9 @@ class ProblemInput:
         "write_solution_mode",
         "write_solution_name",
         "write_every_n_timesteps",
+        "upwind_mode",
         "plot_every",
+        "plot_function",
         "CFL",
         "t_final",
         "realplot",
@@ -58,63 +70,102 @@ class ProblemInput:
         "R",
         "nx",
         "ny",
+        "n",
         "nghost",
         "use_JIT",
     ]
 
     def __init__(
         self,
-        fvm_type: str = "MUSCL",
-        fvm_spatial_order: int = 2,
-        fvm_num_quadrature_points: int = 1,
-        fvm_gradient_type: str = "GreenGauss",
-        fvm_flux_function: str = "Roe",
-        fvm_slope_limiter: str = "Venkatakrishnan",
-        time_integrator: str = "RK2",
-        settings: dict = None,
-        mesh_inputs: Union[MeshGenerator, dict] = None,
+        nx: int,
+        ny: int,
+        CFL: float,
+        t_final: float,
+        problem_type: str,
+        fvm_type: str,
+        time_integrator: str,
+        fvm_gradient_type: str,
+        fvm_flux_function: str,
+        fvm_slope_limiter: str,
+        fvm_spatial_order: int,
+        fvm_num_quadrature_points: int,
+        upwind_mode: str,
+        R: float = 287.0,
+        gamma: float = 1.4,
+        a_inf: float = 343.0,
+        rho_inf: float = 1.0,
+        nghost: int = 1,
+        use_JIT: bool = True,
+        profile: bool = False,
+        realplot: bool = False,
+        plot_every: int = 20,
+        plot_function: str = "Density",
+        write_solution: bool = False,
+        write_solution_mode: str = "every_n_timesteps",
+        write_solution_name: str = "nozzle",
+        reconstruction_type: Type[State] = ConservativeState,
+        write_every_n_timesteps: int = 40,
+        interface_interpolation: str = "arithmetic_average",
+        mesh: Union[MeshGenerator, dict] = None,
     ) -> None:
-        """
-        Sets required input parametes from input parameter dict. Initialized values to default, with the correct type
-        """
 
-        # Check input dictionary to check if all required fields are present
-        self._check_input_settings(settings)
+        self.problem_type = problem_type
 
-        # REQUIRED
+        self.nx = nx
+        self.ny = ny
+        self.n = nx * ny
+        self.nghost = nghost
+
+        self.CFL = CFL
+        self.t_final = t_final
 
         self.fvm_type = fvm_type
-        self.fvm_spatial_order = fvm_spatial_order
-        self.fvm_num_quadrature_points = fvm_num_quadrature_points
+        self.time_integrator = time_integrator
         self.fvm_gradient_type = fvm_gradient_type
         self.fvm_flux_function = fvm_flux_function
         self.fvm_slope_limiter = fvm_slope_limiter
-        self.time_integrator = time_integrator
-        self.n = settings["nx"] * settings["ny"]
-        self.mesh_inputs = mesh_inputs
+        self.fvm_spatial_order = fvm_spatial_order
+        self.fvm_num_quadrature_points = fvm_num_quadrature_points
 
-        # Set all input parameters
-        for key, val in settings.items():
-            self.__setattr__(key, val)
+        self.upwind_mode = upwind_mode
+        self.reconstruction_type = reconstruction_type
+        self.interface_interpolation = interface_interpolation
 
-    def _check_input_settings(self, input_dict: dict) -> None:
-        for key in self.__REQUIRED__:
-            if key not in input_dict.keys():
-                raise KeyError(key + " not found in inputs.")
+        self.R = R
+        self.gamma = gamma
+        self.a_inf = a_inf
+        self.rho_inf = rho_inf
+
+        self.use_JIT = use_JIT
+        self.profile = profile
+        self.realplot = realplot
+        self.plot_every = plot_every
+        self.plot_function = plot_function
+
+        self.write_solution = write_solution
+        self.write_solution_mode = write_solution_mode
+        self.write_solution_name = write_solution_name
+        self.write_every_n_timesteps = write_every_n_timesteps
+
+        _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
+        self.mesh = {
+            blk_num: BlockDescription(
+                nx=nx,
+                ny=ny,
+                blk_input=blk_data,
+                nghost=nghost,
+            )
+            for (blk_num, blk_data) in _mesh.items()
+        }
+
+    def __str__(self):
+        return "".join(f"\t{atr}: {getattr(self, atr)}\n" for atr in self.__slots__)
 
 
 class Solver:
     def __init__(
         self,
-        fvm_type: str = "MUSCL",
-        fvm_spatial_order: int = 2,
-        fvm_num_quadrature_points: int = 1,
-        fvm_gradient_type: str = "GreenGauss",
-        fvm_flux_function: str = "Roe",
-        fvm_slope_limiter: str = "Venkatakrishnan",
-        time_integrator: str = "RK2",
-        settings: dict = None,
-        mesh_inputs: Union[MeshGenerator, dict] = None,
+        inputs: ProblemInput,
     ) -> None:
 
         print(execution_prints.PYHYPE)
@@ -123,45 +174,9 @@ class Solver:
             "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
         )
 
-        self._settings_dict = settings
-
-        print("\t>>> Building Mesh Descriptors")
-
-        _mesh = (
-            mesh_inputs.dict if isinstance(mesh_inputs, MeshGenerator) else mesh_inputs
-        )
-        _mesh_inputs = {
-            blk: BlockDescription(
-                nx=settings["nx"],
-                ny=settings["ny"],
-                blk_input=blkData,
-                nghost=settings["nghost"],
-            )
-            for (blk, blkData) in _mesh.items()
-        }
+        self.inputs = inputs
         self.cmap = LinearSegmentedColormap.from_list(
             "my_map", ["royalblue", "midnightblue", "black"]
-        )
-
-        print("\t>>> Checking all boundary condition types")
-        _bc_type_names = ["BCTypeE", "BCTypeW", "BCTypeN", "BCTypeS"]
-        self._all_BC_types = []
-        for blkdata in _mesh.values():
-            for bc_name in _bc_type_names:
-                if blkdata[bc_name] not in self._all_BC_types:
-                    self._all_BC_types.append(blkdata[bc_name])
-
-        print("\t>>> Building Settings Descriptors")
-        self.inputs = ProblemInput(
-            fvm_type=fvm_type,
-            fvm_spatial_order=fvm_spatial_order,
-            fvm_num_quadrature_points=fvm_num_quadrature_points,
-            fvm_gradient_type=fvm_gradient_type,
-            fvm_flux_function=fvm_flux_function,
-            fvm_slope_limiter=fvm_slope_limiter,
-            time_integrator=time_integrator,
-            settings=settings,
-            mesh_inputs=_mesh_inputs,
         )
 
         print("\t>>> Initializing basic solution attributes")
@@ -227,22 +242,20 @@ class Solver:
         :param state: State object to plot
         :return: Array of the evaluation function
         """
-        if "plot_function" in self.inputs.__dict__:
-            if self.inputs.plot_function == "Mach Number":
-                return state.Ma()
-            if self.inputs.plot_function == "Density":
-                return state.rho
-            if self.inputs.plot_function == "X velocity":
-                return state.u
-            if self.inputs.plot_function == "Y velocity":
-                return state.v
-            if self.inputs.plot_function == "Pressure":
-                return state.p
-            if self.inputs.plot_function == "Energy":
-                return state.e
-        else:
-            # Default to density
+        if self.inputs.plot_function == "Mach Number":
+            return state.Ma()
+        if self.inputs.plot_function == "Density":
             return state.rho
+        if self.inputs.plot_function == "X velocity":
+            return state.u
+        if self.inputs.plot_function == "Y velocity":
+            return state.v
+        if self.inputs.plot_function == "Pressure":
+            return state.p
+        if self.inputs.plot_function == "Energy":
+            return state.e
+        # Default to density
+        return state.rho
 
     def real_plot(self):
         if self.numTimeStep % self.inputs.plot_every == 0:
@@ -272,7 +285,7 @@ class Solver:
         plt.ion()
         self.realfig, self.realplot = plt.subplots(1)
 
-        blks = list(self.inputs.mesh_inputs.values())
+        blks = self.inputs.mesh.values()
 
         sw_x = min([blk.geometry.vertices.SW[0] for blk in blks])
         nw_x = min([blk.geometry.vertices.NW[0] for blk in blks])
