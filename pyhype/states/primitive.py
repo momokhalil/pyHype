@@ -67,47 +67,39 @@ class PrimitiveState(State):
 
     @property
     def rho(self) -> np.ndarray:
-        return self._Q[:, :, self.RHO_IDX]
+        return self._data[:, :, self.RHO_IDX]
 
     @rho.setter
     def rho(self, rho: np.ndarray) -> None:
-        self._Q[:, :, self.RHO_IDX] = rho
+        self._data[:, :, self.RHO_IDX] = rho
 
     @property
     def u(self) -> np.ndarray:
-        return self._Q[:, :, self.U_IDX]
+        return self._data[:, :, self.U_IDX]
 
     @u.setter
     def u(self, u: np.ndarray) -> None:
-        self._Q[:, :, self.U_IDX] = u
+        self._data[:, :, self.U_IDX] = u
 
     @property
     def v(self) -> np.ndarray:
-        return self._Q[:, :, self.V_IDX]
+        return self._data[:, :, self.V_IDX]
 
     @v.setter
     def v(self, v: np.ndarray) -> None:
-        self._Q[:, :, self.V_IDX] = v
+        self._data[:, :, self.V_IDX] = v
 
     @property
     def p(self) -> np.ndarray:
-        return self._Q[:, :, self.P_IDX]
+        return self._data[:, :, self.P_IDX]
 
     @p.setter
     def p(self, p: np.ndarray) -> None:
-        self._Q[:, :, self.P_IDX] = p
-
-    @property
-    def W(self) -> np.ndarray:
-        return self._Q
-
-    @W.setter
-    def W(self, W: np.ndarray) -> None:
-        self.Q = W
+        self._data[:, :, self.P_IDX] = p
 
     @cache
     def ek(self) -> np.ndarray:
-        return self.ek_JIT(self._Q)
+        return self.ek_JIT(self._data)
 
     def ek_NP(self):
         return self.rho * self.Ek_NP()
@@ -127,7 +119,7 @@ class PrimitiveState(State):
 
     @cache
     def Ek(self) -> np.ndarray:
-        return self.Ek_JIT(self._Q)
+        return self.Ek_JIT(self._data)
 
     def Ek_NP(self):
         _u = self.u
@@ -264,7 +256,7 @@ class PrimitiveState(State):
             F[:, :, 3] = self.u * (U_vector[:, :, ConservativeState.E_IDX] + self.p)
             return F
 
-        return self._F_from_prim_JIT(self._Q, self.ek(), self.one_over_gm)
+        return self._F_from_prim_JIT(self._data, self.ek(), self.one_over_gm)
 
     @staticmethod
     @nb.njit(cache=True)
@@ -342,7 +334,7 @@ class RoePrimitiveState(PrimitiveState):
             WR      Right primitive state                           \n
         """
 
-        return self._roe_state_from_prim_JIT(WL.Q, WR.Q)
+        return self._roe_state_from_prim_JIT(WL.data, WR.data)
 
     @staticmethod
     @nb.njit(cache=True)

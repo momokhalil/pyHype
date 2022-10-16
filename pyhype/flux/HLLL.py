@@ -41,7 +41,7 @@ class FluxHLLL(FluxFunction):
         FluxR = WR.F(U=UR)
         FluxL = WL.F(U=UL)
         return self._HLLL_flux_JIT(
-            Wroe.u, Wroe.a(), FluxL, FluxR, UL.U, UR.U, L_minus, L_plus
+            Wroe.u, Wroe.a(), FluxL, FluxR, UL.data, UR.data, L_minus, L_plus
         )
 
     @staticmethod

@@ -52,8 +52,8 @@ class ExplicitRungeKutta(TimeIntegrator):
             - N/A
         """
         _stage_residuals = {}
-        U = refBLK.state.U.copy()
-        temp_state = np.zeros_like(refBLK.state.U)
+        U = refBLK.state.data.copy()
+        temp_state = np.zeros_like(refBLK.state.data)
         for stage in range(self.num_stages):
             _stage_residuals[stage] = refBLK.dUdt()
             _intermediate_state = U
@@ -65,7 +65,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                         dt * self.a[stage][step],
                         _stage_residuals[step],
                     )
-            refBLK.state.U = _intermediate_state
+            refBLK.state.data = _intermediate_state
             refBLK.apply_boundary_condition()
             refBLK.clear_cache()
             refBLK.reconBlk.clear_cache()

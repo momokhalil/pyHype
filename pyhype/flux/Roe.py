@@ -312,7 +312,7 @@ class FluxRoe(FluxFunction):
     ) -> np.ndarray:
         Wroe = RoePrimitiveState(self.inputs, WL, WR)
         self.diagonalize(Wroe, WL, WR)
-        dW = (WR.Q - WL.Q).flatten()
+        dW = (WR.data - WL.data).flatten()
         self.Lambda.data = np.absolute(self.Lambda.data)
         return 0.5 * (self.Rc * (self.Lambda * (self.Lp * dW))).reshape(1, -1, 4)
 

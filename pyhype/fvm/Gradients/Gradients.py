@@ -76,8 +76,8 @@ class LeastSquares9Point:
     def least_squares_nearest_neighbor(self, refBLK: QuadBlock):
         bdr = refBLK.boundary_blocks
 
-        refBLK.grad.x, refBLK.grad.y = least_squares_9_point(refBLK.state.Q,
-                                           bdr.E.state.Q, bdr.W.state.Q, bdr.N.state.Q, bdr.S.state.Q,
+        refBLK.grad.x, refBLK.grad.y = least_squares_9_point(refBLK.state.data,
+                                           bdr.E.state.data, bdr.W.state.data, bdr.N.state.data, bdr.S.state.data,
                                            refBLK.mesh.x, refBLK.mesh.y,
                                            bdr.E.x, bdr.E.y, bdr.W.x, bdr.W.y,
                                            bdr.N.x, bdr.N.y, bdr.S.x, bdr.S.y,

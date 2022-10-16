@@ -336,8 +336,8 @@ class MUSCLFiniteVolumeMethod:
         :rtype: tuple(PrimitiveState, PrimitiveState)
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
-        _left_arr = np.concatenate((ghostL.Q, stateL.Q), axis=1)
-        _right_arr = np.concatenate((stateR.Q, ghostR.Q), axis=1)
+        _left_arr = np.concatenate((ghostL.data, stateL.data), axis=1)
+        _right_arr = np.concatenate((stateR.data, ghostR.data), axis=1)
 
         if self.inputs.reconstruction_type is PrimitiveState:
             _left_state = PrimitiveState(self.inputs, array=_left_arr)
@@ -395,10 +395,10 @@ class MUSCLFiniteVolumeMethod:
             refBLK.ghost.W.apply_boundary_condition(_bndW)
 
             if not refBLK.is_cartesian:
-                utils.rotate(refBLK.mesh.face.E.theta, _stateE.Q)
-                utils.rotate(refBLK.mesh.face.W.theta, _stateW.Q)
-                utils.rotate(refBLK.mesh.east_boundary_angle(), _bndE.Q)
-                utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW.Q)
+                utils.rotate(refBLK.mesh.face.E.theta, _stateE.data)
+                utils.rotate(refBLK.mesh.face.W.theta, _stateW.data)
+                utils.rotate(refBLK.mesh.east_boundary_angle(), _bndE.data)
+                utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW.data)
 
             sL, sR = self._get_LR_states_for_flux_calc(
                 ghostL=_bndW, stateL=_stateE, ghostR=_bndE, stateR=_stateW
@@ -452,12 +452,12 @@ class MUSCLFiniteVolumeMethod:
             refBLK.ghost.S.apply_boundary_condition(_bndS)
 
             if refBLK.is_cartesian:
-                utils.rotate90(_stateN.Q, _stateS.Q, _bndN.Q, _bndS.Q)
+                utils.rotate90(_stateN.data, _stateS.data, _bndN.data, _bndS.data)
             else:
-                utils.rotate(refBLK.mesh.face.N.theta, _stateN.Q)
-                utils.rotate(refBLK.mesh.face.S.theta, _stateS.Q)
-                utils.rotate(refBLK.mesh.north_boundary_angle(), _bndN.Q)
-                utils.rotate(refBLK.mesh.south_boundary_angle(), _bndS.Q)
+                utils.rotate(refBLK.mesh.face.N.theta, _stateN.data)
+                utils.rotate(refBLK.mesh.face.S.theta, _stateS.data)
+                utils.rotate(refBLK.mesh.north_boundary_angle(), _bndN.data)
+                utils.rotate(refBLK.mesh.south_boundary_angle(), _bndS.data)
 
             # Transpose to x-frame
             _bndS.transpose((1, 0, 2))

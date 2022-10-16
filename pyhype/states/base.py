@@ -72,7 +72,7 @@ class State(ABC):
 
         self.converter = StateConverter()
 
-        self._Q = None
+        self._data = None
         self.cache = {}
 
         if state is not None:
@@ -80,26 +80,26 @@ class State(ABC):
         elif array is not None:
             if array.ndim != 3 or array.shape[-1] != 4:
                 raise ValueError("Array must have 3 dims and a depth of 4.")
-            self._Q = array
+            self._data = array
         elif shape is not None:
             if fill is not None:
-                self._Q = np.full(shape=shape, fill_value=fill)
+                self._data = np.full(shape=shape, fill_value=fill)
             else:
-                self._Q = np.zeros(shape=shape)
+                self._data = np.zeros(shape=shape)
         else:
-            self._Q = np.zeros((0, 0))
+            self._data = np.zeros((0, 0))
 
     @property
-    def Q(self):
-        return self._Q
+    def data(self):
+        return self._data
 
-    @Q.setter
-    def Q(self, Q: Union[np.ndarray, State]):
-        if not isinstance(Q, np.ndarray) and not isinstance(Q, State):
+    @data.setter
+    def data(self, data: Union[np.ndarray, State]):
+        if not isinstance(data, np.ndarray) and not isinstance(data, State):
             raise TypeError(
-                f"Input array must be a Numpy array or a State, but it is a {type(Q)}."
+                f"Input array must be a Numpy array or a State, but it is a {type(data)}."
             )
-        self._Q = Q if isinstance(Q, np.ndarray) else Q.Q
+        self._data = data if isinstance(data, np.ndarray) else data.data
         self.clear_cache()
 
     @property
@@ -144,16 +144,16 @@ class State(ABC):
 
     @property
     def shape(self):
-        return self._Q.shape
+        return self._data.shape
 
     def __getitem__(self, index: Union[int, slice]) -> State:
-        return type(self)(self.inputs, array=self.Q[index].copy())
+        return type(self)(self.inputs, array=self.data[index].copy())
 
     def __add__(self, other: Union[State, StateCompatible]) -> State:
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.Q + other.Q)
+            return type(self)(inputs=self.inputs, array=self.data + other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.Q + other)
+            return type(self)(inputs=self.inputs, array=self.data + other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
@@ -163,27 +163,27 @@ class State(ABC):
 
     def __sub__(self, other: Union[State, StateCompatible]) -> State:
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.Q - other.Q)
+            return type(self)(inputs=self.inputs, array=self.data - other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.Q - other)
+            return type(self)(inputs=self.inputs, array=self.data - other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __rsub__(self, other: Union[State, StateCompatible]) -> State:
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=other.Q - self.Q)
+            return type(self)(inputs=self.inputs, array=other.data - self.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=other - self.Q)
+            return type(self)(inputs=self.inputs, array=other - self.data)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __mul__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.Q * other.Q)
+            return type(self)(inputs=self.inputs, array=self.data * other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.Q * other)
+            return type(self)(inputs=self.inputs, array=self.data * other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
@@ -193,45 +193,45 @@ class State(ABC):
 
     def __truediv__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.Q / other.Q)
+            return type(self)(inputs=self.inputs, array=self.data / other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.Q / other)
+            return type(self)(inputs=self.inputs, array=self.data / other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __rtruediv__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=other.Q / self.Q)
+            return type(self)(inputs=self.inputs, array=other.data / self.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=other / self.Q)
+            return type(self)(inputs=self.inputs, array=other / self.data)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __pow__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.Q**other.Q)
+            return type(self)(inputs=self.inputs, array=self.data**other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.Q**other)
+            return type(self)(inputs=self.inputs, array=self.data**other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __rpow__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=other.Q**self.Q)
+            return type(self)(inputs=self.inputs, array=other.data**self.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=other**self.Q)
+            return type(self)(inputs=self.inputs, array=other**self.data)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def reset(self, shape: tuple[int] = None):
         if shape:
-            self.Q = np.zeros(shape=shape, dtype=float)
+            self.data = np.zeros(shape=shape, dtype=float)
         else:
-            self.Q = np.zeros((self.inputs.ny, self.inputs.nx, 4), dtype=float)
+            self.data = np.zeros((self.inputs.ny, self.inputs.nx, 4), dtype=float)
 
     def clear_cache(self) -> None:
         self.cache.clear()
@@ -240,7 +240,7 @@ class State(ABC):
         self.converter.from_state(state=self, from_state=state)
 
     def transpose(self, axes: tuple[int]):
-        self._Q = self._Q.transpose(axes)
+        self._data = self._data.transpose(axes)
 
     def realizable(self):
         """
@@ -303,4 +303,4 @@ class State(ABC):
         raise NotImplementedError
 
     def reshape(self, shape: tuple):
-        self.Q = self.Q.reshape(shape)
+        self.data = self.data.reshape(shape)

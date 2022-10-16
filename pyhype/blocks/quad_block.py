@@ -124,10 +124,10 @@ class BaseBlockGhost(BaseBlockFVM):
 
         # Concatenate ghost cell and state values in the East-West and North-South directions
         catx = np.concatenate(
-            (self.ghost.W.state.Q, self.state.Q, self.ghost.E.state.Q), axis=1
+            (self.ghost.W.state.data, self.state.data, self.ghost.E.state.data), axis=1
         )
         caty = np.concatenate(
-            (self.ghost.S.state.Q, self.state.Q, self.ghost.N.state.Q), axis=0
+            (self.ghost.S.state.data, self.state.data, self.ghost.N.state.data), axis=0
         )
 
         # Compute arithmetic mean
@@ -788,48 +788,48 @@ class QuadBlock(BaseBlockGhost):
         # Set corners
 
         # South-West
-        U[0, 0, :] = self.state.U[0, 0, :]
+        U[0, 0, :] = self.state.data[0, 0, :]
 
         # North-West
-        U[0, -1, :] = self.state.U[0, -1, :]
+        U[0, -1, :] = self.state.data[0, -1, :]
 
         # South-East
-        U[-1, 0, :] = self.state.U[-1, 0, :]
+        U[-1, 0, :] = self.state.data[-1, 0, :]
 
         # North-East
-        U[-1, -1, :] = self.state.U[-1, -1, :]
+        U[-1, -1, :] = self.state.data[-1, -1, :]
 
         # East edge
-        U[1:-1, -1, :] = 0.5 * (self.state.U[1:, -1, :] + self.state.U[:-1, -1, :])
+        U[1:-1, -1, :] = 0.5 * (self.state.data[1:, -1, :] + self.state.data[:-1, -1, :])
         # West edge
-        U[1:-1, 0, :] = 0.5 * (self.state.U[1:, 0, :] + self.state.U[:-1, 0, :])
+        U[1:-1, 0, :] = 0.5 * (self.state.data[1:, 0, :] + self.state.data[:-1, 0, :])
         # North edge
         if self.neighbors.N:
             U[-1, 1:-1, :] = 0.25 * (
-                self.state.U[-1, 1:, :]
-                + self.state.U[-1, :-1, :]
-                + self.neighbors.N.state.U[0, 1:, :]
-                + self.neighbors.N.state.U[0, :-1, :]
+                self.state.data[-1, 1:, :]
+                + self.state.data[-1, :-1, :]
+                + self.neighbors.N.state.data[0, 1:, :]
+                + self.neighbors.N.state.data[0, :-1, :]
             )
         else:
-            U[-1, 1:-1, :] = 0.5 * (self.state.U[-1, 1:, :] + self.state.U[-1, :-1, :])
+            U[-1, 1:-1, :] = 0.5 * (self.state.data[-1, 1:, :] + self.state.data[-1, :-1, :])
         # South edge
         if self.neighbors.S:
             U[0, 1:-1, :] = 0.25 * (
-                self.state.U[0, 1:, :]
-                + self.state.U[0, :-1, :]
-                + self.neighbors.S.state.U[-1, 1:, :]
-                + self.neighbors.S.state.U[-1, :-1, :]
+                self.state.data[0, 1:, :]
+                + self.state.data[0, :-1, :]
+                + self.neighbors.S.state.data[-1, 1:, :]
+                + self.neighbors.S.state.data[-1, :-1, :]
             )
         else:
-            U[0, 1:-1, :] = 0.5 * (self.state.U[0, 1:, :] + self.state.U[0, :-1, :])
+            U[0, 1:-1, :] = 0.5 * (self.state.data[0, 1:, :] + self.state.data[0, :-1, :])
 
         # Kernel
         U[1:-1, 1:-1, :] = 0.25 * (
-            self.state.U[1:, 1:, :]
-            + self.state.U[:-1, :-1, :]
-            + self.state.U[1:, :-1, :]
-            + self.state.U[:-1, 1:, :]
+            self.state.data[1:, 1:, :]
+            + self.state.data[:-1, :-1, :]
+            + self.state.data[1:, :-1, :]
+            + self.state.data[:-1, 1:, :]
         )
 
         return U

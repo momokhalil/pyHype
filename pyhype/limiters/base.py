@@ -75,26 +75,26 @@ class SlopeLimiter:
         """
         # Concatenate block solution state with ghost block solution states
         EW = np.concatenate(
-            (refBLK.ghost.W.state.Q, refBLK.state.Q, refBLK.ghost.E.state.Q), axis=1
+            (refBLK.ghost.W.state.data, refBLK.state.data, refBLK.ghost.E.state.data), axis=1
         )
         NS = np.concatenate(
-            (refBLK.ghost.S.state.Q, refBLK.state.Q, refBLK.ghost.N.state.Q), axis=0
+            (refBLK.ghost.S.state.data, refBLK.state.data, refBLK.ghost.N.state.data), axis=0
         )
         # Values for min/max evaluation
-        vals = (refBLK.state.Q, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])
+        vals = (refBLK.state.data, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])
         # Difference between largest/smallest value and average value
-        dmax = np.maximum.reduce(vals) - refBLK.state.Q
-        dmin = np.minimum.reduce(vals) - refBLK.state.Q
+        dmax = np.maximum.reduce(vals) - refBLK.state.data
+        dmin = np.minimum.reduce(vals) - refBLK.state.data
         # Difference between quadrature points and average value
-        dE = [_gqpE - refBLK.state.Q for _gqpE in gqpE]
-        dW = [_gqpW - refBLK.state.Q for _gqpW in gqpW]
-        dN = [_gqpN - refBLK.state.Q for _gqpN in gqpN]
-        dS = [_gqpS - refBLK.state.Q for _gqpS in gqpS]
+        dE = [_gqpE - refBLK.state.data for _gqpE in gqpE]
+        dW = [_gqpW - refBLK.state.data for _gqpW in gqpW]
+        dN = [_gqpN - refBLK.state.data for _gqpN in gqpN]
+        dS = [_gqpS - refBLK.state.data for _gqpS in gqpS]
         # Calculate slopes for each face
-        sE = [self._compute_slope(dmax, dmin, _dE.Q) for _dE in dE]
-        sW = [self._compute_slope(dmax, dmin, _dW.Q) for _dW in dW]
-        sN = [self._compute_slope(dmax, dmin, _dN.Q) for _dN in dN]
-        sS = [self._compute_slope(dmax, dmin, _dS.Q) for _dS in dS]
+        sE = [self._compute_slope(dmax, dmin, _dE.data) for _dE in dE]
+        sW = [self._compute_slope(dmax, dmin, _dW.data) for _dW in dW]
+        sN = [self._compute_slope(dmax, dmin, _dN.data) for _dN in dN]
+        sS = [self._compute_slope(dmax, dmin, _dS.data) for _dS in dS]
         return sE, sW, sN, sS
 
     def _limit(

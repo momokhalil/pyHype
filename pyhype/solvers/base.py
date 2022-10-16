@@ -233,7 +233,7 @@ class Solver:
                         + str(self.numTimeStep)
                         + "_blk_"
                         + str(block.global_nBLK),
-                        block.state.U,
+                        block.state.data,
                     )
 
     def plot_func_selector(self, state) -> np.ndarray:

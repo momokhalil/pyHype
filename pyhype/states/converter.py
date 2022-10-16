@@ -16,7 +16,7 @@ class StateConverter(ABC):
     @staticmethod
     def from_state(state: states.State, from_state: states.State) -> None:
         converter = from_state.get_class_type_converter()
-        state.Q = converter.to(state_type=type(state))(from_state)
+        state.data = converter.to(state_type=type(state))(from_state)
 
     @staticmethod
     def to_type(
@@ -78,13 +78,13 @@ class ConservativeConverter(BaseConverter):
 
     @staticmethod
     def to_conservative(state: states.ConservativeState) -> np.ndarray:
-        return state.Q.copy()
+        return state.data.copy()
 
 
 class PrimitiveConverter(BaseConverter):
     @staticmethod
     def to_primitive(state: states.PrimitiveState):
-        return state.Q.copy()
+        return state.data.copy()
 
     @staticmethod
     def to_conservative(state: states.PrimitiveState) -> np.ndarray:

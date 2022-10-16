@@ -64,40 +64,40 @@ class ConservativeState(State):
 
     @property
     def rho(self) -> np.ndarray:
-        return self._Q[:, :, self.RHO_IDX]
+        return self._data[:, :, self.RHO_IDX]
 
     @rho.setter
     def rho(self, rho: np.ndarray) -> None:
-        self._Q[:, :, self.RHO_IDX] = rho
+        self._data[:, :, self.RHO_IDX] = rho
 
     @property
     def rhou(self) -> np.ndarray:
-        return self._Q[:, :, self.RHOU_IDX]
+        return self._data[:, :, self.RHOU_IDX]
 
     @rhou.setter
     def rhou(self, rhou: np.ndarray) -> None:
-        self._Q[:, :, self.RHOU_IDX] = rhou
+        self._data[:, :, self.RHOU_IDX] = rhou
 
     @property
     def rhov(self) -> np.ndarray:
-        return self._Q[:, :, self.RHOV_IDX]
+        return self._data[:, :, self.RHOV_IDX]
 
     @rhov.setter
     def rhov(self, rhov: np.ndarray) -> None:
-        self._Q[:, :, self.RHOV_IDX] = rhov
+        self._data[:, :, self.RHOV_IDX] = rhov
 
     @property
     def e(self) -> np.ndarray:
-        return self._Q[:, :, self.E_IDX]
+        return self._data[:, :, self.E_IDX]
 
     @e.setter
     def e(self, e: np.ndarray) -> None:
-        self._Q[:, :, self.E_IDX] = e
+        self._data[:, :, self.E_IDX] = e
 
     @property
     @cache
     def u(self) -> np.ndarray:
-        return self._Q[:, :, self.RHOU_IDX] / self.rho
+        return self._data[:, :, self.RHOU_IDX] / self.rho
 
     @u.setter
     def u(self, u: np.ndarray) -> None:
@@ -108,7 +108,7 @@ class ConservativeState(State):
     @property
     @cache
     def v(self) -> np.ndarray:
-        return self._Q[:, :, self.RHOV_IDX] / self.rho
+        return self._data[:, :, self.RHOV_IDX] / self.rho
 
     @v.setter
     def v(self, v: np.ndarray) -> None:
@@ -126,14 +126,6 @@ class ConservativeState(State):
         raise NotImplementedError(
             'Property "p" is not settable for class' + str(type(self))
         )
-
-    @property
-    def U(self) -> np.ndarray:
-        return self.Q
-
-    @U.setter
-    def U(self, U: np.ndarray):
-        self.Q = U
 
     @cache
     def ek(self) -> np.ndarray:
@@ -174,10 +166,10 @@ class ConservativeState(State):
         If `ConservativeState` is created from a non-dimentionalized `PrimitiveState`, it will be non-dimentional.
         """
 
-        self.U[:, :, self.RHO_IDX] /= self.inputs.rho_inf
-        self.U[:, :, self.RHOU_IDX] /= self.inputs.rho_inf * self.inputs.a_inf
-        self.U[:, :, self.RHOV_IDX] /= self.inputs.rho_inf * self.inputs.a_inf
-        self.U[:, :, self.E_IDX] /= self.inputs.rho_inf * self.inputs.a_inf**2
+        self.data[:, :, self.RHO_IDX] /= self.inputs.rho_inf
+        self.data[:, :, self.RHOU_IDX] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.data[:, :, self.RHOV_IDX] /= self.inputs.rho_inf * self.inputs.a_inf
+        self.data[:, :, self.E_IDX] /= self.inputs.rho_inf * self.inputs.a_inf**2
 
     def F(self) -> np.ndarray:
 

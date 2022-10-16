@@ -104,9 +104,9 @@ class BoundaryConditionMixin:
         Returns:
             - None
         """
-        utils.rotate(wall_angle, state.Q)
-        state.Q[:, :, 1] = -state.Q[:, :, 1]
-        utils.unrotate(wall_angle, state.Q)
+        utils.rotate(wall_angle, state.data)
+        state.data[:, :, 1] = -state.data[:, :, 1]
+        utils.unrotate(wall_angle, state.data)
 
 
 class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
@@ -187,7 +187,7 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
                 )
 
     def __getitem__(self, index):
-        return self.state.U[index]
+        return self.state.data[index]
 
     def realizable(self):
         return self.state.realizable()
@@ -315,7 +315,7 @@ class GhostBlockEast(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.Q = self.refBLK.neighbors.E.get_west_ghost_states()
+        state.data = self.refBLK.neighbors.E.get_west_ghost_states()
 
     def set_BC_reflection(
         self,
@@ -362,7 +362,7 @@ class GhostBlockEast(GhostBlock):
             raise TypeError(
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
-        state.Q[:, :, :] = state_bc.Q
+        state.data[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,
@@ -451,7 +451,7 @@ class GhostBlockWest(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.Q = self.refBLK.neighbors.W.get_east_ghost_states()
+        state.data = self.refBLK.neighbors.W.get_east_ghost_states()
 
     def set_BC_reflection(
         self,
@@ -499,7 +499,7 @@ class GhostBlockWest(GhostBlock):
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
 
-        state.Q[:, :, :] = state_bc.Q
+        state.data[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,
@@ -588,7 +588,7 @@ class GhostBlockNorth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.Q = self.refBLK.neighbors.N.get_south_ghost_states()
+        state.data = self.refBLK.neighbors.N.get_south_ghost_states()
 
     def set_BC_reflection(
         self,
@@ -636,7 +636,7 @@ class GhostBlockNorth(GhostBlock):
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
 
-        state.Q[:, :, :] = state_bc.Q
+        state.data[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,
@@ -725,7 +725,7 @@ class GhostBlockSouth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.Q = self.refBLK.neighbors.S.get_north_ghost_states()
+        state.data = self.refBLK.neighbors.S.get_north_ghost_states()
 
     def set_BC_reflection(
         self,
@@ -773,7 +773,7 @@ class GhostBlockSouth(GhostBlock):
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
 
-        state[:, :, :] = state_bc.Q
+        state[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,

@@ -104,10 +104,10 @@ class QuadraturePointStateContainer(QuadraturePointDataContainerBase):
         for n, (stateE, stateW, stateN, stateS) in enumerate(
             zip(dataE, dataW, dataN, dataS)
         ):
-            self.E[n].Q = stateE
-            self.W[n].Q = stateW
-            self.N[n].Q = stateN
-            self.S[n].Q = stateS
+            self.E[n].data = stateE
+            self.W[n].data = stateW
+            self.N[n].data = stateN
+            self.S[n].data = stateS
 
 
 class QuadraturePointData:
@@ -167,7 +167,7 @@ class QuadraturePointData:
         for n, (stateE, stateW, stateN, stateS) in enumerate(
             zip(dataE, dataW, dataN, dataS)
         ):
-            self.E[n].state.Q = stateE
-            self.W[n].state.Q = stateW
-            self.N[n].state.Q = stateN
-            self.S[n].state.Q = stateS
+            self.E[n].state.data = stateE
+            self.W[n].state.data = stateW
+            self.N[n].state.data = stateN
+            self.S[n].state.data = stateS
