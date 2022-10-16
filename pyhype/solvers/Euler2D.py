@@ -106,8 +106,8 @@ class Euler2D(Solver):
                 + " has not been specialized."
             )
 
-    def set_BC(self):
-        self._blocks.set_BC()
+    def apply_boundary_condition(self):
+        self._blocks.apply_boundary_condition()
 
     def solve(self):
         print(
@@ -122,7 +122,7 @@ class Euler2D(Solver):
         self.set_IC()
 
         print("\t>>> Setting Boundary Conditions")
-        self.set_BC()
+        self.apply_boundary_condition()
 
         """fig, ax = plt.subplots(1)
         for block in self.blocks:

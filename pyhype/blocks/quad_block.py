@@ -572,9 +572,9 @@ class QuadBlock(BaseBlockGhost):
 
         return self.fvm.dUdt(self)
 
-    def set_BC(self) -> None:
+    def apply_boundary_condition(self) -> None:
         """
-        Calls the set_BC() method for each ghost block connected to this block. This sets the boundary condition on
+        Calls the apply_boundary_condition() method for each ghost block connected to this block. This sets the boundary condition on
         each side.corner of the block.
 
         Parameters:
@@ -583,10 +583,10 @@ class QuadBlock(BaseBlockGhost):
         Returns:
             - None
         """
-        self.ghost.E.set_BC()
-        self.ghost.W.set_BC()
-        self.ghost.N.set_BC()
-        self.ghost.S.set_BC()
+        self.ghost.E.apply_boundary_condition()
+        self.ghost.W.apply_boundary_condition()
+        self.ghost.N.apply_boundary_condition()
+        self.ghost.S.apply_boundary_condition()
 
     # ------------------------------------------------------------------------------------------------------------------
     # Gradient methods

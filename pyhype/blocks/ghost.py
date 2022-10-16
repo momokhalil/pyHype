@@ -22,6 +22,7 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
 from abc import abstractmethod
 from pyhype.utils import utils
+from types import FunctionType
 from pyhype.mesh.quad_mesh import QuadMesh
 from typing import TYPE_CHECKING, Union, Type
 from pyhype.mesh import quadratures as quadratures
@@ -42,7 +43,7 @@ class GhostBlocks:
         self,
         inputs: ProblemInput,
         block_data: BlockDescription,
-        refBLK: BaseBlock,
+        refBLK: QuadBlock,
         state_type: Type[State],
     ) -> None:
         """
@@ -113,7 +114,7 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
         self,
         inputs: ProblemInput,
         BCtype: str,
-        refBLK: BaseBlock,
+        refBLK: QuadBlock,
         state_type: Type[State],
         mesh: QuadMesh = None,
         qp: QuadraturePointData = None,
@@ -125,21 +126,23 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
         self.state_type = state_type
 
         if self.BCtype is None:
-            self.set_BC = self.set_BC_none
+            self._apply_bc_func = self.set_BC_none
         elif self.BCtype == "Reflection":
-            self.set_BC = self.set_BC_reflection
+            self._apply_bc_func = self.set_BC_reflection
         elif self.BCtype == "Slipwall":
-            self.set_BC = self.set_BC_slipwall
+            self._apply_bc_func = self.set_BC_slipwall
         elif self.BCtype == "InletDirichlet":
             self._inlet_realizability_check()
-            self.set_BC = self.set_BC_inlet_dirichlet
+            self._apply_bc_func = self.set_BC_inlet_dirichlet
         elif self.BCtype == "InletRiemann":
             self._inlet_realizability_check()
-            self.set_BC = self.set_BC_inlet_riemann
+            self._apply_bc_func = self.set_BC_inlet_riemann
         elif self.BCtype == "OutletDirichlet":
-            self.set_BC = self.set_BC_outlet_dirichlet
+            self._apply_bc_func = self.set_BC_outlet_dirichlet
         elif self.BCtype == "OutletRiemann":
-            self.set_BC = self.set_BC_outlet_riemann
+            self._apply_bc_func = self.set_BC_outlet_riemann
+        elif isinstance(self.BCtype, FunctionType):
+            self._apply_bc_func = self.BCtype
         else:
             raise ValueError(
                 "Boundary Condition type "
@@ -189,8 +192,18 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
     def realizable(self):
         return self.state.realizable()
 
+    def apply_boundary_condition(self, state: State = None) -> None:
+        _bc_state = self._get_ghost_state_from_ref_blk() if state is None else state
+        self._apply_bc_func(_bc_state)
+        if state is None:
+            self.state = _bc_state
+
     @abstractmethod
-    def set_BC_none(self):
+    def _get_ghost_state_from_ref_blk(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_BC_none(self, state: State):
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
@@ -198,42 +211,42 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
         raise NotImplementedError
 
     @abstractmethod
-    def set_BC_outlet_dirichlet(self):
+    def set_BC_outlet_dirichlet(self, state: State):
         """
         Set outlet dirichlet boundary condition
         """
         raise NotImplementedError
 
     @abstractmethod
-    def set_BC_outlet_riemann(self):
+    def set_BC_outlet_riemann(self, state: State):
         """
         Set outlet riemann boundary condition
         """
         raise NotImplementedError
 
     @abstractmethod
-    def set_BC_reflection(self):
+    def set_BC_reflection(self, state: State):
         """
         Set reflection boundary condition
         """
         raise NotImplementedError
 
     @abstractmethod
-    def set_BC_slipwall(self):
+    def set_BC_slipwall(self, state: State):
         """
         Set slipwall boundary condition
         """
         raise NotImplementedError
 
     @abstractmethod
-    def set_BC_inlet_dirichlet(self):
+    def set_BC_inlet_dirichlet(self, state: State):
         """
         Set inlet dirichlet boundary condition
         """
         raise NotImplementedError
 
     @abstractmethod
-    def set_BC_inlet_riemann(self):
+    def set_BC_inlet_riemann(self, state: State):
         """
         Set inlet riemann boundary condition
         """
@@ -245,7 +258,7 @@ class GhostBlockEast(GhostBlock):
         self,
         inputs: ProblemInput,
         BCtype: str,
-        refBLK: Union[BaseBlock, QuadBlock],
+        refBLK: QuadBlock,
         state_type: Type[State],
     ) -> None:
 
@@ -291,46 +304,42 @@ class GhostBlockEast(GhostBlock):
             state_type=state_type,
         )
 
+    def _get_ghost_state_from_ref_blk(self):
+        return self.refBLK.get_east_ghost_states()
+
     def set_BC_none(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        if state is None:
-            self.state = self.refBLK.neighbors.E.get_west_ghost_states()
+        state.Q = self.refBLK.neighbors.E.get_west_ghost_states()
 
     def set_BC_reflection(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        _state = self.refBLK.get_east_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.east_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.east_boundary_angle())
 
     def set_BC_slipwall(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        _state = self.refBLK.get_east_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.east_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.east_boundary_angle())
 
     def set_BC_inlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the eastern face.
@@ -353,32 +362,27 @@ class GhostBlockEast(GhostBlock):
             raise TypeError(
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
-
-        if state is not None:
-            state.Q[:, :, :] = state_bc.Q
-        else:
-            self.state.Q[:, :, :] = state_bc.Q
+        state.Q[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        if state is None:
-            self.state = self.refBLK.get_east_ghost_states()
+        pass
 
     def set_BC_inlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError
 
@@ -388,7 +392,7 @@ class GhostBlockWest(GhostBlock):
         self,
         inputs: ProblemInput,
         BCtype: str,
-        refBLK: Union[BaseBlock, QuadBlock],
+        refBLK: QuadBlock,
         state_type: Type[State],
     ):
         # Calculate coordinates of all four vertices
@@ -436,29 +440,28 @@ class GhostBlockWest(GhostBlock):
             state_type=state_type,
         )
 
+    def _get_ghost_state_from_ref_blk(self):
+        return self.refBLK.get_west_ghost_states()
+
     def set_BC_none(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        if state is None:
-            self.state = self.refBLK.neighbors.W.get_east_ghost_states()
+        state.Q = self.refBLK.neighbors.W.get_east_ghost_states()
 
     def set_BC_reflection(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        _state = self.refBLK.get_west_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.west_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.west_boundary_angle())
 
     def set_BC_slipwall(
         self,
@@ -468,14 +471,11 @@ class GhostBlockWest(GhostBlock):
         Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
         normal component.
         """
-        _state = self.refBLK.get_west_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.west_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.west_boundary_angle())
 
     def set_BC_inlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the eastern face.
@@ -499,31 +499,27 @@ class GhostBlockWest(GhostBlock):
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
 
-        if state is not None:
-            state.Q[:, :, :] = state_bc.Q
-        else:
-            self.state.Q[:, :, :] = state_bc.Q
+        state.Q[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        if state is None:
-            self.state = self.refBLK.get_east_ghost_states()
+        pass
 
     def set_BC_inlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError
 
@@ -533,7 +529,7 @@ class GhostBlockNorth(GhostBlock):
         self,
         inputs: ProblemInput,
         BCtype: str,
-        refBLK: Union[BaseBlock, QuadBlock],
+        refBLK: QuadBlock,
         state_type: Type[State],
     ):
         # Calculate coordinates of all four vertices
@@ -581,46 +577,42 @@ class GhostBlockNorth(GhostBlock):
             state_type=state_type,
         )
 
+    def _get_ghost_state_from_ref_blk(self):
+        return self.refBLK.get_north_ghost_states()
+
     def set_BC_none(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        if state is None:
-            self.state = self.refBLK.neighbors.N.get_south_ghost_states()
+        state.Q = self.refBLK.neighbors.N.get_south_ghost_states()
 
     def set_BC_reflection(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        _state = self.refBLK.get_north_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.north_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.north_boundary_angle())
 
     def set_BC_slipwall(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        _state = self.refBLK.get_north_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.north_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.north_boundary_angle())
 
     def set_BC_inlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the northern face.
@@ -644,31 +636,27 @@ class GhostBlockNorth(GhostBlock):
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
 
-        if state is not None:
-            state.Q[:, :, :] = state_bc.Q
-        else:
-            self.state[:, :, :] = state_bc.Q
+        state.Q[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        if state is None:
-            self.state = self.refBLK.get_north_ghost_states()
+        pass
 
     def set_BC_inlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError
 
@@ -678,7 +666,7 @@ class GhostBlockSouth(GhostBlock):
         self,
         inputs: ProblemInput,
         BCtype: str,
-        refBLK: Union[BaseBlock, QuadBlock],
+        refBLK: QuadBlock,
         state_type: Type[State],
     ) -> None:
         # Calculate coordinates of all four vertices
@@ -726,46 +714,42 @@ class GhostBlockSouth(GhostBlock):
             state_type=state_type,
         )
 
+    def _get_ghost_state_from_ref_blk(self):
+        return self.refBLK.get_south_ghost_states()
+
     def set_BC_none(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        if state is None:
-            self.state = self.refBLK.neighbors.S.get_north_ghost_states()
+        state.Q = self.refBLK.neighbors.S.get_north_ghost_states()
 
     def set_BC_reflection(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        _state = self.refBLK.get_south_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.south_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.south_boundary_angle())
 
     def set_BC_slipwall(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        _state = self.refBLK.get_south_ghost_states() if state is None else state
-        self.BC_reflection(_state, self.refBLK.mesh.south_boundary_angle())
-        if state is None:
-            self.state = _state
+        self.BC_reflection(state, self.refBLK.mesh.south_boundary_angle())
 
     def set_BC_inlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set dirichlet inlet boundary condition on the southern face.
@@ -789,30 +773,26 @@ class GhostBlockSouth(GhostBlock):
                 "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
             )
 
-        if state is not None:
-            state[:, :, :] = state_bc.Q
-        else:
-            self.state[:, :, :] = state_bc.Q
+        state[:, :, :] = state_bc.Q
 
     def set_BC_outlet_dirichlet(
         self,
-        state: State = None,
+        state: State,
     ) -> None:
         """
         Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
         ghost cells.
         """
-        if state is None:
-            self.state = self.refBLK.get_south_ghost_states()
+        pass
 
     def set_BC_inlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError
 
     def set_BC_outlet_riemann(
         self,
-        state: State = None,
+        state: State,
     ):
         return NotImplementedError

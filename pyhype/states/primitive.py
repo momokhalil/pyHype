@@ -282,8 +282,11 @@ class PrimitiveState(State):
                 _F[i, j, 3] = _u * (k * W[i, j, 3] + ek[i, j] + W[i, j, 3])
         return _F
 
-    def realizable(self):
-        return np.all(self.rho > 0) and np.all(self.p > 0)
+    def realizability_conditions(self) -> dict[str, np.ndarray]:
+        return dict(
+            rho_good=self.rho > 0,
+            pressure_good=self.p > 0,
+        )
 
 
 class RoePrimitiveState(PrimitiveState):

@@ -195,7 +195,7 @@ class Solver:
         raise NotImplementedError
 
     @abstractmethod
-    def set_BC(self):
+    def apply_boundary_condition(self):
         raise NotImplementedError
 
     @property

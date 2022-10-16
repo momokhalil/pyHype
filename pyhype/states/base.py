@@ -31,6 +31,10 @@ if TYPE_CHECKING:
 StateCompatible = (int, float, np.ndarray)
 
 
+class RealizabilityException(Exception):
+    pass
+
+
 class State(ABC):
     """
     # State
@@ -90,12 +94,12 @@ class State(ABC):
         return self._Q
 
     @Q.setter
-    def Q(self, Q):
-        if not isinstance(Q, np.ndarray):
+    def Q(self, Q: Union[np.ndarray, State]):
+        if not isinstance(Q, np.ndarray) and not isinstance(Q, State):
             raise TypeError(
-                f"Input array must be a numpy ndarray, but it is a {type(Q)}."
+                f"Input array must be a Numpy array or a State, but it is a {type(Q)}."
             )
-        self._Q = Q
+        self._Q = Q if isinstance(Q, np.ndarray) else Q.Q
         self.clear_cache()
 
     @property
@@ -237,6 +241,37 @@ class State(ABC):
 
     def transpose(self, axes: tuple[int]):
         self._Q = self._Q.transpose(axes)
+
+    def realizable(self):
+        """
+        Checks if a State is realizable.
+        :raises: RealizabilityException
+        """
+        conditions = self.realizability_conditions()
+        if all(np.all(condition) for condition in conditions.values()):
+            return True
+        bad_values = {
+            name: np.where(not good_vals)
+            for name, good_vals in conditions.items()
+            if not np.all(good_vals)
+        }
+        print("ConservativeState has bad values in the following conditions:")
+        print("-------------------------------------------------------------")
+        for condition_name, bad_val_indices in bad_values.items():
+            print(f"Condition: {condition_name}, location of bad values:")
+            print(bad_val_indices)
+        raise RealizabilityException(
+            "Simulation has failed due to an non-realizable state quantity."
+        )
+
+    @abstractmethod
+    def realizability_conditions(self) -> dict[str, np.ndarray]:
+        """
+        Returns the conditions that must be True in every cell for the
+        State to be realizable.
+        :return: conditions dict
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def non_dim(self):

@@ -66,7 +66,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                         _stage_residuals[step],
                     )
             refBLK.state.U = _intermediate_state
-            refBLK.set_BC()
+            refBLK.apply_boundary_condition()
             refBLK.clear_cache()
             refBLK.reconBlk.clear_cache()
 

@@ -352,9 +352,9 @@ class Blocks:
         for block in self.blocks.values():
             block.update(dt)
 
-    def set_BC(self) -> None:
+    def apply_boundary_condition(self) -> None:
         for block in self.blocks.values():
-            block.set_BC()
+            block.apply_boundary_condition()
 
     def build(self) -> None:
         for blk_data in self.inputs.mesh.values():

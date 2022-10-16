@@ -20,7 +20,7 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
-from pyhype.states.base import State
+from pyhype.states.base import State, RealizabilityException
 from pyhype.states.converter import ConservativeConverter
 from pyhype.utils.utils import cache
 
@@ -195,5 +195,8 @@ class ConservativeState(State):
 
         return np.dstack((rv, rv * self.u, rv * v + p, v * (self.e + p)))
 
-    def realizable(self):
-        return np.all(self.rho > 0) and np.any(self.e > 0)
+    def realizability_conditions(self) -> dict[str, np.ndarray]:
+        return dict(
+            rho_good=self.rho > 0,
+            energy_good=self.e > 0,
+        )

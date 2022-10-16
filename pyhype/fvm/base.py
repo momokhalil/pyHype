@@ -307,7 +307,7 @@ class MUSCLFiniteVolumeMethod:
                         - fluxN[i, j, k]
                     ) / a
         return dUdt
-    
+
     def _get_LR_states_for_flux_calc(
         self,
         ghostL: State,
@@ -346,11 +346,11 @@ class MUSCLFiniteVolumeMethod:
 
         _left_state = PrimitiveState(
             inputs=self.inputs,
-            state=self.inputs.reconstruction_type(self.inputs, array=_left_arr)
+            state=self.inputs.reconstruction_type(self.inputs, array=_left_arr),
         )
         _right_state = PrimitiveState(
             inputs=self.inputs,
-            state=self.inputs.reconstruction_type(self.inputs, array=_right_arr)
+            state=self.inputs.reconstruction_type(self.inputs, array=_right_arr),
         )
         return _left_state, _right_state
 
@@ -391,8 +391,8 @@ class MUSCLFiniteVolumeMethod:
             _stateW = refBLK.fvm.limited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qw
             )
-            refBLK.ghost.E.set_BC(_bndE)
-            refBLK.ghost.W.set_BC(_bndW)
+            refBLK.ghost.E.apply_boundary_condition(_bndE)
+            refBLK.ghost.W.apply_boundary_condition(_bndW)
 
             if not refBLK.is_cartesian:
                 utils.rotate(refBLK.mesh.face.E.theta, _stateE.Q)
@@ -401,10 +401,7 @@ class MUSCLFiniteVolumeMethod:
                 utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW.Q)
 
             sL, sR = self._get_LR_states_for_flux_calc(
-                ghostL=_bndW,
-                stateL=_stateE,
-                ghostR=_bndE,
-                stateR=_stateW
+                ghostL=_bndW, stateL=_stateE, ghostR=_bndE, stateR=_stateW
             )
             fluxEW = self.flux_function_X(WL=sL, WR=sR)
             fluxE[:] = fluxEW[:, 1:, :]
@@ -451,8 +448,8 @@ class MUSCLFiniteVolumeMethod:
             _stateS = refBLK.fvm.limited_solution_at_quadrature_point(
                 refBLK.reconBlk.state, refBLK, qs
             )
-            refBLK.ghost.N.set_BC(_bndN)
-            refBLK.ghost.S.set_BC(_bndS)
+            refBLK.ghost.N.apply_boundary_condition(_bndN)
+            refBLK.ghost.S.apply_boundary_condition(_bndS)
 
             if refBLK.is_cartesian:
                 utils.rotate90(_stateN.Q, _stateS.Q, _bndN.Q, _bndS.Q)
