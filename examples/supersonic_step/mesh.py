@@ -14,8 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
+import numpy as np
+from pyhype.states import State, PrimitiveState
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+
+
+def inlet_diriclet_bc(state: State):
+    BC_inlet_west_rho = 1.0
+    BC_inlet_west_u = 5.0
+    BC_inlet_west_v = 0.0
+    BC_inlet_west_p = 1 / 1.4
+
+    inlet_state = PrimitiveState(
+        inputs=state.inputs,
+        array=np.array(
+            [
+                BC_inlet_west_rho,
+                BC_inlet_west_u,
+                BC_inlet_west_v,
+                BC_inlet_west_p,
+            ]
+        ).reshape((1, 1, 4)),
+    )
+    state.from_state(inlet_state)
 
 
 def step_ten_block():
@@ -30,10 +52,18 @@ def step_ten_block():
         "NeighborW": None,
         "NeighborN": 2,
         "NeighborS": None,
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
         "BCTypeE": "Slipwall",
-        "BCTypeW": "InletDirichlet",
-        "BCTypeN": "None",
+        "BCTypeW": inlet_diriclet_bc,
+        "BCTypeN": None,
         "BCTypeS": "Slipwall",
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block2 = {
@@ -46,10 +76,18 @@ def step_ten_block():
         "NeighborW": None,
         "NeighborN": 3,
         "NeighborS": 1,
-        "BCTypeE": "None",
-        "BCTypeW": "InletDirichlet",
-        "BCTypeN": "None",
-        "BCTypeS": "None",
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
+        "BCTypeE": None,
+        "BCTypeW": inlet_diriclet_bc,
+        "BCTypeN": None,
+        "BCTypeS": None,
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block3 = {
@@ -62,10 +100,18 @@ def step_ten_block():
         "NeighborW": None,
         "NeighborN": 4,
         "NeighborS": 2,
-        "BCTypeE": "None",
-        "BCTypeW": "InletDirichlet",
-        "BCTypeN": "None",
-        "BCTypeS": "None",
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
+        "BCTypeE": None,
+        "BCTypeW": inlet_diriclet_bc,
+        "BCTypeN": None,
+        "BCTypeS": None,
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block4 = {
@@ -78,10 +124,18 @@ def step_ten_block():
         "NeighborW": None,
         "NeighborN": None,
         "NeighborS": 3,
-        "BCTypeE": "None",
-        "BCTypeW": "InletDirichlet",
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
+        "BCTypeE": None,
+        "BCTypeW": inlet_diriclet_bc,
         "BCTypeN": "Slipwall",
-        "BCTypeS": "None",
+        "BCTypeS": None,
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block5 = {
@@ -94,10 +148,18 @@ def step_ten_block():
         "NeighborW": 4,
         "NeighborN": None,
         "NeighborS": 6,
-        "BCTypeE": "None",
-        "BCTypeW": "None",
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
+        "BCTypeE": None,
+        "BCTypeW": None,
         "BCTypeN": "Slipwall",
-        "BCTypeS": "None",
+        "BCTypeS": None,
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block6 = {
@@ -110,10 +172,18 @@ def step_ten_block():
         "NeighborW": 3,
         "NeighborN": 5,
         "NeighborS": 7,
-        "BCTypeE": "None",
-        "BCTypeW": "None",
-        "BCTypeN": "None",
-        "BCTypeS": "None",
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
+        "BCTypeE": None,
+        "BCTypeW": None,
+        "BCTypeN": None,
+        "BCTypeS": None,
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block7 = {
@@ -126,10 +196,18 @@ def step_ten_block():
         "NeighborW": 2,
         "NeighborN": 6,
         "NeighborS": None,
-        "BCTypeE": "None",
-        "BCTypeW": "None",
-        "BCTypeN": "None",
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
+        "BCTypeE": None,
+        "BCTypeW": None,
+        "BCTypeN": None,
         "BCTypeS": "Slipwall",
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block8 = {
@@ -142,10 +220,18 @@ def step_ten_block():
         "NeighborW": 7,
         "NeighborN": 9,
         "NeighborS": None,
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
         "BCTypeE": "OutletDirichlet",
-        "BCTypeW": "None",
-        "BCTypeN": "None",
+        "BCTypeW": None,
+        "BCTypeN": None,
         "BCTypeS": "Slipwall",
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block9 = {
@@ -158,10 +244,18 @@ def step_ten_block():
         "NeighborW": 6,
         "NeighborN": 10,
         "NeighborS": 8,
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
         "BCTypeE": "OutletDirichlet",
-        "BCTypeW": "None",
-        "BCTypeN": "None",
-        "BCTypeS": "None",
+        "BCTypeW": None,
+        "BCTypeN": None,
+        "BCTypeS": None,
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     block10 = {
@@ -174,10 +268,18 @@ def step_ten_block():
         "NeighborW": 5,
         "NeighborN": None,
         "NeighborS": 9,
+        "NeighborNE": None,
+        "NeighborNW": None,
+        "NeighborSE": None,
+        "NeighborSW": None,
         "BCTypeE": "OutletDirichlet",
-        "BCTypeW": "None",
+        "BCTypeW": None,
         "BCTypeN": "Slipwall",
-        "BCTypeS": "None",
+        "BCTypeS": None,
+        "BCTypeNE": None,
+        "BCTypeNW": None,
+        "BCTypeSE": None,
+        "BCTypeSW": None,
     }
 
     return {

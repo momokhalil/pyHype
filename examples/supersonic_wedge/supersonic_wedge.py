@@ -1,5 +1,27 @@
 from pyhype.solvers import Euler2D
 import numpy as np
+from pyhype.states import PrimitiveState, State
+from pyhype.solvers.base import ProblemInput
+
+
+def inlet_diriclet_bc(state: State):
+    BC_inlet_west_rho = 1.0
+    BC_inlet_west_u = 2.0
+    BC_inlet_west_v = 0.0
+    BC_inlet_west_p = 1 / 1.4
+
+    inlet_state = PrimitiveState(
+        inputs=state.inputs,
+        array=np.array(
+            [
+                BC_inlet_west_rho,
+                BC_inlet_west_u,
+                BC_inlet_west_v,
+                BC_inlet_west_p,
+            ]
+        ).reshape((1, 1, 4)),
+    )
+    state.from_state(inlet_state)
 
 
 block1 = {
@@ -12,10 +34,18 @@ block1 = {
     "NeighborW": None,
     "NeighborN": None,
     "NeighborS": None,
-    "BCTypeE": "None",
-    "BCTypeW": "InletDirichlet",
+    "NeighborNE": None,
+    "NeighborNW": None,
+    "NeighborSE": None,
+    "NeighborSW": None,
+    "BCTypeE": None,
+    "BCTypeW": inlet_diriclet_bc,
     "BCTypeN": "OutletDirichlet",
     "BCTypeS": "Reflection",
+    "BCTypeNE": None,
+    "BCTypeNW": None,
+    "BCTypeSE": None,
+    "BCTypeSW": None,
 }
 
 block2 = {
@@ -28,16 +58,25 @@ block2 = {
     "NeighborW": 1,
     "NeighborN": None,
     "NeighborS": None,
+    "NeighborNE": None,
+    "NeighborNW": None,
+    "NeighborSE": None,
+    "NeighborSW": None,
     "BCTypeE": "OutletDirichlet",
-    "BCTypeW": "None",
+    "BCTypeW": None,
     "BCTypeN": "OutletDirichlet",
     "BCTypeS": "Reflection",
+    "BCTypeNE": None,
+    "BCTypeNW": None,
+    "BCTypeSE": None,
+    "BCTypeSW": None,
 }
 
 mesh = {
     1: block1,
     2: block2,
 }
+
 
 # Solver settings
 settings = {
@@ -67,17 +106,44 @@ settings = {
     "BC_inlet_west_p": 1 / 1.4,
 }
 
-# Create solver
-exp = Euler2D(
+inputs = ProblemInput(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
     fvm_gradient_type="GreenGauss",
-    fvm_flux_function="Roe",
+    fvm_flux_function="HLLL",
     fvm_slope_limiter="Venkatakrishnan",
     time_integrator="RK2",
-    settings=settings,
-    mesh_inputs=mesh,
+    problem_type="supersonic_flood",
+    interface_interpolation="arithmetic_average",
+    reconstruction_type=PrimitiveState,
+    write_solution=False,
+    write_solution_mode="every_n_timesteps",
+    write_solution_name="machref",
+    write_every_n_timesteps=20,
+    plot_every=20,
+    CFL=0.3,
+    t_final=20,
+    realplot=True,
+    profile=False,
+    gamma=1.4,
+    rho_inf=1.0,
+    a_inf=1.0,
+    R=287.0,
+    nx=60,
+    ny=60,
+    nghost=1,
+    use_JIT=True,
+    mesh=mesh,
+    # BC_inlet_west_rho=1.0,
+    # BC_inlet_west_u=2,
+    # BC_inlet_west_v=0.0,
+    # BC_inlet_west_p=1 / 1.4,
+)
+
+# Create solver
+exp = Euler2D(
+    inputs=inputs,
 )
 
 # Solve
