@@ -1,6 +1,8 @@
 import numpy as np
-from pyHype.solvers import Euler2D
-from pyHype.mesh.base import QuadMeshGenerator
+from pyhype.solvers import Euler2D
+from pyhype.states import PrimitiveState, State
+from pyhype.solvers.base import ProblemInput
+from pyhype.mesh.base import QuadMeshGenerator
 
 k = 1
 a = 2 / np.sqrt(3)
@@ -16,12 +18,13 @@ _bot_y = [0, 0, d, 2 * d, 3 * d]
 
 BCS = ["OutletDirichlet", "Slipwall", "Slipwall", "Slipwall"]
 
+
 _mesh = QuadMeshGenerator(
     nx_blk=4,
     ny_blk=1,
-    BCE="OutletDirichlet",
-    BCW="OutletDirichlet",
-    BCN="OutletDirichlet",
+    BCE=["OutletDirichlet"],
+    BCW=["OutletDirichlet"],
+    BCN=["OutletDirichlet"],
     BCS=BCS,
     top_x=_x,
     bot_x=_x,
@@ -34,35 +37,7 @@ _mesh = QuadMeshGenerator(
 )
 
 # Solver settings
-settings = {
-    "problem_type": "mach_reflection",
-    "interface_interpolation": "arithmetic_average",
-    "reconstruction_type": "primitive",
-    "write_solution": False,
-    "write_solution_mode": "every_n_timesteps",
-    "write_solution_name": "machref",
-    "write_every_n_timesteps": 20,
-    "plot_every": 10,
-    "CFL": 0.4,
-    "t_final": 0.25,
-    "realplot": True,
-    "profile": False,
-    "gamma": 1.4,
-    "rho_inf": 1.0,
-    "a_inf": 1.0,
-    "R": 287.0,
-    "nx": 50,
-    "ny": 50,
-    "nghost": 1,
-    "use_JIT": True,
-    "BC_inlet_west_rho": 8.0,
-    "BC_inlet_west_u": 8.25,
-    "BC_inlet_west_v": 0.0,
-    "BC_inlet_west_p": 116.5,
-}
-
-# Create solver
-exp = Euler2D(
+inputs = ProblemInput(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -70,9 +45,31 @@ exp = Euler2D(
     fvm_flux_function="HLLL",
     fvm_slope_limiter="Venkatakrishnan",
     time_integrator="RK2",
-    settings=settings,
-    mesh_inputs=_mesh,
+    problem_type="mach_reflection",
+    interface_interpolation="arithmetic_average",
+    reconstruction_type=PrimitiveState,
+    write_solution=False,
+    write_solution_mode="every_n_timesteps",
+    write_solution_name="machref",
+    write_every_n_timesteps=20,
+    plot_every=1,
+    CFL=0.4,
+    t_final=0.25,
+    realplot=True,
+    profile=False,
+    gamma=1.4,
+    rho_inf=1.0,
+    a_inf=1.0,
+    R=287.0,
+    nx=50,
+    ny=50,
+    nghost=1,
+    use_JIT=True,
+    mesh=_mesh,
 )
+
+# Create solver
+exp = Euler2D(inputs=inputs)
 
 # Solve
 exp.solve()
