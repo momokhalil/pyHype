@@ -51,7 +51,7 @@ class State(ABC):
         inputs: ProblemInput,
         state: State = None,
         array: np.ndarray = None,
-        shape: tuple[int, int] = None,
+        shape: tuple[int, int, int] = None,
         fill: Union[float, int] = None,
     ):
         """
@@ -76,18 +76,21 @@ class State(ABC):
         self.cache = {}
 
         if state is not None:
+            self._data = np.empty(state.shape)
             self.from_state(state)
         elif array is not None:
             if array.ndim != 3 or array.shape[-1] != 4:
                 raise ValueError("Array must have 3 dims and a depth of 4.")
             self._data = array
         elif shape is not None:
+            if len(shape) != 3 or shape[-1] != 4:
+                raise ValueError("Array must have 3 dims and a depth of 4.")
             if fill is not None:
                 self._data = np.full(shape=shape, fill_value=fill)
             else:
                 self._data = np.zeros(shape=shape)
         else:
-            self._data = np.zeros((0, 0))
+            self._data = np.zeros((0, 0, 0))
 
     @property
     def data(self):
@@ -99,8 +102,17 @@ class State(ABC):
             raise TypeError(
                 f"Input array must be a Numpy array or a State, but it is a {type(data)}."
             )
-        self._data = data if isinstance(data, np.ndarray) else data.data
+        set_to = data if isinstance(data, np.ndarray) else data.data
+        self._set_data_array_from_array(set_to)
         self.clear_cache()
+
+    def _set_data_array_from_array(self, array: np.ndarray):
+        if self.shape == array.shape:
+            self._data = array
+        else:
+            # Broadcast to array, if this fails then
+            # data has an incompatible shape
+            self._data[:, :, :] = array
 
     @property
     @abstractmethod
@@ -251,7 +263,7 @@ class State(ABC):
         if all(np.all(condition) for condition in conditions.values()):
             return True
         bad_values = {
-            name: np.where(not good_vals)
+            name: np.where(np.bitwise_not(good_vals))
             for name, good_vals in conditions.items()
             if not np.all(good_vals)
         }
@@ -303,4 +315,5 @@ class State(ABC):
         raise NotImplementedError
 
     def reshape(self, shape: tuple):
-        self.data = self.data.reshape(shape)
+        self._data = np.reshape(self._data, shape)
+        # self.data = self.data.reshape(shape)

@@ -124,11 +124,6 @@ class Euler2D(Solver):
         print("\t>>> Setting Boundary Conditions")
         self.apply_boundary_condition()
 
-        """fig, ax = plt.subplots(1)
-        for block in self.blocks:
-            block.plot(ax=ax)
-        plt.show(block=True)"""
-
         if self.inputs.realplot:
             print("\t>>> Building Real-Time Plot")
             self.build_real_plot()

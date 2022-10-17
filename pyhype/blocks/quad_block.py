@@ -15,30 +15,31 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Type
 
 import os
-
-os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+from typing import TYPE_CHECKING, Type
 from itertools import chain
 
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+
 from pyhype.mesh import quadratures
-from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.utils.utils import NumpySlice
+from pyhype.mesh.quad_mesh import QuadMesh
+from pyhype.blocks.ghost import GhostBlocks
+from pyhype.states.conservative import ConservativeState
 from pyhype.blocks.base import Neighbors, BaseBlockFVM, BlockDescription
 from pyhype.solvers.time_integration.explicit_runge_kutta import (
     ExplicitRungeKutta as Erk,
 )
-from pyhype.blocks.ghost import GhostBlocks
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.blocks.base import BaseBlock
     from pyhype.solvers.base import ProblemInput
     from pyhype.mesh.quadratures import QuadraturePointData
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+import numpy as np
 
 
 class BaseBlockGhost(BaseBlockFVM):
@@ -46,7 +47,7 @@ class BaseBlockGhost(BaseBlockFVM):
         self,
         inputs: ProblemInput,
         block_data: BlockDescription,
-        refBLK: BaseBlock,
+        refBLK: QuadBlock,
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
@@ -181,7 +182,7 @@ class QuadBlock(BaseBlockGhost):
             mesh=mesh,
             qp=qp,
             refBLK=self,
-            state_type=self.inputs.reconstruction_type,
+            state_type=ConservativeState,
         )
 
         # Create reconstruction block
@@ -800,7 +801,9 @@ class QuadBlock(BaseBlockGhost):
         U[-1, -1, :] = self.state.data[-1, -1, :]
 
         # East edge
-        U[1:-1, -1, :] = 0.5 * (self.state.data[1:, -1, :] + self.state.data[:-1, -1, :])
+        U[1:-1, -1, :] = 0.5 * (
+            self.state.data[1:, -1, :] + self.state.data[:-1, -1, :]
+        )
         # West edge
         U[1:-1, 0, :] = 0.5 * (self.state.data[1:, 0, :] + self.state.data[:-1, 0, :])
         # North edge
@@ -812,7 +815,9 @@ class QuadBlock(BaseBlockGhost):
                 + self.neighbors.N.state.data[0, :-1, :]
             )
         else:
-            U[-1, 1:-1, :] = 0.5 * (self.state.data[-1, 1:, :] + self.state.data[-1, :-1, :])
+            U[-1, 1:-1, :] = 0.5 * (
+                self.state.data[-1, 1:, :] + self.state.data[-1, :-1, :]
+            )
         # South edge
         if self.neighbors.S:
             U[0, 1:-1, :] = 0.25 * (
@@ -822,7 +827,9 @@ class QuadBlock(BaseBlockGhost):
                 + self.neighbors.S.state.data[-1, :-1, :]
             )
         else:
-            U[0, 1:-1, :] = 0.5 * (self.state.data[0, 1:, :] + self.state.data[0, :-1, :])
+            U[0, 1:-1, :] = 0.5 * (
+                self.state.data[0, 1:, :] + self.state.data[0, :-1, :]
+            )
 
         # Kernel
         U[1:-1, 1:-1, :] = 0.25 * (

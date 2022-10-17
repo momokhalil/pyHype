@@ -75,10 +75,12 @@ class SlopeLimiter:
         """
         # Concatenate block solution state with ghost block solution states
         EW = np.concatenate(
-            (refBLK.ghost.W.state.data, refBLK.state.data, refBLK.ghost.E.state.data), axis=1
+            (refBLK.ghost.W.state.data, refBLK.state.data, refBLK.ghost.E.state.data),
+            axis=1,
         )
         NS = np.concatenate(
-            (refBLK.ghost.S.state.data, refBLK.state.data, refBLK.ghost.N.state.data), axis=0
+            (refBLK.ghost.S.state.data, refBLK.state.data, refBLK.ghost.N.state.data),
+            axis=0,
         )
         # Values for min/max evaluation
         vals = (refBLK.state.data, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])

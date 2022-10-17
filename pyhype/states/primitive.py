@@ -22,13 +22,13 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numba as nb
 import numpy as np
 from pyhype.states.base import State
+from pyhype.states.conservative import ConservativeState
 from pyhype.states.converter import PrimitiveConverter
 from pyhype.utils.utils import cache
 
 from typing import TYPE_CHECKING, Union, Type
 
 if TYPE_CHECKING:
-    from pyhype.states.conservative import ConservativeState
     from pyhype.solvers.base import ProblemInput
 
 
@@ -225,21 +225,21 @@ class PrimitiveState(State):
         """
 
         # Non-dimentionalize each component of W
-        self.W[:, :, ConservativeState.RHO_IDX] /= self.inputs.rho_inf
-        self.W[:, :, ConservativeState.RHOU_IDX] /= (
+        self.data[:, :, ConservativeState.RHO_IDX] /= self.inputs.rho_inf
+        self.data[:, :, ConservativeState.RHOU_IDX] /= (
             self.inputs.rho_inf * self.inputs.a_inf
         )
-        self.W[:, :, ConservativeState.RHOV_IDX] /= (
+        self.data[:, :, ConservativeState.RHOV_IDX] /= (
             self.inputs.rho_inf * self.inputs.a_inf
         )
-        self.W[:, :, ConservativeState.E_IDX] /= (
+        self.data[:, :, ConservativeState.E_IDX] /= (
             self.inputs.rho_inf * self.inputs.a_inf**2
         )
 
     def F(self, U: ConservativeState = None, U_vector: np.ndarray = None) -> np.ndarray:
 
         if U is not None:
-            F = np.zeros_like(self.W, dtype=float)
+            F = np.zeros_like(self.data, dtype=float)
             F[:, :, 0] = U.rhou
             F[:, :, 1] = U.rhou * self.u + self.p
             F[:, :, 2] = U.rhou * self.v
@@ -247,7 +247,7 @@ class PrimitiveState(State):
             return F
 
         if U_vector is not None:
-            F = np.zeros_like(self.W, dtype=float)
+            F = np.zeros_like(self.data, dtype=float)
             ru = U_vector[:, :, ConservativeState.RHOU_IDX]
 
             F[:, :, 0] = ru

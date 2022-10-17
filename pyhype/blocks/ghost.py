@@ -26,15 +26,13 @@ from types import FunctionType
 from pyhype.mesh.quad_mesh import QuadMesh
 from typing import TYPE_CHECKING, Union, Type
 from pyhype.mesh import quadratures as quadratures
-from pyhype.states.primitive import PrimitiveState
-from pyhype.states.conservative import ConservativeState
 from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
 from pyhype.blocks.base import BlockMixin
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
+    from pyhype.blocks.base import QuadBlock
     from pyhype.solvers.base import ProblemInput
-    from pyhype.blocks.base import QuadBlock, BaseBlock
     from pyhype.mesh.quadratures import QuadraturePointData
 
 
@@ -131,12 +129,6 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
             self._apply_bc_func = self.set_BC_reflection
         elif self.BCtype == "Slipwall":
             self._apply_bc_func = self.set_BC_slipwall
-        elif self.BCtype == "InletDirichlet":
-            self._inlet_realizability_check()
-            self._apply_bc_func = self.set_BC_inlet_dirichlet
-        elif self.BCtype == "InletRiemann":
-            self._inlet_realizability_check()
-            self._apply_bc_func = self.set_BC_inlet_riemann
         elif self.BCtype == "OutletDirichlet":
             self._apply_bc_func = self.set_BC_outlet_dirichlet
         elif self.BCtype == "OutletRiemann":
@@ -150,41 +142,6 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
                 + " has not been specialized."
             )
         super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
-
-    def _inlet_realizability_check(self):
-        """
-        Realizability check for inlet conditions. Ensures positive density and pressure/energy. Raises ValueError if
-        not realizable and TypeError if not float or int.
-
-        Parameters:
-            - N/A
-
-        Returns:
-            - N/A
-        """
-
-        _inlets = [
-            "BC_inlet_west_rho",
-            "BC_inlet_east_rho",
-            "BC_inlet_north_rho",
-            "BC_inlet_south_rho",
-            "BC_inlet_west_p",
-            "BC_inlet_east_p",
-            "BC_inlet_north_p",
-            "BC_inlet_south_p",
-        ]
-
-        _has_inlets = [inlet for inlet in _inlets if hasattr(self.inputs, inlet)]
-
-        for ic in _has_inlets:
-            if self.inputs.__getattribute__(ic) <= 0:
-                raise ValueError(
-                    "Inlet density or pressure is less than or equal to zero and thus non-physical."
-                )
-            if not isinstance(self.inputs.__getattribute__(ic), (int, float)):
-                raise TypeError(
-                    "Inlet density or pressure is not of type int or float."
-                )
 
     def __getitem__(self, index):
         return self.state.data[index]
@@ -315,7 +272,7 @@ class GhostBlockEast(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.data = self.refBLK.neighbors.E.get_west_ghost_states()
+        state.from_state(self.refBLK.neighbors.E.get_west_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -336,33 +293,6 @@ class GhostBlockEast(GhostBlock):
         normal component.
         """
         self.BC_reflection(state, self.refBLK.mesh.east_boundary_angle())
-
-    def set_BC_inlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set dirichlet inlet boundary condition on the eastern face.
-        """
-        _g = self.inputs.gamma - 1
-        _r = self.inputs.BC_inlet_east_rho
-        _u = self.inputs.BC_inlet_east_u
-        _v = self.inputs.BC_inlet_east_v
-        _p = self.inputs.BC_inlet_east_p
-
-        _W = PrimitiveState(
-            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
-        )
-
-        if self.state_type == "conservative":
-            state_bc = ConservativeState(self.inputs, state=_W)
-        elif self.state_type == "primitive":
-            state_bc = _W
-        else:
-            raise TypeError(
-                "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
-            )
-        state.data[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,
@@ -451,7 +381,7 @@ class GhostBlockWest(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.data = self.refBLK.neighbors.W.get_east_ghost_states()
+        state.from_state(self.refBLK.neighbors.W.get_east_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -472,34 +402,6 @@ class GhostBlockWest(GhostBlock):
         normal component.
         """
         self.BC_reflection(state, self.refBLK.mesh.west_boundary_angle())
-
-    def set_BC_inlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set dirichlet inlet boundary condition on the eastern face.
-        """
-        _g = self.inputs.gamma - 1
-        _r = self.inputs.BC_inlet_west_rho
-        _u = self.inputs.BC_inlet_west_u
-        _v = self.inputs.BC_inlet_west_v
-        _p = self.inputs.BC_inlet_west_p
-
-        _W = PrimitiveState(
-            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
-        )
-
-        if self.state_type == "conservative":
-            state_bc = ConservativeState(self.inputs, state=_W)
-        elif self.state_type == "primitive":
-            state_bc = _W
-        else:
-            raise TypeError(
-                "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
-            )
-
-        state.data[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,
@@ -588,7 +490,7 @@ class GhostBlockNorth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.data = self.refBLK.neighbors.N.get_south_ghost_states()
+        state.from_state(self.refBLK.neighbors.N.get_south_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -609,34 +511,6 @@ class GhostBlockNorth(GhostBlock):
         normal component.
         """
         self.BC_reflection(state, self.refBLK.mesh.north_boundary_angle())
-
-    def set_BC_inlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set dirichlet inlet boundary condition on the northern face.
-        """
-        _g = self.inputs.gamma - 1
-        _r = self.inputs.BC_inlet_north_rho
-        _u = self.inputs.BC_inlet_north_u
-        _v = self.inputs.BC_inlet_north_v
-        _p = self.inputs.BC_inlet_north_p
-
-        _W = PrimitiveState(
-            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
-        )
-
-        if self.state_type == "conservative":
-            state_bc = ConservativeState(self.inputs, state=_W)
-        elif self.state_type == "primitive":
-            state_bc = _W
-        else:
-            raise TypeError(
-                "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
-            )
-
-        state.data[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,
@@ -725,7 +599,7 @@ class GhostBlockSouth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.data = self.refBLK.neighbors.S.get_north_ghost_states()
+        state.from_state(self.refBLK.neighbors.S.get_north_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -746,34 +620,6 @@ class GhostBlockSouth(GhostBlock):
         normal component.
         """
         self.BC_reflection(state, self.refBLK.mesh.south_boundary_angle())
-
-    def set_BC_inlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set dirichlet inlet boundary condition on the southern face.
-        """
-        _g = self.inputs.gamma - 1
-        _r = self.inputs.BC_inlet_south_rho
-        _u = self.inputs.BC_inlet_south_u
-        _v = self.inputs.BC_inlet_south_v
-        _p = self.inputs.BC_inlet_south_p
-
-        _W = PrimitiveState(
-            self.inputs, array=np.array([_r, _u, _v, _p]).reshape((1, 1, 4))
-        )
-
-        if self.state_type == "conservative":
-            state_bc = ConservativeState(self.inputs, state=_W)
-        elif self.state_type == "primitive":
-            state_bc = _W
-        else:
-            raise TypeError(
-                "set_BC_inlet_dirichlet() Error! Unknown reconstruction_type"
-            )
-
-        state[:, :, :] = state_bc.data
 
     def set_BC_outlet_dirichlet(
         self,

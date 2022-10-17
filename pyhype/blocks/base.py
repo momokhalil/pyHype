@@ -442,7 +442,7 @@ class BaseBlockState(BaseBlockMesh, BlockMixin):
         state_type: Type[State],
     ):
         super().__init__(inputs=inputs, mesh=mesh, qp=qp)
-        self.state = state_type(inputs, shape=(mesh.ny, mesh.nx))
+        self.state = state_type(inputs, shape=(mesh.ny, mesh.nx, 4))
 
 
 class BaseBlockGrad(BaseBlockState):

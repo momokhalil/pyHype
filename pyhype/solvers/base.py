@@ -57,7 +57,6 @@ class ProblemInput:
         "write_solution_mode",
         "write_solution_name",
         "write_every_n_timesteps",
-        "upwind_mode",
         "plot_every",
         "plot_function",
         "CFL",
@@ -89,7 +88,6 @@ class ProblemInput:
         fvm_slope_limiter: str,
         fvm_spatial_order: int,
         fvm_num_quadrature_points: int,
-        upwind_mode: str,
         R: float = 287.0,
         gamma: float = 1.4,
         a_inf: float = 343.0,
@@ -127,7 +125,6 @@ class ProblemInput:
         self.fvm_spatial_order = fvm_spatial_order
         self.fvm_num_quadrature_points = fvm_num_quadrature_points
 
-        self.upwind_mode = upwind_mode
         self.reconstruction_type = reconstruction_type
         self.interface_interpolation = interface_interpolation
 
@@ -147,19 +144,23 @@ class ProblemInput:
         self.write_solution_name = write_solution_name
         self.write_every_n_timesteps = write_every_n_timesteps
 
-        _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
-        self.mesh = {
-            blk_num: BlockDescription(
-                nx=nx,
-                ny=ny,
-                blk_input=blk_data,
-                nghost=nghost,
-            )
-            for (blk_num, blk_data) in _mesh.items()
-        }
+        self.mesh = None
+        self.set_mesh_inputs(mesh)
 
     def __str__(self):
         return "".join(f"\t{atr}: {getattr(self, atr)}\n" for atr in self.__slots__)
+
+    def set_mesh_inputs(self, mesh: Union[MeshGenerator, dict] = None) -> None:
+        _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
+        self.mesh = {
+            blk_num: BlockDescription(
+                nx=self.nx,
+                ny=self.ny,
+                blk_input=blk_data,
+                nghost=self.nghost,
+            )
+            for (blk_num, blk_data) in _mesh.items()
+        }
 
 
 class Solver:

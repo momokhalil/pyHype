@@ -49,6 +49,7 @@ def explosion(blocks, **kwargs):
     for block in blocks:
         _x_cond = np.logical_and(block.mesh.x >= 3, block.mesh.x <= 7)
         _y_cond = np.logical_and(block.mesh.y >= 3, block.mesh.y <= 7)
+
         block.state.data = np.where(np.logical_and(_x_cond, _y_cond), QL, QR)
         block.state.non_dim()
 
@@ -172,7 +173,7 @@ def supersonic_flood(blocks, **kwargs):
     # High pressure zone
     rho = 1.0
     p = 1 / g
-    u = 2.0
+    u = 5.0
     v = 0.0
     e = p / (g - 1) + 0.5 * (u**2 + v**2) * rho
 
@@ -181,7 +182,7 @@ def supersonic_flood(blocks, **kwargs):
 
     # Fill state vector in each block
     for block in blocks:
-        block.state.data[:, :, :] = Q
+        block.state.data = Q
         block.state.non_dim()
 
 
