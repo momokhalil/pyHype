@@ -173,7 +173,7 @@ def supersonic_flood(blocks, **kwargs):
     # High pressure zone
     rho = 1.0
     p = 1 / g
-    u = 5.0
+    u = 2.0
     v = 0.0
     e = p / (g - 1) + 0.5 * (u**2 + v**2) * rho
 

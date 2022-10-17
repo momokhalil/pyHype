@@ -19,15 +19,16 @@ import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
-import numpy as np
 from abc import abstractmethod
 from pyhype.utils import utils
-from types import FunctionType
-from pyhype.mesh.quad_mesh import QuadMesh
-from typing import TYPE_CHECKING, Union, Type
-from pyhype.mesh import quadratures as quadratures
-from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
+from typing import TYPE_CHECKING, Type
 from pyhype.blocks.base import BlockMixin
+from pyhype.mesh.quad_mesh import QuadMesh
+from pyhype.mesh import quadratures as quadratures
+from pyhype.boundary_conditions.base import BoundaryCondition
+from pyhype.boundary_conditions.mixin import BoundaryConditionMixin
+from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
+
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
@@ -88,25 +89,6 @@ class GhostBlocks:
         self.S.state.clear_cache()
 
 
-class BoundaryConditionMixin:
-    @staticmethod
-    def BC_reflection(state: State, wall_angle: Union[np.ndarray, int, float]) -> None:
-        """
-        Flips the sign of the u velocity along the wall. Rotates the state from global to wall frame and back to ensure
-        coordinate alignment.
-
-        Parameters:
-            - state (np.ndarray): Ghost cell state arrays
-            - wall_angle (np.ndarray): Array of wall angles at each point along the wall
-
-        Returns:
-            - None
-        """
-        utils.rotate(wall_angle, state.data)
-        state.data[:, :, 1] = -state.data[:, :, 1]
-        utils.unrotate(wall_angle, state.data)
-
-
 class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
     def __init__(
         self,
@@ -133,7 +115,7 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
             self._apply_bc_func = self.set_BC_outlet_dirichlet
         elif self.BCtype == "OutletRiemann":
             self._apply_bc_func = self.set_BC_outlet_riemann
-        elif isinstance(self.BCtype, FunctionType):
+        elif isinstance(self.BCtype, BoundaryCondition):
             self._apply_bc_func = self.BCtype
         else:
             raise ValueError(
@@ -192,20 +174,6 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
     def set_BC_slipwall(self, state: State):
         """
         Set slipwall boundary condition
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def set_BC_inlet_dirichlet(self, state: State):
-        """
-        Set inlet dirichlet boundary condition
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def set_BC_inlet_riemann(self, state: State):
-        """
-        Set inlet riemann boundary condition
         """
         raise NotImplementedError
 
@@ -303,12 +271,6 @@ class GhostBlockEast(GhostBlock):
         ghost cells.
         """
         pass
-
-    def set_BC_inlet_riemann(
-        self,
-        state: State,
-    ):
-        return NotImplementedError
 
     def set_BC_outlet_riemann(
         self,
@@ -413,12 +375,6 @@ class GhostBlockWest(GhostBlock):
         """
         pass
 
-    def set_BC_inlet_riemann(
-        self,
-        state: State,
-    ):
-        return NotImplementedError
-
     def set_BC_outlet_riemann(
         self,
         state: State,
@@ -522,12 +478,6 @@ class GhostBlockNorth(GhostBlock):
         """
         pass
 
-    def set_BC_inlet_riemann(
-        self,
-        state: State,
-    ):
-        return NotImplementedError
-
     def set_BC_outlet_riemann(
         self,
         state: State,
@@ -630,12 +580,6 @@ class GhostBlockSouth(GhostBlock):
         ghost cells.
         """
         pass
-
-    def set_BC_inlet_riemann(
-        self,
-        state: State,
-    ):
-        return NotImplementedError
 
     def set_BC_outlet_riemann(
         self,

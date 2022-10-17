@@ -2,27 +2,23 @@ import numpy as np
 from pyhype.solvers import Euler2D
 from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
-from pyhype.states import PrimitiveState, State
+from pyhype.states import PrimitiveState
+from pyhype.boundary_conditions.base import PrimitiveDirichletBC
 
+BC_inlet_west_rho = 1.0
+BC_inlet_west_u = 0.25
+BC_inlet_west_v = 0.0
+BC_inlet_west_p = 2.0 / 1.4
 
-def inlet_diriclet_bc(state: State):
-    BC_inlet_west_rho = 1.0
-    BC_inlet_west_u = 0.25
-    BC_inlet_west_v = 0.0
-    BC_inlet_west_p = 2.0 / 1.4
-
-    inlet_state = PrimitiveState(
-        inputs=state.inputs,
-        array=np.array(
-            [
-                BC_inlet_west_rho,
-                BC_inlet_west_u,
-                BC_inlet_west_v,
-                BC_inlet_west_p,
-            ]
-        ).reshape((1, 1, 4)),
-    )
-    state.from_state(inlet_state)
+inlet_array = np.array(
+    [
+        BC_inlet_west_rho,
+        BC_inlet_west_u,
+        BC_inlet_west_v,
+        BC_inlet_west_p,
+    ]
+).reshape((1, 1, 4))
+subsonic_inlet_bc = PrimitiveDirichletBC(primitive_array=inlet_array)
 
 
 BCE = [
@@ -32,7 +28,7 @@ BCE = [
     "OutletDirichlet",
     "OutletDirichlet",
 ]
-BCW = ["Slipwall", "Slipwall", inlet_diriclet_bc, "Slipwall", "Slipwall"]
+BCW = ["Slipwall", "Slipwall", subsonic_inlet_bc, "Slipwall", "Slipwall"]
 BCN = ["OutletDirichlet"]
 BCS = ["OutletDirichlet"]
 

@@ -1,27 +1,24 @@
 from pyhype.solvers import Euler2D
 import numpy as np
-from pyhype.states import PrimitiveState, State
+from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
+from pyhype.boundary_conditions.base import PrimitiveDirichletBC
 
 
-def inlet_diriclet_bc(state: State):
-    BC_inlet_west_rho = 1.0
-    BC_inlet_west_u = 2.0
-    BC_inlet_west_v = 0.0
-    BC_inlet_west_p = 1 / 1.4
+BC_inlet_west_rho = 1.0
+BC_inlet_west_u = 2.0
+BC_inlet_west_v = 0.0
+BC_inlet_west_p = 1 / 1.4
 
-    inlet_state = PrimitiveState(
-        inputs=state.inputs,
-        array=np.array(
-            [
-                BC_inlet_west_rho,
-                BC_inlet_west_u,
-                BC_inlet_west_v,
-                BC_inlet_west_p,
-            ]
-        ).reshape((1, 1, 4)),
-    )
-    state.from_state(inlet_state)
+inlet_array = np.array(
+    [
+        BC_inlet_west_rho,
+        BC_inlet_west_u,
+        BC_inlet_west_v,
+        BC_inlet_west_p,
+    ]
+).reshape((1, 1, 4))
+mach_2_wedge_inlet_bc = PrimitiveDirichletBC(primitive_array=inlet_array)
 
 
 block1 = {
@@ -39,7 +36,7 @@ block1 = {
     "NeighborSE": None,
     "NeighborSW": None,
     "BCTypeE": None,
-    "BCTypeW": inlet_diriclet_bc,
+    "BCTypeW": mach_2_wedge_inlet_bc,
     "BCTypeN": "OutletDirichlet",
     "BCTypeS": "Reflection",
     "BCTypeNE": None,
@@ -77,35 +74,7 @@ mesh = {
     2: block2,
 }
 
-
 # Solver settings
-settings = {
-    "problem_type": "supersonic_flood",
-    "interface_interpolation": "arithmetic_average",
-    "reconstruction_type": "primitive",
-    "write_solution": False,
-    "write_solution_mode": "every_n_timesteps",
-    "write_solution_name": "super_wedge",
-    "write_every_n_timesteps": 20,
-    "plot_every": 10,
-    "CFL": 0.3,
-    "t_final": 25.0,
-    "realplot": True,
-    "profile": False,
-    "gamma": 1.4,
-    "rho_inf": 1.0,
-    "a_inf": 1.0,
-    "R": 287.0,
-    "nx": 60,
-    "ny": 60,
-    "nghost": 1,
-    "use_JIT": True,
-    "BC_inlet_west_rho": 1.0,
-    "BC_inlet_west_u": 2.0,
-    "BC_inlet_west_v": 0.0,
-    "BC_inlet_west_p": 1 / 1.4,
-}
-
 inputs = ProblemInput(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
@@ -135,16 +104,10 @@ inputs = ProblemInput(
     nghost=1,
     use_JIT=True,
     mesh=mesh,
-    # BC_inlet_west_rho=1.0,
-    # BC_inlet_west_u=2,
-    # BC_inlet_west_v=0.0,
-    # BC_inlet_west_p=1 / 1.4,
 )
 
 # Create solver
-exp = Euler2D(
-    inputs=inputs,
-)
+exp = Euler2D(inputs=inputs)
 
 # Solve
 exp.solve()

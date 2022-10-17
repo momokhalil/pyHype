@@ -14,30 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-import numpy as np
-from pyhype.states import State, PrimitiveState
+from pyhype.boundary_conditions.base import PrimitiveDirichletBC
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+import numpy as np
 
 
-def inlet_diriclet_bc(state: State):
-    BC_inlet_west_rho = 1.0
-    BC_inlet_west_u = 5.0
-    BC_inlet_west_v = 0.0
-    BC_inlet_west_p = 1 / 1.4
+BC_inlet_west_rho = 1.0
+BC_inlet_west_u = 5.0
+BC_inlet_west_v = 0.0
+BC_inlet_west_p = 1 / 1.4
 
-    inlet_state = PrimitiveState(
-        inputs=state.inputs,
-        array=np.array(
-            [
-                BC_inlet_west_rho,
-                BC_inlet_west_u,
-                BC_inlet_west_v,
-                BC_inlet_west_p,
-            ]
-        ).reshape((1, 1, 4)),
-    )
-    state.from_state(inlet_state)
+inlet_array = np.array(
+    [
+        BC_inlet_west_rho,
+        BC_inlet_west_u,
+        BC_inlet_west_v,
+        BC_inlet_west_p,
+    ]
+).reshape((1, 1, 4))
+mach_5_inlet_bc = PrimitiveDirichletBC(primitive_array=inlet_array)
 
 
 def step_ten_block():
@@ -57,7 +53,7 @@ def step_ten_block():
         "NeighborSE": None,
         "NeighborSW": None,
         "BCTypeE": "Slipwall",
-        "BCTypeW": inlet_diriclet_bc,
+        "BCTypeW": mach_5_inlet_bc,
         "BCTypeN": None,
         "BCTypeS": "Slipwall",
         "BCTypeNE": None,
@@ -81,7 +77,7 @@ def step_ten_block():
         "NeighborSE": None,
         "NeighborSW": None,
         "BCTypeE": None,
-        "BCTypeW": inlet_diriclet_bc,
+        "BCTypeW": mach_5_inlet_bc,
         "BCTypeN": None,
         "BCTypeS": None,
         "BCTypeNE": None,
@@ -105,7 +101,7 @@ def step_ten_block():
         "NeighborSE": None,
         "NeighborSW": None,
         "BCTypeE": None,
-        "BCTypeW": inlet_diriclet_bc,
+        "BCTypeW": mach_5_inlet_bc,
         "BCTypeN": None,
         "BCTypeS": None,
         "BCTypeNE": None,
@@ -129,7 +125,7 @@ def step_ten_block():
         "NeighborSE": None,
         "NeighborSW": None,
         "BCTypeE": None,
-        "BCTypeW": inlet_diriclet_bc,
+        "BCTypeW": mach_5_inlet_bc,
         "BCTypeN": "Slipwall",
         "BCTypeS": None,
         "BCTypeNE": None,

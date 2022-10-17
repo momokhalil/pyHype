@@ -1,8 +1,7 @@
-import numpy as np
 from mesh import step_ten_block
 from pyhype.solvers import Euler2D
 from pyhype.solvers.base import ProblemInput
-from pyhype.states import PrimitiveState, State
+from pyhype.states import PrimitiveState
 
 mesh = step_ten_block()
 
