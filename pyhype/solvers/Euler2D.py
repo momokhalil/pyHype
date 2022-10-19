@@ -80,25 +80,25 @@ class Euler2D(Solver):
     def set_IC(self):
         problem_type = self.inputs.problem_type
         if problem_type == "implosion":
-            _set_IC = ic.implosion(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.implosion(self.blocks, fluid=self.fluid)
         elif problem_type == "explosion":
-            _set_IC = ic.explosion(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.explosion(self.blocks, fluid=self.fluid)
         elif problem_type == "shockbox":
-            _set_IC = ic.shockbox(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.shockbox(self.blocks, fluid=self.fluid)
         elif problem_type == "supersonic_flood":
-            _set_IC = ic.supersonic_flood(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.supersonic_flood(self.blocks, fluid=self.fluid)
         elif problem_type == "supersonic_rest":
-            _set_IC = ic.supersonic_rest(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.supersonic_rest(self.blocks, fluid=self.fluid)
         elif problem_type == "subsonic_flood":
-            _set_IC = ic.subsonic_flood(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.subsonic_flood(self.blocks, fluid=self.fluid)
         elif problem_type == "subsonic_rest":
-            _set_IC = ic.subsonic_rest(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.subsonic_rest(self.blocks, fluid=self.fluid)
         elif problem_type == "explosion_trapezoid":
-            _set_IC = ic.explosion_trapezoid(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.explosion_trapezoid(self.blocks, fluid=self.fluid)
         elif problem_type == "explosion_3":
-            _set_IC = ic.explosion_3(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.explosion_3(self.blocks, fluid=self.fluid)
         elif problem_type == "mach_reflection":
-            _set_IC = ic.mach_reflection(self.blocks, g=self.inputs.gamma)
+            _set_IC = ic.mach_reflection(self.blocks, fluid=self.fluid)
         else:
             raise ValueError(
                 "Initial condition of type "
@@ -152,7 +152,7 @@ class Euler2D(Solver):
 
         while self.t < self.t_final:
             if self.numTimeStep % 50 == 0:
-                print("\nSimulation time: " + str(self.t / self.inputs.a_inf))
+                print("\nSimulation time: " + str(self.t / self.fluid.far_field.a))
                 print("Timestep number: " + str(self.numTimeStep))
             else:
                 print(".", end="")

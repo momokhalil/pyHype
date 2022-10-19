@@ -1,25 +1,31 @@
 import numpy as np
+from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
 from pyhype.states import PrimitiveState
 from pyhype.boundary_conditions.base import PrimitiveDirichletBC
 
-BC_inlet_west_rho = 1.0
-BC_inlet_west_u = 0.25
-BC_inlet_west_v = 0.0
-BC_inlet_west_p = 2.0 / 1.4
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 
-inlet_array = np.array(
-    [
-        BC_inlet_west_rho,
-        BC_inlet_west_u,
-        BC_inlet_west_v,
-        BC_inlet_west_p,
-    ]
-).reshape((1, 1, 4))
-subsonic_inlet_bc = PrimitiveDirichletBC(primitive_array=inlet_array)
+inlet_rho = 1.0
+inlet_u = 0.25
+inlet_v = 0.0
+inlet_p = 1.0 / 1.4
 
+inlet_state = PrimitiveState(
+    fluid=air,
+    array=np.array(
+        [
+            inlet_rho,
+            inlet_u,
+            inlet_v,
+            inlet_p,
+        ]
+    ).reshape((1, 1, 4)),
+)
+subsonic_inlet_bc = PrimitiveDirichletBC(primitive_state=inlet_state)
 
 BCE = [
     "OutletDirichlet",
@@ -67,10 +73,7 @@ inputs = ProblemInput(
     t_final=25.0,
     realplot=True,
     profile=False,
-    gamma=1.4,
-    rho_inf=1.0,
-    a_inf=1.0,
-    R=287.0,
+    fluid=air,
     nx=100,
     ny=10,
     nghost=1,

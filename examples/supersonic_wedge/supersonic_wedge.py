@@ -1,26 +1,34 @@
-from pyhype.solvers import Euler2D
 import numpy as np
+from pyhype.fluids import Air
+from pyhype.solvers import Euler2D
 from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
 from pyhype.boundary_conditions.base import PrimitiveDirichletBC
 
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 
-BC_inlet_west_rho = 1.0
-BC_inlet_west_u = 2.0
-BC_inlet_west_v = 0.0
-BC_inlet_west_p = 1 / 1.4
+# Define inlet BC
+inlet_rho = 1.0
+inlet_u = 2.0
+inlet_v = 0.0
+inlet_p = 1 / air.gamma()
 
-inlet_array = np.array(
-    [
-        BC_inlet_west_rho,
-        BC_inlet_west_u,
-        BC_inlet_west_v,
-        BC_inlet_west_p,
-    ]
-).reshape((1, 1, 4))
-mach_2_wedge_inlet_bc = PrimitiveDirichletBC(primitive_array=inlet_array)
+inlet_state = PrimitiveState(
+    fluid=air,
+    array=np.array(
+        [
+            inlet_rho,
+            inlet_u,
+            inlet_v,
+            inlet_p,
+        ]
+    ).reshape((1, 1, 4)),
+)
 
+mach_2_wedge_inlet_bc = PrimitiveDirichletBC(primitive_state=inlet_state)
 
+# Define mesh
 block1 = {
     "nBLK": 1,
     "NW": [0, 2],
@@ -68,7 +76,6 @@ block2 = {
     "BCTypeSE": None,
     "BCTypeSW": None,
 }
-
 mesh = {
     1: block1,
     2: block2,
@@ -95,10 +102,7 @@ inputs = ProblemInput(
     t_final=20,
     realplot=True,
     profile=False,
-    gamma=1.4,
-    rho_inf=1.0,
-    a_inf=1.0,
-    R=287.0,
+    fluid=air,
     nx=60,
     ny=60,
     nghost=1,

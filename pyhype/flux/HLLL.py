@@ -25,7 +25,7 @@ class FluxHLLL(FluxFunction):
     def compute_flux(self, WL: PrimitiveState, WR: PrimitiveState) -> np.ndarray:
 
         # Get Roe state
-        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+        Wroe = RoePrimitiveState(self.inputs.fluid, WL, WR)
         # Left and Right wavespeeds
         L_p, L_m = self.wavespeeds_x(WL)
         R_p, R_m = self.wavespeeds_x(WR)
@@ -36,8 +36,8 @@ class FluxHLLL(FluxFunction):
         L_plus = np.maximum.reduce((R_m, Lm))[:, :, None]
         L_minus = np.minimum.reduce((L_p, Lp))[:, :, None]
         # Left and right fluxes
-        UR = ConservativeState(self.inputs, state=WR)
-        UL = ConservativeState(self.inputs, state=WL)
+        UR = ConservativeState(self.inputs.fluid, state=WR)
+        UL = ConservativeState(self.inputs.fluid, state=WL)
         FluxR = WR.F(U=UR)
         FluxL = WL.F(U=UL)
         return self._HLLL_flux_JIT(

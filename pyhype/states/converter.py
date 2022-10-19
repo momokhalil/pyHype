@@ -1,15 +1,31 @@
+"""
+Copyright 2021 Mohamed Khalil
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Type, Callable
+import os
 from abc import ABC, abstractmethod
-
-import numpy as np
+from typing import TYPE_CHECKING, Type, Callable
 
 import pyhype.states as states
 
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+import numpy as np
+
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.solvers.base import ProblemInput
 
 
 class StateConverter(ABC):
@@ -22,11 +38,10 @@ class StateConverter(ABC):
     def to_type(
         state: states.State,
         to_type: Type[states.State],
-        inputs: ProblemInput,
     ) -> states.State:
         converter = state.get_class_type_converter()
         array = converter.to(to_type)(state)
-        created = to_type(inputs=inputs, array=array)
+        created = to_type(fluid=state.fluid, array=array)
         return created
 
 
@@ -72,7 +87,7 @@ class ConservativeConverter(BaseConverter):
                 state.rho.copy(),
                 state.u.copy(),
                 state.v.copy(),
-                (state.g - 1) * (state.e - state.ek()),
+                (state.fluid.gamma() - 1) * (state.e - state.ek()),
             )
         )
 
@@ -93,6 +108,6 @@ class PrimitiveConverter(BaseConverter):
                 state.rho.copy(),
                 state.rho * state.u,
                 state.rho * state.v,
-                state.p / (state.g - 1) + state.ek(),
+                state.p / (state.fluid.gamma() - 1) + state.ek(),
             )
         )

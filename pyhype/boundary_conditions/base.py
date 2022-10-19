@@ -34,14 +34,12 @@ class BoundaryCondition(ABC):
 
 
 class PrimitiveDirichletBC(BoundaryCondition):
-    def __init__(self, primitive_array: np.ndarray):
-        if not isinstance(primitive_array, np.ndarray):
-            raise TypeError("primitive_array must be a numpy array.")
-        if primitive_array.ndim != 3 and primitive_array.shape[-1] != 4:
-            raise ValueError("primitive array has an incompatible shape.")
+    def __init__(self, primitive_state: PrimitiveState):
+        if not isinstance(primitive_state, PrimitiveState):
+            raise TypeError("primitive_array must be a PrimitiveState.")
         super().__init__()
-        self._primitive_array = primitive_array
+        self._primitive_state = primitive_state
+        self._primitive_state.make_non_dimensional()
 
     def _apply_boundary_condition(self, state: State, *args, **kwargs) -> None:
-        inlet_state = PrimitiveState(inputs=state.inputs, array=self._primitive_array)
-        state.from_state(inlet_state)
+        state.from_state(self._primitive_state)
