@@ -29,7 +29,7 @@ from pyhype.utils.utils import cache
 from typing import TYPE_CHECKING, Union, Type
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.fluids.base import Fluid
 
 
 class PrimitiveState(State):
@@ -52,15 +52,13 @@ class PrimitiveState(State):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        fluid: Fluid,
         state: State = None,
         array: np.ndarray = None,
         shape: tuple[int, int] = None,
         fill: Union[float, int] = None,
     ):
-        super().__init__(
-            inputs=inputs, state=state, array=array, shape=shape, fill=fill
-        )
+        super().__init__(fluid=fluid, state=state, array=array, shape=shape, fill=fill)
 
     def get_class_type_converter(self) -> Type[PrimitiveConverter]:
         return PrimitiveConverter
@@ -138,8 +136,8 @@ class PrimitiveState(State):
     @cache
     def H(self, Ek: np.ndarray = None) -> np.ndarray:
         if Ek is None:
-            return self.H_JIT(self.rho, self.u, self.v, self.p, self.g_over_gm)
-        return self.H_given_Ek_JIT(self.rho, self.p, Ek, self.g_over_gm)
+            return self.H_JIT(self.rho, self.u, self.v, self.p, self.fluid.g_over_gm1())
+        return self.H_given_Ek_JIT(self.rho, self.p, Ek, self.fluid.g_over_gm1())
 
     @staticmethod
     @nb.njit(cache=True)
@@ -187,7 +185,7 @@ class PrimitiveState(State):
 
     @cache
     def a(self) -> np.ndarray:
-        return self.a_JIT(self.p, self.rho, self.g)
+        return self.a_JIT(self.p, self.rho, self.fluid.gamma())
 
     @staticmethod
     @nb.njit(cache=True)
@@ -204,37 +202,13 @@ class PrimitiveState(State):
 
     @cache
     def e(self):
-        return self.one_over_gm * self.p + self.ek()
+        return self.fluid.one_over_gm1() * self.p + self.ek()
 
     def V(self) -> np.ndarray:
         return np.sqrt(self.u * self.u + self.v * self.v)
 
     def Ma(self) -> np.ndarray:
         return self.V() / self.a()
-
-    def non_dim(self) -> None:
-        """
-        Non-dimentionalizes the primitive state vector W. Let the non-dimentionalized primitive state vector be
-        $W^* = \\begin{bmatrix} \\rho^* \\ u^* \\ v^* \\ p^* \\end{bmatrix}^T$, where $^*$ indicates a
-        non-dimentionalized quantity. The non-dimentionalized primitive variables are:  \n
-        $\\rho^* = \\rho/\\rho_\\infty$                                                 \n
-        $u^* = u/a_\\infty$                                                             \n
-        $u^* = v/a_\\infty$                                                             \n
-        $p^* = p/\\rho_\\infty a_\\infty^2$                                             \n
-        If `PrimitiveState` is created from a non-dimentionalized `ConservativeState`, it will be non-dimentional.
-        """
-
-        # Non-dimentionalize each component of W
-        self.data[:, :, ConservativeState.RHO_IDX] /= self.inputs.rho_inf
-        self.data[:, :, ConservativeState.RHOU_IDX] /= (
-            self.inputs.rho_inf * self.inputs.a_inf
-        )
-        self.data[:, :, ConservativeState.RHOV_IDX] /= (
-            self.inputs.rho_inf * self.inputs.a_inf
-        )
-        self.data[:, :, ConservativeState.E_IDX] /= (
-            self.inputs.rho_inf * self.inputs.a_inf**2
-        )
 
     def F(self, U: ConservativeState = None, U_vector: np.ndarray = None) -> np.ndarray:
 
@@ -256,7 +230,7 @@ class PrimitiveState(State):
             F[:, :, 3] = self.u * (U_vector[:, :, ConservativeState.E_IDX] + self.p)
             return F
 
-        return self._F_from_prim_JIT(self._data, self.ek(), self.one_over_gm)
+        return self._F_from_prim_JIT(self._data, self.ek(), self.fluid.one_over_gm1())
 
     @staticmethod
     @nb.njit(cache=True)
@@ -305,7 +279,7 @@ class RoePrimitiveState(PrimitiveState):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        fluid: Fluid,
         WL: PrimitiveState,
         WR: PrimitiveState,
     ):
@@ -321,7 +295,7 @@ class RoePrimitiveState(PrimitiveState):
         """
 
         roe_state_array = self.roe_state_from_primitive_states(WL, WR)
-        super().__init__(inputs=inputs, array=roe_state_array)
+        super().__init__(fluid=fluid, array=roe_state_array)
 
     def roe_state_from_primitive_states(
         self, WL: PrimitiveState, WR: PrimitiveState

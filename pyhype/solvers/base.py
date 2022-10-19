@@ -35,6 +35,7 @@ from pyhype.mesh.base import MeshGenerator
 
 if TYPE_CHECKING:
     from pyhype.blocks.quad_block import QuadBlock
+    from pyhype.fluids.base import Fluid
     from pyhype.states import State
 
 np.set_printoptions(threshold=sys.maxsize)
@@ -63,10 +64,7 @@ class ProblemInput:
         "t_final",
         "realplot",
         "profile",
-        "gamma",
-        "rho_inf",
-        "a_inf",
-        "R",
+        "fluid",
         "nx",
         "ny",
         "n",
@@ -88,10 +86,7 @@ class ProblemInput:
         fvm_slope_limiter: str,
         fvm_spatial_order: int,
         fvm_num_quadrature_points: int,
-        R: float = 287.0,
-        gamma: float = 1.4,
-        a_inf: float = 343.0,
-        rho_inf: float = 1.0,
+        fluid: Fluid,
         nghost: int = 1,
         use_JIT: bool = True,
         profile: bool = False,
@@ -128,10 +123,7 @@ class ProblemInput:
         self.reconstruction_type = reconstruction_type
         self.interface_interpolation = interface_interpolation
 
-        self.R = R
-        self.gamma = gamma
-        self.a_inf = a_inf
-        self.rho_inf = rho_inf
+        self.fluid = fluid
 
         self.use_JIT = use_JIT
         self.profile = profile
@@ -176,6 +168,7 @@ class Solver:
         )
 
         self.inputs = inputs
+        self.fluid = inputs.fluid
         self.cmap = LinearSegmentedColormap.from_list(
             "my_map", ["royalblue", "midnightblue", "black"]
         )
@@ -185,7 +178,7 @@ class Solver:
         self.dt = 0
         self.numTimeStep = 0
         self.CFL = self.inputs.CFL
-        self.t_final = self.inputs.t_final * self.inputs.a_inf
+        self.t_final = self.inputs.t_final * self.fluid.far_field.a
         self.profile_data = None
         self.realfig, self.realplot = None, None
         self.plot = None

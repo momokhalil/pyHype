@@ -1,6 +1,10 @@
+from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
 from pyhype.solvers.base import ProblemInput
+
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 
 block1 = {
     "nBLK": 1,
@@ -50,10 +54,7 @@ inputs = ProblemInput(
     t_final=0.1,
     realplot=True,
     profile=True,
-    gamma=1.4,
-    rho_inf=1.0,
-    a_inf=343.0,
-    R=287.0,
+    fluid=air,
     nx=50,
     ny=50,
     nghost=1,

@@ -23,11 +23,11 @@ import numpy as np
 from typing import Union
 from typing import TYPE_CHECKING
 import pyhype.states as states
+from pyhype.states import State, PrimitiveState, ConservativeState
 
 if TYPE_CHECKING:
     from pyhype.mesh.quad_mesh import QuadMesh
     from pyhype.solvers.base import ProblemInput
-    from pyhype.states import State, PrimitiveState, ConservativeState
 
 
 # Define quadrature sets
@@ -49,10 +49,9 @@ class QuadraturePoint:
         self.x = x
         self.y = y
         self.w = w
-        if inputs.reconstruction_type == "primitive":
-            self.state = states.PrimitiveState(inputs=inputs)
-        elif inputs.reconstruction_type == "conservative":
-            self.state = states.ConservativeState(inputs=inputs)
+        self.state = inputs.reconstruction_type(
+            fluid=inputs.fluid, shape=(inputs.ny, inputs.nx, 4)
+        )
 
 
 class QuadraturePointDataContainerBase:
@@ -105,7 +104,7 @@ class QuadraturePointStateContainer(QuadraturePointDataContainerBase):
             zip(dataE, dataW, dataN, dataS)
         ):
             self.E[n].data = stateE
-            self.data[n].data = stateW
+            self.W[n].data = stateW
             self.N[n].data = stateN
             self.S[n].data = stateS
 
@@ -168,6 +167,6 @@ class QuadraturePointData:
             zip(dataE, dataW, dataN, dataS)
         ):
             self.E[n].state.data = stateE
-            self.data[n].state.data = stateW
+            self.W[n].state.data = stateW
             self.N[n].state.data = stateN
             self.S[n].state.data = stateS

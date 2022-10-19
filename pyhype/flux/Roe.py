@@ -32,9 +32,10 @@ class FluxRoe(FluxFunction):
     def __init__(self, inputs, size, sweeps):
         super().__init__(inputs, nx=size, ny=sweeps)
         # Thermodynamic quantities
-        self.gh = self.g - 1
-        self.gt = 1 - self.g
-        self.gb = 3 - self.g
+        g = self.inputs.fluid.gamma()
+        self.gh = self.inputs.fluid.gamma() - 1
+        self.gt = 1 - g
+        self.gb = 3 - g
         # Matrix size
         self.size = size
         self.sweeps = sweeps
@@ -310,7 +311,7 @@ class FluxRoe(FluxFunction):
         WL: PrimitiveState,
         WR: PrimitiveState,
     ) -> np.ndarray:
-        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+        Wroe = RoePrimitiveState(self.inputs.fluid, WL, WR)
         self.diagonalize(Wroe, WL, WR)
         dW = (WR.data - WL.data).flatten()
         self.Lambda.data = np.absolute(self.Lambda.data)

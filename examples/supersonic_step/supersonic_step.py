@@ -1,8 +1,11 @@
+from pyhype.fluids import Air
 from mesh import step_ten_block
 from pyhype.solvers import Euler2D
 from pyhype.solvers.base import ProblemInput
 from pyhype.states import PrimitiveState
 
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 mesh = step_ten_block()
 
 # Solver settings
@@ -27,10 +30,7 @@ inputs = ProblemInput(
     t_final=25.0,
     realplot=True,
     profile=False,
-    gamma=1.4,
-    rho_inf=1.0,
-    a_inf=1.0,
-    R=287.0,
+    fluid=air,
     nx=48,
     ny=16,
     nghost=1,

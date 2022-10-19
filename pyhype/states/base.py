@@ -19,14 +19,12 @@ import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+from typing import Union, Type
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Union, Type
+from pyhype.fluids.base import Fluid
 from pyhype.states.converter import StateConverter, BaseConverter
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
 
 StateCompatible = (int, float, np.ndarray)
 
@@ -48,7 +46,7 @@ class State(ABC):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        fluid: Fluid,
         state: State = None,
         array: np.ndarray = None,
         shape: tuple[int, int, int] = None,
@@ -65,13 +63,11 @@ class State(ABC):
             g           (gamma) specific heat ratio \n
         """
 
-        self.inputs = inputs
-        self.g = inputs.gamma
-        self.g_over_gm = self.g / (self.g - 1)
-        self.one_over_gm = 1 / (self.g - 1)
+        if not isinstance(fluid, Fluid):
+            raise TypeError("fluid must be of type Fluid.")
 
+        self.fluid = fluid
         self.converter = StateConverter()
-
         self._data = None
         self.cache = {}
 
@@ -79,35 +75,34 @@ class State(ABC):
             self._data = np.empty(state.shape)
             self.from_state(state)
         elif array is not None:
-            if array.ndim != 3 or array.shape[-1] != 4:
-                raise ValueError("Array must have 3 dims and a depth of 4.")
-            self._data = array
+            self.from_array(array)
         elif shape is not None:
-            if len(shape) != 3 or shape[-1] != 4:
-                raise ValueError("Array must have 3 dims and a depth of 4.")
-            if fill is not None:
-                self._data = np.full(shape=shape, fill_value=fill)
-            else:
-                self._data = np.zeros(shape=shape)
+            self.data = np.full(
+                shape=shape, fill_value=fill if fill is not None else 0.0
+            )
         else:
-            self._data = np.zeros((0, 0, 0))
+            raise ValueError(
+                "State constructor must recieve either a state, array or a shape."
+            )
 
     @property
     def data(self):
         return self._data
 
     @data.setter
-    def data(self, data: Union[np.ndarray, State]):
-        if not isinstance(data, np.ndarray) and not isinstance(data, State):
-            raise TypeError(
-                f"Input array must be a Numpy array or a State, but it is a {type(data)}."
-            )
-        set_to = data if isinstance(data, np.ndarray) else data.data
-        self._set_data_array_from_array(set_to)
-        self.clear_cache()
+    def data(self, data: np.ndarray):
+        self.from_array(data)
+
+    def make_non_dimensional(self):
+        self.data[:, :, 0] /= self.fluid.far_field.rho
+        self.data[:, :, 1] /= self.fluid.far_field.rho * self.fluid.far_field.a
+        self.data[:, :, 2] /= self.fluid.far_field.rho * self.fluid.far_field.a
+        self.data[:, :, 3] /= self.fluid.far_field.rho * self.fluid.far_field.a**2
 
     def _set_data_array_from_array(self, array: np.ndarray):
-        if self.shape == array.shape:
+        if self.data is None:
+            self._data = array
+        elif self.shape == array.shape:
             self._data = array
         else:
             # Broadcast to array, if this fails then
@@ -158,14 +153,21 @@ class State(ABC):
     def shape(self):
         return self._data.shape
 
+    @property
+    def nx(self):
+        return self.shape[1]
+
+    def ny(self):
+        return self.shape[0]
+
     def __getitem__(self, index: Union[int, slice]) -> State:
-        return type(self)(self.inputs, array=self.data[index].copy())
+        return type(self)(fluid=self.fluid, array=self.data[index].copy())
 
     def __add__(self, other: Union[State, StateCompatible]) -> State:
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.data + other.data)
+            return type(self)(fluid=self.fluid, array=self.data + other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.data + other)
+            return type(self)(fluid=self.fluid, array=self.data + other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
@@ -175,27 +177,27 @@ class State(ABC):
 
     def __sub__(self, other: Union[State, StateCompatible]) -> State:
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.data - other.data)
+            return type(self)(fluid=self.fluid, array=self.data - other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.data - other)
+            return type(self)(fluid=self.fluid, array=self.data - other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __rsub__(self, other: Union[State, StateCompatible]) -> State:
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=other.data - self.data)
+            return type(self)(fluid=self.fluid, array=other.data - self.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=other - self.data)
+            return type(self)(fluid=self.fluid, array=other - self.data)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __mul__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.data * other.data)
+            return type(self)(fluid=self.fluid, array=self.data * other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.data * other)
+            return type(self)(fluid=self.fluid, array=self.data * other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
@@ -205,36 +207,36 @@ class State(ABC):
 
     def __truediv__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.data / other.data)
+            return type(self)(fluid=self.fluid, array=self.data / other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.data / other)
+            return type(self)(fluid=self.fluid, array=self.data / other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __rtruediv__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=other.data / self.data)
+            return type(self)(fluid=self.fluid, array=other.data / self.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=other / self.data)
+            return type(self)(fluid=self.fluid, array=other / self.data)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __pow__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=self.data**other.data)
+            return type(self)(fluid=self.fluid, array=self.data**other.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=self.data**other)
+            return type(self)(fluid=self.fluid, array=self.data**other)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
 
     def __rpow__(self, other: Union[State, StateCompatible]):
         if isinstance(other, type(self)):
-            return type(self)(inputs=self.inputs, array=other.data**self.data)
+            return type(self)(fluid=self.fluid, array=other.data**self.data)
         if isinstance(other, StateCompatible):
-            return type(self)(inputs=self.inputs, array=other**self.data)
+            return type(self)(fluid=self.fluid, array=other**self.data)
         raise TypeError(
             f"Other must be of type {self.__class__.__name__} or {StateCompatible}"
         )
@@ -243,13 +245,24 @@ class State(ABC):
         if shape:
             self.data = np.zeros(shape=shape, dtype=float)
         else:
-            self.data = np.zeros((self.inputs.ny, self.inputs.nx, 4), dtype=float)
+            self.data = np.zeros((self.ny, self.nx, 4), dtype=float)
 
     def clear_cache(self) -> None:
         self.cache.clear()
 
     def from_state(self, state: State):
         self.converter.from_state(state=self, from_state=state)
+        self.clear_cache()
+
+    def from_array(self, array: np.ndarray):
+        if not isinstance(array, np.ndarray):
+            raise TypeError(
+                f"Input array must be a Numpy array, but it is a {type(array)}."
+            )
+        if array.ndim != 3 or array.shape[-1] != 4:
+            raise ValueError("Array must have 3 dims and a depth of 4.")
+        self._set_data_array_from_array(array)
+        self.clear_cache()
 
     def transpose(self, axes: tuple[int]):
         self._data = self._data.transpose(axes)
@@ -286,13 +299,6 @@ class State(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def non_dim(self):
-        """
-        Makes state vector and state variables non-dimensional
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def a(self):
         """
         Returns speed of sound over entire grid
@@ -316,4 +322,3 @@ class State(ABC):
 
     def reshape(self, shape: tuple):
         self._data = np.reshape(self._data, shape)
-        # self.data = self.data.reshape(shape)

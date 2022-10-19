@@ -340,17 +340,21 @@ class MUSCLFiniteVolumeMethod:
         _right_arr = np.concatenate((stateR.data, ghostR.data), axis=1)
 
         if self.inputs.reconstruction_type is PrimitiveState:
-            _left_state = PrimitiveState(self.inputs, array=_left_arr)
-            _right_state = PrimitiveState(self.inputs, array=_right_arr)
+            _left_state = PrimitiveState(self.inputs.fluid, array=_left_arr)
+            _right_state = PrimitiveState(self.inputs.fluid, array=_right_arr)
             return _left_state, _right_state
 
         _left_state = PrimitiveState(
-            inputs=self.inputs,
-            state=self.inputs.reconstruction_type(self.inputs, array=_left_arr),
+            fluid=self.inputs.fluid,
+            state=self.inputs.reconstruction_type(
+                fluid=self.inputs.fluid, array=_left_arr
+            ),
         )
         _right_state = PrimitiveState(
-            inputs=self.inputs,
-            state=self.inputs.reconstruction_type(self.inputs, array=_right_arr),
+            fluid=self.inputs.fluid,
+            state=self.inputs.reconstruction_type(
+                fluid=self.inputs.fluid, array=_right_arr
+            ),
         )
         return _left_state, _right_state
 

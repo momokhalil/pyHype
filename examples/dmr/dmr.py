@@ -1,6 +1,7 @@
 import numpy as np
+from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
-from pyhype.states import PrimitiveState, State
+from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
 
@@ -18,7 +19,6 @@ _bot_y = [0, 0, d, 2 * d, 3 * d]
 
 BCS = ["OutletDirichlet", "Slipwall", "Slipwall", "Slipwall"]
 
-
 _mesh = QuadMeshGenerator(
     nx_blk=4,
     ny_blk=1,
@@ -35,6 +35,9 @@ _mesh = QuadMeshGenerator(
     left_y=_left_y,
     right_y=_right_y,
 )
+
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 
 # Solver settings
 inputs = ProblemInput(
@@ -57,10 +60,7 @@ inputs = ProblemInput(
     t_final=0.25,
     realplot=True,
     profile=False,
-    gamma=1.4,
-    rho_inf=1.0,
-    a_inf=1.0,
-    R=287.0,
+    fluid=air,
     nx=50,
     ny=50,
     nghost=1,

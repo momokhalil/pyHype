@@ -20,14 +20,14 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
-from pyhype.states.base import State, RealizabilityException
+from pyhype.states.base import State
 from pyhype.states.converter import ConservativeConverter
 from pyhype.utils.utils import cache
 
 from typing import TYPE_CHECKING, Union, Type
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.fluids.base import Fluid
 
 
 class ConservativeState(State):
@@ -49,15 +49,13 @@ class ConservativeState(State):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        fluid: Fluid,
         state: State = None,
         array: np.ndarray = None,
         shape: tuple[int, int] = None,
         fill: Union[float, int] = None,
     ):
-        super().__init__(
-            inputs=inputs, state=state, array=array, shape=shape, fill=fill
-        )
+        super().__init__(fluid=fluid, state=state, array=array, shape=shape, fill=fill)
 
     def get_class_type_converter(self) -> Type[ConservativeConverter]:
         return ConservativeConverter
@@ -119,7 +117,7 @@ class ConservativeState(State):
     @property
     @cache
     def p(self) -> np.ndarray:
-        return (self.g - 1) * (self.e - self.ek())
+        return (self.fluid.gamma() - 1) * (self.e - self.ek())
 
     @p.setter
     def p(self, p: np.ndarray) -> None:
@@ -138,7 +136,7 @@ class ConservativeState(State):
     @cache
     def h(self) -> np.ndarray:
         _ek = self.ek()
-        return self.g * (self.e - _ek) + _ek
+        return self.fluid.gamma() * (self.e - _ek) + _ek
 
     @cache
     def H(self) -> np.ndarray:
@@ -146,30 +144,13 @@ class ConservativeState(State):
 
     @cache
     def a(self) -> np.ndarray:
-        return np.sqrt(self.g * self.p / self.rho)
+        return np.sqrt(self.fluid.gamma() * self.p / self.rho)
 
     def V(self) -> np.ndarray:
         return np.sqrt(self.u**2 + self.v**2)
 
     def Ma(self) -> np.ndarray:
         return self.V() / self.a()
-
-    def non_dim(self) -> None:
-        """
-        Non-dimentionalizes the conservative state vector W. Let the non-dimentionalized conservative state vector be
-        $U^* = \\begin{bmatrix} \\rho^* \\ \\rho u^* \\ \\rho v^* \\ e^* \\end{bmatrix}^T$, where $^*$ indicates a
-        non-dimentionalized quantity. The non-dimentionalized conservative variables are:   \n
-        $\\rho^* = \\rho/\\rho_\\infty$                                                     \n
-        $\\rho u^* = \\rho u/a_\\infty \\rho_\\infty$                                       \n
-        $\\rho u^* = \\rho v/a_\\infty \\rho_\\infty$                                       \n
-        $e^* = e/\\rho_\\infty a_\\infty^2$                                                 \n
-        If `ConservativeState` is created from a non-dimentionalized `PrimitiveState`, it will be non-dimentional.
-        """
-
-        self.data[:, :, self.RHO_IDX] /= self.inputs.rho_inf
-        self.data[:, :, self.RHOU_IDX] /= self.inputs.rho_inf * self.inputs.a_inf
-        self.data[:, :, self.RHOV_IDX] /= self.inputs.rho_inf * self.inputs.a_inf
-        self.data[:, :, self.E_IDX] /= self.inputs.rho_inf * self.inputs.a_inf**2
 
     def F(self) -> np.ndarray:
 
