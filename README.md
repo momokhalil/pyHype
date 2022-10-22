@@ -19,57 +19,73 @@ Here is an example of an explosion simulation performed on one block. The simula
 The example in given in the file [examples/explosion/explosion.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion/explosion.py). The file is as follows:
 
 ```python
+from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
+from pyhype.states import ConservativeState
+from pyhype.solvers.base import ProblemInput
 
-block1 = {'nBLK': 1,
-          'NW': [0, 20], 'NE': [10, 20],
-          'SW': [0, 0], 'SE': [10, 0],
-          'NeighborE': None,
-          'NeighborW': None,
-          'NeighborN': None,
-          'NeighborS': None,
-          'BCTypeE': 'Reflection',
-          'BCTypeW': 'Reflection',
-          'BCTypeN': 'Reflection',
-          'BCTypeS': 'Reflection'}
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 
+block1 = {
+    "nBLK": 1,
+    "NW": [0, 20],
+    "NE": [10, 20],
+    "SW": [0, 0],
+    "SE": [10, 0],
+    "NeighborE": None,
+    "NeighborW": None,
+    "NeighborN": None,
+    "NeighborS": None,
+    "NeighborNE": None,
+    "NeighborNW": None,
+    "NeighborSE": None,
+    "NeighborSW": None,
+    "BCTypeE": "Reflection",
+    "BCTypeW": "Reflection",
+    "BCTypeN": "Reflection",
+    "BCTypeS": "Reflection",
+    "BCTypeNE": None,
+    "BCTypeNW": None,
+    "BCTypeSE": None,
+    "BCTypeSW": None,
+}
 mesh = {1: block1}
 
-# Solver settings
-settings = {'problem_type': 'explosion',
-            'interface_interpolation': 'arithmetic_average',
-            'reconstruction_type': 'conservative',
-            'write_solution': False,
-            'write_solution_mode': 'every_n_timesteps',
-            'write_solution_name': 'nozzle',
-            'write_every_n_timesteps': 40,
-            'plot_every': 20,
-            'CFL': 0.8,
-            't_final': 0.07,
-            'realplot': False,
-            'profile': True,
-            'gamma': 1.4,
-            'rho_inf': 1.0,
-            'a_inf': 343.0,
-            'R': 287.0,
-            'nx': 600,
-            'ny': 600,
-            'nghost': 1,
-            }
+inputs = ProblemInput(
+    fvm_type="MUSCL",
+    fvm_spatial_order=2,
+    fvm_num_quadrature_points=1,
+    fvm_gradient_type="GreenGauss",
+    fvm_flux_function="Roe",
+    fvm_slope_limiter="Venkatakrishnan",
+    time_integrator="RK4",
+    mesh=mesh,
+    problem_type="explosion",
+    interface_interpolation="arithmetic_average",
+    reconstruction_type=ConservativeState,
+    write_solution=False,
+    write_solution_mode="every_n_timesteps",
+    write_solution_name="nozzle",
+    write_every_n_timesteps=40,
+    plot_every=2,
+    CFL=0.8,
+    t_final=0.07,
+    realplot=True,
+    profile=True,
+    fluid=air,
+    nx=50,
+    ny=50,
+    nghost=1,
+    use_JIT=True,
+)
 
 # Create solver
-exp = Euler2D(fvm_type='MUSCL',
-              fvm_spatial_order=2,
-              fvm_num_quadrature_points=1,
-              fvm_gradient_type='GreenGauss',
-              fvm_flux_function='Roe',
-              fvm_slope_limiter='Venkatakrishnan',
-              time_integrator='RK4',
-              settings=settings,
-              mesh_inputs=mesh)
+exp = Euler2D(inputs=inputs)
 
 # Solve
 exp.solve()
+
 ```
 ![alt text](/examples/explosion/explosion.gif)
 
@@ -86,58 +102,73 @@ Here is an example of an shockbox simulation performed on one block. The simulat
 The example in given in the file [examples/shockbox/shockbox.py](https://github.com/momokhalil/pyHype/blob/main/examples/shockbox/shockbox.py). The file is as follows:
 
 ```python
+from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
+from pyhype.states import ConservativeState
+from pyhype.solvers.base import ProblemInput
 
-block1 = {'nBLK': 1,
-          'NW': [0, 10], 'NE': [10, 10],
-          'SW': [0, 0], 'SE': [10, 0],
-          'NeighborE': None,
-          'NeighborW': None,
-          'NeighborN': None,
-          'NeighborS': None,
-          'BCTypeE': 'Reflection',
-          'BCTypeW': 'Reflection',
-          'BCTypeN': 'Reflection',
-          'BCTypeS': 'Reflection'}
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
+
+block1 = {
+    "nBLK": 1,
+    "NW": [0, 10],
+    "NE": [10, 10],
+    "SW": [0, 0],
+    "SE": [10, 0],
+    "NeighborE": None,
+    "NeighborW": None,
+    "NeighborN": None,
+    "NeighborS": None,
+    "NeighborNE": None,
+    "NeighborNW": None,
+    "NeighborSE": None,
+    "NeighborSW": None,
+    "BCTypeE": "Reflection",
+    "BCTypeW": "Reflection",
+    "BCTypeN": "Reflection",
+    "BCTypeS": "Reflection",
+    "BCTypeNE": None,
+    "BCTypeNW": None,
+    "BCTypeSE": None,
+    "BCTypeSW": None,
+}
 
 mesh = {1: block1}
 
 # Solver settings
-settings = {'problem_type': 'shockbox',
-            'interface_interpolation': 'arithmetic_average',
-            'reconstruction_type': 'conservative',
-            'write_solution': True,
-            'write_solution_mode': 'every_n_timesteps',
-            'write_solution_name': 'shockbox',
-            'write_every_n_timesteps': 30,
-            'plot_every': 10,
-            'CFL': 0.4,
-            't_final': 2.0,
-            'realplot': False,
-            'profile': False,
-            'gamma': 1.4,
-            'rho_inf': 1.0,
-            'a_inf': 343.0,
-            'R': 287.0,
-            'nx': 500,
-            'ny': 500,
-            'nghost': 1,
-            'use_JIT': True,
-            }
+inputs = ProblemInput(
+    fvm_type="MUSCL",
+    fvm_spatial_order=2,
+    fvm_num_quadrature_points=1,
+    fvm_gradient_type="GreenGauss",
+    fvm_flux_function="Roe",
+    fvm_slope_limiter="Venkatakrishnan",
+    time_integrator="RK2",
+    mesh=mesh,
+    problem_type="shockbox",
+    interface_interpolation="arithmetic_average",
+    reconstruction_type=ConservativeState,
+    write_solution=False,
+    write_solution_mode="every_n_timesteps",
+    write_solution_name="shockbox",
+    write_every_n_timesteps=30,
+    plot_every=10,
+    CFL=0.4,
+    t_final=2.0,
+    realplot=True,
+    profile=False,
+    fluid=air,
+    nx=50,
+    ny=50,
+    nghost=1,
+    use_JIT=True,
+)
 
 # Create solver
-exp = Euler2D(fvm_type='MUSCL',
-              fvm_spatial_order=2,
-              fvm_num_quadrature_points=1,
-              fvm_gradient_type='GreenGauss',
-              fvm_flux_function='Roe',
-              fvm_slope_limiter='Venkatakrishnan',
-              time_integrator='RK2',
-              settings=settings,
-              mesh_inputs=mesh)
+exp = Euler2D(inputs=inputs)
 
 exp.solve()
-
 ```
 ![alt text](/examples/shockbox/rho.gif)
 
@@ -154,7 +185,10 @@ The example in given in the file [examples/dmr/dmr.py](https://github.com/momokh
 
 ```python
 import numpy as np
+from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
+from pyhype.states import PrimitiveState
+from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
 
 k = 1
@@ -169,53 +203,62 @@ _x = [0, k, 2 * k, 3 * k, 4 * k]
 _top_y = [a, a, a + d, a + 2 * d, a + 3 * d]
 _bot_y = [0, 0, d, 2 * d, 3 * d]
 
-BCS = ['OutletDirichlet', 'Slipwall', 'Slipwall', 'Slipwall']
+BCS = ["OutletDirichlet", "Slipwall", "Slipwall", "Slipwall"]
 
-_mesh = QuadMeshGenerator(nx_blk=4, ny_blk=1,
-                          BCE='OutletDirichlet', BCW='OutletDirichlet', BCN='OutletDirichlet', BCS=BCS,
-                          top_x=_x, bot_x=_x, top_y=_top_y, bot_y=_bot_y,
-                          left_x=_left_x, right_x=_right_x, left_y=_left_y, right_y=_right_y)
+_mesh = QuadMeshGenerator(
+    nx_blk=4,
+    ny_blk=1,
+    BCE=["OutletDirichlet"],
+    BCW=["OutletDirichlet"],
+    BCN=["OutletDirichlet"],
+    BCS=BCS,
+    top_x=_x,
+    bot_x=_x,
+    top_y=_top_y,
+    bot_y=_bot_y,
+    left_x=_left_x,
+    right_x=_right_x,
+    left_y=_left_y,
+    right_y=_right_y,
+)
+
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 
 # Solver settings
-settings = {'problem_type': 'mach_reflection',
-            'interface_interpolation': 'arithmetic_average',
-            'reconstruction_type': 'primitive',
-            'write_solution': False,
-            'write_solution_mode': 'every_n_timesteps',
-            'write_solution_name': 'machref',
-            'write_every_n_timesteps': 20,
-            'plot_every': 10,
-            'CFL': 0.4,
-            't_final': 0.25,
-            'realplot': True,
-            'profile': False,
-            'gamma': 1.4,
-            'rho_inf': 1.0,
-            'a_inf': 1.0,
-            'R': 287.0,
-            'nx': 500,
-            'ny': 500,
-            'nghost': 1,
-            'BC_inlet_west_rho': 8.0,
-            'BC_inlet_west_u': 8.25,
-            'BC_inlet_west_v': 0.0,
-            'BC_inlet_west_p': 116.5,
-            }
+inputs = ProblemInput(
+    fvm_type="MUSCL",
+    fvm_spatial_order=2,
+    fvm_num_quadrature_points=1,
+    fvm_gradient_type="GreenGauss",
+    fvm_flux_function="HLLL",
+    fvm_slope_limiter="Venkatakrishnan",
+    time_integrator="RK2",
+    problem_type="mach_reflection",
+    interface_interpolation="arithmetic_average",
+    reconstruction_type=PrimitiveState,
+    write_solution=False,
+    write_solution_mode="every_n_timesteps",
+    write_solution_name="machref",
+    write_every_n_timesteps=20,
+    plot_every=1,
+    CFL=0.4,
+    t_final=0.25,
+    realplot=True,
+    profile=False,
+    fluid=air,
+    nx=50,
+    ny=50,
+    nghost=1,
+    use_JIT=True,
+    mesh=_mesh,
+)
 
 # Create solver
-exp = Euler2D(fvm_type='MUSCL',
-              fvm_spatial_order=2,
-              fvm_num_quadrature_points=1,
-              fvm_gradient_type='GreenGauss',
-              fvm_flux_function='HLLL',
-              fvm_slope_limiter='Venkatakrishnan',
-              time_integrator='RK2',
-              settings=settings,
-              mesh_inputs=_mesh)
+exp = Euler2D(inputs=inputs)
 
 # Solve
 exp.solve()
-
 ```
 ![alt text](/examples/dmr/dmr.png)
 
@@ -233,54 +276,90 @@ Here is an example of high-speed jet simulation performed on 5 blocks. The simul
 The example in given in the file [examples/jet/jet.py](https://github.com/momokhalil/pyHype/blob/main/examples/jet/jet.py). The file is as follows:
 
 ```python
+import numpy as np
+from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
+from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
+from pyhype.states import PrimitiveState
+from pyhype.boundary_conditions.base import PrimitiveDirichletBC
 
-BCE = ['OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet', 'OutletDirichlet']
-BCW = ['Slipwall', 'Slipwall', 'InletDirichlet', 'Slipwall', 'Slipwall']
-BCN = ['OutletDirichlet']
-BCS = ['OutletDirichlet']
+# Define fluid
+air = Air(a_inf=343.0, rho_inf=1.0)
 
-_mesh = QuadMeshGenerator(nx_blk=1, ny_blk=5,
-                          BCE=BCE, BCW=BCW, BCN=BCN, BCS=BCS,
-                          NE=(1, 0.5), SW=(0, 0), NW=(0, 0.5), SE=(1, 0))
+inlet_rho = 1.0
+inlet_u = 0.25
+inlet_v = 0.0
+inlet_p = 1.0 / 1.4
+
+inlet_state = PrimitiveState(
+    fluid=air,
+    array=np.array(
+        [
+            inlet_rho,
+            inlet_u,
+            inlet_v,
+            inlet_p,
+        ]
+    ).reshape((1, 1, 4)),
+)
+subsonic_inlet_bc = PrimitiveDirichletBC(primitive_state=inlet_state)
+
+BCE = [
+    "OutletDirichlet",
+    "OutletDirichlet",
+    "OutletDirichlet",
+    "OutletDirichlet",
+    "OutletDirichlet",
+]
+BCW = ["Slipwall", "Slipwall", subsonic_inlet_bc, "Slipwall", "Slipwall"]
+BCN = ["OutletDirichlet"]
+BCS = ["OutletDirichlet"]
+
+_mesh = QuadMeshGenerator(
+    nx_blk=1,
+    ny_blk=5,
+    BCE=BCE,
+    BCW=BCW,
+    BCN=BCN,
+    BCS=BCS,
+    NE=(1, 0.5),
+    SW=(0, 0),
+    NW=(0, 0.5),
+    SE=(1, 0),
+)
 
 # Solver settings
-settings = {'problem_type': 'subsonic_rest',
-            'interface_interpolation': 'arithmetic_average',
-            'reconstruction_type': 'primitive',
-            'write_solution': False,
-            'write_solution_mode': 'every_n_timesteps',
-            'write_solution_name': 'kvi',
-            'write_every_n_timesteps': 20,
-            'plot_every': 10,
-            'CFL': 0.4,
-            't_final': 25.0,
-            'realplot': True,
-            'profile': False,
-            'gamma': 1.4,
-            'rho_inf': 1.0,
-            'a_inf': 1.0,
-            'R': 287.0,
-            'nx': 1000,
-            'ny': 100,
-            'nghost': 1,
-            'BC_inlet_west_rho': 1.0,
-            'BC_inlet_west_u': 0.25,
-            'BC_inlet_west_v': 0.0,
-            'BC_inlet_west_p': 2.0 / 1.4,
-            }
+inputs = ProblemInput(
+    fvm_type="MUSCL",
+    fvm_spatial_order=2,
+    fvm_num_quadrature_points=1,
+    fvm_gradient_type="GreenGauss",
+    fvm_flux_function="HLLL",
+    fvm_slope_limiter="Venkatakrishnan",
+    time_integrator="RK2",
+    mesh=_mesh,
+    problem_type="subsonic_rest",
+    interface_interpolation="arithmetic_average",
+    reconstruction_type=PrimitiveState,
+    write_solution=False,
+    write_solution_mode="every_n_timesteps",
+    write_solution_name="kvi",
+    write_every_n_timesteps=20,
+    plot_every=10,
+    CFL=0.4,
+    t_final=25.0,
+    realplot=True,
+    profile=False,
+    fluid=air,
+    nx=100,
+    ny=10,
+    nghost=1,
+    use_JIT=True,
+)
 
 # Create solver
-exp = Euler2D(fvm_type='MUSCL',
-              fvm_spatial_order=2,
-              fvm_num_quadrature_points=1,
-              fvm_gradient_type='GreenGauss',
-              fvm_flux_function='HLLL',
-              fvm_slope_limiter='Venkatakrishnan',
-              time_integrator='RK2',
-              settings=settings,
-              mesh_inputs=_mesh)
+exp = Euler2D(inputs=inputs)
 
 # Solve
 exp.solve()
