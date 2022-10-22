@@ -114,11 +114,11 @@ class GreenGauss(Gradient):
 
         # Compute dUdx
         refBLK.grad.x = (
-            E * face.E.xnorm + W * face.W.xnorm + N * face.N.xnorm + S * face.S.xnorm
+            E * face.E.norm.x + W * face.W.norm.x + N * face.N.norm.x + S * face.S.norm.x
         ) / refBLK.mesh.A
         # Compute dUdy
         refBLK.grad.y = (
-            E * face.E.ynorm + W * face.W.ynorm + N * face.N.ynorm + S * face.S.ynorm
+            E * face.E.norm.y + W * face.W.norm.y + N * face.N.norm.y + S * face.S.norm.y
         ) / refBLK.mesh.A
 
     def _get_gradient(self, refBLK: QuadBlock) -> None:
@@ -146,14 +146,14 @@ class GreenGauss(Gradient):
             refBLK.mesh.face.W.L[:, :, 0],
             refBLK.mesh.face.N.L[:, :, 0],
             refBLK.mesh.face.S.L[:, :, 0],
-            refBLK.mesh.face.E.xnorm[:, :, 0],
-            refBLK.mesh.face.W.xnorm[:, :, 0],
-            refBLK.mesh.face.N.xnorm[:, :, 0],
-            refBLK.mesh.face.S.xnorm[:, :, 0],
-            refBLK.mesh.face.E.ynorm[:, :, 0],
-            refBLK.mesh.face.W.ynorm[:, :, 0],
-            refBLK.mesh.face.N.ynorm[:, :, 0],
-            refBLK.mesh.face.S.ynorm[:, :, 0],
+            refBLK.mesh.face.E.norm.x[:, :, 0],
+            refBLK.mesh.face.W.norm.x[:, :, 0],
+            refBLK.mesh.face.N.norm.x[:, :, 0],
+            refBLK.mesh.face.S.norm.x[:, :, 0],
+            refBLK.mesh.face.E.norm.y[:, :, 0],
+            refBLK.mesh.face.W.norm.y[:, :, 0],
+            refBLK.mesh.face.N.norm.y[:, :, 0],
+            refBLK.mesh.face.S.norm.y[:, :, 0],
             refBLK.mesh.A[:, :, 0],
             refBLK.grad.x,
             refBLK.grad.y,

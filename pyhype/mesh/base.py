@@ -27,21 +27,57 @@ class GridLocation:
 
 
 class CellFace:
-    def __init__(self) -> None:
+    def __init__(
+        self, high: GridLocation, low: GridLocation, orientation: str, direction: int
+    ) -> None:
 
-        # Define face midpoint locations
-        self.xmid = None
-        self.ymid = None
+        if orientation in ("vertical", "horizontal"):
+            self._orientation = orientation
+        else:
+            raise ValueError(
+                "Unacceptable face orientation, please use 'vertical' or 'horizontal'."
+            )
 
-        # Define normals
-        self.xnorm = None
-        self.ynorm = None
+        if direction in (1, -1):
+            self._direction = direction
+        else:
+            raise ValueError("Unacceptable face direction, please use 1 or -1.")
 
-        # Define angles
+        self._high = high
+        self._low = low
+
+        self.midpoint = GridLocation(None, None)
+        self.norm = GridLocation(None, None)
         self.theta = None
-
-        # Define face length
         self.L = None
+
+        self._compute_face_length()
+        self._compute_midpoint()
+        self._compute_face_angle()
+        self._compute_face_norms()
+
+    def _compute_face_length(self):
+        self.L = np.sqrt(
+            (self._high.x - self._low.x) ** 2 + (self._high.y - self._low.y) ** 2
+        )
+
+    def _compute_midpoint(self):
+        self.midpoint.x = 0.5 * (self._high.x + self._low.x)
+        self.midpoint.y = 0.5 * (self._high.y + self._low.y)
+
+    def _compute_face_angle(self):
+        if self._orientation == "vertical":
+            den = self._high.y - self._low.y
+            num = self._low.x - self._high.x
+            self.theta = np.arctan(num / den)
+        else:
+            den = self._low.x - self._high.x
+            num = self._high.y - self._low.y
+            self.theta = np.pi / 2 - np.arctan(num / den)
+
+    def _compute_face_norms(self):
+        self.norm.x = self._direction * np.cos(self.theta)
+        self.norm.y = self._direction * np.sin(self.theta)
 
 
 class _mesh_transfinite_gen:
