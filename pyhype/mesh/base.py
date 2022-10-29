@@ -31,17 +31,15 @@ class CellFace:
         self, high: GridLocation, low: GridLocation, orientation: str, direction: int
     ) -> None:
 
-        if orientation in ("vertical", "horizontal"):
-            self._orientation = orientation
-        else:
+        if orientation not in ("vertical", "horizontal"):
             raise ValueError(
                 "Unacceptable face orientation, please use 'vertical' or 'horizontal'."
             )
+        self._orientation = orientation
 
-        if direction in (1, -1):
-            self._direction = direction
-        else:
+        if direction not in (1, -1):
             raise ValueError("Unacceptable face direction, please use 1 or -1.")
+        self._direction = direction
 
         self._high = high
         self._low = low
