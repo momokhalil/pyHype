@@ -2,7 +2,7 @@ from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
 from pyhype.solvers.base import ProblemInput
-from pyhype.initial_conditions.explosion import ExplosionInitialCondition
+from examples.explosion.initial_condition import ExplosionInitialCondition
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
@@ -48,7 +48,7 @@ inputs = ProblemInput(
     write_solution_mode="every_n_timesteps",
     write_solution_name="nozzle",
     write_every_n_timesteps=40,
-    plot_every=2,
+    plot_every=10,
     CFL=0.8,
     t_final=0.07,
     realplot=True,

@@ -2,7 +2,7 @@ from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
 from pyhype.solvers.base import ProblemInput
-from pyhype.initial_conditions.shockbox import ShockboxInitialCondition
+from examples.shockbox.initial_condition import ShockboxInitialCondition
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)

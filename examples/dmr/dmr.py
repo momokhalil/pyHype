@@ -4,7 +4,7 @@ from pyhype.solvers import Euler2D
 from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
-from pyhype.initial_conditions.dmr import DMRInitialCondition
+from examples.dmr.initial_condition import DMRInitialCondition
 
 k = 1
 a = 2 / np.sqrt(3)

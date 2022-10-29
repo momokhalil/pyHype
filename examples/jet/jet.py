@@ -5,7 +5,7 @@ from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
 from pyhype.boundary_conditions.base import PrimitiveDirichletBC
-from pyhype.initial_conditions.subsonic_jet import SubsonicJetInitialCondition
+from examples.jet.initial_condition import SubsonicJetInitialCondition
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
