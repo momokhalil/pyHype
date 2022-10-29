@@ -34,6 +34,7 @@ from typing import Iterable, Union, Type
 from pyhype.mesh.base import MeshGenerator
 
 if TYPE_CHECKING:
+    from pyhype.initial_conditions.base import InitialCondition
     from pyhype.blocks.quad_block import QuadBlock
     from pyhype.fluids.base import Fluid
     from pyhype.states import State
@@ -51,7 +52,7 @@ class ProblemInput:
         "fvm_slope_limiter",
         "time_integrator",
         "mesh",
-        "problem_type",
+        "initial_condition",
         "interface_interpolation",
         "reconstruction_type",
         "write_solution",
@@ -78,7 +79,7 @@ class ProblemInput:
         ny: int,
         CFL: float,
         t_final: float,
-        problem_type: str,
+        initial_condition: InitialCondition,
         fvm_type: str,
         time_integrator: str,
         fvm_gradient_type: str,
@@ -102,7 +103,7 @@ class ProblemInput:
         mesh: Union[MeshGenerator, dict] = None,
     ) -> None:
 
-        self.problem_type = problem_type
+        self.initial_condition = initial_condition
 
         self.nx = nx
         self.ny = ny
@@ -185,7 +186,7 @@ class Solver:
         self._blocks = None
 
     @abstractmethod
-    def set_IC(self):
+    def apply_initial_condition(self):
         raise NotImplementedError
 
     @abstractmethod

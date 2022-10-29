@@ -1,18 +1,19 @@
 import numpy as np
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
+from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
-from pyhype.states import PrimitiveState
 from pyhype.boundary_conditions.base import PrimitiveDirichletBC
+from pyhype.initial_conditions.subsonic_jet import SubsonicJetInitialCondition
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
 
 inlet_rho = 1.0
-inlet_u = 0.25
+inlet_u = 0.1
 inlet_v = 0.0
-inlet_p = 1.0 / 1.4
+inlet_p = 2.0 / air.gamma()
 
 inlet_state = PrimitiveState(
     fluid=air,
@@ -61,14 +62,14 @@ inputs = ProblemInput(
     fvm_slope_limiter="Venkatakrishnan",
     time_integrator="RK2",
     mesh=_mesh,
-    problem_type="subsonic_rest",
+    initial_condition=SubsonicJetInitialCondition(),
     interface_interpolation="arithmetic_average",
     reconstruction_type=PrimitiveState,
     write_solution=False,
     write_solution_mode="every_n_timesteps",
     write_solution_name="kvi",
     write_every_n_timesteps=20,
-    plot_every=10,
+    plot_every=30,
     CFL=0.4,
     t_final=25.0,
     realplot=True,

@@ -2,6 +2,7 @@ from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
 from pyhype.solvers.base import ProblemInput
+from pyhype.initial_conditions.implosion import ImplosionInitialCondition
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
@@ -42,7 +43,7 @@ inputs = ProblemInput(
     fvm_slope_limiter="Venkatakrishnan",
     time_integrator="RK2",
     mesh=mesh,
-    problem_type="implosion",
+    initial_condition=ImplosionInitialCondition(),
     interface_interpolation="arithmetic_average",
     reconstruction_type=ConservativeState,
     write_solution=False,

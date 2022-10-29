@@ -254,6 +254,9 @@ class State(ABC):
         self.converter.from_state(state=self, from_state=state)
         self.clear_cache()
 
+    def to_type(self, to_type: Type[State]):
+        return self.converter.to_type(state=self, to_type=to_type)
+
     def from_array(self, array: np.ndarray):
         if not isinstance(array, np.ndarray):
             raise TypeError(

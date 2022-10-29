@@ -4,9 +4,18 @@ from pyhype.solvers import Euler2D
 from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
 from pyhype.boundary_conditions.base import PrimitiveDirichletBC
+from pyhype.initial_conditions.supersonic_flood import SupersonicFloodInitialCondition
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
+
+initial_condition = SupersonicFloodInitialCondition(
+    fluid=air,
+    rho=1.0,
+    u=2.0,
+    v=0.0,
+    p=1 / air.gamma(),
+)
 
 # Define inlet BC
 inlet_rho = 1.0
@@ -90,7 +99,7 @@ inputs = ProblemInput(
     fvm_flux_function="HLLL",
     fvm_slope_limiter="Venkatakrishnan",
     time_integrator="RK2",
-    problem_type="supersonic_flood",
+    initial_condition=initial_condition,
     interface_interpolation="arithmetic_average",
     reconstruction_type=PrimitiveState,
     write_solution=False,

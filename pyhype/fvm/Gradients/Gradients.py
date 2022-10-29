@@ -114,11 +114,17 @@ class GreenGauss(Gradient):
 
         # Compute dUdx
         refBLK.grad.x = (
-            E * face.E.norm.x + W * face.W.norm.x + N * face.N.norm.x + S * face.S.norm.x
+            E * face.E.norm.x
+            + W * face.W.norm.x
+            + N * face.N.norm.x
+            + S * face.S.norm.x
         ) / refBLK.mesh.A
         # Compute dUdy
         refBLK.grad.y = (
-            E * face.E.norm.y + W * face.W.norm.y + N * face.N.norm.y + S * face.S.norm.y
+            E * face.E.norm.y
+            + W * face.W.norm.y
+            + N * face.N.norm.y
+            + S * face.S.norm.y
         ) / refBLK.mesh.A
 
     def _get_gradient(self, refBLK: QuadBlock) -> None:

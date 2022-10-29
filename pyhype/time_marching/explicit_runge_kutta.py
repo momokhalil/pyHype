@@ -21,7 +21,7 @@ import numba as nb
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
-from pyhype.solvers.time_integration.base import TimeIntegrator
+from pyhype.time_marching.base import TimeIntegrator
 
 from typing import TYPE_CHECKING
 

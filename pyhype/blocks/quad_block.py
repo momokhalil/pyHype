@@ -29,7 +29,7 @@ from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
 from pyhype.blocks.base import Neighbors, BaseBlockFVM, BlockDescription
-from pyhype.solvers.time_integration.explicit_runge_kutta import (
+from pyhype.time_marching import (
     ExplicitRungeKutta as Erk,
 )
 

@@ -26,11 +26,8 @@ import numpy as np
 from datetime import datetime
 from pyhype.blocks.base import Blocks
 from pyhype.solvers.base import ProblemInput
-import pyhype.solvers.initial_conditions.initial_conditions as ic
 
 from pyhype.solvers.base import Solver
-
-from typing import TYPE_CHECKING
 
 
 np.set_printoptions(threshold=sys.maxsize)
@@ -77,8 +74,8 @@ class Euler2D(Solver):
         )
         return __str
 
-    def set_IC(self):
-        problem_type = self.inputs.problem_type
+    def apply_initial_condition(self):
+        """problem_type = self.inputs.problem_type
         if problem_type == "implosion":
             _set_IC = ic.implosion(self.blocks, fluid=self.fluid)
         elif problem_type == "explosion":
@@ -104,7 +101,9 @@ class Euler2D(Solver):
                 "Initial condition of type "
                 + str(self.inputs.problem_type)
                 + " has not been specialized."
-            )
+            )"""
+        for block in self.blocks:
+            self.inputs.initial_condition.apply_to_block(block)
 
     def apply_boundary_condition(self):
         self._blocks.apply_boundary_condition()
@@ -119,7 +118,7 @@ class Euler2D(Solver):
 
         print()
         print("\t>>> Setting Initial Conditions")
-        self.set_IC()
+        self.apply_initial_condition()
 
         print("\t>>> Setting Boundary Conditions")
         self.apply_boundary_condition()
@@ -176,7 +175,7 @@ class Euler2D(Solver):
 
         print()
         print()
-        print("Simulation time: " + str(self.t / self.inputs.a_inf))
+        print("Simulation time: " + str(self.t / self.inputs.fluid.far_field.a))
         print("Timestep number: " + str(self.numTimeStep))
         print()
         print("End of simulation")

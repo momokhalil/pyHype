@@ -13,3 +13,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
+
+import os
+from typing import TYPE_CHECKING
+from abc import ABC, abstractmethod
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+
+if TYPE_CHECKING:
+    from pyhype.blocks.quad_block import QuadBlock
+
+
+class InitialCondition(ABC):
+    @staticmethod
+    @abstractmethod
+    def apply_to_block(block: QuadBlock):
+        raise NotImplementedError("Abstract Initial Condition")

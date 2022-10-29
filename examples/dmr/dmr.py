@@ -4,6 +4,7 @@ from pyhype.solvers import Euler2D
 from pyhype.states import PrimitiveState
 from pyhype.solvers.base import ProblemInput
 from pyhype.mesh.base import QuadMeshGenerator
+from pyhype.initial_conditions.dmr import DMRInitialCondition
 
 k = 1
 a = 2 / np.sqrt(3)
@@ -48,14 +49,14 @@ inputs = ProblemInput(
     fvm_flux_function="HLLL",
     fvm_slope_limiter="Venkatakrishnan",
     time_integrator="RK2",
-    problem_type="mach_reflection",
+    initial_condition=DMRInitialCondition(),
     interface_interpolation="arithmetic_average",
     reconstruction_type=PrimitiveState,
     write_solution=False,
     write_solution_mode="every_n_timesteps",
     write_solution_name="machref",
     write_every_n_timesteps=20,
-    plot_every=1,
+    plot_every=20,
     CFL=0.4,
     t_final=0.25,
     realplot=True,
