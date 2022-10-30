@@ -15,36 +15,32 @@ limitations under the License.
 """
 import numpy as np
 from pyhype.flux.base import FluxFunction
+from pyhype.states import ConservativeState
 from pyhype.states.primitive import RoePrimitiveState, PrimitiveState
 
 
 class FluxHLLE(FluxFunction):
     def compute_flux(self, WL: PrimitiveState, WR: PrimitiveState) -> np.ndarray:
 
-        # Get Roe state
         Wroe = RoePrimitiveState(self.inputs, WL, WR)
 
-        # Left and Right wavespeeds
         L_p, L_m = self.wavespeeds_x(WL)
         R_p, R_m = self.wavespeeds_x(WR)
-
-        # Harten entropy correction
         Lp, Lm = self.harten_correction_x(
             Wroe, WL, WR, L_p=L_p, L_m=L_m, R_p=R_p, R_m=R_m
         )
-
         L_plus = np.maximum.reduce((R_m, Lm))[:, :, None]
         L_minus = np.minimum.reduce((L_p, Lp))[:, :, None]
 
-        UR = WR.to_conservative_state()
-        UL = WL.to_conservative_state()
+        UR = ConservativeState(fluid=WR.fluid, state=WR)
+        UL = ConservativeState(fluid=WL.fluid, state=WL)
 
         FluxR = WR.F(U=UR)
         FluxL = WL.F(U=UL)
+
         Flux = (L_plus * FluxL - L_minus * FluxR + L_minus * L_plus * (UR - UL)) / (
             L_plus - L_minus
         )
-
         Flux = np.where(L_minus >= 0, FluxL, Flux)
         Flux = np.where(L_plus <= 0, FluxR, Flux)
 
