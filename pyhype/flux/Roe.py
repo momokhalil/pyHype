@@ -300,9 +300,9 @@ class FluxRoe(FluxFunction):
         to be continued...
 
         """
-        _new_shape = (1, (self.nx + 1) * self.ny, 4)
-        WR.reshape(_new_shape)
-        WL.reshape(_new_shape)
+        new_shape = (1, (self.nx + 1) * self.ny, 4)
+        WR.reshape(new_shape)
+        WL.reshape(new_shape)
         flux = 0.5 * (WL.F() + WR.F()) - self.get_upwind_flux(WL, WR)
         return flux.reshape((self.ny, (self.nx + 1), 4))
 

@@ -132,10 +132,10 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
         return self.state.realizable()
 
     def apply_boundary_condition(self, state: State = None) -> None:
-        _bc_state = self._get_ghost_state_from_ref_blk() if state is None else state
-        self._apply_bc_func(_bc_state)
+        bc_state = self._get_ghost_state_from_ref_blk() if state is None else state
+        self._apply_bc_func(bc_state)
         if state is None:
-            self.state = _bc_state
+            self.state = bc_state
 
     @abstractmethod
     def _get_ghost_state_from_ref_blk(self):

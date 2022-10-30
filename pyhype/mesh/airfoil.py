@@ -117,20 +117,20 @@ class NACA4:
     @staticmethod
     def cluster_right(start, end, n, factor: float = 2.0):
         length = end - start
-        _x = np.linspace(0, 1, n)
-        _s = np.tanh(factor * (1 - _x)) / np.tanh(factor)
-        _s *= length
-        _s += start
-        return _s
+        x = np.linspace(0, 1, n)
+        s = np.tanh(factor * (1 - x)) / np.tanh(factor)
+        s *= length
+        s += start
+        return s
 
     @staticmethod
     def cluster_left(start, end, n, factor: float = 2.0):
         length = end - start
-        _x = np.linspace(0, 1, n)
-        _s = 1 - np.tanh(factor * (1 - _x)) / np.tanh(factor)
-        _s *= length
-        _s += start
-        return _s
+        x = np.linspace(0, 1, n)
+        s = 1 - np.tanh(factor * (1 - x)) / np.tanh(factor)
+        s *= length
+        s += start
+        return s
 
     def plot(self):
         plt.plot(self.x_upper, self.y_upper, color="black")

@@ -40,8 +40,9 @@ class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
             )
         super().__init__(inputs)
 
+    @staticmethod
     def reconstruct_state(
-        self, refBLK: QuadBlock
+        refBLK: QuadBlock,
     ) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Returns the cell average values at each quadrature point on all cell faces.
@@ -57,16 +58,9 @@ class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
         """
 
         # Compute limited values at quadrature points
-        _stateE = refBLK.state.data.copy()
-        stateE = [_stateE for _ in refBLK.qp.E]
-
-        _stateW = refBLK.state.data.copy()
-        stateW = [_stateW for _ in refBLK.qp.W]
-
-        _stateN = refBLK.state.data.copy()
-        stateN = [_stateN for _ in refBLK.qp.N]
-
-        _stateS = refBLK.state.data.copy()
-        stateS = [_stateS for _ in refBLK.qp.S]
+        stateE = [refBLK.state.data.copy() for _ in refBLK.qp.E]
+        stateW = [refBLK.state.data.copy() for _ in refBLK.qp.W]
+        stateN = [refBLK.state.data.copy() for _ in refBLK.qp.N]
+        stateS = [refBLK.state.data.copy() for _ in refBLK.qp.S]
 
         return stateE, stateW, stateN, stateS

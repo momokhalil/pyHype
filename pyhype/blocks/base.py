@@ -333,11 +333,11 @@ class Blocks:
     @staticmethod
     def to_all_blocks(func: Callable):
         @functools.wraps(func)
-        def _wrapper(self, *args, **kwargs):
+        def wrapper(self, *args, **kwargs):
             for block in self.blocks.values():
                 func(self, block, *args, **kwargs)
 
-        return _wrapper
+        return wrapper
 
     def __getitem__(self, blknum: int) -> QuadBlock:
         return self.blocks[blknum]
@@ -515,10 +515,10 @@ class BaseBlockFVM(BaseBlockGrad):
         yp: np.ndarray,
         slicer: slice or tuple or int = None,
     ) -> np.ndarray:
-        _high_order_term = self.high_order_term_at_location(xc, xp, yc, yp, slicer)
+        high_order_term = self.high_order_term_at_location(xc, xp, yc, yp, slicer)
         if slicer is None:
-            return self.state + self.fvm.limiter.phi * _high_order_term
-        return self.state[slicer] + self.fvm.limiter.phi[slicer] * _high_order_term
+            return self.state + self.fvm.limiter.phi * high_order_term
+        return self.state[slicer] + self.fvm.limiter.phi[slicer] * high_order_term
 
     def get_east_boundary_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -528,13 +528,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _east_states = tuple(
+        east_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpe, slicer=self.EAST_BOUND_IDX
             )
             for qpe in self.qp.E
         )
-        return _east_states
+        return east_states
 
     def get_west_boundary_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -544,13 +544,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _west_states = tuple(
+        west_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpw, slicer=self.WEST_BOUND_IDX
             )
             for qpw in self.qp.W
         )
-        return _west_states
+        return west_states
 
     def get_north_boundary_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -560,13 +560,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _north_states = tuple(
+        north_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpn, slicer=self.NORTH_BOUND_IDX
             )
             for qpn in self.qp.N
         )
-        return _north_states
+        return north_states
 
     def get_south_boundary_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -576,13 +576,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _south_states = tuple(
+        south_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qps, slicer=self.SOUTH_BOUND_IDX
             )
             for qps in self.qp.S
         )
-        return _south_states
+        return south_states
 
     def get_east_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -592,13 +592,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _east_states = tuple(
+        east_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpe, slicer=self.EAST_FACE_IDX
             )
             for qpe in self.qp.E
         )
-        return _east_states
+        return east_states
 
     def get_west_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -608,13 +608,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _west_states = tuple(
+        west_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpw, slicer=self.WEST_FACE_IDX
             )
             for qpw in self.qp.W
         )
-        return _west_states
+        return west_states
 
     def get_north_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -624,13 +624,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _north_states = tuple(
+        north_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qpn, slicer=self.NORTH_FACE_IDX
             )
             for qpn in self.qp.N
         )
-        return _north_states
+        return north_states
 
     def get_south_face_states_at_qp(self) -> tuple[np.ndarray]:
         """
@@ -640,13 +640,13 @@ class BaseBlockFVM(BaseBlockGrad):
         :rtype: None
         :return: None
         """
-        _south_states = tuple(
+        south_states = tuple(
             self.fvm.limited_solution_at_quadrature_point(
                 state=self.state, refBLK=self, qp=qps, slicer=self.SOUTH_FACE_IDX
             )
             for qps in self.qp.S
         )
-        return _south_states
+        return south_states
 
 
 class BlockGeometry:

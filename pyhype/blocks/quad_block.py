@@ -17,7 +17,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, Type, Union
 from itertools import chain
 
 import matplotlib.pyplot as plt
@@ -47,7 +47,7 @@ class BaseBlockGhost(BaseBlockFVM):
         self,
         inputs: ProblemInput,
         block_data: BlockDescription,
-        refBLK: QuadBlock,
+        refBLK: Union[QuadBlock, ReconstructionBlock],
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
@@ -168,12 +168,12 @@ class ReconstructionBlock(BaseBlockGhost):
 class QuadBlock(BaseBlockGhost):
     def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
 
+        self.neighbors = None
+
         self.inputs = inputs
         self.block_data = block_data
         self.global_nBLK = block_data.info.nBLK
         mesh = QuadMesh(inputs, block_data.geometry)
-
-        # Quadrature Points and Data
         qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
 
         super().__init__(
@@ -225,17 +225,16 @@ class QuadBlock(BaseBlockGhost):
             - None
 
         Return:
-            - _is_cartesian (bool): Boolean that is True if the block is cartesian and False if it isnt
+            - is_cartesian (bool): Boolean that is True if the block is cartesian and False if it isnt
         """
 
-        _is_cartesian = (
+        is_cartesian = (
             (self.mesh.vertices.NE[1] == self.mesh.vertices.NW[1])
             and (self.mesh.vertices.SE[1] == self.mesh.vertices.SW[1])
             and (self.mesh.vertices.SE[0] == self.mesh.vertices.NE[0])
             and (self.mesh.vertices.SW[0] == self.mesh.vertices.NW[0])
         )
-
-        return _is_cartesian
+        return is_cartesian
 
     @property
     def reconstruction_type(self):
@@ -264,7 +263,7 @@ class QuadBlock(BaseBlockGhost):
             - None
         """
 
-        _show = ax is None
+        show = ax is None
 
         if not ax:
             _, ax = plt.subplots(1, 1)
@@ -352,7 +351,7 @@ class QuadBlock(BaseBlockGhost):
                     alpha=0.5,
                 )
             )
-        if _show:
+        if show:
             # Show Plot
             plt.show()
 
@@ -449,9 +448,9 @@ class QuadBlock(BaseBlockGhost):
             - dt (np.float): Float representing the value of the time step
         """
         a = self.state.a()
-        _tx = self.mesh.dx[:, :, 0] / (np.absolute(self.state.u) + a)
-        _ty = self.mesh.dy[:, :, 0] / (np.absolute(self.state.v) + a)
-        return self.inputs.CFL * np.amin(np.minimum(_tx, _ty))
+        tx = self.mesh.dx[:, :, 0] / (np.absolute(self.state.u) + a)
+        ty = self.mesh.dy[:, :, 0] / (np.absolute(self.state.v) + a)
+        return self.inputs.CFL * np.amin(np.minimum(tx, ty))
 
     def connect(
         self,

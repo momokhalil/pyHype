@@ -23,9 +23,6 @@ from abc import ABC, abstractmethod
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
 
-if TYPE_CHECKING:
-    from pyhype.states.base import State
-
 
 class Fluid(ABC):
 
@@ -38,8 +35,8 @@ class Fluid(ABC):
         a_inf: float = 1.0,
         rho_inf: float = 1.0,
     ):
-        _far_field_type = namedtuple("far_field", ["a", "rho"])
-        self._far_field = _far_field_type(a_inf, rho_inf)
+        far_field_type = namedtuple("far_field", ["a", "rho"])
+        self._far_field = far_field_type(a_inf, rho_inf)
         self._R = self.gas_constant / self.molecular_mass
 
     @property

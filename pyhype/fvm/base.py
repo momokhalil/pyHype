@@ -321,42 +321,42 @@ class MUSCLFiniteVolumeMethod:
         is created by concatenating the north ghost-cell state and the south face state. After concatenation, the arrays
         are reshaped to produce a (1, n, 4) shaped array.
 
-        :type ghostN: np.ndarray
-        :param ghostN: north ghost cell state array
+        :type ghostL: np.ndarray
+        :param ghostL: left ghost cell state array
 
-        :type ghostS: np.ndarray
-        :param ghostS: south ghost cell state array
+        :type stateL: np.ndarray
+        :param stateL: left state array
 
-        :type stateN: np.ndarray
-        :param stateN: north state array
+        :type ghostR: np.ndarray
+        :param ghostR: right ghost cell state array
 
-        :type stateS: np.ndarray
-        :param stateS: south state array
+        :type stateR: np.ndarray
+        :param stateR: right state array
 
         :rtype: tuple(PrimitiveState, PrimitiveState)
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
-        _left_arr = np.concatenate((ghostL.data, stateL.data), axis=1)
-        _right_arr = np.concatenate((stateR.data, ghostR.data), axis=1)
+        left_arr = np.concatenate((ghostL.data, stateL.data), axis=1)
+        right_arr = np.concatenate((stateR.data, ghostR.data), axis=1)
 
         if self.inputs.reconstruction_type is PrimitiveState:
-            _left_state = PrimitiveState(self.inputs.fluid, array=_left_arr)
-            _right_state = PrimitiveState(self.inputs.fluid, array=_right_arr)
-            return _left_state, _right_state
+            left_state = PrimitiveState(self.inputs.fluid, array=left_arr)
+            right_state = PrimitiveState(self.inputs.fluid, array=right_arr)
+            return left_state, right_state
 
-        _left_state = PrimitiveState(
+        left_state = PrimitiveState(
             fluid=self.inputs.fluid,
             state=self.inputs.reconstruction_type(
-                fluid=self.inputs.fluid, array=_left_arr
+                fluid=self.inputs.fluid, array=left_arr
             ),
         )
-        _right_state = PrimitiveState(
+        right_state = PrimitiveState(
             fluid=self.inputs.fluid,
             state=self.inputs.reconstruction_type(
-                fluid=self.inputs.fluid, array=_right_arr
+                fluid=self.inputs.fluid, array=right_arr
             ),
         )
-        return _left_state, _right_state
+        return left_state, right_state
 
     def evaluate_flux_EW(self, refBLK: QuadBlock) -> None:
         """

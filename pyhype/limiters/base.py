@@ -165,15 +165,15 @@ class SlopeLimiter:
         :rtype _s: np.ndarray
         :return _s: slope used for limiter calculation
         """
-        _s = np.ones_like(davg)
+        s = np.ones_like(davg)
         for i in range(davg.shape[0]):
             for j in range(davg.shape[1]):
                 for v in range(davg.shape[2]):
                     if davg[i, j, v] > 0:
-                        _s[i, j, v] = dmax[i, j, v] / davg[i, j, v]
+                        s[i, j, v] = dmax[i, j, v] / davg[i, j, v]
                     elif davg[i, j, v] < 0:
-                        _s[i, j, v] = dmin[i, j, v] / davg[i, j, v]
-        return _s
+                        s[i, j, v] = dmin[i, j, v] / davg[i, j, v]
+        return s
 
     @staticmethod
     @abstractmethod

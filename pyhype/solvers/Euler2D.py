@@ -54,7 +54,7 @@ class Euler2D(Solver):
         print("\n\tFinished setting up solver")
 
     def __str__(self):
-        __str = (
+        string = (
             "\tA Solver of type Euler2D for solving the 2D Euler\n"
             "\tequations on structured grids using the Finite Volume Method.\n\n"
             "\t"
@@ -72,36 +72,9 @@ class Euler2D(Solver):
             + "\t"
             + f"{'Time Integrator: ':<40} {self.inputs.time_integrator}"
         )
-        return __str
+        return string
 
     def apply_initial_condition(self):
-        """problem_type = self.inputs.problem_type
-        if problem_type == "implosion":
-            _set_IC = ic.implosion(self.blocks, fluid=self.fluid)
-        elif problem_type == "explosion":
-            _set_IC = ic.explosion(self.blocks, fluid=self.fluid)
-        elif problem_type == "shockbox":
-            _set_IC = ic.shockbox(self.blocks, fluid=self.fluid)
-        elif problem_type == "supersonic_flood":
-            _set_IC = ic.supersonic_flood(self.blocks, fluid=self.fluid)
-        elif problem_type == "supersonic_rest":
-            _set_IC = ic.supersonic_rest(self.blocks, fluid=self.fluid)
-        elif problem_type == "subsonic_flood":
-            _set_IC = ic.subsonic_flood(self.blocks, fluid=self.fluid)
-        elif problem_type == "subsonic_rest":
-            _set_IC = ic.subsonic_rest(self.blocks, fluid=self.fluid)
-        elif problem_type == "explosion_trapezoid":
-            _set_IC = ic.explosion_trapezoid(self.blocks, fluid=self.fluid)
-        elif problem_type == "explosion_3":
-            _set_IC = ic.explosion_3(self.blocks, fluid=self.fluid)
-        elif problem_type == "mach_reflection":
-            _set_IC = ic.mach_reflection(self.blocks, fluid=self.fluid)
-        else:
-            raise ValueError(
-                "Initial condition of type "
-                + str(self.inputs.problem_type)
-                + " has not been specialized."
-            )"""
         for block in self.blocks:
             self.inputs.initial_condition.apply_to_block(block)
 

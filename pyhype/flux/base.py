@@ -119,16 +119,16 @@ class FluxFunction:
         for i in range(Roe_p.shape[0]):
             for j in range(Roe_p.shape[1]):
                 # Save plus and minus thetas
-                _tp = 2 * (R_p[i, j] - L_p[i, j])
-                _tm = 2 * (R_m[i, j] - L_m[i, j])
+                tp = 2 * (R_p[i, j] - L_p[i, j])
+                tm = 2 * (R_m[i, j] - L_m[i, j])
                 # Correct for zero or below zero values
-                _tp = 1e-8 if _tp <= 0 else _tp
-                _tm = 1e-8 if _tm <= 0 else _tm
+                tp = 1e-8 if tp <= 0 else tp
+                tm = 1e-8 if tm <= 0 else tm
                 # Apply correction
-                if np.absolute(Roe_p[i, j]) < _tp:
-                    Roe_p[i, j] = 0.5 * ((Roe_p[i, j] * Roe_p[i, j]) / _tp + _tp)
-                if np.absolute(Roe_m[i, j]) < _tm:
-                    Roe_m[i, j] = 0.5 * ((Roe_m[i, j] * Roe_m[i, j]) / _tm + _tm)
+                if np.absolute(Roe_p[i, j]) < tp:
+                    Roe_p[i, j] = 0.5 * ((Roe_p[i, j] * Roe_p[i, j]) / tp + tp)
+                if np.absolute(Roe_m[i, j]) < tm:
+                    Roe_m[i, j] = 0.5 * ((Roe_m[i, j] * Roe_m[i, j]) / tm + tm)
 
     @staticmethod
     def _harten_correction_NUMPY(R_p, R_m, L_p, L_m, Roe_p, Roe_m):

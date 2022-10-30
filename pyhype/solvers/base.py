@@ -144,7 +144,7 @@ class ProblemInput:
         return "".join(f"\t{atr}: {getattr(self, atr)}\n" for atr in self.__slots__)
 
     def set_mesh_inputs(self, mesh: Union[MeshGenerator, dict] = None) -> None:
-        _mesh = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
+        mesh_info = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
         self.mesh = {
             blk_num: BlockDescription(
                 nx=self.nx,
@@ -152,7 +152,7 @@ class ProblemInput:
                 blk_input=blk_data,
                 nghost=self.nghost,
             )
-            for (blk_num, blk_data) in _mesh.items()
+            for (blk_num, blk_data) in mesh_info.items()
         }
 
 
@@ -207,8 +207,8 @@ class Solver:
         Returns:
             - dt (np.float): Float representing the value of the time step
         """
-        _dt = min([block.get_dt() for block in self.blocks])
-        return self.t_final - self.t if self.t_final - self.t < _dt else _dt
+        dt = min([block.get_dt() for block in self.blocks])
+        return self.t_final - self.t if self.t_final - self.t < dt else dt
 
     def increment_time(self):
         self.t += self.dt
@@ -263,9 +263,11 @@ class Solver:
                 for block in self.blocks
             ]
 
-            for _vars in data:
+            for (x, y, z) in data:
                 self.realplot.contourf(
-                    *_vars,
+                    x,
+                    y,
+                    z,
                     50,
                     cmap="magma",
                     vmax=max([np.max(v[2]) for v in data]),

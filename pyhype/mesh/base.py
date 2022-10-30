@@ -87,16 +87,14 @@ class _mesh_transfinite_gen:
 
     def _get_interior_mesh_transfinite(self, x: np.ndarray, y: np.ndarray):
 
-        _im = np.linspace(1 / self.ny, (self.ny - 1) / self.ny, self.ny - 2)
-        _jm = np.linspace(1 / self.nx, (self.nx - 1) / self.nx, self.nx - 2)
-
-        jm, im = np.meshgrid(_jm, _im)
-
-        _mi = np.linspace((self.ny - 1) / self.ny, 1 / self.ny, self.ny - 2)
-        _mj = np.linspace((self.nx - 1) / self.nx, 1 / self.nx, self.nx - 2)
-
-        mj, mi = np.meshgrid(_mj, _mi)
-
+        jm, im = np.meshgrid(
+            np.linspace(1 / self.nx, (self.nx - 1) / self.nx, self.nx - 2),
+            np.linspace(1 / self.ny, (self.ny - 1) / self.ny, self.ny - 2),
+        )
+        mj, mi = np.meshgrid(
+            np.linspace((self.nx - 1) / self.nx, 1 / self.nx, self.nx - 2),
+            np.linspace((self.ny - 1) / self.ny, 1 / self.ny, self.ny - 2),
+        )
         x[1:-1, 1:-1] = self.__get_kernel_transfinite(x, im, jm, mi, mj)
         y[1:-1, 1:-1] = self.__get_kernel_transfinite(y, im, jm, mi, mj)
 
@@ -192,35 +190,35 @@ class QuadMeshGenerator(MeshGenerator, _mesh_transfinite_gen):
 
     def _create_block_descriptions(self):
 
-        _ny = self.ny - 1
-        _nx = self.nx - 1
+        ny = self.ny - 1
+        nx = self.nx - 1
 
         dicts = {}
 
-        for i in range(_ny):
-            for j in range(_nx):
-                _num = _nx * i + j + self._blk_num_offset
+        for i in range(ny):
+            for j in range(nx):
+                _num = nx * i + j + self._blk_num_offset
                 _blk = {
                     "nBLK": _num,
                     "NW": [self.x[i + 1, j], self.y[i + 1, j]],
                     "NE": [self.x[i + 1, j + 1], self.y[i + 1, j + 1]],
                     "SW": [self.x[i, j], self.y[i, j]],
                     "SE": [self.x[i, j + 1], self.y[i, j + 1]],
-                    "NeighborE": _num + 1 if j < _nx - 1 else None,
+                    "NeighborE": _num + 1 if j < nx - 1 else None,
                     "NeighborW": _num - 1 if j > 0 else None,
-                    "NeighborN": _num + _nx if _num + _nx < _ny * _nx else None,
-                    "NeighborS": _num - _nx if _num - _nx >= 0 else None,
+                    "NeighborN": _num + nx if _num + nx < ny * nx else None,
+                    "NeighborS": _num - nx if _num - nx >= 0 else None,
                     "NeighborNE": None,
                     "NeighborNW": None,
                     "NeighborSE": None,
                     "NeighborSW": None,
-                    "BCTypeE": self.BCE[i] if j == _nx - 1 else None,
+                    "BCTypeE": self.BCE[i] if j == nx - 1 else None,
                     "BCTypeW": self.BCW[i] if j == 0 else None,
-                    "BCTypeN": self.BCN[j] if i == _ny - 1 else None,
+                    "BCTypeN": self.BCN[j] if i == ny - 1 else None,
                     "BCTypeS": self.BCS[j] if i == 0 else None,
-                    "BCTypeNE": self.BCE[i] if j == _nx - 1 else None,
+                    "BCTypeNE": self.BCE[i] if j == nx - 1 else None,
                     "BCTypeNW": self.BCW[i] if j == 0 else None,
-                    "BCTypeSE": self.BCN[j] if i == _ny - 1 else None,
+                    "BCTypeSE": self.BCN[j] if i == ny - 1 else None,
                     "BCTypeSW": self.BCS[j] if i == 0 else None,
                 }
                 dicts[_num] = _blk
