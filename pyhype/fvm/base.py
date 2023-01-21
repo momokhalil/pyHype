@@ -15,23 +15,20 @@ limitations under the License.
 """
 from __future__ import annotations
 
+from abc import abstractmethod
+from typing import TYPE_CHECKING
 import os
-
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
-import numpy as np
 import numba as nb
-from typing import TYPE_CHECKING
-from abc import abstractmethod
-
+import numpy as np
 np.set_printoptions(formatter={"float": "{: 0.3f}".format})
 
-
-import pyhype.flux as flux
 import pyhype.utils.utils as utils
 import pyhype.fvm.Gradients as Grads
 
-from pyhype.limiters import limiters
+from pyhype.flux import FluxFunctionFactory
+from pyhype.limiters import SlopeLimiterFactory
 from pyhype.states.primitive import PrimitiveState
 from pyhype.states.conservative import ConservativeState
 from pyhype.utils.utils import SidePropertyContainer
@@ -42,9 +39,15 @@ if TYPE_CHECKING:
     from pyhype.states.base import State
     from pyhype.states.primitive import PrimitiveState
     from pyhype.mesh.quadratures import QuadraturePoint
+    from pyhype.solvers.base import ProblemInput
 
 
-class MUSCLFiniteVolumeMethod:
+class FiniteVolumeMethod:
+    # TODO: Move relevant functions here
+    pass
+
+
+class MUSCL(FiniteVolumeMethod):
     ALL_IDX = np.s_[:, :, :]
 
     def __init__(
@@ -111,53 +114,20 @@ class MUSCLFiniteVolumeMethod:
             ),
         )
         # Set flux function
-        if self.inputs.fvm_flux_function == "Roe":
-            self.flux_function_X = flux.FluxRoe(
-                self.inputs, size=self.inputs.nx, sweeps=self.inputs.ny
-            )
-            self.flux_function_Y = flux.FluxRoe(
-                self.inputs, size=self.inputs.ny, sweeps=self.inputs.nx
-            )
-        elif self.inputs.fvm_flux_function == "HLLE":
-            self.flux_function_X = flux.FluxHLLE(
-                self.inputs, nx=self.inputs.nx, ny=self.inputs.ny
-            )
-            self.flux_function_Y = flux.FluxHLLE(
-                self.inputs, nx=self.inputs.ny, ny=self.inputs.nx
-            )
-        elif self.inputs.fvm_flux_function == "HLLL":
-            self.flux_function_X = flux.FluxHLLL(
-                self.inputs, nx=self.inputs.nx, ny=self.inputs.ny
-            )
-            self.flux_function_Y = flux.FluxHLLL(
-                self.inputs, nx=self.inputs.ny, ny=self.inputs.nx
-            )
-        else:
-            raise ValueError(
-                "MUSCLFiniteVolumeMethod: Flux function type not specified."
-            )
+        self.flux_function_X, self.flux_function_Y = FluxFunctionFactory.create(
+            inputs=inputs, type=self.inputs.fvm_flux_function
+        )
 
         # Set slope limiter
-        if self.inputs.fvm_slope_limiter == "VanLeer":
-            self.limiter = limiters.VanLeer(self.inputs)
-        elif self.inputs.fvm_slope_limiter == "VanAlbada":
-            self.limiter = limiters.VanAlbada(self.inputs)
-        elif self.inputs.fvm_slope_limiter == "Venkatakrishnan":
-            self.limiter = limiters.Venkatakrishnan(self.inputs)
-        elif self.inputs.fvm_slope_limiter == "BarthJespersen":
-            self.limiter = limiters.BarthJespersen(self.inputs)
-        else:
-            raise ValueError(
-                "MUSCLFiniteVolumeMethod: Slope limiter type not specified."
-            )
+        self.limiter = SlopeLimiterFactory.create(
+            inputs=inputs, type=inputs.fvm_slope_limiter
+        )
 
         # Set gradient algorithm
         if self.inputs.fvm_gradient_type == "GreenGauss":
             self.gradient = Grads.GreenGauss(self.inputs)
         else:
-            raise ValueError(
-                "MUSCLFiniteVolumeMethod: Slope limiter type not specified."
-            )
+            raise ValueError("MUSCL: Slope limiter type not specified.")
 
     def reconstruct(self, refBLK: QuadBlock) -> None:
         """

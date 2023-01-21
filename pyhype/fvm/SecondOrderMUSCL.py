@@ -24,7 +24,7 @@ import numpy as np
 np.set_printoptions(precision=3)
 
 from typing import TYPE_CHECKING
-from pyhype.fvm.base import MUSCLFiniteVolumeMethod
+from pyhype.fvm.base import MUSCL
 
 if TYPE_CHECKING:
     from pyhype.mesh.quadratures import QuadraturePoint
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from pyhype.states import State
 
 
-class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
+class SecondOrderMUSCL(MUSCL):
     def __init__(self, inputs):
         if inputs.nghost != 1:
             raise ValueError(
@@ -44,7 +44,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
     def high_order_term(
         refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
-        slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
+        slicer: slice or tuple or int = MUSCL.ALL_IDX,
     ) -> np.ndarray:
         """
         Compute the high order term used for the state reconstruction at the quadrature point on a specified face.
@@ -70,7 +70,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         state: State,
         refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
-        slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
+        slicer: slice or tuple or int = MUSCL.ALL_IDX,
     ) -> np.ndarray:
         """
         Returns the unlimited reconstructed solution at a specific quadrature point based on the given solution state
@@ -98,7 +98,7 @@ class SecondOrderMUSCL(MUSCLFiniteVolumeMethod):
         state: State,
         refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
-        slicer: slice or tuple or int = MUSCLFiniteVolumeMethod.ALL_IDX,
+        slicer: slice or tuple or int = MUSCL.ALL_IDX,
     ) -> np.ndarray:
         """
         Returns the limited reconstructed solution at a specific quadrature point based on the given solution state and

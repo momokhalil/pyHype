@@ -15,3 +15,4 @@ limitations under the License.
 """
 from pyhype.limiters.base import SlopeLimiter
 import pyhype.limiters.limiters as limiters
+from pyhype.limiters.factory import SlopeLimiterFactory

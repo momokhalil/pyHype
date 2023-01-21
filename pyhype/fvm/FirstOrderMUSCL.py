@@ -26,13 +26,13 @@ if TYPE_CHECKING:
     from pyhype.mesh.base import CellFace
 
 import numpy as np
-from pyhype.fvm.base import MUSCLFiniteVolumeMethod
+from pyhype.fvm.base import MUSCL
 
 
 np.set_printoptions(precision=3)
 
 
-class FirstOrderMUSCL(MUSCLFiniteVolumeMethod):
+class FirstOrderMUSCL(MUSCL):
     def __init__(self, inputs):
         if inputs.nghost != 1:
             raise ValueError(
