@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
 import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
@@ -21,6 +22,11 @@ import numpy as np
 import numba as nb
 from abc import abstractmethod
 from pyhype.states.primitive import PrimitiveState, RoePrimitiveState
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyhype.solvers.base import ProblemInput
 
 
 class FluxFunction:

@@ -15,3 +15,5 @@ limitations under the License.
 """
 from .FirstOrderMUSCL import FirstOrderMUSCL
 from .SecondOrderMUSCL import SecondOrderMUSCL
+from .factory import FiniteVolumeMethodFactory
+from .base import FiniteVolumeMethod

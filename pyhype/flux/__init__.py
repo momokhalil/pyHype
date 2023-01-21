@@ -16,3 +16,4 @@ limitations under the License.
 from .Roe import FluxRoe
 from .HLLE import FluxHLLE
 from .HLLL import FluxHLLL
+from .factory import FluxFunctionFactory
