@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 class Factory(ABC):
     @classmethod
-    def create(cls, type: str, **kwargs):
+    def create(cls, config: SolverConfig, **kwargs):
         """
         Creates a concrete object of type SolverComponent.
 
@@ -36,11 +36,11 @@ class Factory(ABC):
         raise NotImplementedError("Calling a base class create()")
 
     @classmethod
-    def get(cls, **kwargs) -> Factory.create:
+    def get(cls, config: SolverConfig, **kwargs) -> Factory.create:
         """
         Returns a partially initialized Factory.create method with the passed in kwargs.
 
         :return: Partially initialized creator function to pass into classes that
         need to create objects of this class
         """
-        return partial(cls.create, **kwargs)
+        return partial(cls.create, config, **kwargs)

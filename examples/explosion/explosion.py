@@ -1,67 +1,21 @@
-from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
-from pyhype.states import ConservativeState
-from pyhype.solvers.base import SolverConfig
-from examples.explosion.initial_condition import ExplosionInitialCondition
 
-# Define fluid
-air = Air(a_inf=343.0, rho_inf=1.0)
+from examples.explosion.config import config
+from examples.explosion.mesh import mesh_dict
+from pyhype.fvm import FiniteVolumeMethodFactory
+from pyhype.flux import FluxFunctionFactory
+from pyhype.limiters import SlopeLimiterFactory
+from pyhype.gradients import GradientFactory
 
-block1 = {
-    "nBLK": 1,
-    "NW": [0, 20],
-    "NE": [10, 20],
-    "SW": [0, 0],
-    "SE": [10, 0],
-    "NeighborE": None,
-    "NeighborW": None,
-    "NeighborN": None,
-    "NeighborS": None,
-    "NeighborNE": None,
-    "NeighborNW": None,
-    "NeighborSE": None,
-    "NeighborSW": None,
-    "BCTypeE": "Reflection",
-    "BCTypeW": "Reflection",
-    "BCTypeN": "Reflection",
-    "BCTypeS": "Reflection",
-    "BCTypeNE": None,
-    "BCTypeNW": None,
-    "BCTypeSE": None,
-    "BCTypeSW": None,
-}
-mesh = {1: block1}
-
-config = SolverConfig(
-    fvm_type="MUSCL",
-    fvm_spatial_order=2,
-    fvm_num_quadrature_points=1,
-    fvm_gradient_type="GreenGauss",
-    fvm_flux_function_type="Roe",
-    fvm_slope_limiter_type="Venkatakrishnan",
-    time_integrator="RK4",
-    mesh=mesh,
-    initial_condition=ExplosionInitialCondition(),
-    interface_interpolation="arithmetic_average",
-    reconstruction_type=ConservativeState,
-    write_solution=False,
-    write_solution_mode="every_n_timesteps",
-    write_solution_name="nozzle",
-    write_every_n_timesteps=40,
-    plot_every=10,
-    CFL=0.8,
-    t_final=0.07,
-    realplot=True,
-    profile=True,
-    fluid=air,
-    nx=50,
-    ny=100,
-    nghost=1,
-    use_JIT=True,
+flux = FluxFunctionFactory.get(config=config)
+gradient = GradientFactory.get(config=config)
+limiter = SlopeLimiterFactory.get(config=config)
+fvm = FiniteVolumeMethodFactory.get(
+    config=config,
+    flux=flux,
+    limiter=limiter,
+    gradient=gradient,
 )
 
-# Create solver
-exp = Euler2D(config=config)
-
-# Solve
+exp = Euler2D(config=config, mesh_config=mesh_dict, fvm=fvm)
 exp.solve()

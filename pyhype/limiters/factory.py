@@ -27,13 +27,13 @@ if TYPE_CHECKING:
 
 class SlopeLimiterFactory(Factory):
     @classmethod
-    def create(cls, config: SolverConfig, type: str = "VanLeer") -> SlopeLimiter:
-        if type == "VanLeer":
+    def create(cls, config: SolverConfig, **kwargs) -> SlopeLimiter:
+        if config.fvm_slope_limiter_type == "VanLeer":
             return limiters.VanLeer(config)
-        if type == "VanAlbada":
+        if config.fvm_slope_limiter_type == "VanAlbada":
             return limiters.VanAlbada(config)
-        if type == "Venkatakrishnan":
+        if config.fvm_slope_limiter_type == "Venkatakrishnan":
             return limiters.Venkatakrishnan(config)
-        if type == "BarthJespersen":
+        if config.fvm_slope_limiter_type == "BarthJespersen":
             return limiters.BarthJespersen(config)
         raise ValueError("MUSCL: Slope limiter type not specified.")

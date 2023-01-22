@@ -34,6 +34,7 @@ from pyhype.time_marching import (
 )
 
 if TYPE_CHECKING:
+    from pyhype.factory import Factory
     from pyhype.states.base import State
     from pyhype.solvers.base import SolverConfig
     from pyhype.mesh.quadratures import QuadraturePointData
@@ -51,6 +52,7 @@ class BaseBlockGhost(BaseBlockFVM):
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
+        fvm: Factory.create,
     ) -> None:
         """
         Constructs instance of class BaseBlock_With_Ghost.
@@ -69,10 +71,20 @@ class BaseBlockGhost(BaseBlockFVM):
 
         :return: None
         """
-        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
+        super().__init__(
+            config,
+            mesh=mesh,
+            qp=qp,
+            state_type=state_type,
+            fvm=fvm,
+        )
 
         self.ghost = GhostBlocks(
-            config, block_data=block_data, refBLK=refBLK, state_type=state_type
+            config,
+            block_data=block_data,
+            refBLK=refBLK,
+            state_type=state_type,
+            fvm=fvm,
         )
 
         self.EAST_GHOST_IDX = NumpySlice.cols(-self.config.nghost, None)
@@ -154,6 +166,7 @@ class ReconstructionBlock(BaseBlockGhost):
         block_data: BlockDescription,
         mesh: QuadMesh,
         qp: QuadraturePointData,
+        fvm: Factory.create,
     ) -> None:
         super().__init__(
             config,
@@ -162,11 +175,14 @@ class ReconstructionBlock(BaseBlockGhost):
             mesh=mesh,
             qp=qp,
             state_type=config.reconstruction_type,
+            fvm=fvm,
         )
 
 
 class QuadBlock(BaseBlockGhost):
-    def __init__(self, config: SolverConfig, block_data: BlockDescription) -> None:
+    def __init__(
+        self, config: SolverConfig, block_data: BlockDescription, fvm: Factory.create
+    ) -> None:
 
         self.neighbors = None
 
@@ -183,10 +199,13 @@ class QuadBlock(BaseBlockGhost):
             qp=qp,
             refBLK=self,
             state_type=ConservativeState,
+            fvm=fvm,
         )
 
         # Create reconstruction block
-        self.reconBlk = ReconstructionBlock(config, block_data, qp=qp, mesh=mesh)
+        self.reconBlk = ReconstructionBlock(
+            config, block_data, qp=qp, mesh=mesh, fvm=fvm
+        )
 
         # Set time integrator
         if self.config.time_integrator == "ExplicitEuler1":

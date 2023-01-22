@@ -15,39 +15,37 @@ limitations under the License.
 """
 from __future__ import annotations
 
+from pyhype.factory import Factory
 from .FirstOrderMUSCL import FirstOrderMUSCL
 from .SecondOrderMUSCL import SecondOrderMUSCL
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.factory import Factory
     from pyhype.fvm.base import FiniteVolumeMethod
     from pyhype.solvers.base import SolverConfig
 
 
-class FiniteVolumeMethodFactory:
+class FiniteVolumeMethodFactory(Factory):
     @classmethod
     def create(
         cls,
-        type: str,
-        order: int,
         config: SolverConfig,
         flux: Factory.create,
         limiter: Factory.create,
         gradient: Factory.create,
     ) -> FiniteVolumeMethod:
-        if type == "MUSCL":
-            if order == 1:
+        if config.fvm_type == "MUSCL":
+            if config.fvm_spatial_order == 1:
                 return FirstOrderMUSCL(
                     config=config, limiter=limiter, flux=flux, gradient=gradient
                 )
-            if order == 2:
+            if config.fvm_spatial_order == 2:
                 return SecondOrderMUSCL(
                     config=config, limiter=limiter, flux=flux, gradient=gradient
                 )
             raise ValueError(
-                f"No MUSCL finite volume method has been specialized with order {order}"
+                f"No MUSCL finite volume method has been specialized with order {config.fvm_spatial_order}"
             )
         raise ValueError(
             f"Specified finite volume method type {type} has not been specialized."

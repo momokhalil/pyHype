@@ -24,11 +24,15 @@ import pstats
 import cProfile
 import numpy as np
 from datetime import datetime
+from pyhype.factory import Factory
 from pyhype.blocks.base import Blocks
-from pyhype.solvers.base import SolverConfig
-
 from pyhype.solvers.base import Solver
+from pyhype.solver_config import SolverConfig
 
+from typing import Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyhype.mesh.base import MeshGenerator
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -37,16 +41,18 @@ class Euler2D(Solver):
     def __init__(
         self,
         config: SolverConfig,
+        mesh_config: Union[MeshGenerator, dict],
+        fvm: Factory.create,
     ) -> None:
 
         # --------------------------------------------------------------------------------------------------------------
         # Store mesh features required to create block descriptions
 
-        super().__init__(config=config)
+        super().__init__(config=config, mesh_config=mesh_config)
 
         # Create Blocks
         print("\t>>> Building solution blocks")
-        self._blocks = Blocks(self.config)
+        self._blocks = Blocks(config=self.config, mesh_config=self.mesh_config, fvm=fvm)
 
         print("\n\tSolver Details:\n")
         print(self)

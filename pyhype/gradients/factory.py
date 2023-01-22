@@ -25,13 +25,13 @@ if TYPE_CHECKING:
 
 class GradientFactory(Factory):
     @classmethod
-    def create(cls, type: str, config: SolverConfig, **kwargs):
+    def create(cls, config: SolverConfig, **kwargs):
         """
         Creates a concrete object of type SolverComponent.
 
         :type type: str
         :param type: Type of object to be created
         """
-        if type == "GreenGauss":
+        if config.fvm_gradient_type == "GreenGauss":
             return GreenGauss(config=config)
         raise ValueError(f"Gradient type {type} is not available.")

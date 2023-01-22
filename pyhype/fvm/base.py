@@ -27,17 +27,14 @@ import numpy as np
 np.set_printoptions(formatter={"float": "{: 0.3f}".format})
 
 import pyhype.utils.utils as utils
-from pyhype.gradients.factory import GradientFactory
-
-from pyhype.states.primitive import PrimitiveState
-from pyhype.states.conservative import ConservativeState
 from pyhype.utils.utils import SidePropertyContainer
+from pyhype.states.primitive import PrimitiveState
 
 if TYPE_CHECKING:
+    from pyhype.factory import Factory
+    from pyhype.states.base import State
     from pyhype.blocks.quad_block import QuadBlock
     from pyhype.blocks.base import SolutionGradients
-    from pyhype.states.base import State
-    from pyhype.states.primitive import PrimitiveState
     from pyhype.mesh.quadratures import QuadraturePoint
 
 
@@ -117,7 +114,6 @@ class MUSCL(FiniteVolumeMethod):
         )
         self.flux_function_x, self.flux_function_y = flux()
         self.limiter = limiter()
-
         self.gradient = gradient()
 
     def reconstruct(self, refBLK: QuadBlock) -> None:
