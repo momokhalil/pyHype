@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 np.set_printoptions(threshold=sys.maxsize)
 
 
-class ProblemInput:
+class SolverConfig:
     __slots__ = [
         "fvm_type",
         "fvm_spatial_order",
@@ -138,12 +138,12 @@ class ProblemInput:
         self.write_every_n_timesteps = write_every_n_timesteps
 
         self.mesh = None
-        self.set_mesh_inputs(mesh)
+        self.set_mesh_config(mesh)
 
     def __str__(self):
         return "".join(f"\t{atr}: {getattr(self, atr)}\n" for atr in self.__slots__)
 
-    def set_mesh_inputs(self, mesh: Union[MeshGenerator, dict] = None) -> None:
+    def set_mesh_config(self, mesh: Union[MeshGenerator, dict] = None) -> None:
         mesh_info = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
         self.mesh = {
             blk_num: BlockDescription(
@@ -159,7 +159,7 @@ class ProblemInput:
 class Solver:
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
     ) -> None:
 
         print(execution_prints.PYHYPE)
@@ -168,8 +168,8 @@ class Solver:
             "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
         )
 
-        self.inputs = inputs
-        self.fluid = inputs.fluid
+        self.config = config
+        self.fluid = config.fluid
         self.cmap = LinearSegmentedColormap.from_list(
             "my_map", ["royalblue", "midnightblue", "black"]
         )
@@ -178,8 +178,8 @@ class Solver:
         self.t = 0
         self.dt = 0
         self.numTimeStep = 0
-        self.CFL = self.inputs.CFL
-        self.t_final = self.inputs.t_final * self.fluid.far_field.a
+        self.CFL = self.config.CFL
+        self.t_final = self.config.t_final * self.fluid.far_field.a
         self.profile_data = None
         self.realfig, self.realplot = None, None
         self.plot = None
@@ -218,12 +218,12 @@ class Solver:
         np.save(file=filename, arr=array)
 
     def write_solution(self):
-        if self.inputs.write_solution_mode == "every_n_timesteps":
-            if self.numTimeStep % self.inputs.write_every_n_timesteps == 0:
+        if self.config.write_solution_mode == "every_n_timesteps":
+            if self.numTimeStep % self.config.write_every_n_timesteps == 0:
                 for block in self.blocks:
                     self.write_output_nodes(
                         "./"
-                        + self.inputs.write_solution_name
+                        + self.config.write_solution_name
                         + "_"
                         + str(self.numTimeStep)
                         + "_blk_"
@@ -237,23 +237,23 @@ class Solver:
         :param state: State object to plot
         :return: Array of the evaluation function
         """
-        if self.inputs.plot_function == "Mach Number":
+        if self.config.plot_function == "Mach Number":
             return state.Ma()
-        if self.inputs.plot_function == "Density":
+        if self.config.plot_function == "Density":
             return state.rho
-        if self.inputs.plot_function == "X velocity":
+        if self.config.plot_function == "X velocity":
             return state.u
-        if self.inputs.plot_function == "Y velocity":
+        if self.config.plot_function == "Y velocity":
             return state.v
-        if self.inputs.plot_function == "Pressure":
+        if self.config.plot_function == "Pressure":
             return state.p
-        if self.inputs.plot_function == "Energy":
+        if self.config.plot_function == "Energy":
             return state.e
         # Default to density
         return state.rho
 
     def real_plot(self):
-        if self.numTimeStep % self.inputs.plot_every == 0:
+        if self.numTimeStep % self.config.plot_every == 0:
             data = [
                 (
                     block.mesh.x[:, :, 0],
@@ -282,7 +282,7 @@ class Solver:
         plt.ion()
         self.realfig, self.realplot = plt.subplots(1)
 
-        blks = self.inputs.mesh.values()
+        blks = self.config.mesh.values()
 
         sw_x = min([blk.geometry.vertices.SW[0] for blk in blks])
         nw_x = min([blk.geometry.vertices.NW[0] for blk in blks])

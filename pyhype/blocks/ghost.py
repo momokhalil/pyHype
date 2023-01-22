@@ -33,14 +33,14 @@ from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
 if TYPE_CHECKING:
     from pyhype.states.base import State
     from pyhype.blocks.base import QuadBlock
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
     from pyhype.mesh.quadratures import QuadraturePointData
 
 
 class GhostBlocks:
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         block_data: BlockDescription,
         refBLK: QuadBlock,
         state_type: Type[State],
@@ -55,25 +55,25 @@ class GhostBlocks:
             - S: Reference to the south ghost block
         """
         self.E = GhostBlockEast(
-            inputs,
+            config,
             BCtype=block_data.bc.E,
             refBLK=refBLK,
             state_type=state_type,
         )
         self.W = GhostBlockWest(
-            inputs,
+            config,
             BCtype=block_data.bc.W,
             refBLK=refBLK,
             state_type=state_type,
         )
         self.N = GhostBlockNorth(
-            inputs,
+            config,
             BCtype=block_data.bc.N,
             refBLK=refBLK,
             state_type=state_type,
         )
         self.S = GhostBlockSouth(
-            inputs,
+            config,
             BCtype=block_data.bc.S,
             refBLK=refBLK,
             state_type=state_type,
@@ -92,7 +92,7 @@ class GhostBlocks:
 class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         BCtype: Union[str, Callable],
         refBLK: QuadBlock,
         state_type: Type[State],
@@ -102,7 +102,7 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
         self.theta = None
         self.BCtype = BCtype
         self.refBLK = refBLK
-        self.nghost = inputs.nghost
+        self.nghost = config.nghost
         self.state_type = state_type
 
         if self.BCtype is None:
@@ -123,7 +123,7 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
                 + str(self.BCtype)
                 + " has not been specialized."
             )
-        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
+        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
 
     def __getitem__(self, index):
         return self.state.data[index]
@@ -181,7 +181,7 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
 class GhostBlockEast(GhostBlock):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
@@ -197,16 +197,16 @@ class GhostBlockEast(GhostBlock):
             NWy,
             SWx,
             SWy,
-            xr=refBLK.mesh.nodes.x[-1, -1 - inputs.nghost],
-            yr=refBLK.mesh.nodes.y[-1, -1 - inputs.nghost],
+            xr=refBLK.mesh.nodes.x[-1, -1 - config.nghost],
+            yr=refBLK.mesh.nodes.y[-1, -1 - config.nghost],
         )
         SEx, SEy = utils.reflect_point(
             NWx,
             NWy,
             SWx,
             SWy,
-            xr=refBLK.mesh.nodes.x[0, -1 - inputs.nghost],
-            yr=refBLK.mesh.nodes.y[0, -1 - inputs.nghost],
+            xr=refBLK.mesh.nodes.x[0, -1 - config.nghost],
+            yr=refBLK.mesh.nodes.y[0, -1 - config.nghost],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -214,14 +214,14 @@ class GhostBlockEast(GhostBlock):
             NW=(NWx, NWy),
             SE=(SEx, SEy),
             SW=(SWx, SWy),
-            nx=inputs.nghost,
-            ny=inputs.ny,
+            nx=config.nghost,
+            ny=config.ny,
         )
-        mesh = QuadMesh(inputs, block_geometry=block_geometry)
-        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+        mesh = QuadMesh(config, block_geometry=block_geometry)
+        qp = quadratures.QuadraturePointData(config, refMESH=mesh)
 
         super().__init__(
-            inputs,
+            config,
             BCtype,
             refBLK,
             mesh=mesh,
@@ -282,7 +282,7 @@ class GhostBlockEast(GhostBlock):
 class GhostBlockWest(GhostBlock):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
@@ -297,16 +297,16 @@ class GhostBlockWest(GhostBlock):
             NEy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[-1, inputs.nghost],
-            yr=refBLK.mesh.nodes.y[-1, inputs.nghost],
+            xr=refBLK.mesh.nodes.x[-1, config.nghost],
+            yr=refBLK.mesh.nodes.y[-1, config.nghost],
         )
         SWx, SWy = utils.reflect_point(
             NEx,
             NEy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[0, inputs.nghost],
-            yr=refBLK.mesh.nodes.y[0, inputs.nghost],
+            xr=refBLK.mesh.nodes.x[0, config.nghost],
+            yr=refBLK.mesh.nodes.y[0, config.nghost],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -314,17 +314,17 @@ class GhostBlockWest(GhostBlock):
             NW=(NWx, NWy),
             SE=(SEx, SEy),
             SW=(SWx, SWy),
-            nx=inputs.nghost,
-            ny=inputs.ny,
+            nx=config.nghost,
+            ny=config.ny,
         )
         mesh = QuadMesh(
-            inputs,
+            config,
             block_geometry=block_geometry,
         )
-        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+        qp = quadratures.QuadraturePointData(config, refMESH=mesh)
 
         super().__init__(
-            inputs,
+            config,
             BCtype,
             refBLK,
             mesh=mesh,
@@ -385,7 +385,7 @@ class GhostBlockWest(GhostBlock):
 class GhostBlockNorth(GhostBlock):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
@@ -400,16 +400,16 @@ class GhostBlockNorth(GhostBlock):
             SWy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[-1 - inputs.nghost, 0],
-            yr=refBLK.mesh.nodes.y[-1 - inputs.nghost, 0],
+            xr=refBLK.mesh.nodes.x[-1 - config.nghost, 0],
+            yr=refBLK.mesh.nodes.y[-1 - config.nghost, 0],
         )
         NEx, NEy = utils.reflect_point(
             SWx,
             SWy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[-1 - inputs.nghost, -1],
-            yr=refBLK.mesh.nodes.y[-1 - inputs.nghost, -1],
+            xr=refBLK.mesh.nodes.x[-1 - config.nghost, -1],
+            yr=refBLK.mesh.nodes.y[-1 - config.nghost, -1],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -417,17 +417,17 @@ class GhostBlockNorth(GhostBlock):
             NW=(NWx, NWy),
             SE=(SEx, SEy),
             SW=(SWx, SWy),
-            nx=inputs.nx,
-            ny=inputs.nghost,
+            nx=config.nx,
+            ny=config.nghost,
         )
         mesh = QuadMesh(
-            inputs,
+            config,
             block_geometry=block_geometry,
         )
-        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+        qp = quadratures.QuadraturePointData(config, refMESH=mesh)
 
         super().__init__(
-            inputs,
+            config,
             BCtype,
             refBLK,
             mesh=mesh,
@@ -488,7 +488,7 @@ class GhostBlockNorth(GhostBlock):
 class GhostBlockSouth(GhostBlock):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
@@ -503,16 +503,16 @@ class GhostBlockSouth(GhostBlock):
             NWy,
             NEx,
             NEy,
-            xr=refBLK.mesh.nodes.x[inputs.nghost, 0],
-            yr=refBLK.mesh.nodes.y[inputs.nghost, 0],
+            xr=refBLK.mesh.nodes.x[config.nghost, 0],
+            yr=refBLK.mesh.nodes.y[config.nghost, 0],
         )
         SEx, SEy = utils.reflect_point(
             NWx,
             NWy,
             NEx,
             NEy,
-            xr=refBLK.mesh.nodes.x[inputs.nghost, -1],
-            yr=refBLK.mesh.nodes.y[inputs.nghost, -1],
+            xr=refBLK.mesh.nodes.x[config.nghost, -1],
+            yr=refBLK.mesh.nodes.y[config.nghost, -1],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -520,17 +520,17 @@ class GhostBlockSouth(GhostBlock):
             NW=(NWx, NWy),
             SE=(SEx, SEy),
             SW=(SWx, SWy),
-            nx=inputs.nx,
-            ny=inputs.nghost,
+            nx=config.nx,
+            ny=config.nghost,
         )
         mesh = QuadMesh(
-            inputs,
+            config,
             block_geometry=block_geometry,
         )
-        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+        qp = quadratures.QuadraturePointData(config, refMESH=mesh)
 
         super().__init__(
-            inputs,
+            config,
             BCtype,
             refBLK,
             mesh=mesh,

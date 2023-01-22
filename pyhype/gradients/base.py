@@ -25,13 +25,13 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
     from pyhype.blocks.quad_block import QuadBlock
 
 
 class Gradient:
-    def __init__(self, inputs: ProblemInput):
-        self.inputs = inputs
+    def __init__(self, config: SolverConfig):
+        self.config = config
 
     def __call__(self, refBLK: QuadBlock) -> None:
         """
@@ -62,8 +62,8 @@ class Gradient:
 
 """
 class LeastSquares9Point:
-    def __init__(self, inputs: ProblemInput):
-        self.inputs = inputs
+    def __init__(self, config: SolverConfig):
+        self.config = config
 
         self.stencilSW = [[0, 0], [0, 1], [0, 0], [1, 0], [0, 1], [1, 0], [1, 1]]
         self.stencilNW = [[-2, 0], [-1, 0], [0, 0], [0, 1], [-2, 0], [-2, 1], [-1, 1]]
@@ -81,6 +81,6 @@ class LeastSquares9Point:
                                            refBLK.mesh.x, refBLK.mesh.y,
                                            bdr.E.x, bdr.E.y, bdr.W.x, bdr.W.y,
                                            bdr.N.x, bdr.N.y, bdr.S.x, bdr.S.y,
-                                           self.inputs.nx, self.inputs.ny,
+                                           self.config.nx, self.config.ny,
                                            self.stencilSW, self.stencilNW, self.stencilSE, self.stencilNE)
 """

@@ -1,7 +1,7 @@
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
-from pyhype.solvers.base import ProblemInput
+from pyhype.solvers.base import SolverConfig
 from examples.implosion.initial_condition import ImplosionInitialCondition
 
 # Define fluid
@@ -34,7 +34,7 @@ block1 = {
 mesh = {1: block1}
 
 # Solver settings
-inputs = ProblemInput(
+config = SolverConfig(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -63,6 +63,6 @@ inputs = ProblemInput(
 )
 
 # Create solver
-exp = Euler2D(inputs=inputs)
+exp = Euler2D(config=config)
 
 exp.solve()

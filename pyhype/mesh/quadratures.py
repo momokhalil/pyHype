@@ -27,7 +27,7 @@ from pyhype.states import State, PrimitiveState, ConservativeState
 
 if TYPE_CHECKING:
     from pyhype.mesh.quad_mesh import QuadMesh
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
 
 
 # Define quadrature sets
@@ -41,7 +41,7 @@ _QUADS = {1: _QUAD_1, 2: _QUAD_2, 3: _QUAD_3}
 class QuadraturePoint:
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         x: np.ndarray = None,
         y: np.ndarray = None,
         w: Union[np.ndarray, float, int] = None,
@@ -49,8 +49,8 @@ class QuadraturePoint:
         self.x = x
         self.y = y
         self.w = w
-        self.state = inputs.reconstruction_type(
-            fluid=inputs.fluid, shape=(inputs.ny, inputs.nx, 4)
+        self.state = config.reconstruction_type(
+            fluid=config.fluid, shape=(config.ny, config.nx, 4)
         )
 
 
@@ -110,18 +110,18 @@ class QuadraturePointStateContainer(QuadraturePointDataContainerBase):
 
 
 class QuadraturePointData:
-    def __init__(self, inputs: ProblemInput, refMESH: QuadMesh):
+    def __init__(self, config: SolverConfig, refMESH: QuadMesh):
         self.E = None
         self.W = None
         self.N = None
         self.S = None
-        self._make_quadrature(inputs, refMESH)
+        self._make_quadrature(config, refMESH)
 
     @staticmethod
     def _transform(p1: np.ndarray, p2: np.ndarray, p: float):
         return 0.5 * ((p2 - p1) * p + (p2 + p1))
 
-    def _make_quadrature(self, inputs: ProblemInput, refMESH: QuadMesh):
+    def _make_quadrature(self, config: SolverConfig, refMESH: QuadMesh):
 
         xNE, yNE = refMESH.get_NE_vertices()
         xNW, yNW = refMESH.get_NW_vertices()
@@ -130,30 +130,30 @@ class QuadraturePointData:
 
         self.E = tuple(
             QuadraturePoint(
-                inputs, self._transform(xNE, xSE, p), self._transform(yNE, ySE, p), w
+                config, self._transform(xNE, xSE, p), self._transform(yNE, ySE, p), w
             )
-            for p, w in _QUADS[inputs.fvm_num_quadrature_points].items()
+            for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
         self.W = tuple(
             QuadraturePoint(
-                inputs, self._transform(xNW, xSW, p), self._transform(yNW, ySW, p), w
+                config, self._transform(xNW, xSW, p), self._transform(yNW, ySW, p), w
             )
-            for p, w in _QUADS[inputs.fvm_num_quadrature_points].items()
+            for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
         self.N = tuple(
             QuadraturePoint(
-                inputs, self._transform(xNE, xNW, p), self._transform(yNE, yNW, p), w
+                config, self._transform(xNE, xNW, p), self._transform(yNE, yNW, p), w
             )
-            for p, w in _QUADS[inputs.fvm_num_quadrature_points].items()
+            for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
         self.S = tuple(
             QuadraturePoint(
-                inputs, self._transform(xSE, xSW, p), self._transform(ySE, ySW, p), w
+                config, self._transform(xSE, xSW, p), self._transform(ySE, ySW, p), w
             )
-            for p, w in _QUADS[inputs.fvm_num_quadrature_points].items()
+            for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
     def update_data(

@@ -29,11 +29,11 @@ from pyhype.flux.eigen_system import XDIR_EIGENSYSTEM_INDICES, XDIR_EIGENSYSTEM_
 
 
 class FluxRoe(FluxFunction):
-    def __init__(self, inputs, size, sweeps):
-        super().__init__(inputs, nx=size, ny=sweeps)
+    def __init__(self, config, size, sweeps):
+        super().__init__(config, nx=size, ny=sweeps)
         # Thermodynamic quantities
-        g = self.inputs.fluid.gamma()
-        self.gh = self.inputs.fluid.gamma() - 1
+        g = self.config.fluid.gamma()
+        self.gh = self.config.fluid.gamma() - 1
         self.gt = 1 - g
         self.gb = 3 - g
         # Matrix size
@@ -42,7 +42,7 @@ class FluxRoe(FluxFunction):
         self.num = (self.size + 1) * self.sweeps
 
         # X-direction eigensystem data vectors
-        vec = XDIR_EIGENSYSTEM_VECTORS(self.inputs, size, sweeps)
+        vec = XDIR_EIGENSYSTEM_VECTORS(self.config, size, sweeps)
         self.A_d0, self.A_m1, self.A_m2, self.A_m3, self.A_p1, self.A_p2 = (
             vec.A_d0,
             vec.A_m1,
@@ -311,7 +311,7 @@ class FluxRoe(FluxFunction):
         WL: PrimitiveState,
         WR: PrimitiveState,
     ) -> np.ndarray:
-        Wroe = RoePrimitiveState(self.inputs.fluid, WL, WR)
+        Wroe = RoePrimitiveState(self.config.fluid, WL, WR)
         self.diagonalize(Wroe, WL, WR)
         dW = (WR.data - WL.data).flatten()
         self.Lambda.data = np.absolute(self.Lambda.data)

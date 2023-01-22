@@ -30,9 +30,9 @@ if TYPE_CHECKING:
 
 
 class SlopeLimiter:
-    def __init__(self, inputs):
-        self.inputs = inputs
-        self.phi = np.zeros((inputs.ny, inputs.nx, 4))
+    def __init__(self, config):
+        self.config = config
+        self.phi = np.zeros((config.ny, config.nx, 4))
 
     def __call__(
         self,

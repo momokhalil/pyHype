@@ -37,7 +37,7 @@ class SubsonicJetInitialCondition(InitialCondition):
         u = 0.0
         v = 0.0
         state = PrimitiveState(
-            fluid=block.inputs.fluid,
+            fluid=block.config.fluid,
             array=np.array([rho, u, v, p]).reshape((1, 1, 4)),
         ).to_type(ConservativeState)
 

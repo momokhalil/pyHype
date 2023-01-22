@@ -32,11 +32,11 @@ if TYPE_CHECKING:
 class ExplicitRungeKutta(TimeIntegrator):
     def __init__(
         self,
-        inputs,
+        config,
         a: list[list] = None,
     ):
 
-        super().__init__(inputs)
+        super().__init__(config)
         self.a = a
         self.num_stages = len(a)
 
@@ -80,7 +80,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         return update
 
     @classmethod
-    def ExplicitEuler1(cls, inputs):
+    def ExplicitEuler1(cls, config):
         """
         Defines the Explicit-Euler explicit Runge-Kutta method for time integration.
         Order: 1
@@ -89,10 +89,10 @@ class ExplicitRungeKutta(TimeIntegrator):
         1
 
         """
-        return cls(inputs, a=[[1]])
+        return cls(config, a=[[1]])
 
     @classmethod
-    def Generic2(cls, inputs):
+    def Generic2(cls, config):
         """
         Defines the generic second order explicit Runge-Kutta method for time integration.
         Order: 2
@@ -102,11 +102,11 @@ class ExplicitRungeKutta(TimeIntegrator):
         1-1/(2a)    1/(2*a)
 
         """
-        a = inputs.alpha
-        return cls(inputs, a=[[a], [1 - 1 / (2 * a), 1 / (2 * a)]])
+        a = config.alpha
+        return cls(config, a=[[a], [1 - 1 / (2 * a), 1 / (2 * a)]])
 
     @classmethod
-    def RK2(cls, inputs):
+    def RK2(cls, config):
         """
         Defines the classical second order explicit Runge-Kutta method for time integration.
         Order: 2
@@ -116,10 +116,10 @@ class ExplicitRungeKutta(TimeIntegrator):
         0   1
 
         """
-        return cls(inputs, a=[[0.5], [0, 1]])
+        return cls(config, a=[[0.5], [0, 1]])
 
     @classmethod
-    def Ralston2(cls, inputs):
+    def Ralston2(cls, config):
         """
         Defines the Ralston explicit Runge-Kutta method for time integration.
         Order: 2
@@ -129,10 +129,10 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/4 3/4
 
         """
-        return cls(inputs, a=[[2 / 3], [1 / 4, 3 / 4]])
+        return cls(config, a=[[2 / 3], [1 / 4, 3 / 4]])
 
     @classmethod
-    def Generic3(cls, inputs):
+    def Generic3(cls, config):
         """
         Defines the generic third order explicit Runge-Kutta method for time integration.
         Order: 3
@@ -143,14 +143,14 @@ class ExplicitRungeKutta(TimeIntegrator):
         0.5 - 1/(6*a)   1/(6a(1-a))   (2-3a)/(6(1-a))]]
 
         """
-        a = inputs.alpha
+        a = config.alpha
 
         if a in (0, 2 / 3, 1):
             raise ValueError("Value of alpha parameter is not allowd.")
 
         k = (1 - a) / a / (3 * a - 2)
         return cls(
-            inputs,
+            config,
             a=[
                 [a],
                 [1 + k, -k],
@@ -159,7 +159,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         )
 
     @classmethod
-    def RK3(cls, inputs):
+    def RK3(cls, config):
         """
         Defines the classical third order explicit Runge-Kutta method for time integration.
         Order: 3
@@ -170,10 +170,10 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/6	2/3	1/6
 
         """
-        return cls(inputs, a=[[0.5], [-1, 2], [1 / 6, 2 / 3, 1 / 6]])
+        return cls(config, a=[[0.5], [-1, 2], [1 / 6, 2 / 3, 1 / 6]])
 
     @classmethod
-    def RK3SSP(cls, inputs):
+    def RK3SSP(cls, config):
         """
         Defines the Strong Stability Preserving (SSP) third order explicit Runge-Kutta method for time integration.
         Order: 3
@@ -184,10 +184,10 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/6	1/6	2/3
 
         """
-        return cls(inputs, a=[[1], [1 / 4, 1 / 4], [1 / 6, 1 / 6, 2 / 3]])
+        return cls(config, a=[[1], [1 / 4, 1 / 4], [1 / 6, 1 / 6, 2 / 3]])
 
     @classmethod
-    def Ralston3(cls, inputs):
+    def Ralston3(cls, config):
         """
         Defines the Ralston third order explicit Runge-Kutta method for time integration.
         Order: 3
@@ -198,10 +198,10 @@ class ExplicitRungeKutta(TimeIntegrator):
         2/9 1/3 4/9
 
         """
-        return cls(inputs, a=[[1 / 2], [0, 3 / 4], [2 / 9, 1 / 3, 4 / 9]])
+        return cls(config, a=[[1 / 2], [0, 3 / 4], [2 / 9, 1 / 3, 4 / 9]])
 
     @classmethod
-    def RK4(cls, inputs):
+    def RK4(cls, config):
         """
         Defines the fourth order explicit Runge-Kutta method for time integrations.
 
@@ -212,10 +212,10 @@ class ExplicitRungeKutta(TimeIntegrator):
         1/6	1/3	1/3	1/6
 
         """
-        return cls(inputs, a=[[0.5], [0, 0.5], [0, 0, 1], [1 / 6, 1 / 3, 1 / 3, 1 / 6]])
+        return cls(config, a=[[0.5], [0, 0.5], [0, 0, 1], [1 / 6, 1 / 3, 1 / 3, 1 / 6]])
 
     @classmethod
-    def Ralston4(cls, inputs):
+    def Ralston4(cls, config):
         """
         Defines the Ralston fourth order explicit Runge-Kutta method for time integrations.
         Order: 4
@@ -228,7 +228,7 @@ class ExplicitRungeKutta(TimeIntegrator):
 
         """
         return cls(
-            inputs,
+            config,
             a=[
                 [0.4],
                 [0.29697761, 0.15875964],
@@ -238,7 +238,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         )
 
     @classmethod
-    def DormandPrince5(cls, inputs):
+    def DormandPrince5(cls, config):
         """
         Defines the Dormand-Prince fifth order explicit Runge-Kutta method for time integrations.
         Order: 5
@@ -253,7 +253,7 @@ class ExplicitRungeKutta(TimeIntegrator):
 
         """
         return cls(
-            inputs,
+            config,
             a=[
                 [1 / 5],
                 [3 / 40, 9 / 40],

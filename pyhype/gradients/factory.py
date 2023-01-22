@@ -20,12 +20,12 @@ from pyhype.factory import Factory
 from pyhype.gradients.greengauss import GreenGauss
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
 
 
 class GradientFactory(Factory):
     @classmethod
-    def create(cls, type: str, inputs: ProblemInput, **kwargs):
+    def create(cls, type: str, config: SolverConfig, **kwargs):
         """
         Creates a concrete object of type SolverComponent.
 
@@ -33,5 +33,5 @@ class GradientFactory(Factory):
         :param type: Type of object to be created
         """
         if type == "GreenGauss":
-            return GreenGauss(inputs=inputs)
+            return GreenGauss(config=config)
         raise ValueError(f"Gradient type {type} is not available.")

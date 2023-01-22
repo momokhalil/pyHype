@@ -35,7 +35,7 @@ from pyhype.time_marching import (
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
     from pyhype.mesh.quadratures import QuadraturePointData
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
@@ -45,7 +45,7 @@ import numpy as np
 class BaseBlockGhost(BaseBlockFVM):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         block_data: BlockDescription,
         refBLK: Union[QuadBlock, ReconstructionBlock],
         mesh: QuadMesh,
@@ -55,8 +55,8 @@ class BaseBlockGhost(BaseBlockFVM):
         """
         Constructs instance of class BaseBlock_With_Ghost.
 
-        :type inputs: ProblemInputs
-        :param inputs: Object that contains all the input parameters that decribe the problem.
+        :type config: SolverConfigs
+        :param config: Object that contains all the input parameters that decribe the problem.
 
         :type block_data: BlockDescription
         :param block_data: Object containing the parameters that describe the block
@@ -69,16 +69,16 @@ class BaseBlockGhost(BaseBlockFVM):
 
         :return: None
         """
-        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
+        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
 
         self.ghost = GhostBlocks(
-            inputs, block_data=block_data, refBLK=refBLK, state_type=state_type
+            config, block_data=block_data, refBLK=refBLK, state_type=state_type
         )
 
-        self.EAST_GHOST_IDX = NumpySlice.cols(-self.inputs.nghost, None)
-        self.WEST_GHOST_IDX = NumpySlice.cols(None, self.inputs.nghost)
-        self.NORTH_GHOST_IDX = NumpySlice.rows(-self.inputs.nghost, None)
-        self.SOUTH_GHOST_IDX = NumpySlice.rows(None, self.inputs.nghost)
+        self.EAST_GHOST_IDX = NumpySlice.cols(-self.config.nghost, None)
+        self.WEST_GHOST_IDX = NumpySlice.cols(None, self.config.nghost)
+        self.NORTH_GHOST_IDX = NumpySlice.rows(-self.config.nghost, None)
+        self.SOUTH_GHOST_IDX = NumpySlice.rows(None, self.config.nghost)
 
     def from_block(self, from_block: BaseBlockGhost) -> None:
         """
@@ -102,7 +102,7 @@ class BaseBlockGhost(BaseBlockFVM):
         :rtype: (np.ndarray, np.ndarray, np.ndarray, np.ndarray)
         :return: Arrays containing interface values on each face
         """
-        if self.inputs.interface_interpolation == "arithmetic_average":
+        if self.config.interface_interpolation == "arithmetic_average":
             (
                 interfaceE,
                 interfaceW,
@@ -150,34 +150,34 @@ class BaseBlockGhost(BaseBlockFVM):
 class ReconstructionBlock(BaseBlockGhost):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         block_data: BlockDescription,
         mesh: QuadMesh,
         qp: QuadraturePointData,
     ) -> None:
         super().__init__(
-            inputs,
+            config,
             block_data=block_data,
             refBLK=self,
             mesh=mesh,
             qp=qp,
-            state_type=inputs.reconstruction_type,
+            state_type=config.reconstruction_type,
         )
 
 
 class QuadBlock(BaseBlockGhost):
-    def __init__(self, inputs: ProblemInput, block_data: BlockDescription) -> None:
+    def __init__(self, config: SolverConfig, block_data: BlockDescription) -> None:
 
         self.neighbors = None
 
-        self.inputs = inputs
+        self.config = config
         self.block_data = block_data
         self.global_nBLK = block_data.info.nBLK
-        mesh = QuadMesh(inputs, block_data.geometry)
-        qp = quadratures.QuadraturePointData(inputs, refMESH=mesh)
+        mesh = QuadMesh(config, block_data.geometry)
+        qp = quadratures.QuadraturePointData(config, refMESH=mesh)
 
         super().__init__(
-            inputs,
+            config,
             block_data=block_data,
             mesh=mesh,
             qp=qp,
@@ -186,31 +186,31 @@ class QuadBlock(BaseBlockGhost):
         )
 
         # Create reconstruction block
-        self.reconBlk = ReconstructionBlock(inputs, block_data, qp=qp, mesh=mesh)
+        self.reconBlk = ReconstructionBlock(config, block_data, qp=qp, mesh=mesh)
 
         # Set time integrator
-        if self.inputs.time_integrator == "ExplicitEuler1":
-            self._time_integrator = Erk.ExplicitEuler1(self.inputs)
-        elif self.inputs.time_integrator == "RK2":
-            self._time_integrator = Erk.RK2(self.inputs)
-        elif self.inputs.time_integrator == "Generic2":
-            self._time_integrator = Erk.Generic2(self.inputs)
-        elif self.inputs.time_integrator == "Ralston2":
-            self._time_integrator = Erk.Ralston2(self.inputs)
-        elif self.inputs.time_integrator == "Generic3":
-            self._time_integrator = Erk.Generic3(self.inputs)
-        elif self.inputs.time_integrator == "RK3":
-            self._time_integrator = Erk.RK3(self.inputs)
-        elif self.inputs.time_integrator == "RK3SSP":
-            self._time_integrator = Erk.RK3SSP(self.inputs)
-        elif self.inputs.time_integrator == "Ralston3":
-            self._time_integrator = Erk.Ralston3(self.inputs)
-        elif self.inputs.time_integrator == "RK4":
-            self._time_integrator = Erk.RK4(self.inputs)
-        elif self.inputs.time_integrator == "Ralston4":
-            self._time_integrator = Erk.Ralston4(self.inputs)
-        elif self.inputs.time_integrator == "DormandPrince5":
-            self._time_integrator = Erk.DormandPrince5(self.inputs)
+        if self.config.time_integrator == "ExplicitEuler1":
+            self._time_integrator = Erk.ExplicitEuler1(self.config)
+        elif self.config.time_integrator == "RK2":
+            self._time_integrator = Erk.RK2(self.config)
+        elif self.config.time_integrator == "Generic2":
+            self._time_integrator = Erk.Generic2(self.config)
+        elif self.config.time_integrator == "Ralston2":
+            self._time_integrator = Erk.Ralston2(self.config)
+        elif self.config.time_integrator == "Generic3":
+            self._time_integrator = Erk.Generic3(self.config)
+        elif self.config.time_integrator == "RK3":
+            self._time_integrator = Erk.RK3(self.config)
+        elif self.config.time_integrator == "RK3SSP":
+            self._time_integrator = Erk.RK3SSP(self.config)
+        elif self.config.time_integrator == "Ralston3":
+            self._time_integrator = Erk.Ralston3(self.config)
+        elif self.config.time_integrator == "RK4":
+            self._time_integrator = Erk.RK4(self.config)
+        elif self.config.time_integrator == "Ralston4":
+            self._time_integrator = Erk.Ralston4(self.config)
+        elif self.config.time_integrator == "DormandPrince5":
+            self._time_integrator = Erk.DormandPrince5(self.config)
         else:
             raise ValueError("Specified time marching scheme has not been specialized.")
 
@@ -248,7 +248,7 @@ class QuadBlock(BaseBlockGhost):
             - (str): the reconstruction type
         """
 
-        return self.inputs.reconstruction_type
+        return self.config.reconstruction_type
 
     def plot(self, ax: plt.axes = None, show_cell_centre: bool = False):
         """
@@ -450,7 +450,7 @@ class QuadBlock(BaseBlockGhost):
         a = self.state.a()
         tx = self.mesh.dx[:, :, 0] / (np.absolute(self.state.u) + a)
         ty = self.mesh.dy[:, :, 0] / (np.absolute(self.state.v) + a)
-        return self.inputs.CFL * np.amin(np.minimum(tx, ty))
+        return self.config.CFL * np.amin(np.minimum(tx, ty))
 
     def connect(
         self,
@@ -783,7 +783,7 @@ class QuadBlock(BaseBlockGhost):
     def _get_nodal_solution_cell_average_conservative(self) -> np.ndarray:
 
         # Initialize solution array
-        U = np.zeros((self.inputs.ny + 1, self.inputs.nx + 1, 4), dtype=float)
+        U = np.zeros((self.config.ny + 1, self.config.nx + 1, 4), dtype=float)
 
         # Set corners
 

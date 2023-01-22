@@ -21,8 +21,8 @@ from abc import abstractmethod
 
 
 class TimeIntegrator:
-    def __init__(self, inputs):
-        self.inputs = inputs
+    def __init__(self, config):
+        self.config = config
 
     def __call__(self, refBLK, dt):
         self.integrate(refBLK, dt)

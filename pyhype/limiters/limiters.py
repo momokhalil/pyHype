@@ -30,7 +30,7 @@ class BarthJespersen(SlopeLimiter):
 
 class Venkatakrishnan(SlopeLimiter):
     def _limiter_func(self, slope: np.ndarray) -> np.ndarray:
-        if self.inputs.use_JIT:
+        if self.config.use_JIT:
             return self._venkata(slope)
         s2 = slope**2
         return (s2 + 2 * slope) / (s2 + slope + 2)

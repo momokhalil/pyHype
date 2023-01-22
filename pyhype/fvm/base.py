@@ -51,7 +51,7 @@ class MUSCL(FiniteVolumeMethod):
 
     def __init__(
         self,
-        inputs,
+        config,
         flux: Factory.create,
         limiter: Factory.create,
         gradient: Factory.create,
@@ -94,25 +94,25 @@ class MUSCL(FiniteVolumeMethod):
                           . . .
         ... to be continued.
         """
-        self.inputs = inputs
+        self.config = config
 
         # Flux storage arrays
         self.Flux = SidePropertyContainer(
             E=tuple(
-                np.empty((self.inputs.ny, self.inputs.nx, 4))
-                for _ in range(self.inputs.fvm_num_quadrature_points)
+                np.empty((self.config.ny, self.config.nx, 4))
+                for _ in range(self.config.fvm_num_quadrature_points)
             ),
             W=tuple(
-                np.empty((self.inputs.ny, self.inputs.nx, 4))
-                for _ in range(self.inputs.fvm_num_quadrature_points)
+                np.empty((self.config.ny, self.config.nx, 4))
+                for _ in range(self.config.fvm_num_quadrature_points)
             ),
             N=tuple(
-                np.empty((self.inputs.ny, self.inputs.nx, 4))
-                for _ in range(self.inputs.fvm_num_quadrature_points)
+                np.empty((self.config.ny, self.config.nx, 4))
+                for _ in range(self.config.fvm_num_quadrature_points)
             ),
             S=tuple(
-                np.empty((self.inputs.ny, self.inputs.nx, 4))
-                for _ in range(self.inputs.fvm_num_quadrature_points)
+                np.empty((self.config.ny, self.config.nx, 4))
+                for _ in range(self.config.fvm_num_quadrature_points)
             ),
         )
         self.flux_function_x, self.flux_function_y = flux()
@@ -249,7 +249,7 @@ class MUSCL(FiniteVolumeMethod):
         fluxW = self.integrate_flux_W(refBLK)
         fluxN = self.integrate_flux_N(refBLK)
         fluxS = self.integrate_flux_S(refBLK)
-        if self.inputs.use_JIT:
+        if self.config.use_JIT:
             return self._dUdt_JIT(fluxE, fluxW, fluxN, fluxS, refBLK.mesh.A)
         return (fluxW - fluxE + fluxS - fluxN) / refBLK.mesh.A
 
@@ -300,21 +300,21 @@ class MUSCL(FiniteVolumeMethod):
         left_arr = np.concatenate((ghostL.data, stateL.data), axis=1)
         right_arr = np.concatenate((stateR.data, ghostR.data), axis=1)
 
-        if self.inputs.reconstruction_type is PrimitiveState:
-            left_state = PrimitiveState(self.inputs.fluid, array=left_arr)
-            right_state = PrimitiveState(self.inputs.fluid, array=right_arr)
+        if self.config.reconstruction_type is PrimitiveState:
+            left_state = PrimitiveState(self.config.fluid, array=left_arr)
+            right_state = PrimitiveState(self.config.fluid, array=right_arr)
             return left_state, right_state
 
         left_state = PrimitiveState(
-            fluid=self.inputs.fluid,
-            state=self.inputs.reconstruction_type(
-                fluid=self.inputs.fluid, array=left_arr
+            fluid=self.config.fluid,
+            state=self.config.reconstruction_type(
+                fluid=self.config.fluid, array=left_arr
             ),
         )
         right_state = PrimitiveState(
-            fluid=self.inputs.fluid,
-            state=self.inputs.reconstruction_type(
-                fluid=self.inputs.fluid, array=right_arr
+            fluid=self.config.fluid,
+            state=self.config.reconstruction_type(
+                fluid=self.config.fluid, array=right_arr
             ),
         )
         return left_state, right_state
