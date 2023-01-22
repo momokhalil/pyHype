@@ -33,19 +33,19 @@ from pyhype.mesh.base import (
 from pyhype.blocks.base import BlockGeometry
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
 
 
 class QuadMesh(_mesh_transfinite_gen):
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         block_geometry: BlockGeometry = None,
     ) -> None:
 
         super().__init__()
 
-        self.inputs = inputs
+        self.config = config
 
         self.nghost = block_geometry.nghost
         self.nx = block_geometry.nx

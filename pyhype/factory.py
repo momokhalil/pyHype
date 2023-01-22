@@ -21,7 +21,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
 
 
 class Factory(ABC):

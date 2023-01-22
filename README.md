@@ -20,7 +20,7 @@ The example in given in the file [examples/explosion/explosion.py](https://githu
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
-from pyhype.solvers.base import ProblemInput
+from pyhype.solvers.base import SolverConfig
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
@@ -50,7 +50,7 @@ block1 = {
 }
 mesh = {1: block1}
 
-inputs = ProblemInput(
+config = SolverConfig(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -79,7 +79,7 @@ inputs = ProblemInput(
 )
 
 # Create solver
-exp = Euler2D(inputs=inputs)
+exp = Euler2D(config=config)
 
 # Solve
 exp.solve()
@@ -103,7 +103,7 @@ The example in given in the file [examples/shockbox/shockbox.py](https://github.
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
-from pyhype.solvers.base import ProblemInput
+from pyhype.solvers.base import SolverConfig
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
@@ -135,7 +135,7 @@ block1 = {
 mesh = {1: block1}
 
 # Solver settings
-inputs = ProblemInput(
+config = SolverConfig(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -164,7 +164,7 @@ inputs = ProblemInput(
 )
 
 # Create solver
-exp = Euler2D(inputs=inputs)
+exp = Euler2D(config=config)
 
 exp.solve()
 ```
@@ -186,7 +186,7 @@ import numpy as np
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import PrimitiveState
-from pyhype.solvers.base import ProblemInput
+from pyhype.solvers.base import SolverConfig
 from pyhype.mesh.base import QuadMeshGenerator
 
 k = 1
@@ -224,7 +224,7 @@ _mesh = QuadMeshGenerator(
 air = Air(a_inf=343.0, rho_inf=1.0)
 
 # Solver settings
-inputs = ProblemInput(
+config = SolverConfig(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -253,7 +253,7 @@ inputs = ProblemInput(
 )
 
 # Create solver
-exp = Euler2D(inputs=inputs)
+exp = Euler2D(config=config)
 
 # Solve
 exp.solve()
@@ -277,7 +277,7 @@ The example in given in the file [examples/jet/jet.py](https://github.com/momokh
 import numpy as np
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
-from pyhype.solvers.base import ProblemInput
+from pyhype.solvers.base import SolverConfig
 from pyhype.mesh.base import QuadMeshGenerator
 from pyhype.states import PrimitiveState
 from pyhype.boundary_conditions.base import PrimitiveDirichletBC
@@ -328,7 +328,7 @@ _mesh = QuadMeshGenerator(
 )
 
 # Solver settings
-inputs = ProblemInput(
+config = SolverConfig(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -357,7 +357,7 @@ inputs = ProblemInput(
 )
 
 # Create solver
-exp = Euler2D(inputs=inputs)
+exp = Euler2D(config=config)
 
 # Solve
 exp.solve()

@@ -22,7 +22,7 @@ from pyhype.states.primitive import RoePrimitiveState, PrimitiveState
 class FluxHLLE(FluxFunction):
     def compute_flux(self, WL: PrimitiveState, WR: PrimitiveState) -> np.ndarray:
 
-        Wroe = RoePrimitiveState(self.inputs, WL, WR)
+        Wroe = RoePrimitiveState(self.config, WL, WR)
 
         L_p, L_m = self.wavespeeds_x(WL)
         R_p, R_m = self.wavespeeds_x(WR)

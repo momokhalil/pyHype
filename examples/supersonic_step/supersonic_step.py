@@ -1,7 +1,7 @@
 from pyhype.fluids import Air
 from mesh import step_ten_block
 from pyhype.solvers import Euler2D
-from pyhype.solvers.base import ProblemInput
+from pyhype.solvers.base import SolverConfig
 from pyhype.states import PrimitiveState
 from pyhype.initial_conditions.supersonic_flood import SupersonicFloodInitialCondition
 
@@ -18,7 +18,7 @@ initial_condition = SupersonicFloodInitialCondition(
 )
 
 # Solver settings
-inputs = ProblemInput(
+config = SolverConfig(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -48,7 +48,7 @@ inputs = ProblemInput(
 
 
 # Create solver
-exp = Euler2D(inputs=inputs)
+exp = Euler2D(config=config)
 
 # Solve
 exp.solve()

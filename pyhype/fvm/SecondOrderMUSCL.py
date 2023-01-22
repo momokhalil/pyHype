@@ -33,12 +33,12 @@ if TYPE_CHECKING:
 
 
 class SecondOrderMUSCL(MUSCL):
-    def __init__(self, inputs, limiter, flux, gradient):
-        if inputs.nghost != 1:
+    def __init__(self, config, limiter, flux, gradient):
+        if config.nghost != 1:
             raise ValueError(
                 "Number of ghost cells must be equal to 1 for this method."
             )
-        super().__init__(inputs=inputs, limiter=limiter, flux=flux, gradient=gradient)
+        super().__init__(config=config, limiter=limiter, flux=flux, gradient=gradient)
 
     @staticmethod
     def high_order_term(

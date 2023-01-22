@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyhype.factory import Factory
     from pyhype.fvm.base import FiniteVolumeMethod
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
 
 
 class FiniteVolumeMethodFactory:
@@ -32,7 +32,7 @@ class FiniteVolumeMethodFactory:
         cls,
         type: str,
         order: int,
-        inputs: ProblemInput,
+        config: SolverConfig,
         flux: Factory.create,
         limiter: Factory.create,
         gradient: Factory.create,
@@ -40,11 +40,11 @@ class FiniteVolumeMethodFactory:
         if type == "MUSCL":
             if order == 1:
                 return FirstOrderMUSCL(
-                    inputs=inputs, limiter=limiter, flux=flux, gradient=gradient
+                    config=config, limiter=limiter, flux=flux, gradient=gradient
                 )
             if order == 2:
                 return SecondOrderMUSCL(
-                    inputs=inputs, limiter=limiter, flux=flux, gradient=gradient
+                    config=config, limiter=limiter, flux=flux, gradient=gradient
                 )
             raise ValueError(
                 f"No MUSCL finite volume method has been specialized with order {order}"

@@ -22,18 +22,18 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyhype.limiters.base import SlopeLimiter
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
 
 
 class SlopeLimiterFactory(Factory):
     @classmethod
-    def create(cls, inputs: ProblemInput, type: str = "VanLeer") -> SlopeLimiter:
+    def create(cls, config: SolverConfig, type: str = "VanLeer") -> SlopeLimiter:
         if type == "VanLeer":
-            return limiters.VanLeer(inputs)
+            return limiters.VanLeer(config)
         if type == "VanAlbada":
-            return limiters.VanAlbada(inputs)
+            return limiters.VanAlbada(config)
         if type == "Venkatakrishnan":
-            return limiters.Venkatakrishnan(inputs)
+            return limiters.Venkatakrishnan(config)
         if type == "BarthJespersen":
-            return limiters.BarthJespersen(inputs)
+            return limiters.BarthJespersen(config)
         raise ValueError("MUSCL: Slope limiter type not specified.")

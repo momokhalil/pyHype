@@ -51,7 +51,7 @@ class SupersonicFloodInitialCondition(InitialCondition):
 
     def apply_to_block(self, block: QuadBlock):
         state = PrimitiveState(
-            fluid=block.inputs.fluid,
+            fluid=block.config.fluid,
             array=np.array([self._rho, self._u, self._v, self._p]).reshape((1, 1, 4)),
         ).to_type(ConservativeState)
 

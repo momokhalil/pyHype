@@ -22,16 +22,16 @@ import numpy as np
 
 
 class XDIR_EIGENSYSTEM_VECTORS:
-    def __init__(self, inputs, nx, ny):
+    def __init__(self, config, nx, ny):
 
-        self.inputs = inputs
+        self.config = config
 
         self.A_d0 = np.ones((3 * (nx + 1) * ny))
         self.A_m1 = np.ones((3 * (nx + 1) * ny))
         self.A_m2 = np.ones((2 * (nx + 1) * ny))
         self.A_m3 = np.ones((1 * (nx + 1) * ny))
         self.A_p1 = np.ones((2 * (nx + 1) * ny))
-        self.A_p2 = np.full((1 * (nx + 1) * ny), self.inputs.fluid.gamma() - 1)
+        self.A_p2 = np.full((1 * (nx + 1) * ny), self.config.fluid.gamma() - 1)
 
         self.Rc_m3 = np.ones((1 * (nx + 1) * ny))
         self.Rc_m2 = np.ones((2 * (nx + 1) * ny))

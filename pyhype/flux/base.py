@@ -26,15 +26,15 @@ from pyhype.states.primitive import PrimitiveState, RoePrimitiveState
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
 
 
 class FluxFunction:
-    def __init__(self, inputs, nx, ny):
-        self.inputs = inputs
+    def __init__(self, config, nx, ny):
+        self.config = config
         self.nx = nx
         self.ny = ny
-        self.n = inputs.n
+        self.n = config.n
 
     def __call__(self, WL: PrimitiveState, WR: PrimitiveState, *args, **kwargs):
         if not isinstance(WL, PrimitiveState):

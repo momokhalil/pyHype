@@ -38,7 +38,7 @@ class ExplosionInitialCondition(InitialCondition):
         uL = 0.0
         vL = 0.0
         left_state = PrimitiveState(
-            fluid=block.inputs.fluid,
+            fluid=block.config.fluid,
             array=np.array([rhoL, uL, vL, pL]).reshape((1, 1, 4)),
         ).to_type(ConservativeState)
 
@@ -48,7 +48,7 @@ class ExplosionInitialCondition(InitialCondition):
         uR = 0.0
         vR = 0.0
         right_state = PrimitiveState(
-            fluid=block.inputs.fluid,
+            fluid=block.config.fluid,
             array=np.array([rhoR, uR, vR, pR]).reshape((1, 1, 4)),
         ).to_type(ConservativeState)
 

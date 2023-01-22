@@ -39,7 +39,7 @@ from pyhype.states import PrimitiveState, ConservativeState
 if TYPE_CHECKING:
     from pyhype.states.base import State
     from pyhype.mesh.quad_mesh import QuadMesh
-    from pyhype.solvers.base import ProblemInput
+    from pyhype.solvers.base import SolverConfig
     from pyhype.blocks.quad_block import QuadBlock
     from pyhype.mesh.quadratures import QuadraturePoint
     from pyhype.mesh.quadratures import QuadraturePointData
@@ -179,8 +179,8 @@ class SolutionGradients(ABC):
 
     ALL_IDX = np.s_[:, :, :]
 
-    def __init__(self, inputs):
-        self.use_JIT = inputs.use_JIT
+    def __init__(self, config):
+        self.use_JIT = config.use_JIT
 
     @abstractmethod
     def get_high_order_term(
@@ -218,8 +218,8 @@ class FirstOrderGradients(SolutionGradients):
     :ivar y: Numpy array containing the y-direction first-order gradients.
     """
 
-    def __init__(self, inputs, nx: int, ny: int):
-        super().__init__(inputs)
+    def __init__(self, config, nx: int, ny: int):
+        super().__init__(config)
         self.x = np.zeros(shape=(ny, nx, 4))
         self.y = np.zeros(shape=(ny, nx, 4))
 
@@ -298,8 +298,8 @@ class SecondOrderGradients(SolutionGradients):
     :ivar xy: Numpy array containing the x,y-direction second-order gradients.
     """
 
-    def __init__(self, inputs, nx: int, ny: int):
-        super().__init__(inputs)
+    def __init__(self, config, nx: int, ny: int):
+        super().__init__(config)
         self.x = np.zeros(shape=(ny, nx, 4))
         self.y = np.zeros(shape=(ny, nx, 4))
         self.xx = np.zeros(shape=(ny, nx, 4))
@@ -350,13 +350,13 @@ class SecondOrderGradients(SolutionGradients):
 class GradientsFactory:
     @staticmethod
     def create(
-        inputs, reconstruction_order: int, nx: int, ny: int
+        config, reconstruction_order: int, nx: int, ny: int
     ) -> SolutionGradients:
         """
         Factory for creating solution gradients appropriate for the given
         reconstruction order input.
 
-        :param inputs: Problem inputs object
+        :param config: Problem config object
         :param reconstruction_order: The order of the reconstruction methods
         :param nx: Number of cells in the x-direction
         :param ny: Number of cells in the y-direction
@@ -364,9 +364,9 @@ class GradientsFactory:
         :return: SolutionGradients object of the appropriate order
         """
         if reconstruction_order == 2:
-            return FirstOrderGradients(inputs, nx, ny)
+            return FirstOrderGradients(config, nx, ny)
         if reconstruction_order == 4:
-            return SecondOrderGradients(inputs, nx, ny)
+            return SecondOrderGradients(config, nx, ny)
         raise ValueError(
             "GradientsFactory.create_gradients(): Error, no gradients container class has been "
             "extended for the given order."
@@ -410,15 +410,15 @@ class Blocks:
     """
     Class for containing the solution blocks and necessary methods.
 
-    :ivar inputs: ProblemInputs object
+    :ivar config: SolverConfigs object
     :ivar num_BLK: Number of blocks
     :ivar blocks: Dict for containing the QuadBlock objects
     :ivar cpu: (future use) indicates the rank of the CPU responsible
     for this collection of blocks.
     """
 
-    def __init__(self, inputs) -> None:
-        self.inputs = inputs
+    def __init__(self, config) -> None:
+        self.config = config
         self.num_BLK = None
         self.blocks = {}
         self.cpu = None
@@ -471,12 +471,12 @@ class Blocks:
 
         :return: None
         """
-        self.num_BLK = len(self.inputs.mesh)
-        for blk_data in self.inputs.mesh.values():
-            self.add(qb.QuadBlock(self.inputs, blk_data))
+        self.num_BLK = len(self.config.mesh)
+        for blk_data in self.config.mesh.values():
+            self.add(qb.QuadBlock(self.config, blk_data))
 
         for block in self.blocks.values():
-            neighbors = self.inputs.mesh[block.global_nBLK].neighbors
+            neighbors = self.config.mesh[block.global_nBLK].neighbors
             block.connect(
                 NeighborE=self.blocks[neighbors.E] if neighbors.E is not None else None,
                 NeighborW=self.blocks[neighbors.W] if neighbors.W is not None else None,
@@ -522,8 +522,8 @@ class Blocks:
 
 
 class BaseBlock:
-    def __init__(self, inputs: ProblemInput):
-        self.inputs = inputs
+    def __init__(self, config: SolverConfig):
+        self.config = config
 
     @staticmethod
     def _is_all_blk_conservative(blks: dict.values):
@@ -539,7 +539,7 @@ class BaseBlockMesh(BaseBlock):
     BaseBlock class that contains a mesh and quadrature point object.
     This is the basic building block for all block types.
 
-    :ivar inputs: ProblemInputs object
+    :ivar config: SolverConfigs object
     :ivar mesh: QuadMesh object containing the block's mesh
     :ivar qp: QuadraturePointData object that contains the quadrature point
     locations and methods for quadrature point calculations.
@@ -547,11 +547,11 @@ class BaseBlockMesh(BaseBlock):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         mesh: QuadMesh = None,
         qp: QuadraturePointData = None,
     ):
-        super().__init__(inputs=inputs)
+        super().__init__(config=config)
         self.mesh = mesh
         self.qp = qp
 
@@ -586,13 +586,13 @@ class BaseBlockState(BaseBlockMesh, BlockMixin):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
     ):
-        super().__init__(inputs=inputs, mesh=mesh, qp=qp)
-        self.state = state_type(fluid=inputs.fluid, shape=(mesh.ny, mesh.nx, 4))
+        super().__init__(config=config, mesh=mesh, qp=qp)
+        self.state = state_type(fluid=config.fluid, shape=(mesh.ny, mesh.nx, 4))
 
 
 class BaseBlockGrad(BaseBlockState):
@@ -605,15 +605,15 @@ class BaseBlockGrad(BaseBlockState):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
     ):
-        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
+        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
         self.grad = GradientsFactory.create(
-            inputs=inputs,
-            reconstruction_order=inputs.fvm_spatial_order,
+            config=config,
+            reconstruction_order=config.fvm_spatial_order,
             nx=mesh.nx,
             ny=mesh.ny,
         )
@@ -639,26 +639,26 @@ class BaseBlockFVM(BaseBlockGrad):
 
     def __init__(
         self,
-        inputs: ProblemInput,
+        config: SolverConfig,
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
     ):
-        super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
+        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
 
         flux = FluxFunctionFactory.get(
-            inputs=inputs, type=self.inputs.fvm_flux_function_type
+            config=config, type=self.config.fvm_flux_function_type
         )
         gradient = GradientFactory.get(
-            inputs=inputs, type=self.inputs.fvm_gradient_type
+            config=config, type=self.config.fvm_gradient_type
         )
         limiter = SlopeLimiterFactory.get(
-            inputs=inputs, type=inputs.fvm_slope_limiter_type
+            config=config, type=config.fvm_slope_limiter_type
         )
         self.fvm = FiniteVolumeMethodFactory.create(
-            inputs=inputs,
-            type=inputs.fvm_type,
-            order=inputs.fvm_spatial_order,
+            config=config,
+            type=config.fvm_type,
+            order=config.fvm_spatial_order,
             flux=flux,
             limiter=limiter,
             gradient=gradient,

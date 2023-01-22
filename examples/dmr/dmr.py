@@ -2,7 +2,7 @@ import numpy as np
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import PrimitiveState
-from pyhype.solvers.base import ProblemInput
+from pyhype.solvers.base import SolverConfig
 from pyhype.mesh.base import QuadMeshGenerator
 from examples.dmr.initial_condition import DMRInitialCondition
 
@@ -41,7 +41,7 @@ _mesh = QuadMeshGenerator(
 air = Air(a_inf=343.0, rho_inf=1.0)
 
 # Solver settings
-inputs = ProblemInput(
+config = SolverConfig(
     fvm_type="MUSCL",
     fvm_spatial_order=2,
     fvm_num_quadrature_points=1,
@@ -70,7 +70,7 @@ inputs = ProblemInput(
 )
 
 # Create solver
-exp = Euler2D(inputs=inputs)
+exp = Euler2D(config=config)
 
 # Solve
 exp.solve()
