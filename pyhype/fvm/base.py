@@ -18,17 +18,17 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 import os
+
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numba as nb
 import numpy as np
+
 np.set_printoptions(formatter={"float": "{: 0.3f}".format})
 
 import pyhype.utils.utils as utils
-import pyhype.fvm.Gradients as Grads
+from pyhype.gradients.factory import GradientFactory
 
-from pyhype.flux import FluxFunctionFactory
-from pyhype.limiters import SlopeLimiterFactory
 from pyhype.states.primitive import PrimitiveState
 from pyhype.states.conservative import ConservativeState
 from pyhype.utils.utils import SidePropertyContainer
@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from pyhype.states.base import State
     from pyhype.states.primitive import PrimitiveState
     from pyhype.mesh.quadratures import QuadraturePoint
-    from pyhype.solvers.base import ProblemInput
 
 
 class FiniteVolumeMethod:
@@ -53,6 +52,9 @@ class MUSCL(FiniteVolumeMethod):
     def __init__(
         self,
         inputs,
+        flux: Factory.create,
+        limiter: Factory.create,
+        gradient: Factory.create,
     ) -> None:
         """
         Solves the euler equations using a MUSCL-type finite volume scheme.
@@ -113,21 +115,10 @@ class MUSCL(FiniteVolumeMethod):
                 for _ in range(self.inputs.fvm_num_quadrature_points)
             ),
         )
-        # Set flux function
-        self.flux_function_X, self.flux_function_Y = FluxFunctionFactory.create(
-            inputs=inputs, type=self.inputs.fvm_flux_function
-        )
+        self.flux_function_x, self.flux_function_y = flux()
+        self.limiter = limiter()
 
-        # Set slope limiter
-        self.limiter = SlopeLimiterFactory.create(
-            inputs=inputs, type=inputs.fvm_slope_limiter
-        )
-
-        # Set gradient algorithm
-        if self.inputs.fvm_gradient_type == "GreenGauss":
-            self.gradient = Grads.GreenGauss(self.inputs)
-        else:
-            raise ValueError("MUSCL: Slope limiter type not specified.")
+        self.gradient = gradient()
 
     def reconstruct(self, refBLK: QuadBlock) -> None:
         """
@@ -377,7 +368,7 @@ class MUSCL(FiniteVolumeMethod):
             sL, sR = self._get_LR_states_for_flux_calc(
                 ghostL=_bndW, stateL=_stateE, ghostR=_bndE, stateR=_stateW
             )
-            fluxEW = self.flux_function_X(WL=sL, WR=sR)
+            fluxEW = self.flux_function_x(WL=sL, WR=sR)
             fluxE[:] = fluxEW[:, 1:, :]
             fluxW[:] = fluxEW[:, :-1, :]
 
@@ -445,7 +436,7 @@ class MUSCL(FiniteVolumeMethod):
                 _bndN,
                 _stateS,
             )
-            fluxNS = self.flux_function_Y(WL=sL, WR=sR).transpose((1, 0, 2))
+            fluxNS = self.flux_function_y(WL=sL, WR=sR).transpose((1, 0, 2))
             fluxN[:] = fluxNS[1:, :, :]
             fluxS[:] = fluxNS[:-1, :, :]
 

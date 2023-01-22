@@ -15,25 +15,23 @@ limitations under the License.
 """
 from __future__ import annotations
 
-import pyhype.limiters.limiters as limiters
-from pyhype.factory import Factory
-
 from typing import TYPE_CHECKING
+from pyhype.factory import Factory
+from pyhype.gradients.greengauss import GreenGauss
 
 if TYPE_CHECKING:
-    from pyhype.limiters.base import SlopeLimiter
     from pyhype.solvers.base import ProblemInput
 
 
-class SlopeLimiterFactory(Factory):
+class GradientFactory(Factory):
     @classmethod
-    def create(cls, inputs: ProblemInput, type: str = "VanLeer") -> SlopeLimiter:
-        if type == "VanLeer":
-            return limiters.VanLeer(inputs)
-        if type == "VanAlbada":
-            return limiters.VanAlbada(inputs)
-        if type == "Venkatakrishnan":
-            return limiters.Venkatakrishnan(inputs)
-        if type == "BarthJespersen":
-            return limiters.BarthJespersen(inputs)
-        raise ValueError("MUSCL: Slope limiter type not specified.")
+    def create(cls, type: str, inputs: ProblemInput, **kwargs):
+        """
+        Creates a concrete object of type SolverComponent.
+
+        :type type: str
+        :param type: Type of object to be created
+        """
+        if type == "GreenGauss":
+            return GreenGauss(inputs=inputs)
+        raise ValueError(f"Gradient type {type} is not available.")

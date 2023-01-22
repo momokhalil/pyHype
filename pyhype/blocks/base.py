@@ -29,7 +29,10 @@ from pyhype.utils.utils import (
     CornerPropertyContainer,
     FullPropertyContainer,
 )
+from pyhype.flux import FluxFunctionFactory
+from pyhype.limiters import SlopeLimiterFactory
 from pyhype.fvm import FiniteVolumeMethodFactory
+from pyhype.gradients import GradientFactory
 from pyhype.blocks import quad_block as qb
 from pyhype.states import PrimitiveState, ConservativeState
 
@@ -642,10 +645,23 @@ class BaseBlockFVM(BaseBlockGrad):
         state_type: Type[State],
     ):
         super().__init__(inputs, mesh=mesh, qp=qp, state_type=state_type)
+
+        flux = FluxFunctionFactory.get(
+            inputs=inputs, type=self.inputs.fvm_flux_function_type
+        )
+        gradient = GradientFactory.get(
+            inputs=inputs, type=self.inputs.fvm_gradient_type
+        )
+        limiter = SlopeLimiterFactory.get(
+            inputs=inputs, type=inputs.fvm_slope_limiter_type
+        )
         self.fvm = FiniteVolumeMethodFactory.create(
             inputs=inputs,
             type=inputs.fvm_type,
             order=inputs.fvm_spatial_order,
+            flux=flux,
+            limiter=limiter,
+            gradient=gradient,
         )
 
     def unlimited_reconstruction_at_location(
