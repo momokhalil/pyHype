@@ -48,8 +48,8 @@ class ProblemInput:
         "fvm_spatial_order",
         "fvm_num_quadrature_points",
         "fvm_gradient_type",
-        "fvm_flux_function",
-        "fvm_slope_limiter",
+        "fvm_flux_function_type",
+        "fvm_slope_limiter_type",
         "time_integrator",
         "mesh",
         "initial_condition",
@@ -83,8 +83,8 @@ class ProblemInput:
         fvm_type: str,
         time_integrator: str,
         fvm_gradient_type: str,
-        fvm_flux_function: str,
-        fvm_slope_limiter: str,
+        fvm_flux_function_type: str,
+        fvm_slope_limiter_type: str,
         fvm_spatial_order: int,
         fvm_num_quadrature_points: int,
         fluid: Fluid,
@@ -116,8 +116,8 @@ class ProblemInput:
         self.fvm_type = fvm_type
         self.time_integrator = time_integrator
         self.fvm_gradient_type = fvm_gradient_type
-        self.fvm_flux_function = fvm_flux_function
-        self.fvm_slope_limiter = fvm_slope_limiter
+        self.fvm_flux_function_type = fvm_flux_function_type
+        self.fvm_slope_limiter_type = fvm_slope_limiter_type
         self.fvm_spatial_order = fvm_spatial_order
         self.fvm_num_quadrature_points = fvm_num_quadrature_points
 

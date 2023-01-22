@@ -33,12 +33,12 @@ np.set_printoptions(precision=3)
 
 
 class FirstOrderMUSCL(MUSCL):
-    def __init__(self, inputs):
+    def __init__(self, inputs, limiter, flux, gradient):
         if inputs.nghost != 1:
             raise ValueError(
                 "Number of ghost cells must be equal to 1 for this method."
             )
-        super().__init__(inputs)
+        super().__init__(inputs, limiter, flux, gradient)
 
     @staticmethod
     def reconstruct_state(

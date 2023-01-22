@@ -15,25 +15,32 @@ limitations under the License.
 """
 from __future__ import annotations
 
-import pyhype.limiters.limiters as limiters
-from pyhype.factory import Factory
+from abc import ABC
+from functools import partial
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.limiters.base import SlopeLimiter
     from pyhype.solvers.base import ProblemInput
 
 
-class SlopeLimiterFactory(Factory):
+class Factory(ABC):
     @classmethod
-    def create(cls, inputs: ProblemInput, type: str = "VanLeer") -> SlopeLimiter:
-        if type == "VanLeer":
-            return limiters.VanLeer(inputs)
-        if type == "VanAlbada":
-            return limiters.VanAlbada(inputs)
-        if type == "Venkatakrishnan":
-            return limiters.Venkatakrishnan(inputs)
-        if type == "BarthJespersen":
-            return limiters.BarthJespersen(inputs)
-        raise ValueError("MUSCL: Slope limiter type not specified.")
+    def create(cls, type: str, **kwargs):
+        """
+        Creates a concrete object of type SolverComponent.
+
+        :type type: str
+        :param type: Type of object to be created
+        """
+        raise NotImplementedError("Calling a base class create()")
+
+    @classmethod
+    def get(cls, **kwargs) -> Factory.create:
+        """
+        Returns a partially initialized Factory.create method with the passed in kwargs.
+
+        :return: Partially initialized creator function to pass into classes that
+        need to create objects of this class
+        """
+        return partial(cls.create, **kwargs)

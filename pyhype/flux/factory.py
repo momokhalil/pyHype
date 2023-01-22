@@ -20,25 +20,27 @@ from .HLLE import FluxHLLE
 from .HLLL import FluxHLLL
 
 from typing import TYPE_CHECKING
+from functools import partial
+from pyhype.factory import Factory
 
 if TYPE_CHECKING:
     from pyhype.flux.base import FluxFunction
     from pyhype.solvers.base import ProblemInput
 
 
-class FluxFunctionFactory:
+class FluxFunctionFactory(Factory):
     @classmethod
-    def create(cls, inputs: ProblemInput, type: str = "Roe") -> FluxFunction:
+    def create(cls, inputs: ProblemInput, type: str = "Roe", **kwargs) -> FluxFunction:
         if type == "Roe":
-            flux_function_X = FluxRoe(inputs, size=inputs.nx, sweeps=inputs.ny)
-            flux_function_Y = FluxRoe(inputs, size=inputs.ny, sweeps=inputs.nx)
-            return flux_function_X, flux_function_Y
+            flux_func_x = FluxRoe(inputs, size=inputs.nx, sweeps=inputs.ny)
+            flux_func_y = FluxRoe(inputs, size=inputs.ny, sweeps=inputs.nx)
+            return flux_func_x, flux_func_y
         if type == "HLLE":
-            flux_function_X = FluxHLLE(inputs, nx=inputs.nx, ny=inputs.ny)
-            flux_function_Y = FluxHLLE(inputs, nx=inputs.ny, ny=inputs.nx)
-            return flux_function_X, flux_function_Y
+            flux_func_x = FluxHLLE(inputs, nx=inputs.nx, ny=inputs.ny)
+            flux_func_y = FluxHLLE(inputs, nx=inputs.ny, ny=inputs.nx)
+            return flux_func_x, flux_func_y
         if type == "HLLL":
-            flux_function_X = FluxHLLL(inputs, nx=inputs.nx, ny=inputs.ny)
-            flux_function_Y = FluxHLLL(inputs, nx=inputs.ny, ny=inputs.nx)
-            return flux_function_X, flux_function_Y
+            flux_func_x = FluxHLLL(inputs, nx=inputs.nx, ny=inputs.ny)
+            flux_func_y = FluxHLLL(inputs, nx=inputs.ny, ny=inputs.nx)
+            return flux_func_x, flux_func_y
         raise ValueError(f"Flux function type {type} is not available.")
