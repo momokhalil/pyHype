@@ -30,10 +30,20 @@ if TYPE_CHECKING:
     from pyhype.mesh.quadratures import QuadraturePoint
     from pyhype.blocks.base import QuadBlock, BaseBlockFVM
     from pyhype.states import State
+    from pyhype.flux.base import FluxFunction
+    from pyhype.limiters.base import SlopeLimiter
+    from pyhype.gradients.base import Gradient
+    from pyhype.solver_config import SolverConfig
 
 
 class SecondOrderMUSCL(MUSCL):
-    def __init__(self, config, limiter, flux, gradient):
+    def __init__(
+        self,
+        config: SolverConfig,
+        flux: FluxFunction,
+        limiter: SlopeLimiter,
+        gradient: Gradient,
+    ):
         if config.nghost != 1:
             raise ValueError(
                 "Number of ghost cells must be equal to 1 for this method."

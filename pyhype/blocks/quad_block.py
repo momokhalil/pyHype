@@ -29,11 +29,10 @@ from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
 from pyhype.blocks.base import Neighbors, BaseBlockFVM, BlockDescription
-from pyhype.time_marching import (
-    ExplicitRungeKutta as Erk,
-)
+from pyhype.time_marching.factory import TimeIntegratorFactory
 
 if TYPE_CHECKING:
+    from pyhype.factory import Factory
     from pyhype.states.base import State
     from pyhype.solvers.base import SolverConfig
     from pyhype.mesh.quadratures import QuadraturePointData
@@ -69,10 +68,18 @@ class BaseBlockGhost(BaseBlockFVM):
 
         :return: None
         """
-        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
+        super().__init__(
+            config,
+            mesh=mesh,
+            qp=qp,
+            state_type=state_type,
+        )
 
         self.ghost = GhostBlocks(
-            config, block_data=block_data, refBLK=refBLK, state_type=state_type
+            config,
+            block_data=block_data,
+            refBLK=refBLK,
+            state_type=state_type,
         )
 
         self.EAST_GHOST_IDX = NumpySlice.cols(-self.config.nghost, None)
@@ -166,16 +173,18 @@ class ReconstructionBlock(BaseBlockGhost):
 
 
 class QuadBlock(BaseBlockGhost):
-    def __init__(self, config: SolverConfig, block_data: BlockDescription) -> None:
-
-        self.neighbors = None
-
+    def __init__(
+        self,
+        config: SolverConfig,
+        block_data: BlockDescription,
+    ) -> None:
         self.config = config
+        self.neighbors = None
         self.block_data = block_data
         self.global_nBLK = block_data.info.nBLK
+
         mesh = QuadMesh(config, block_data.geometry)
         qp = quadratures.QuadraturePointData(config, refMESH=mesh)
-
         super().__init__(
             config,
             block_data=block_data,
@@ -184,37 +193,13 @@ class QuadBlock(BaseBlockGhost):
             refBLK=self,
             state_type=ConservativeState,
         )
-
-        # Create reconstruction block
-        self.reconBlk = ReconstructionBlock(config, block_data, qp=qp, mesh=mesh)
-
-        # Set time integrator
-        if self.config.time_integrator == "ExplicitEuler1":
-            self._time_integrator = Erk.ExplicitEuler1(self.config)
-        elif self.config.time_integrator == "RK2":
-            self._time_integrator = Erk.RK2(self.config)
-        elif self.config.time_integrator == "Generic2":
-            self._time_integrator = Erk.Generic2(self.config)
-        elif self.config.time_integrator == "Ralston2":
-            self._time_integrator = Erk.Ralston2(self.config)
-        elif self.config.time_integrator == "Generic3":
-            self._time_integrator = Erk.Generic3(self.config)
-        elif self.config.time_integrator == "RK3":
-            self._time_integrator = Erk.RK3(self.config)
-        elif self.config.time_integrator == "RK3SSP":
-            self._time_integrator = Erk.RK3SSP(self.config)
-        elif self.config.time_integrator == "Ralston3":
-            self._time_integrator = Erk.Ralston3(self.config)
-        elif self.config.time_integrator == "RK4":
-            self._time_integrator = Erk.RK4(self.config)
-        elif self.config.time_integrator == "Ralston4":
-            self._time_integrator = Erk.Ralston4(self.config)
-        elif self.config.time_integrator == "DormandPrince5":
-            self._time_integrator = Erk.DormandPrince5(self.config)
-        else:
-            raise ValueError("Specified time marching scheme has not been specialized.")
-
-        # is block cartesian
+        self.reconBlk = ReconstructionBlock(
+            config,
+            block_data,
+            qp=qp,
+            mesh=mesh,
+        )
+        self._time_integrator = TimeIntegratorFactory.create(config=config)
         self.is_cartesian = self._is_cartesian()
 
     def _is_cartesian(self) -> bool:
@@ -248,7 +233,7 @@ class QuadBlock(BaseBlockGhost):
             - (str): the reconstruction type
         """
 
-        return self.config.reconstruction_type
+        return type(self.reconBlk.state)
 
     def plot(self, ax: plt.axes = None, show_cell_centre: bool = False):
         """

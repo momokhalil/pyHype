@@ -25,141 +25,24 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from pyhype import execution_prints
 from pyhype.blocks.base import BlockDescription
-from pyhype.states import ConservativeState
+from pyhype.mesh.base import MeshGenerator
 
 from abc import abstractmethod
 
-from typing import TYPE_CHECKING
-from typing import Iterable, Union, Type
-from pyhype.mesh.base import MeshGenerator
+from typing import Iterable, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.initial_conditions.base import InitialCondition
+    from pyhype.solver_config import SolverConfig
     from pyhype.blocks.quad_block import QuadBlock
-    from pyhype.fluids.base import Fluid
-    from pyhype.states import State
 
 np.set_printoptions(threshold=sys.maxsize)
-
-
-class SolverConfig:
-    __slots__ = [
-        "fvm_type",
-        "fvm_spatial_order",
-        "fvm_num_quadrature_points",
-        "fvm_gradient_type",
-        "fvm_flux_function_type",
-        "fvm_slope_limiter_type",
-        "time_integrator",
-        "mesh",
-        "initial_condition",
-        "interface_interpolation",
-        "reconstruction_type",
-        "write_solution",
-        "write_solution_mode",
-        "write_solution_name",
-        "write_every_n_timesteps",
-        "plot_every",
-        "plot_function",
-        "CFL",
-        "t_final",
-        "realplot",
-        "profile",
-        "fluid",
-        "nx",
-        "ny",
-        "n",
-        "nghost",
-        "use_JIT",
-    ]
-
-    def __init__(
-        self,
-        nx: int,
-        ny: int,
-        CFL: float,
-        t_final: float,
-        initial_condition: InitialCondition,
-        fvm_type: str,
-        time_integrator: str,
-        fvm_gradient_type: str,
-        fvm_flux_function_type: str,
-        fvm_slope_limiter_type: str,
-        fvm_spatial_order: int,
-        fvm_num_quadrature_points: int,
-        fluid: Fluid,
-        nghost: int = 1,
-        use_JIT: bool = True,
-        profile: bool = False,
-        realplot: bool = False,
-        plot_every: int = 20,
-        plot_function: str = "Density",
-        write_solution: bool = False,
-        write_solution_mode: str = "every_n_timesteps",
-        write_solution_name: str = "nozzle",
-        reconstruction_type: Type[State] = ConservativeState,
-        write_every_n_timesteps: int = 40,
-        interface_interpolation: str = "arithmetic_average",
-        mesh: Union[MeshGenerator, dict] = None,
-    ) -> None:
-
-        self.initial_condition = initial_condition
-
-        self.nx = nx
-        self.ny = ny
-        self.n = nx * ny
-        self.nghost = nghost
-
-        self.CFL = CFL
-        self.t_final = t_final
-
-        self.fvm_type = fvm_type
-        self.time_integrator = time_integrator
-        self.fvm_gradient_type = fvm_gradient_type
-        self.fvm_flux_function_type = fvm_flux_function_type
-        self.fvm_slope_limiter_type = fvm_slope_limiter_type
-        self.fvm_spatial_order = fvm_spatial_order
-        self.fvm_num_quadrature_points = fvm_num_quadrature_points
-
-        self.reconstruction_type = reconstruction_type
-        self.interface_interpolation = interface_interpolation
-
-        self.fluid = fluid
-
-        self.use_JIT = use_JIT
-        self.profile = profile
-        self.realplot = realplot
-        self.plot_every = plot_every
-        self.plot_function = plot_function
-
-        self.write_solution = write_solution
-        self.write_solution_mode = write_solution_mode
-        self.write_solution_name = write_solution_name
-        self.write_every_n_timesteps = write_every_n_timesteps
-
-        self.mesh = None
-        self.set_mesh_config(mesh)
-
-    def __str__(self):
-        return "".join(f"\t{atr}: {getattr(self, atr)}\n" for atr in self.__slots__)
-
-    def set_mesh_config(self, mesh: Union[MeshGenerator, dict] = None) -> None:
-        mesh_info = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
-        self.mesh = {
-            blk_num: BlockDescription(
-                nx=self.nx,
-                ny=self.ny,
-                blk_input=blk_data,
-                nghost=self.nghost,
-            )
-            for (blk_num, blk_data) in mesh_info.items()
-        }
 
 
 class Solver:
     def __init__(
         self,
         config: SolverConfig,
+        mesh_config: Union[MeshGenerator, dict],
     ) -> None:
 
         print(execution_prints.PYHYPE)
@@ -169,6 +52,8 @@ class Solver:
         )
 
         self.config = config
+        self.mesh_config = self.get_mesh_config(mesh_config)
+
         self.fluid = config.fluid
         self.cmap = LinearSegmentedColormap.from_list(
             "my_map", ["royalblue", "midnightblue", "black"]
@@ -184,6 +69,18 @@ class Solver:
         self.realfig, self.realplot = None, None
         self.plot = None
         self._blocks = None
+
+    def get_mesh_config(self, mesh: Union[MeshGenerator, dict]):
+        mesh_info = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
+        return {
+            blk_num: BlockDescription(
+                nx=self.config.nx,
+                ny=self.config.ny,
+                blk_input=blk_data,
+                nghost=self.config.nghost,
+            )
+            for (blk_num, blk_data) in mesh_info.items()
+        }
 
     @abstractmethod
     def apply_initial_condition(self):
@@ -282,7 +179,7 @@ class Solver:
         plt.ion()
         self.realfig, self.realplot = plt.subplots(1)
 
-        blks = self.config.mesh.values()
+        blks = self.mesh_config.values()
 
         sw_x = min([blk.geometry.vertices.SW[0] for blk in blks])
         nw_x = min([blk.geometry.vertices.NW[0] for blk in blks])

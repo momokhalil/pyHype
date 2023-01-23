@@ -17,7 +17,6 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import functools
 from abc import abstractmethod, ABC
 from typing import TYPE_CHECKING, Callable, Union, Type
 
@@ -29,11 +28,11 @@ from pyhype.utils.utils import (
     CornerPropertyContainer,
     FullPropertyContainer,
 )
+from pyhype.blocks import quad_block as qb
 from pyhype.flux import FluxFunctionFactory
+from pyhype.gradients import GradientFactory
 from pyhype.limiters import SlopeLimiterFactory
 from pyhype.fvm import FiniteVolumeMethodFactory
-from pyhype.gradients import GradientFactory
-from pyhype.blocks import quad_block as qb
 from pyhype.states import PrimitiveState, ConservativeState
 
 if TYPE_CHECKING:
@@ -417,8 +416,13 @@ class Blocks:
     for this collection of blocks.
     """
 
-    def __init__(self, config) -> None:
+    def __init__(
+        self,
+        config: SolverConfig,
+        mesh_config: dict,
+    ) -> None:
         self.config = config
+        self.mesh_config = mesh_config
         self.num_BLK = None
         self.blocks = {}
         self.cpu = None
@@ -471,12 +475,17 @@ class Blocks:
 
         :return: None
         """
-        self.num_BLK = len(self.config.mesh)
-        for blk_data in self.config.mesh.values():
-            self.add(qb.QuadBlock(self.config, blk_data))
+        self.num_BLK = len(self.mesh_config)
+        for blk_data in self.mesh_config.values():
+            self.add(
+                qb.QuadBlock(
+                    self.config,
+                    block_data=blk_data,
+                )
+            )
 
         for block in self.blocks.values():
-            neighbors = self.config.mesh[block.global_nBLK].neighbors
+            neighbors = self.mesh_config[block.global_nBLK].neighbors
             block.connect(
                 NeighborE=self.blocks[neighbors.E] if neighbors.E is not None else None,
                 NeighborW=self.blocks[neighbors.W] if neighbors.W is not None else None,
@@ -646,22 +655,11 @@ class BaseBlockFVM(BaseBlockGrad):
     ):
         super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
 
-        flux = FluxFunctionFactory.get(
-            config=config, type=self.config.fvm_flux_function_type
-        )
-        gradient = GradientFactory.get(
-            config=config, type=self.config.fvm_gradient_type
-        )
-        limiter = SlopeLimiterFactory.get(
-            config=config, type=config.fvm_slope_limiter_type
-        )
         self.fvm = FiniteVolumeMethodFactory.create(
             config=config,
-            type=config.fvm_type,
-            order=config.fvm_spatial_order,
-            flux=flux,
-            limiter=limiter,
-            gradient=gradient,
+            flux=FluxFunctionFactory.create(config=config),
+            limiter=SlopeLimiterFactory.create(config=config),
+            gradient=GradientFactory.create(config=config),
         )
 
     def unlimited_reconstruction_at_location(

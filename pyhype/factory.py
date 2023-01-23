@@ -16,7 +16,6 @@ limitations under the License.
 from __future__ import annotations
 
 from abc import ABC
-from functools import partial
 
 from typing import TYPE_CHECKING
 
@@ -26,21 +25,11 @@ if TYPE_CHECKING:
 
 class Factory(ABC):
     @classmethod
-    def create(cls, type: str, **kwargs):
+    def create(cls, config: SolverConfig, **kwargs):
         """
         Creates a concrete object of type SolverComponent.
 
-        :type type: str
-        :param type: Type of object to be created
+        :type config: SolverConfig
+        :param config: Solver configuration that contains all user-defined params
         """
         raise NotImplementedError("Calling a base class create()")
-
-    @classmethod
-    def get(cls, **kwargs) -> Factory.create:
-        """
-        Returns a partially initialized Factory.create method with the passed in kwargs.
-
-        :return: Partially initialized creator function to pass into classes that
-        need to create objects of this class
-        """
-        return partial(cls.create, **kwargs)

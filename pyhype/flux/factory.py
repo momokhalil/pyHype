@@ -30,17 +30,19 @@ if TYPE_CHECKING:
 
 class FluxFunctionFactory(Factory):
     @classmethod
-    def create(cls, config: SolverConfig, type: str = "Roe", **kwargs) -> FluxFunction:
-        if type == "Roe":
+    def create(cls, config: SolverConfig, **kwargs) -> [FluxFunction]:
+        if config.fvm_flux_function_type == "Roe":
             flux_func_x = FluxRoe(config, size=config.nx, sweeps=config.ny)
             flux_func_y = FluxRoe(config, size=config.ny, sweeps=config.nx)
             return flux_func_x, flux_func_y
-        if type == "HLLE":
+        if config.fvm_flux_function_type == "HLLE":
             flux_func_x = FluxHLLE(config, nx=config.nx, ny=config.ny)
             flux_func_y = FluxHLLE(config, nx=config.ny, ny=config.nx)
             return flux_func_x, flux_func_y
-        if type == "HLLL":
+        if config.fvm_flux_function_type == "HLLL":
             flux_func_x = FluxHLLL(config, nx=config.nx, ny=config.ny)
             flux_func_y = FluxHLLL(config, nx=config.ny, ny=config.nx)
             return flux_func_x, flux_func_y
-        raise ValueError(f"Flux function type {type} is not available.")
+        raise ValueError(
+            f"Flux function type {config.fvm_flux_function_type} is not available."
+        )
