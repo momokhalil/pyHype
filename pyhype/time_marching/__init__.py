@@ -14,3 +14,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from .explicit_runge_kutta import ExplicitRungeKutta
+from pyhype.time_marching.factory import TimeIntegratorFactory

@@ -25,15 +25,19 @@ if TYPE_CHECKING:
     from pyhype.fvm.base import FiniteVolumeMethod
     from pyhype.solvers.base import SolverConfig
 
+    from pyhype.flux.base import FluxFunction
+    from pyhype.limiters.base import SlopeLimiter
+    from pyhype.gradients.base import Gradient
+
 
 class FiniteVolumeMethodFactory(Factory):
     @classmethod
     def create(
         cls,
         config: SolverConfig,
-        flux: Factory.create,
-        limiter: Factory.create,
-        gradient: Factory.create,
+        flux: FluxFunction,
+        limiter: SlopeLimiter,
+        gradient: Gradient,
     ) -> FiniteVolumeMethod:
         if config.fvm_type == "MUSCL":
             if config.fvm_spatial_order == 1:

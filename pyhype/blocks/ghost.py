@@ -31,7 +31,6 @@ from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
 
 
 if TYPE_CHECKING:
-    from pyhype.factory import Factory
     from pyhype.states.base import State
     from pyhype.blocks.base import QuadBlock
     from pyhype.solvers.base import SolverConfig
@@ -45,7 +44,6 @@ class GhostBlocks:
         block_data: BlockDescription,
         refBLK: QuadBlock,
         state_type: Type[State],
-        fvm: Factory.create,
     ) -> None:
         """
         A class designed to hold references to each Block's ghost blocks.
@@ -61,28 +59,24 @@ class GhostBlocks:
             BCtype=block_data.bc.E,
             refBLK=refBLK,
             state_type=state_type,
-            fvm=fvm,
         )
         self.W = GhostBlockWest(
             config,
             BCtype=block_data.bc.W,
             refBLK=refBLK,
             state_type=state_type,
-            fvm=fvm,
         )
         self.N = GhostBlockNorth(
             config,
             BCtype=block_data.bc.N,
             refBLK=refBLK,
             state_type=state_type,
-            fvm=fvm,
         )
         self.S = GhostBlockSouth(
             config,
             BCtype=block_data.bc.S,
             refBLK=refBLK,
             state_type=state_type,
-            fvm=fvm,
         )
 
     def __call__(self):
@@ -102,7 +96,6 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
         BCtype: Union[str, Callable],
         refBLK: QuadBlock,
         state_type: Type[State],
-        fvm: Factory.create,
         mesh: QuadMesh = None,
         qp: QuadraturePointData = None,
     ):
@@ -130,7 +123,7 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
                 + str(self.BCtype)
                 + " has not been specialized."
             )
-        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type, fvm=fvm)
+        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
 
     def __getitem__(self, index):
         return self.state.data[index]
@@ -192,7 +185,6 @@ class GhostBlockEast(GhostBlock):
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
-        fvm: Factory.create,
     ) -> None:
 
         # Calculate coordinates of all four vertices
@@ -235,7 +227,6 @@ class GhostBlockEast(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            fvm=fvm,
         )
 
     def _get_ghost_state_from_ref_blk(self):
@@ -295,7 +286,6 @@ class GhostBlockWest(GhostBlock):
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
-        fvm: Factory.create,
     ):
         # Calculate coordinates of all four vertices
         NEx = refBLK.mesh.nodes.x[-1, 0]
@@ -340,7 +330,6 @@ class GhostBlockWest(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            fvm=fvm,
         )
 
     def _get_ghost_state_from_ref_blk(self):
@@ -400,7 +389,6 @@ class GhostBlockNorth(GhostBlock):
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
-        fvm: Factory.create,
     ):
         # Calculate coordinates of all four vertices
         SWx = refBLK.mesh.nodes.x[-1, 0]
@@ -445,7 +433,6 @@ class GhostBlockNorth(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            fvm=fvm,
         )
 
     def _get_ghost_state_from_ref_blk(self):
@@ -505,7 +492,6 @@ class GhostBlockSouth(GhostBlock):
         BCtype: str,
         refBLK: QuadBlock,
         state_type: Type[State],
-        fvm: Factory.create,
     ) -> None:
         # Calculate coordinates of all four vertices
         NWx = refBLK.mesh.nodes.x[0, 0]
@@ -550,7 +536,6 @@ class GhostBlockSouth(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            fvm=fvm,
         )
 
     def _get_ghost_state_from_ref_blk(self):

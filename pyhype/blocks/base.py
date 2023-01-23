@@ -17,7 +17,6 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import functools
 from abc import abstractmethod, ABC
 from typing import TYPE_CHECKING, Callable, Union, Type
 
@@ -29,9 +28,11 @@ from pyhype.utils.utils import (
     CornerPropertyContainer,
     FullPropertyContainer,
 )
-from pyhype.factory import Factory
-from pyhype.gradients import GradientFactory
 from pyhype.blocks import quad_block as qb
+from pyhype.flux import FluxFunctionFactory
+from pyhype.gradients import GradientFactory
+from pyhype.limiters import SlopeLimiterFactory
+from pyhype.fvm import FiniteVolumeMethodFactory
 from pyhype.states import PrimitiveState, ConservativeState
 
 if TYPE_CHECKING:
@@ -416,7 +417,9 @@ class Blocks:
     """
 
     def __init__(
-        self, config: SolverConfig, mesh_config: MeshConfig, fvm: Factory.create
+        self,
+        config: SolverConfig,
+        mesh_config: dict,
     ) -> None:
         self.config = config
         self.mesh_config = mesh_config
@@ -424,7 +427,7 @@ class Blocks:
         self.blocks = {}
         self.cpu = None
 
-        self.build(fvm=fvm)
+        self.build()
 
     def __getitem__(self, blknum: int) -> QuadBlock:
         """
@@ -466,7 +469,7 @@ class Blocks:
         for block in self.blocks.values():
             block.apply_boundary_condition()
 
-    def build(self, fvm: Factory.create) -> None:
+    def build(self) -> None:
         """
         Builds the SolutionBlocks contained in this Blocks collection.
 
@@ -474,7 +477,12 @@ class Blocks:
         """
         self.num_BLK = len(self.mesh_config)
         for blk_data in self.mesh_config.values():
-            self.add(qb.QuadBlock(self.config, block_data=blk_data, fvm=fvm))
+            self.add(
+                qb.QuadBlock(
+                    self.config,
+                    block_data=blk_data,
+                )
+            )
 
         for block in self.blocks.values():
             neighbors = self.mesh_config[block.global_nBLK].neighbors
@@ -644,11 +652,15 @@ class BaseBlockFVM(BaseBlockGrad):
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
-        fvm: Factory.create,
     ):
         super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
 
-        self.fvm = fvm()
+        self.fvm = FiniteVolumeMethodFactory.create(
+            config=config,
+            flux=FluxFunctionFactory.create(config=config),
+            limiter=SlopeLimiterFactory.create(config=config),
+            gradient=GradientFactory.create(config=config),
+        )
 
     def unlimited_reconstruction_at_location(
         self,

@@ -42,17 +42,15 @@ class Euler2D(Solver):
         self,
         config: SolverConfig,
         mesh_config: Union[MeshGenerator, dict],
-        fvm: Factory.create,
     ) -> None:
-
-        # --------------------------------------------------------------------------------------------------------------
-        # Store mesh features required to create block descriptions
 
         super().__init__(config=config, mesh_config=mesh_config)
 
-        # Create Blocks
         print("\t>>> Building solution blocks")
-        self._blocks = Blocks(config=self.config, mesh_config=self.mesh_config, fvm=fvm)
+        self._blocks = Blocks(
+            config=self.config,
+            mesh_config=self.mesh_config,
+        )
 
         print("\n\tSolver Details:\n")
         print(self)

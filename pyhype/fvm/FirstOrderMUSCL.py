@@ -23,7 +23,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyhype.blocks.base import QuadBlock
-    from pyhype.mesh.base import CellFace
+    from pyhype.flux.base import FluxFunction
+    from pyhype.limiters.base import SlopeLimiter
+    from pyhype.gradients.base import Gradient
+    from pyhype.solver_config import SolverConfig
 
 import numpy as np
 from pyhype.fvm.base import MUSCL
@@ -33,7 +36,13 @@ np.set_printoptions(precision=3)
 
 
 class FirstOrderMUSCL(MUSCL):
-    def __init__(self, config, limiter, flux, gradient):
+    def __init__(
+        self,
+        config: SolverConfig,
+        flux: FluxFunction,
+        limiter: SlopeLimiter,
+        gradient: Gradient,
+    ):
         if config.nghost != 1:
             raise ValueError(
                 "Number of ghost cells must be equal to 1 for this method."
