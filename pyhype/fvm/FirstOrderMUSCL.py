@@ -19,14 +19,18 @@ import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
+from pyhype.utils.utils import NumpySlice
 
 if TYPE_CHECKING:
+    from pyhype.states.base import State
     from pyhype.blocks.base import QuadBlock
     from pyhype.flux.base import FluxFunction
+    from pyhype.blocks.base import BaseBlockFVM
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
     from pyhype.solver_config import SolverConfig
+    from pyhype.mesh.quadratures import QuadraturePoint
 
 import numpy as np
 from pyhype.fvm.base import MUSCL
@@ -49,10 +53,21 @@ class FirstOrderMUSCL(MUSCL):
             )
         super().__init__(config, limiter, flux, gradient)
 
-    @staticmethod
-    def reconstruct_state(
-        refBLK: QuadBlock,
-    ) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def compute_limiter(self, refBLK: QuadBlock) -> [np.ndarray]:
+        """
+        No limiting in first order
+
+        :param refBLK: Parent block
+        :return: None
+        """
+        pass
+
+    def unlimited_solution_at_quadrature_point(
+        self,
+        refBLK: BaseBlockFVM,
+        qp: QuadraturePoint,
+        slicer: Union[slice, tuple, int] = NumpySlice.all(),
+    ) -> [np.ndarray]:
         """
         Returns the cell average values at each quadrature point on all cell faces.
 
@@ -73,3 +88,31 @@ class FirstOrderMUSCL(MUSCL):
         stateS = [refBLK.state.data.copy() for _ in refBLK.qp.S]
 
         return stateE, stateW, stateN, stateS
+
+    def limited_solution_at_quadrature_point(
+        self,
+        refBLK: BaseBlockFVM,
+        qp: QuadraturePoint,
+        slicer: Union[slice, tuple, int] = NumpySlice.all(),
+    ) -> [np.ndarray]:
+        """
+        No limiting or high order terms in a first order MUSCL method,
+        simply return the unlimited solution at the quadrature point.
+
+        :type refBLK: QuadBlock
+        :param refBLK: Reference block containing mesh geometry data and gradients
+
+        :type qp: QuadBlock
+        :param qp: Quadrature point geometry
+
+        :type slicer: slice or int or tuple
+        :param slicer: Numpy array slice object (which is actually a tuple)
+
+        :rtype: [np.ndarray]
+        :return: Unlimited solution at the quadrature point
+        """
+        return self.unlimited_solution_at_quadrature_point(
+            refBLK=refBLK,
+            qp=qp,
+            slicer=slicer,
+        )

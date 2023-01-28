@@ -15,8 +15,8 @@ limitations under the License.
 """
 from __future__ import annotations
 
-from abc import abstractmethod
-from typing import TYPE_CHECKING
+from abc import abstractmethod, ABC
+from typing import Union, TYPE_CHECKING
 import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
@@ -27,27 +27,141 @@ import numpy as np
 np.set_printoptions(formatter={"float": "{: 0.3f}".format})
 
 import pyhype.utils.utils as utils
+from pyhype.utils.utils import NumpySlice
 from pyhype.utils.utils import SidePropertyContainer
 from pyhype.states.primitive import PrimitiveState
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
     from pyhype.blocks.quad_block import QuadBlock
-    from pyhype.blocks.base import SolutionGradients
+    from pyhype.blocks.base import BaseBlockFVM
     from pyhype.mesh.quadratures import QuadraturePoint
     from pyhype.flux.base import FluxFunction
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
 
 
-class FiniteVolumeMethod:
-    # TODO: Move relevant functions here
-    pass
+class FiniteVolumeMethod(ABC):
+    east_face_slice = NumpySlice.east_face()
+    west_face_slice = NumpySlice.west_face()
+    north_face_slice = NumpySlice.north_face()
+    south_face_slice = NumpySlice.south_face()
+    east_boundary_slice = NumpySlice.east_boundary()
+    west_boundary_slice = NumpySlice.west_boundary()
+    north_boundary_slice = NumpySlice.north_boundary()
+    south_boundary_slice = NumpySlice.south_boundary()
+
+    def __init__(
+        self,
+        config,
+        flux: [FluxFunction],
+    ):
+        self.config = config
+        self.flux_function_x, self.flux_function_y = flux
+
+    @abstractmethod
+    def compute_limiter(self, refBLK: QuadBlock) -> [np.ndarray]:
+        """
+        Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def limited_solution_at_quadrature_point(
+        self,
+        refBLK: BaseBlockFVM,
+        qp: QuadraturePoint,
+        slicer: Union[slice, tuple, int] = NumpySlice.all(),
+    ) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def unlimited_solution_at_quadrature_point(
+        self,
+        refBLK: BaseBlockFVM,
+        qp: QuadraturePoint,
+        slicer: Union[slice, tuple, int] = NumpySlice.all(),
+    ) -> np.ndarray:
+        raise NotImplementedError
+
+    def dUdt(self, refBLK: QuadBlock):
+        """
+        Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
+        applying the semi-discrete Godunov method:
+
+        dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
+        """
+        refBLK.reconBlk.from_block(refBLK)
+        refBLK.reconBlk.fvm.evaluate_flux(refBLK.reconBlk)
+        fluxE = self.integrate_flux(
+            face_length=refBLK.mesh.face.E.L,
+            quadrature_points=refBLK.reconBlk.qp.E,
+            fluxes=refBLK.reconBlk.fvm.Flux.E,
+        )
+        fluxW = self.integrate_flux(
+            face_length=refBLK.mesh.face.W.L,
+            quadrature_points=refBLK.reconBlk.qp.W,
+            fluxes=refBLK.reconBlk.fvm.Flux.W,
+        )
+        fluxN = self.integrate_flux(
+            face_length=refBLK.mesh.face.N.L,
+            quadrature_points=refBLK.reconBlk.qp.N,
+            fluxes=refBLK.reconBlk.fvm.Flux.N,
+        )
+        fluxS = self.integrate_flux(
+            face_length=refBLK.mesh.face.S.L,
+            quadrature_points=refBLK.reconBlk.qp.S,
+            fluxes=refBLK.reconBlk.fvm.Flux.S,
+        )
+        if self.config.use_JIT:
+            return self._dUdt_JIT(fluxE, fluxW, fluxN, fluxS, refBLK.mesh.A)
+        return (fluxW - fluxE + fluxS - fluxN) / refBLK.mesh.A
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _dUdt_JIT(fluxE, fluxW, fluxN, fluxS, A):
+        dUdt = np.zeros_like(fluxE)
+        for i in range(fluxE.shape[0]):
+            for j in range(fluxE.shape[1]):
+                a = A[i, j, 0]
+                for k in range(fluxE.shape[2]):
+                    dUdt[i, j, k] = (
+                        fluxW[i, j, k]
+                        - fluxE[i, j, k]
+                        + fluxS[i, j, k]
+                        - fluxN[i, j, k]
+                    ) / a
+        return dUdt
+
+    @staticmethod
+    def integrate_flux(
+        face_length: np.ndarray,
+        quadrature_points: tuple[QuadraturePoint],
+        fluxes: tuple[np.ndarray],
+    ) -> np.ndarray:
+        """
+        Integrates the fluxes using an n-point gauss gradrature rule.
+
+        :type face_length: np.ndarray
+        :param face_length: Reference block with flux data for integration
+
+        :type quadrature_points: tuple[QuadraturePoint]
+        :param quadrature_points: tuple of quadrature point objects
+
+        :type fluxes: tuple[np.ndarray]
+        :param fluxes: tuple of fluxes for each quadrature point
+
+        :rtype: np.ndarray
+        :return: South face integrated fluxes
+        """
+        return (
+            0.5
+            * face_length
+            * sum((qp.w * qpflux for (qp, qpflux) in zip(quadrature_points, fluxes)))
+        )
 
 
-class MUSCL(FiniteVolumeMethod):
-    ALL_IDX = np.s_[:, :, :]
-
+class MUSCL(FiniteVolumeMethod, ABC):
     def __init__(
         self,
         config,
@@ -56,6 +170,8 @@ class MUSCL(FiniteVolumeMethod):
         gradient: Gradient,
     ) -> None:
         """
+        Monotonic Upstream-centered Scheme for Conservation Laws.
+
         Solves the euler equations using a MUSCL-type finite volume scheme.
 
         TODO:
@@ -93,179 +209,29 @@ class MUSCL(FiniteVolumeMethod):
                           . . .
         ... to be continued.
         """
-        self.config = config
+        super().__init__(config=config, flux=flux)
 
         # Flux storage arrays
         self.Flux = SidePropertyContainer(
-            E=tuple(
+            E=list(
                 np.empty((self.config.ny, self.config.nx, 4))
                 for _ in range(self.config.fvm_num_quadrature_points)
             ),
-            W=tuple(
+            W=list(
                 np.empty((self.config.ny, self.config.nx, 4))
                 for _ in range(self.config.fvm_num_quadrature_points)
             ),
-            N=tuple(
+            N=list(
                 np.empty((self.config.ny, self.config.nx, 4))
                 for _ in range(self.config.fvm_num_quadrature_points)
             ),
-            S=tuple(
+            S=list(
                 np.empty((self.config.ny, self.config.nx, 4))
                 for _ in range(self.config.fvm_num_quadrature_points)
             ),
         )
-        self.flux_function_x, self.flux_function_y = flux
         self.limiter = limiter
         self.gradient = gradient
-
-    def reconstruct(self, refBLK: QuadBlock) -> None:
-        """
-        This method performs the steps needed to complete the spatial reconstruction of the solution state, which is
-        part of the spatial discretization required to solve the finite volume problem. The reconstruction process has
-        three key components:
-          1) Transformation of the state solution into the correct reconstruction basis.
-          2) Computation of the gradients
-          3) Computation of the slope limiter to ensure monotonicity
-
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block to reconstruct
-
-        :rtype: None
-        :return: None
-        """
-        refBLK.reconBlk.from_block(refBLK)
-        self.gradient(refBLK)
-        self.compute_limiter(refBLK)
-
-    @abstractmethod
-    def compute_limiter(self, refBLK: QuadBlock) -> [np.ndarray]:
-        """
-        Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
-        """
-        raise NotImplementedError
-
-    def integrate_flux_E(self, refBLK: QuadBlock) -> np.ndarray:
-        """
-        Integrates the east face fluxes using an n-point gauss gradrature rule.
-
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block with flux data for integration
-
-        :rtype: np.ndarray
-        :return: East face integrated fluxes
-        """
-        return (
-            0.5
-            * refBLK.mesh.face.E.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.E, self.Flux.E)))
-        )
-
-    def integrate_flux_W(self, refBLK: QuadBlock) -> np.ndarray:
-        """
-        Integrates the west face fluxes using an n-point gauss gradrature rule.
-
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block with flux data for integration
-
-        :rtype: np.ndarray
-        :return: West face integrated fluxes
-        """
-        return (
-            0.5
-            * refBLK.mesh.face.W.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.W, self.Flux.W)))
-        )
-
-    def integrate_flux_N(self, refBLK: QuadBlock) -> np.ndarray:
-        """
-        Integrates the north face fluxes using an n-point gauss gradrature rule.
-
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block with flux data for integration
-
-        :rtype: np.ndarray
-        :return: North face integrated fluxes
-        """
-        return (
-            0.5
-            * refBLK.mesh.face.N.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.N, self.Flux.N)))
-        )
-
-    def integrate_flux_S(self, refBLK: QuadBlock) -> np.ndarray:
-        """
-        Integrates the south face fluxes using an n-point gauss gradrature rule.
-
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block with flux data for integration
-
-        :rtype: np.ndarray
-        :return: South face integrated fluxes
-        """
-        return (
-            0.5
-            * refBLK.mesh.face.S.L
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(refBLK.qp.S, self.Flux.S)))
-        )
-
-    @staticmethod
-    @abstractmethod
-    def high_order_term(
-        refBLK: QuadBlock, qp: QuadraturePoint, slicer: slice or tuple or int = None
-    ) -> np.ndarray:
-        raise NotImplementedError
-
-    @abstractmethod
-    def limited_solution_at_quadrature_point(
-        self,
-        state: State,
-        gradients: SolutionGradients,
-        qp: QuadraturePoint,
-        slicer: slice or tuple or int = None,
-    ) -> np.ndarray:
-        raise NotImplementedError
-
-    @abstractmethod
-    def unlimited_solution_at_quadrature_point(
-        self,
-        state: State,
-        gradients: SolutionGradients,
-        qp: QuadraturePoint,
-        slicer: slice or tuple or int = None,
-    ) -> np.ndarray:
-        raise NotImplementedError
-
-    def dUdt(self, refBLK: QuadBlock):
-        """
-        Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
-        applying the semi-discrete Godunov method:
-
-        dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
-        """
-        self.evaluate_flux(refBLK)
-        fluxE = self.integrate_flux_E(refBLK)
-        fluxW = self.integrate_flux_W(refBLK)
-        fluxN = self.integrate_flux_N(refBLK)
-        fluxS = self.integrate_flux_S(refBLK)
-        if self.config.use_JIT:
-            return self._dUdt_JIT(fluxE, fluxW, fluxN, fluxS, refBLK.mesh.A)
-        return (fluxW - fluxE + fluxS - fluxN) / refBLK.mesh.A
-
-    @staticmethod
-    @nb.njit(cache=True)
-    def _dUdt_JIT(fluxE, fluxW, fluxN, fluxS, A):
-        dUdt = np.zeros_like(fluxE)
-        for i in range(fluxE.shape[0]):
-            for j in range(fluxE.shape[1]):
-                a = A[i, j, 0]
-                for k in range(fluxE.shape[2]):
-                    dUdt[i, j, k] = (
-                        fluxW[i, j, k]
-                        - fluxE[i, j, k]
-                        + fluxS[i, j, k]
-                        - fluxN[i, j, k]
-                    ) / a
-        return dUdt
 
     def _get_LR_states_for_flux_calc(
         self,
@@ -335,24 +301,53 @@ class MUSCL(FiniteVolumeMethod):
         :return: None
         """
         bndE = (
-            refBLK.reconBlk.get_east_boundary_states_at_qp()
+            (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK,
+                    slicer=self.east_boundary_slice,
+                )
+                for qe in refBLK.qp.E
+            )
             if refBLK.ghost.E.BCtype is not None
-            else refBLK.reconBlk.ghost.E.get_west_boundary_states_at_qp()
+            else (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.E,
+                    slicer=self.west_boundary_slice,
+                )
+                for qe in refBLK.ghost.E.qp.E
+            )
         )
+
         bndW = (
-            refBLK.reconBlk.get_west_boundary_states_at_qp()
+            (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK,
+                    slicer=self.west_boundary_slice,
+                )
+                for qe in refBLK.qp.E
+            )
             if refBLK.ghost.W.BCtype is not None
-            else refBLK.reconBlk.ghost.W.get_east_boundary_states_at_qp()
+            else (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.W,
+                    slicer=self.east_boundary_slice,
+                )
+                for qe in refBLK.ghost.W.qp.W
+            )
         )
 
         for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(
             refBLK.qp.E, refBLK.qp.W, bndE, bndW, self.Flux.E, self.Flux.W
         ):
             _stateE = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qe
+                refBLK=refBLK, qp=qe,
             )
             _stateW = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qw
+                refBLK=refBLK, qp=qw,
             )
             refBLK.ghost.E.apply_boundary_condition(_bndE)
             refBLK.ghost.W.apply_boundary_condition(_bndW)
@@ -392,24 +387,53 @@ class MUSCL(FiniteVolumeMethod):
         :return: None
         """
         bndN = (
-            refBLK.reconBlk.get_north_boundary_states_at_qp()
+            (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK,
+                    slicer=self.north_boundary_slice,
+                )
+                for qe in refBLK.qp.N
+            )
             if refBLK.ghost.N.BCtype is not None
-            else refBLK.reconBlk.ghost.N.get_south_boundary_states_at_qp()
+            else (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.N,
+                    slicer=self.south_boundary_slice,
+                )
+                for qe in refBLK.ghost.N.qp.N
+            )
         )
+
         bndS = (
-            refBLK.reconBlk.get_south_boundary_states_at_qp()
+            (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK,
+                    slicer=self.south_boundary_slice,
+                )
+                for qe in refBLK.qp.S
+            )
             if refBLK.ghost.S.BCtype is not None
-            else refBLK.reconBlk.ghost.S.get_north_boundary_states_at_qp()
+            else (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.S,
+                    slicer=self.north_boundary_slice,
+                )
+                for qe in refBLK.ghost.S.qp.S
+            )
         )
 
         for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(
             refBLK.qp.N, refBLK.qp.S, bndN, bndS, self.Flux.N, self.Flux.S
         ):
             _stateN = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qn
+                refBLK=refBLK, qp=qn,
             )
             _stateS = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qs
+                refBLK=refBLK, qp=qs,
             )
             refBLK.ghost.N.apply_boundary_condition(_bndN)
             refBLK.ghost.S.apply_boundary_condition(_bndS)
@@ -456,6 +480,7 @@ class MUSCL(FiniteVolumeMethod):
         :return: None
         """
 
-        self.reconstruct(refBLK)
+        self.gradient.compute(refBLK)
+        self.compute_limiter(refBLK)
         self.evaluate_flux_EW(refBLK)
         self.evaluate_flux_NS(refBLK)

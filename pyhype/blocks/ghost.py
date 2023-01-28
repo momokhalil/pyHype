@@ -21,7 +21,6 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 from abc import abstractmethod
 from pyhype.utils import utils
-from pyhype.blocks.base import BlockMixin
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.mesh import quadratures as quadratures
 from typing import TYPE_CHECKING, Type, Callable, Union
@@ -89,7 +88,7 @@ class GhostBlocks:
         self.S.state.clear_cache()
 
 
-class GhostBlock(BaseBlockFVM, BoundaryConditionMixin, BlockMixin):
+class GhostBlock(BaseBlockFVM, BoundaryConditionMixin):
     def __init__(
         self,
         config: SolverConfig,

@@ -34,7 +34,7 @@ class SlopeLimiter:
         self.config = config
         self.phi = np.zeros((config.ny, config.nx, 4))
 
-    def __call__(
+    def limit(
         self,
         refBLK: QuadBlock,
         gqpE: np.ndarray,

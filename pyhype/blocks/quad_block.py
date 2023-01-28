@@ -32,7 +32,6 @@ from pyhype.blocks.base import Neighbors, BaseBlockFVM, BlockDescription
 from pyhype.time_marching.factory import TimeIntegratorFactory
 
 if TYPE_CHECKING:
-    from pyhype.factory import Factory
     from pyhype.states.base import State
     from pyhype.solvers.base import SolverConfig
     from pyhype.mesh.quadratures import QuadraturePointData
@@ -86,6 +85,27 @@ class BaseBlockGhost(BaseBlockFVM):
         self.WEST_GHOST_IDX = NumpySlice.cols(None, self.config.nghost)
         self.NORTH_GHOST_IDX = NumpySlice.rows(-self.config.nghost, None)
         self.SOUTH_GHOST_IDX = NumpySlice.rows(None, self.config.nghost)
+
+        self.is_cartesian = self._is_cartesian()
+
+    def _is_cartesian(self) -> bool:
+        """
+        Return boolen value that indicates if the block is alligned with the cartesian axes.
+
+        Parameters:
+            - None
+
+        Return:
+            - is_cartesian (bool): Boolean that is True if the block is cartesian and False if it isnt
+        """
+
+        is_cartesian = (
+            (self.mesh.vertices.NE[1] == self.mesh.vertices.NW[1])
+            and (self.mesh.vertices.SE[1] == self.mesh.vertices.SW[1])
+            and (self.mesh.vertices.SE[0] == self.mesh.vertices.NE[0])
+            and (self.mesh.vertices.SW[0] == self.mesh.vertices.NW[0])
+        )
+        return is_cartesian
 
     def from_block(self, from_block: BaseBlockGhost) -> None:
         """
@@ -200,26 +220,6 @@ class QuadBlock(BaseBlockGhost):
             mesh=mesh,
         )
         self._time_integrator = TimeIntegratorFactory.create(config=config)
-        self.is_cartesian = self._is_cartesian()
-
-    def _is_cartesian(self) -> bool:
-        """
-        Return boolen value that indicates if the block is alligned with the cartesian axes.
-
-        Parameters:
-            - None
-
-        Return:
-            - is_cartesian (bool): Boolean that is True if the block is cartesian and False if it isnt
-        """
-
-        is_cartesian = (
-            (self.mesh.vertices.NE[1] == self.mesh.vertices.NW[1])
-            and (self.mesh.vertices.SE[1] == self.mesh.vertices.SW[1])
-            and (self.mesh.vertices.SE[0] == self.mesh.vertices.NE[0])
-            and (self.mesh.vertices.SW[0] == self.mesh.vertices.NW[0])
-        )
-        return is_cartesian
 
     @property
     def reconstruction_type(self):
@@ -342,58 +342,6 @@ class QuadBlock(BaseBlockGhost):
 
             # Close plot
             plt.close()
-
-    @property
-    def Flux_E(self):
-        """
-        Returns the flux arrays for the east face. Retrieves the arrays from the finite-volume-method class.
-
-        Parameters:
-            - None
-
-        Return:
-            - (np.ndarray): Numpy array containing the flux values for the east face.
-        """
-        return self.fvm.Flux.E
-
-    @property
-    def Flux_W(self):
-        """
-        Returns the flux arrays for the west face. Retrieves the arrays from the finite-volume-method class.
-
-        Parameters:
-            - None
-
-        Return:
-            - (np.ndarray): Numpy array containing the flux values for the west face.
-        """
-        return self.fvm.Flux.W
-
-    @property
-    def Flux_N(self):
-        """
-        Returns the flux arrays for the north face. Retrieves the arrays from the finite-volume-method class.
-
-        Parameters:
-            - None
-
-        Return:
-            - (np.ndarray): Numpy array containing the flux values for the north face.
-        """
-        return self.fvm.Flux.N
-
-    @property
-    def Flux_S(self):
-        """
-        Returns the flux arrays for the south face. Retrieves the arrays from the finite-volume-method class.
-
-        Parameters:
-            - None
-
-        Return:
-            - (np.ndarray): Numpy array containing the flux values for the south face.
-        """
-        return self.fvm.Flux.S
 
     def __getitem__(self, index):
 

@@ -23,8 +23,9 @@ import numpy as np
 
 np.set_printoptions(precision=3)
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 from pyhype.fvm.base import MUSCL
+from pyhype.utils.utils import NumpySlice
 
 if TYPE_CHECKING:
     from pyhype.mesh.quadratures import QuadraturePoint
@@ -54,7 +55,7 @@ class SecondOrderMUSCL(MUSCL):
     def high_order_term(
         refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
-        slicer: slice or tuple or int = MUSCL.ALL_IDX,
+        slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> np.ndarray:
         """
         Compute the high order term used for the state reconstruction at the quadrature point on a specified face.
@@ -77,17 +78,13 @@ class SecondOrderMUSCL(MUSCL):
 
     def unlimited_solution_at_quadrature_point(
         self,
-        state: State,
         refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
-        slicer: slice or tuple or int = MUSCL.ALL_IDX,
+        slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> np.ndarray:
         """
         Returns the unlimited reconstructed solution at a specific quadrature point based on the given solution state
         and mesh geometry from a reference block.
-
-        :type state: State
-        :param state: Solution state
 
         :type refBLK: QuadBlock
         :param refBLK: Reference block containing mesh geometry data and gradients
@@ -101,21 +98,17 @@ class SecondOrderMUSCL(MUSCL):
         :rtype: np.ndarray
         :return: Unlimited reconstructed solution at the quadrature point
         """
-        return state[slicer] + self.high_order_term(refBLK, qp, slicer)
+        return refBLK.state[slicer] + self.high_order_term(refBLK, qp, slicer)
 
     def limited_solution_at_quadrature_point(
         self,
-        state: State,
         refBLK: BaseBlockFVM,
         qp: QuadraturePoint,
-        slicer: slice or tuple or int = MUSCL.ALL_IDX,
+        slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> np.ndarray:
         """
         Returns the limited reconstructed solution at a specific quadrature point based on the given solution state and
         slope limiter values and mesh geometry from a reference block.
-
-        :type state: State
-        :param state: Solution state
 
         :type refBLK: QuadBlock
         :param refBLK: Reference block containing mesh geometry data and gradients
@@ -129,7 +122,7 @@ class SecondOrderMUSCL(MUSCL):
         :rtype: np.ndarray
         :return: Limited reconstructed solution at the quadrature point
         """
-        return state[slicer] + refBLK.fvm.limiter.phi[slicer] * self.high_order_term(
+        return refBLK.state[slicer] + self.limiter.phi[slicer] * self.high_order_term(
             refBLK, qp, slicer
         )
 
@@ -145,29 +138,19 @@ class SecondOrderMUSCL(MUSCL):
         :return: None
         """
         unlimE = [
-            self.unlimited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qp
-            )
+            self.unlimited_solution_at_quadrature_point(refBLK=refBLK, qp=qp)
             for qp in refBLK.qp.E
         ]
         unlimW = [
-            self.unlimited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qp
-            )
+            self.unlimited_solution_at_quadrature_point(refBLK=refBLK, qp=qp)
             for qp in refBLK.qp.W
         ]
         unlimN = [
-            self.unlimited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qp
-            )
+            self.unlimited_solution_at_quadrature_point(refBLK=refBLK, qp=qp)
             for qp in refBLK.qp.N
         ]
         unlimS = [
-            self.unlimited_solution_at_quadrature_point(
-                refBLK.reconBlk.state, refBLK, qp
-            )
+            self.unlimited_solution_at_quadrature_point(refBLK=refBLK, qp=qp)
             for qp in refBLK.qp.S
         ]
-        self.limiter(
-            refBLK.reconBlk, gqpE=unlimE, gqpW=unlimW, gqpN=unlimN, gqpS=unlimS
-        )
+        self.limiter.limit(refBLK, gqpE=unlimE, gqpW=unlimW, gqpN=unlimN, gqpS=unlimS)

@@ -48,7 +48,7 @@ class GreenGauss(Gradient):
             interfaceW,
             interfaceN,
             interfaceS,
-        ) = refBLK.reconBlk.get_interface_values()
+        ) = refBLK.get_interface_values()
 
         # Get each face's contribution to dUdx
         E = interfaceE * face.E.L
@@ -86,7 +86,7 @@ class GreenGauss(Gradient):
             interfaceW,
             interfaceN,
             interfaceS,
-        ) = refBLK.reconBlk.get_interface_values()
+        ) = refBLK.get_interface_values()
         self._get_gradinet_JIT(
             interfaceE,
             interfaceW,

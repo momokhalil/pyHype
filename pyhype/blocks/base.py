@@ -171,12 +171,12 @@ class SolutionGradients(ABC):
     Class that contains the solution gradients and performs
     basic operations with them.
 
-    :cvar ALL_IDX: A numpy slice across all dimensions.
+    :cvar all_slice: A numpy slice across all dimensions.
     :ivar use_JIT: Flag that controls the use of JIT compiled
     functions.
     """
 
-    ALL_IDX = np.s_[:, :, :]
+    all_slice = np.s_[:, :, :]
 
     def __init__(self, config):
         self.use_JIT = config.use_JIT
@@ -188,7 +188,7 @@ class SolutionGradients(ABC):
         x_p: np.ndarray,
         y_c: np.ndarray,
         y_p: np.ndarray,
-        slicer: slice or tuple or int = None,
+        slicer: Union[slice, tuple, int] = None,
     ) -> np.ndarray:
         """
         Calculates and returns an array containing the high-order term
@@ -228,7 +228,7 @@ class FirstOrderGradients(SolutionGradients):
         x_p: np.ndarray,
         y_c: np.ndarray,
         y_p: np.ndarray,
-        slicer: slice or tuple or int = SolutionGradients.ALL_IDX,
+        slicer: Union[slice, tuple, int] = SolutionGradients.all_slice,
     ) -> np.ndarray:
         """
         Calculates and returns an array containing the first-order gradient
@@ -311,7 +311,7 @@ class SecondOrderGradients(SolutionGradients):
         x_p: np.ndarray,
         y_c: np.ndarray,
         y_p: np.ndarray,
-        slicer: slice or tuple or int = None,
+        slicer: Union[slice, tuple, int] = None,
     ) -> np.ndarray:
         """
         Calculates and returns an array containing the second-order gradient
@@ -370,39 +370,6 @@ class GradientsFactory:
             "GradientsFactory.create_gradients(): Error, no gradients container class has been "
             "extended for the given order."
         )
-
-
-class BlockMixin:
-
-    state: State
-
-    def row(self, index: Union[int, slice]) -> State:
-        """
-        Return the solution stored in the index-th row of the mesh.
-        For example, if index is 0, then the state at the most-bottom
-        row of the mesh will be returned.
-
-        :param index: The index that reperesents which row needs
-        to be returned.
-
-        :return: Numpy array containing the solution at the index-th
-        row being returned.
-        """
-        return self.state[index, None, :, :]
-
-    def col(self, index: int) -> State:
-        """
-        Return the solution stored in the index-th column of the mesh.
-        For example, if index is 0, then the state at the left-most column
-        of the mesh will be returned.
-
-        :param index: The index that reperesents which column needs to
-        be returned.
-
-        :return: The numpy array containing the soution at the index-th
-        column being returned.
-        """
-        return self.state[None, :, index, :]
 
 
 class Blocks:
@@ -565,33 +532,33 @@ class BaseBlockMesh(BaseBlock):
         self.qp = qp
 
 
-class BaseBlockState(BaseBlockMesh, BlockMixin):
+class BaseBlockState(BaseBlockMesh):
     """
-    Block object that inherits from BaseBlockMesh and BlockMixin,
+    Block object that inherits from BaseBlockMesh,
     which also contains the solution State and relevant methods.
 
-    :cvar EAST_BOUND_IDX: East block boundary numpy indexing slice.
-    :cvar WEST_BOUND_IDX: West block boundary numpy indexing slice.
-    :cvar NORTH_BOUND_IDX: North block boundary numpy indexing slice.
-    :cvar SOUTH_BOUND_IDX: South block boundary numpy indexing slice.
+    :cvar east_boundary_slice: East block boundary numpy indexing slice.
+    :cvar west_boundary_slice: West block boundary numpy indexing slice.
+    :cvar north_boundary_slice: North block boundary numpy indexing slice.
+    :cvar south_boundary_slice: South block boundary numpy indexing slice.
 
-    :cvar EAST_FACE_IDX: East cell faces numpy indexing slice.
-    :cvar WEST_FACE_IDX: West cell faces numpy indexing slice.
-    :cvar NORTH_FACE_IDX: North cell faces numpy indexing slice.
-    :cvar SOUTH_FACE_IDX: South cell faces numpy indexing slice.
+    :cvar east_face_slice: East cell faces numpy indexing slice.
+    :cvar west_face_slice: West cell faces numpy indexing slice.
+    :cvar north_face_slice: North cell faces numpy indexing slice.
+    :cvar south_face_slice: South cell faces numpy indexing slice.
 
     :ivar state: State object of the appropriate type.
     """
 
-    EAST_BOUND_IDX = NumpySlice.east_boundary()
-    WEST_BOUND_IDX = NumpySlice.west_boundary()
-    NORTH_BOUND_IDX = NumpySlice.north_boundary()
-    SOUTH_BOUND_IDX = NumpySlice.south_boundary()
+    east_boundary_slice = NumpySlice.east_boundary()
+    west_boundary_slice = NumpySlice.west_boundary()
+    north_boundary_slice = NumpySlice.north_boundary()
+    south_boundary_slice = NumpySlice.south_boundary()
 
-    EAST_FACE_IDX = NumpySlice.east_face()
-    WEST_FACE_IDX = NumpySlice.west_face()
-    NORTH_FACE_IDX = NumpySlice.north_face()
-    SOUTH_FACE_IDX = NumpySlice.south_face()
+    east_face_slice = NumpySlice.east_face()
+    west_face_slice = NumpySlice.west_face()
+    north_face_slice = NumpySlice.north_face()
+    south_face_slice = NumpySlice.south_face()
 
     def __init__(
         self,
@@ -602,6 +569,34 @@ class BaseBlockState(BaseBlockMesh, BlockMixin):
     ):
         super().__init__(config=config, mesh=mesh, qp=qp)
         self.state = state_type(fluid=config.fluid, shape=(mesh.ny, mesh.nx, 4))
+
+    def row(self, index: Union[int, slice]) -> State:
+        """
+        Return the solution stored in the index-th row of the mesh.
+        For example, if index is 0, then the state at the most-bottom
+        row of the mesh will be returned.
+
+        :param index: The index that reperesents which row needs
+        to be returned.
+
+        :return: Numpy array containing the solution at the index-th
+        row being returned.
+        """
+        return self.state[NumpySlice.row(index=index)]
+
+    def col(self, index: int) -> State:
+        """
+        Return the solution stored in the index-th column of the mesh.
+        For example, if index is 0, then the state at the left-most column
+        of the mesh will be returned.
+
+        :param index: The index that reperesents which column needs to
+        be returned.
+
+        :return: The numpy array containing the soution at the index-th
+        column being returned.
+        """
+        return self.state[NumpySlice.col(index=index)]
 
 
 class BaseBlockGrad(BaseBlockState):
@@ -633,7 +628,7 @@ class BaseBlockGrad(BaseBlockState):
         x_p: np.ndarray,
         y_c: np.ndarray,
         y_p: np.ndarray,
-        slicer: slice or tuple or int = None,
+        slicer: Union[slice, tuple, int] = None,
     ) -> np.ndarray:
         return self.grad.get_high_order_term(x_c, x_p, y_c, y_p, slicer)
 
@@ -661,185 +656,6 @@ class BaseBlockFVM(BaseBlockGrad):
             limiter=SlopeLimiterFactory.create(config=config),
             gradient=GradientFactory.create(config=config),
         )
-
-    def unlimited_reconstruction_at_location(
-        self,
-        x_c: np.ndarray,
-        y_c: np.ndarray,
-        x_p: np.ndarray,
-        y_p: np.ndarray,
-        slicer: slice or tuple or int = None,
-    ) -> State:
-        """
-        Computes the unlimited reconstruction of the solution state at
-        given x and y coordinates.
-
-        :param x_c: x-coordinates of cell centroids
-        :param x_p: x-coordinates of quadrature point
-        :param y_c: y-coordinates of cell centroids
-        :param y_p: y-coordinates of quadrature point
-        :param slicer: Array slicing object
-
-        :return: State object with the unlimited reconstruction at the
-        given x and y coordinates.
-        """
-        state = self.state if slicer is None else self.state[slicer]
-        return state + self.high_order_term_at_location(x_c, x_p, y_c, y_p, slicer)
-
-    def limited_reconstruction_at_location(
-        self,
-        x_c: np.ndarray,
-        y_c: np.ndarray,
-        x_p: np.ndarray,
-        y_p: np.ndarray,
-        slicer: slice or tuple or int = None,
-    ) -> State:
-        """
-        Computes the limited reconstruction of the solution state at
-        given x and y coordinates.
-        :param x_c: x-coordinates of cell centroids
-        :param x_p: x-coordinates of quadrature point
-        :param y_c: y-coordinates of cell centroids
-        :param y_p: y-coordinates of quadrature point
-        :param slicer: Array slicing object
-
-        :return: State object with the limited reconstruction at the
-        given x and y coordinates.
-        """
-        high_order_term = self.high_order_term_at_location(x_c, x_p, y_c, y_p, slicer)
-        if slicer is None:
-            return self.state + self.fvm.limiter.phi * high_order_term
-        return self.state[slicer] + self.fvm.limiter.phi[slicer] * high_order_term
-
-    def get_east_boundary_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's east
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the east block boundary quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.E, slicer=self.EAST_BOUND_IDX
-        )
-
-    def get_west_boundary_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's west
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the west block boundary quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.W, slicer=self.WEST_BOUND_IDX
-        )
-
-    def get_north_boundary_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's north
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the north block boundary quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.N, slicer=self.NORTH_BOUND_IDX
-        )
-
-    def get_south_boundary_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's south
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the south block boundary quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.S, slicer=self.SOUTH_BOUND_IDX
-        )
-
-    def get_east_face_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's east
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the east face quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.E, slicer=self.EAST_FACE_IDX
-        )
-
-    def get_west_face_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's west
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the west face quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.W, slicer=self.WEST_FACE_IDX
-        )
-
-    def get_north_face_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's north
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the north face quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.N, slicer=self.NORTH_FACE_IDX
-        )
-
-    def get_south_face_states_at_qp(self) -> tuple[np.ndarray]:
-        """
-        Return the solution state data in the cells along the block's south
-        boundary at each quadrature point.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the south face quadrature points.
-        """
-        return self.get_limited_recon_states_at_qp(
-            qps=self.qp.S, slicer=self.SOUTH_FACE_IDX
-        )
-
-    def get_limited_recon_states_at_qp(
-        self, slicer: slice, qps: tuple[QuadraturePoint]
-    ) -> tuple[np.ndarray]:
-        """
-        Return the limited solution reconstruction at specified quadrature points
-        along a specified slice of the arrays.
-
-        :param slicer: Numpy Slice object
-        :param qps: QuadraturePointData that indicates where the solution is to
-        be reconstructed.
-
-        :rtype: tuple[State]
-        :return: tuple of states containing the limited solution reconstructions
-        at the south face quadrature points.
-        """
-        states = tuple(
-            self.fvm.limited_solution_at_quadrature_point(
-                state=self.state,
-                refBLK=self,
-                qp=qp,
-                slicer=slicer,
-            )
-            for qp in qps
-        )
-        return states
 
 
 class BlockGeometry:
