@@ -283,6 +283,44 @@ class MUSCL(FiniteVolumeMethod, ABC):
         )
         return left_state, right_state
 
+    def _get_east_flux_states(self, refBLK: QuadBlock):
+        if refBLK.ghost.E.BCtype is None:
+            return (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.E,
+                    slicer=self.west_boundary_slice,
+                )
+                for qe in refBLK.ghost.E.qp.E
+            )
+        return (
+            self.limited_solution_at_quadrature_point(
+                qp=qe,
+                refBLK=refBLK,
+                slicer=self.east_boundary_slice,
+            )
+            for qe in refBLK.qp.E
+        )
+
+    def _get_west_flux_states(self, refBLK: QuadBlock):
+        if refBLK.ghost.W.BCtype is None:
+            return (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.W,
+                    slicer=self.east_boundary_slice,
+                )
+                for qe in refBLK.ghost.W.qp.W
+            )
+        return (
+            self.limited_solution_at_quadrature_point(
+                qp=qe,
+                refBLK=refBLK,
+                slicer=self.west_boundary_slice,
+            )
+            for qe in refBLK.qp.E
+        )
+
     def _evaluate_east_west_flux(self, refBLK: QuadBlock) -> None:
         """
         Evaluates the fluxes at each east-west cell boundary. The following steps are followed:
@@ -300,45 +338,8 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: None
         :return: None
         """
-        east_boundary_states = (
-            (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK,
-                    slicer=self.east_boundary_slice,
-                )
-                for qe in refBLK.qp.E
-            )
-            if refBLK.ghost.E.BCtype is not None
-            else (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK.ghost.E,
-                    slicer=self.west_boundary_slice,
-                )
-                for qe in refBLK.ghost.E.qp.E
-            )
-        )
-
-        west_boundary_states = (
-            (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK,
-                    slicer=self.west_boundary_slice,
-                )
-                for qe in refBLK.qp.E
-            )
-            if refBLK.ghost.W.BCtype is not None
-            else (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK.ghost.W,
-                    slicer=self.east_boundary_slice,
-                )
-                for qe in refBLK.ghost.W.qp.W
-            )
-        )
+        east_boundary_states = self._get_east_flux_states(refBLK=refBLK)
+        west_boundary_states = self._get_west_flux_states(refBLK=refBLK)
 
         for qe, qw, east_boundary, west_boundary, fluxE, fluxW in zip(
             refBLK.qp.E,
@@ -379,6 +380,44 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 utils.unrotate(refBLK.mesh.face.E.theta, fluxE)
                 utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
 
+    def _get_north_flux_states(self, refBLK: QuadBlock):
+        if refBLK.ghost.N.BCtype is None:
+            return (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.N,
+                    slicer=self.south_boundary_slice,
+                )
+                for qe in refBLK.ghost.N.qp.N
+            )
+        return (
+            self.limited_solution_at_quadrature_point(
+                qp=qe,
+                refBLK=refBLK,
+                slicer=self.north_boundary_slice,
+            )
+            for qe in refBLK.qp.N
+        )
+
+    def _get_south_flux_states(self, refBLK: QuadBlock):
+        if refBLK.ghost.S.BCtype is None:
+            return (
+                self.limited_solution_at_quadrature_point(
+                    qp=qe,
+                    refBLK=refBLK.ghost.S,
+                    slicer=self.north_boundary_slice,
+                )
+                for qe in refBLK.ghost.S.qp.S
+            )
+        return (
+            self.limited_solution_at_quadrature_point(
+                qp=qe,
+                refBLK=refBLK,
+                slicer=self.south_boundary_slice,
+            )
+            for qe in refBLK.qp.S
+        )
+
     def _evaluate_north_south_flux(self, refBLK: QuadBlock) -> None:
         """
         Evaluates the fluxes at each north-south cell boundary. The following steps are followed:
@@ -396,45 +435,8 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: None
         :return: None
         """
-        north_boundary_states = (
-            (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK,
-                    slicer=self.north_boundary_slice,
-                )
-                for qe in refBLK.qp.N
-            )
-            if refBLK.ghost.N.BCtype is not None
-            else (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK.ghost.N,
-                    slicer=self.south_boundary_slice,
-                )
-                for qe in refBLK.ghost.N.qp.N
-            )
-        )
-
-        south_boundary_states = (
-            (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK,
-                    slicer=self.south_boundary_slice,
-                )
-                for qe in refBLK.qp.S
-            )
-            if refBLK.ghost.S.BCtype is not None
-            else (
-                self.limited_solution_at_quadrature_point(
-                    qp=qe,
-                    refBLK=refBLK.ghost.S,
-                    slicer=self.north_boundary_slice,
-                )
-                for qe in refBLK.ghost.S.qp.S
-            )
-        )
+        north_boundary_states = self._get_north_flux_states(refBLK=refBLK)
+        south_boundary_states = self._get_south_flux_states(refBLK=refBLK)
 
         for qn, qs, north_boundary, south_boundary, fluxN, fluxS in zip(
             refBLK.qp.N,
