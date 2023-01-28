@@ -283,7 +283,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         )
         return left_state, right_state
 
-    def evaluate_flux_EW(self, refBLK: QuadBlock) -> None:
+    def _evaluate_east_west_flux(self, refBLK: QuadBlock) -> None:
         """
         Evaluates the fluxes at each east-west cell boundary. The following steps are followed:
             1. Get list of reconstructed boundary states at each quadrature point on the east boundary
@@ -300,7 +300,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: None
         :return: None
         """
-        bndE = (
+        east_boundary_states = (
             (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
@@ -320,7 +320,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
             )
         )
 
-        bndW = (
+        west_boundary_states = (
             (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
@@ -340,26 +340,36 @@ class MUSCL(FiniteVolumeMethod, ABC):
             )
         )
 
-        for qe, qw, _bndE, _bndW, fluxE, fluxW in zip(
-            refBLK.qp.E, refBLK.qp.W, bndE, bndW, self.Flux.E, self.Flux.W
+        for qe, qw, east_boundary, west_boundary, fluxE, fluxW in zip(
+            refBLK.qp.E,
+            refBLK.qp.W,
+            east_boundary_states,
+            west_boundary_states,
+            self.Flux.E,
+            self.Flux.W,
         ):
-            _stateE = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK, qp=qe,
+            east_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK=refBLK,
+                qp=qe,
             )
-            _stateW = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK, qp=qw,
+            west_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK=refBLK,
+                qp=qw,
             )
-            refBLK.ghost.E.apply_boundary_condition(_bndE)
-            refBLK.ghost.W.apply_boundary_condition(_bndW)
+            refBLK.ghost.E.apply_boundary_condition(east_boundary)
+            refBLK.ghost.W.apply_boundary_condition(west_boundary)
 
             if not refBLK.is_cartesian:
-                utils.rotate(refBLK.mesh.face.E.theta, _stateE.data)
-                utils.rotate(refBLK.mesh.face.W.theta, _stateW.data)
-                utils.rotate(refBLK.mesh.east_boundary_angle(), _bndE.data)
-                utils.rotate(refBLK.mesh.west_boundary_angle(), _bndW.data)
+                utils.rotate(refBLK.mesh.face.E.theta, east_face_states.data)
+                utils.rotate(refBLK.mesh.face.W.theta, west_face_states.data)
+                utils.rotate(refBLK.mesh.east_boundary_angle(), east_boundary.data)
+                utils.rotate(refBLK.mesh.west_boundary_angle(), west_boundary.data)
 
             sL, sR = self._get_LR_states_for_flux_calc(
-                ghostL=_bndW, stateL=_stateE, ghostR=_bndE, stateR=_stateW
+                ghostL=west_boundary,
+                stateL=east_face_states,
+                ghostR=east_boundary,
+                stateR=west_face_states,
             )
             fluxEW = self.flux_function_x(WL=sL, WR=sR)
             fluxE[:] = fluxEW[:, 1:, :]
@@ -369,7 +379,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 utils.unrotate(refBLK.mesh.face.E.theta, fluxE)
                 utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
 
-    def evaluate_flux_NS(self, refBLK: QuadBlock) -> None:
+    def _evaluate_north_south_flux(self, refBLK: QuadBlock) -> None:
         """
         Evaluates the fluxes at each north-south cell boundary. The following steps are followed:
             1. Get list of reconstructed boundary states at each quadrature point on the north boundary
@@ -386,7 +396,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: None
         :return: None
         """
-        bndN = (
+        north_boundary_states = (
             (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
@@ -406,7 +416,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
             )
         )
 
-        bndS = (
+        south_boundary_states = (
             (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
@@ -426,37 +436,49 @@ class MUSCL(FiniteVolumeMethod, ABC):
             )
         )
 
-        for qn, qs, _bndN, _bndS, fluxN, fluxS in zip(
-            refBLK.qp.N, refBLK.qp.S, bndN, bndS, self.Flux.N, self.Flux.S
+        for qn, qs, north_boundary, south_boundary, fluxN, fluxS in zip(
+            refBLK.qp.N,
+            refBLK.qp.S,
+            north_boundary_states,
+            south_boundary_states,
+            self.Flux.N,
+            self.Flux.S,
         ):
-            _stateN = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK, qp=qn,
+            north_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK=refBLK,
+                qp=qn,
             )
-            _stateS = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK, qp=qs,
+            south_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
+                refBLK=refBLK,
+                qp=qs,
             )
-            refBLK.ghost.N.apply_boundary_condition(_bndN)
-            refBLK.ghost.S.apply_boundary_condition(_bndS)
+            refBLK.ghost.N.apply_boundary_condition(north_boundary)
+            refBLK.ghost.S.apply_boundary_condition(south_boundary)
 
             if refBLK.is_cartesian:
-                utils.rotate90(_stateN.data, _stateS.data, _bndN.data, _bndS.data)
+                utils.rotate90(
+                    north_face_states.data,
+                    south_face_states.data,
+                    north_boundary.data,
+                    south_boundary.data,
+                )
             else:
-                utils.rotate(refBLK.mesh.face.N.theta, _stateN.data)
-                utils.rotate(refBLK.mesh.face.S.theta, _stateS.data)
-                utils.rotate(refBLK.mesh.north_boundary_angle(), _bndN.data)
-                utils.rotate(refBLK.mesh.south_boundary_angle(), _bndS.data)
+                utils.rotate(refBLK.mesh.face.N.theta, north_face_states.data)
+                utils.rotate(refBLK.mesh.face.S.theta, south_face_states.data)
+                utils.rotate(refBLK.mesh.north_boundary_angle(), north_boundary.data)
+                utils.rotate(refBLK.mesh.south_boundary_angle(), south_boundary.data)
 
             # Transpose to x-frame
-            _bndS.transpose((1, 0, 2))
-            _stateN.transpose((1, 0, 2))
-            _bndN.transpose((1, 0, 2))
-            _stateS.transpose((1, 0, 2))
+            south_boundary.transpose((1, 0, 2))
+            north_face_states.transpose((1, 0, 2))
+            north_boundary.transpose((1, 0, 2))
+            south_face_states.transpose((1, 0, 2))
 
             sL, sR = self._get_LR_states_for_flux_calc(
-                _bndS,
-                _stateN,
-                _bndN,
-                _stateS,
+                south_boundary,
+                north_face_states,
+                north_boundary,
+                south_face_states,
             )
             fluxNS = self.flux_function_y(WL=sL, WR=sR).transpose((1, 0, 2))
             fluxN[:] = fluxNS[1:, :, :]
@@ -482,5 +504,5 @@ class MUSCL(FiniteVolumeMethod, ABC):
 
         self.gradient.compute(refBLK)
         self.compute_limiter(refBLK)
-        self.evaluate_flux_EW(refBLK)
-        self.evaluate_flux_NS(refBLK)
+        self._evaluate_east_west_flux(refBLK)
+        self._evaluate_north_south_flux(refBLK)
