@@ -22,8 +22,7 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
 from typing import Union
 from typing import TYPE_CHECKING
-import pyhype.states as states
-from pyhype.states import State, PrimitiveState, ConservativeState
+from pyhype.states import State
 
 if TYPE_CHECKING:
     from pyhype.mesh.quad_mesh import QuadMesh
@@ -41,7 +40,6 @@ _QUADS = {1: _QUAD_1, 2: _QUAD_2, 3: _QUAD_3}
 class QuadraturePoint:
     def __init__(
         self,
-        config: SolverConfig,
         x: np.ndarray = None,
         y: np.ndarray = None,
         w: Union[np.ndarray, float, int] = None,
@@ -49,9 +47,6 @@ class QuadraturePoint:
         self.x = x
         self.y = y
         self.w = w
-        self.state = config.reconstruction_type(
-            fluid=config.fluid, shape=(config.ny, config.nx, 4)
-        )
 
 
 class QuadraturePointDataContainerBase:
@@ -130,28 +125,28 @@ class QuadraturePointData:
 
         self.E = tuple(
             QuadraturePoint(
-                config, self._transform(xNE, xSE, p), self._transform(yNE, ySE, p), w
+                self._transform(xNE, xSE, p), self._transform(yNE, ySE, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
         self.W = tuple(
             QuadraturePoint(
-                config, self._transform(xNW, xSW, p), self._transform(yNW, ySW, p), w
+                self._transform(xNW, xSW, p), self._transform(yNW, ySW, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
         self.N = tuple(
             QuadraturePoint(
-                config, self._transform(xNE, xNW, p), self._transform(yNE, yNW, p), w
+                self._transform(xNE, xNW, p), self._transform(yNE, yNW, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
         self.S = tuple(
             QuadraturePoint(
-                config, self._transform(xSE, xSW, p), self._transform(ySE, ySW, p), w
+                self._transform(xSE, xSW, p), self._transform(ySE, ySW, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )

@@ -33,7 +33,7 @@ class Gradient:
     def __init__(self, config: SolverConfig):
         self.config = config
 
-    def __call__(self, refBLK: QuadBlock) -> None:
+    def compute(self, refBLK: QuadBlock) -> None:
         """
         Interface to call the gradient algorithm.
 

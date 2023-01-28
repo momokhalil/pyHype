@@ -256,6 +256,10 @@ class NumpySlice:
         pass
 
     @staticmethod
+    def all():
+        return np.s_[...]
+
+    @staticmethod
     def col(index: int):
         return np.s_[:, index, None, :]
 
