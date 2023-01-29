@@ -84,7 +84,7 @@ class FiniteVolumeMethod(ABC):
     ) -> np.ndarray:
         raise NotImplementedError
 
-    def dUdt(self, refBLK: QuadBlock):
+    def dUdt(self, refBLK: QuadBlock) -> np.ndarray:
         """
         Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
         applying the semi-discrete Godunov method:
@@ -93,51 +93,68 @@ class FiniteVolumeMethod(ABC):
         """
         refBLK.reconBlk.from_block(refBLK)
         refBLK.reconBlk.fvm.evaluate_flux(refBLK.reconBlk)
-        fluxE = self.integrate_flux(
+        integrated_east_flux = self.integrate_flux(
+            fluxes=refBLK.reconBlk.fvm.Flux.E,
             face_length=refBLK.mesh.face.E.L,
             quadrature_points=refBLK.reconBlk.qp.E,
-            fluxes=refBLK.reconBlk.fvm.Flux.E,
         )
-        fluxW = self.integrate_flux(
+        integrated_west_flux = self.integrate_flux(
+            fluxes=refBLK.reconBlk.fvm.Flux.W,
             face_length=refBLK.mesh.face.W.L,
             quadrature_points=refBLK.reconBlk.qp.W,
-            fluxes=refBLK.reconBlk.fvm.Flux.W,
         )
-        fluxN = self.integrate_flux(
+        integrated_north_flux = self.integrate_flux(
+            fluxes=refBLK.reconBlk.fvm.Flux.N,
             face_length=refBLK.mesh.face.N.L,
             quadrature_points=refBLK.reconBlk.qp.N,
-            fluxes=refBLK.reconBlk.fvm.Flux.N,
         )
-        fluxS = self.integrate_flux(
+        integrated_south_flux = self.integrate_flux(
+            fluxes=refBLK.reconBlk.fvm.Flux.S,
             face_length=refBLK.mesh.face.S.L,
             quadrature_points=refBLK.reconBlk.qp.S,
-            fluxes=refBLK.reconBlk.fvm.Flux.S,
         )
         if self.config.use_JIT:
-            return self._dUdt_JIT(fluxE, fluxW, fluxN, fluxS, refBLK.mesh.A)
-        return (fluxW - fluxE + fluxS - fluxN) / refBLK.mesh.A
+            return self._dUdt_JIT(
+                integrated_east_flux,
+                integrated_west_flux,
+                integrated_north_flux,
+                integrated_south_flux,
+                refBLK.mesh.A,
+            )
+        return (
+            integrated_west_flux
+            - integrated_east_flux
+            + integrated_south_flux
+            - integrated_north_flux
+        ) / refBLK.mesh.A
 
     @staticmethod
     @nb.njit(cache=True)
-    def _dUdt_JIT(fluxE, fluxW, fluxN, fluxS, A):
-        dUdt = np.zeros_like(fluxE)
-        for i in range(fluxE.shape[0]):
-            for j in range(fluxE.shape[1]):
+    def _dUdt_JIT(
+        east_flux: np.ndarray,
+        west_flux: np.ndarray,
+        north_flux: np.ndarray,
+        south_flux: np.ndarray,
+        A: np.ndarray,
+    ) -> np.ndarray:
+        dUdt = np.zeros_like(east_flux)
+        for i in range(east_flux.shape[0]):
+            for j in range(east_flux.shape[1]):
                 a = A[i, j, 0]
-                for k in range(fluxE.shape[2]):
+                for k in range(east_flux.shape[2]):
                     dUdt[i, j, k] = (
-                        fluxW[i, j, k]
-                        - fluxE[i, j, k]
-                        + fluxS[i, j, k]
-                        - fluxN[i, j, k]
+                        west_flux[i, j, k]
+                        - east_flux[i, j, k]
+                        + south_flux[i, j, k]
+                        - north_flux[i, j, k]
                     ) / a
         return dUdt
 
     @staticmethod
     def integrate_flux(
+        fluxes: tuple[np.ndarray],
         face_length: np.ndarray,
         quadrature_points: tuple[QuadraturePoint],
-        fluxes: tuple[np.ndarray],
     ) -> np.ndarray:
         """
         Integrates the fluxes using an n-point gauss gradrature rule.
@@ -341,7 +358,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         east_boundary_states = self._get_east_flux_states(refBLK=refBLK)
         west_boundary_states = self._get_west_flux_states(refBLK=refBLK)
 
-        for qe, qw, east_boundary, west_boundary, fluxE, fluxW in zip(
+        for qe, qw, east_boundary, west_boundary, east_flux, west_flux in zip(
             refBLK.qp.E,
             refBLK.qp.W,
             east_boundary_states,
@@ -372,13 +389,13 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 ghostR=east_boundary,
                 stateR=west_face_states,
             )
-            fluxEW = self.flux_function_x(WL=sL, WR=sR)
-            fluxE[:] = fluxEW[:, 1:, :]
-            fluxW[:] = fluxEW[:, :-1, :]
+            east_west_flux = self.flux_function_x(WL=sL, WR=sR)
+            east_flux[:] = east_west_flux[:, 1:, :]
+            west_flux[:] = east_west_flux[:, :-1, :]
 
             if not refBLK.is_cartesian:
-                utils.unrotate(refBLK.mesh.face.E.theta, fluxE)
-                utils.unrotate(refBLK.mesh.face.W.theta, fluxW)
+                utils.unrotate(refBLK.mesh.face.E.theta, east_flux)
+                utils.unrotate(refBLK.mesh.face.W.theta, west_flux)
 
     def _get_north_flux_states(self, refBLK: QuadBlock):
         if refBLK.ghost.N.BCtype is None:
@@ -438,7 +455,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         north_boundary_states = self._get_north_flux_states(refBLK=refBLK)
         south_boundary_states = self._get_south_flux_states(refBLK=refBLK)
 
-        for qn, qs, north_boundary, south_boundary, fluxN, fluxS in zip(
+        for qn, qs, north_boundary, south_boundary, north_flux, south_flux in zip(
             refBLK.qp.N,
             refBLK.qp.S,
             north_boundary_states,
@@ -482,15 +499,15 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 north_boundary,
                 south_face_states,
             )
-            fluxNS = self.flux_function_y(WL=sL, WR=sR).transpose((1, 0, 2))
-            fluxN[:] = fluxNS[1:, :, :]
-            fluxS[:] = fluxNS[:-1, :, :]
+            north_south_flux = self.flux_function_y(WL=sL, WR=sR).transpose((1, 0, 2))
+            north_flux[:] = north_south_flux[1:, :, :]
+            south_flux[:] = north_south_flux[:-1, :, :]
 
             if refBLK.is_cartesian:
-                utils.unrotate90(fluxN, fluxS)
+                utils.unrotate90(north_flux, south_flux)
             else:
-                utils.unrotate(refBLK.mesh.face.N.theta, fluxN)
-                utils.unrotate(refBLK.mesh.face.S.theta, fluxS)
+                utils.unrotate(refBLK.mesh.face.N.theta, north_flux)
+                utils.unrotate(refBLK.mesh.face.S.theta, south_flux)
 
     def evaluate_flux(self, refBLK: QuadBlock) -> None:
         """
