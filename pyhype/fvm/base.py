@@ -308,7 +308,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
                     refBLK=refBLK.ghost.E,
                     slicer=self.west_boundary_slice,
                 )
-                for qe in refBLK.ghost.E.qp.E
+                for qe in refBLK.qp.E
             )
         return (
             self.limited_solution_at_quadrature_point(
@@ -327,7 +327,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
                     refBLK=refBLK.ghost.W,
                     slicer=self.east_boundary_slice,
                 )
-                for qe in refBLK.ghost.W.qp.W
+                for qe in refBLK.qp.W
             )
         return (
             self.limited_solution_at_quadrature_point(
@@ -335,7 +335,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 refBLK=refBLK,
                 slicer=self.west_boundary_slice,
             )
-            for qe in refBLK.qp.E
+            for qe in refBLK.qp.W
         )
 
     def _evaluate_east_west_flux(self, refBLK: QuadBlock) -> None:
@@ -374,8 +374,11 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 refBLK=refBLK,
                 qp=qw,
             )
-            refBLK.ghost.E.apply_boundary_condition(east_boundary)
-            refBLK.ghost.W.apply_boundary_condition(west_boundary)
+
+            if refBLK.ghost.E.BCtype is not None:
+                refBLK.ghost.E.apply_boundary_condition(east_boundary)
+            if refBLK.ghost.W.BCtype is not None:
+                refBLK.ghost.W.apply_boundary_condition(west_boundary)
 
             if not refBLK.is_cartesian:
                 utils.rotate(refBLK.mesh.face.E.theta, east_face_states.data)
@@ -405,7 +408,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
                     refBLK=refBLK.ghost.N,
                     slicer=self.south_boundary_slice,
                 )
-                for qe in refBLK.ghost.N.qp.N
+                for qe in refBLK.qp.N
             )
         return (
             self.limited_solution_at_quadrature_point(
@@ -424,7 +427,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
                     refBLK=refBLK.ghost.S,
                     slicer=self.north_boundary_slice,
                 )
-                for qe in refBLK.ghost.S.qp.S
+                for qe in refBLK.qp.S
             )
         return (
             self.limited_solution_at_quadrature_point(
@@ -471,8 +474,11 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 refBLK=refBLK,
                 qp=qs,
             )
-            refBLK.ghost.N.apply_boundary_condition(north_boundary)
-            refBLK.ghost.S.apply_boundary_condition(south_boundary)
+
+            if refBLK.ghost.N.BCtype is not None:
+                refBLK.ghost.N.apply_boundary_condition(north_boundary)
+            if refBLK.ghost.S.BCtype is not None:
+                refBLK.ghost.S.apply_boundary_condition(south_boundary)
 
             if refBLK.is_cartesian:
                 utils.rotate90(
