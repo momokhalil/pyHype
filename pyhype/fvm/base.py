@@ -250,12 +250,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
         self.limiter = limiter
         self.gradient = gradient
 
-    def _get_LR_states_for_flux_calc(
+    def _get_left_right_riemann_states(
         self,
-        ghostL: State,
-        stateL: State,
-        ghostR: State,
-        stateR: State,
+        right_state: State,
+        left_state: State,
+        right_ghost_state: State,
+        left_ghost_state: State,
     ) -> [PrimitiveState]:
         """
         Compute and return the left and right states used for the North-South inviscid flux calculation. The left state
@@ -263,23 +263,23 @@ class MUSCL(FiniteVolumeMethod, ABC):
         is created by concatenating the north ghost-cell state and the south face state. After concatenation, the arrays
         are reshaped to produce a (1, n, 4) shaped array.
 
-        :type ghostL: np.ndarray
-        :param ghostL: left ghost cell state array
+        :type left_ghost_state: np.ndarray
+        :param left_ghost_state: left ghost cell state array
 
-        :type stateL: np.ndarray
-        :param stateL: left state array
+        :type left_state: np.ndarray
+        :param left_state: left state array
 
-        :type ghostR: np.ndarray
-        :param ghostR: right ghost cell state array
+        :type right_ghost_state: np.ndarray
+        :param right_ghost_state: right ghost cell state array
 
-        :type stateR: np.ndarray
-        :param stateR: right state array
+        :type right_state: np.ndarray
+        :param right_state: right state array
 
         :rtype: tuple(PrimitiveState, PrimitiveState)
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
-        left_arr = np.concatenate((ghostL.data, stateL.data), axis=1)
-        right_arr = np.concatenate((stateR.data, ghostR.data), axis=1)
+        left_arr = np.concatenate((left_ghost_state.data, left_state.data), axis=1)
+        right_arr = np.concatenate((right_state.data, right_ghost_state.data), axis=1)
 
         if self.config.reconstruction_type is PrimitiveState:
             left_state = PrimitiveState(self.config.fluid, array=left_arr)
@@ -386,13 +386,13 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 utils.rotate(refBLK.mesh.east_boundary_angle(), east_boundary.data)
                 utils.rotate(refBLK.mesh.west_boundary_angle(), west_boundary.data)
 
-            sL, sR = self._get_LR_states_for_flux_calc(
-                ghostL=west_boundary,
-                stateL=east_face_states,
-                ghostR=east_boundary,
-                stateR=west_face_states,
+            left, right = self._get_left_right_riemann_states(
+                right_state=west_face_states,
+                left_state=east_face_states,
+                right_ghost_state=east_boundary,
+                left_ghost_state=west_boundary,
             )
-            east_west_flux = self.flux_function_x(WL=sL, WR=sR)
+            east_west_flux = self.flux_function_x(WL=left, WR=right)
             east_flux[:] = east_west_flux[:, 1:, :]
             west_flux[:] = east_west_flux[:, :-1, :]
 
@@ -499,13 +499,15 @@ class MUSCL(FiniteVolumeMethod, ABC):
             north_boundary.transpose((1, 0, 2))
             south_face_states.transpose((1, 0, 2))
 
-            sL, sR = self._get_LR_states_for_flux_calc(
-                south_boundary,
-                north_face_states,
-                north_boundary,
-                south_face_states,
+            left, right = self._get_left_right_riemann_states(
+                right_state=south_face_states,
+                left_state=north_face_states,
+                right_ghost_state=north_boundary,
+                left_ghost_state=south_boundary,
             )
-            north_south_flux = self.flux_function_y(WL=sL, WR=sR).transpose((1, 0, 2))
+            north_south_flux = self.flux_function_y(WL=left, WR=right).transpose(
+                (1, 0, 2)
+            )
             north_flux[:] = north_south_flux[1:, :, :]
             south_flux[:] = north_south_flux[:-1, :, :]
 
