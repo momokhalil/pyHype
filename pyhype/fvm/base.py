@@ -121,7 +121,7 @@ class FiniteVolumeMethod(ABC):
                 integrated_south_flux,
                 refBLK.mesh.A,
             )
-        return (
+        return 0.5 * (
             integrated_west_flux
             - integrated_east_flux
             + integrated_south_flux
@@ -143,15 +143,19 @@ class FiniteVolumeMethod(ABC):
                 a = A[i, j, 0]
                 for k in range(east_flux.shape[2]):
                     dUdt[i, j, k] = (
-                        west_flux[i, j, k]
-                        - east_flux[i, j, k]
-                        + south_flux[i, j, k]
-                        - north_flux[i, j, k]
-                    ) / a
+                        0.5
+                        * (
+                            west_flux[i, j, k]
+                            - east_flux[i, j, k]
+                            + south_flux[i, j, k]
+                            - north_flux[i, j, k]
+                        )
+                        / a
+                    )
         return dUdt
 
-    @staticmethod
     def integrate_flux(
+        self,
         fluxes: tuple[np.ndarray],
         face_length: np.ndarray,
         quadrature_points: tuple[QuadraturePoint],
@@ -171,10 +175,8 @@ class FiniteVolumeMethod(ABC):
         :rtype: np.ndarray
         :return: South face integrated fluxes
         """
-        return (
-            0.5
-            * face_length
-            * sum((qp.w * qpflux for (qp, qpflux) in zip(quadrature_points, fluxes)))
+        return face_length * sum(
+            (qp.w * qpflux for (qp, qpflux) in zip(quadrature_points, fluxes))
         )
 
 
