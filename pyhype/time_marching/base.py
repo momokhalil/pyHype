@@ -24,10 +24,10 @@ class TimeIntegrator:
     def __init__(self, config):
         self.config = config
 
-    def __call__(self, refBLK, dt):
-        self.integrate(refBLK, dt)
+    def __call__(self, parent_block, dt):
+        self.integrate(parent_block, dt)
 
     # Abstract methodo to define integration scheme
     @abstractmethod
-    def integrate(self, refBLK, dt):
+    def integrate(self, parent_block, dt):
         raise NotImplementedError

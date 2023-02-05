@@ -15,7 +15,7 @@ limitations under the License.
 """
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from typing import TYPE_CHECKING
 
@@ -25,7 +25,8 @@ if TYPE_CHECKING:
 
 class Factory(ABC):
     @classmethod
-    def create(cls, config: SolverConfig, **kwargs):
+    @abstractmethod
+    def create(cls, config: SolverConfig, *args, **kwargs):
         """
         Creates a concrete object of type SolverComponent.
 

@@ -40,22 +40,22 @@ class ExplicitRungeKutta(TimeIntegrator):
         self.a = a
         self.num_stages = len(a)
 
-    def integrate(self, refBLK: QuadBlock, dt) -> None:
+    def integrate(self, parent_block: QuadBlock, dt) -> None:
         """
         Perform integration for a general explicit Runge-Kutta scheme based on the Butcher tableau.
 
         Parameters:
-            - refBLK (QuadBlock): Reference block whos state is to be integrated in time
+            - parent_block (QuadBlock): Reference block whos state is to be integrated in time
             - dt (float): Time step
 
         Return:
             - N/A
         """
         stage_residuals = {}
-        U = refBLK.state.data.copy()
-        temp_state = np.zeros_like(refBLK.state.data)
+        U = parent_block.state.data.copy()
+        temp_state = np.zeros_like(parent_block.state.data)
         for stage in range(self.num_stages):
-            stage_residuals[stage] = refBLK.dUdt()
+            stage_residuals[stage] = parent_block.dUdt()
             intermediate_state = U
             for step in range(stage + 1):
                 if self.a[stage][step] != 0:
@@ -65,10 +65,10 @@ class ExplicitRungeKutta(TimeIntegrator):
                         dt * self.a[stage][step],
                         stage_residuals[step],
                     )
-            refBLK.state.data = intermediate_state
-            refBLK.apply_boundary_condition()
-            refBLK.clear_cache()
-            refBLK.reconBlk.clear_cache()
+            parent_block.state.data = intermediate_state
+            parent_block.apply_boundary_condition()
+            parent_block.clear_cache()
+            parent_block.recon_block.clear_cache()
 
     @staticmethod
     @nb.njit(cache=True)

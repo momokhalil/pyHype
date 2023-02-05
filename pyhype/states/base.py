@@ -267,7 +267,7 @@ class State(ABC):
         self._set_data_array_from_array(array)
         self.clear_cache()
 
-    def transpose(self, axes: tuple[int]):
+    def transpose(self, axes: [int]):
         self._data = self._data.transpose(axes)
 
     def realizable(self):

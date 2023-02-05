@@ -36,17 +36,17 @@ class SlopeLimiter:
 
     def limit(
         self,
-        refBLK: QuadBlock,
-        gqpE: np.ndarray,
-        gqpW: np.ndarray,
-        gqpN: np.ndarray,
-        gqpS: np.ndarray,
+        parent_block: QuadBlock,
+        gqpE: list[np.ndarray],
+        gqpW: list[np.ndarray],
+        gqpN: list[np.ndarray],
+        gqpS: list[np.ndarray],
     ) -> None:
-        self._limit(refBLK, gqpE, gqpW, gqpN, gqpS)
+        self._limit(parent_block, gqpE, gqpW, gqpN, gqpS)
 
     def _get_slope(
         self,
-        refBLK: QuadBlock,
+        parent_block: QuadBlock,
         gqpE: np.ndarray,
         gqpW: np.ndarray,
         gqpN: np.ndarray,
@@ -55,8 +55,8 @@ class SlopeLimiter:
         """
         Calculates the solution slopes to determine the slope limiter values on all quadrature points.
 
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block with solution data for slope calculation
+        :type parent_block: QuadBlock
+        :param parent_block: Reference block with solution data for slope calculation
 
         :type gqpE: np.ndarray
         :param gqpE: reconstructed solution states at east face quadrature points
@@ -75,23 +75,31 @@ class SlopeLimiter:
         """
         # Concatenate block solution state with ghost block solution states
         EW = np.concatenate(
-            (refBLK.ghost.W.state.data, refBLK.state.data, refBLK.ghost.E.state.data),
+            (
+                parent_block.ghost.W.state.data,
+                parent_block.state.data,
+                parent_block.ghost.E.state.data,
+            ),
             axis=1,
         )
         NS = np.concatenate(
-            (refBLK.ghost.S.state.data, refBLK.state.data, refBLK.ghost.N.state.data),
+            (
+                parent_block.ghost.S.state.data,
+                parent_block.state.data,
+                parent_block.ghost.N.state.data,
+            ),
             axis=0,
         )
         # Values for min/max evaluation
-        vals = (refBLK.state.data, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])
+        vals = (parent_block.state.data, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])
         # Difference between largest/smallest value and average value
-        dmax = np.maximum.reduce(vals) - refBLK.state.data
-        dmin = np.minimum.reduce(vals) - refBLK.state.data
+        dmax = np.maximum.reduce(vals) - parent_block.state.data
+        dmin = np.minimum.reduce(vals) - parent_block.state.data
         # Difference between quadrature points and average value
-        dE = [_gqpE - refBLK.state.data for _gqpE in gqpE]
-        dW = [_gqpW - refBLK.state.data for _gqpW in gqpW]
-        dN = [_gqpN - refBLK.state.data for _gqpN in gqpN]
-        dS = [_gqpS - refBLK.state.data for _gqpS in gqpS]
+        dE = [_gqpE - parent_block.state.data for _gqpE in gqpE]
+        dW = [_gqpW - parent_block.state.data for _gqpW in gqpW]
+        dN = [_gqpN - parent_block.state.data for _gqpN in gqpN]
+        dS = [_gqpS - parent_block.state.data for _gqpS in gqpS]
         # Calculate slopes for each face
         sE = [self._compute_slope(dmax, dmin, _dE.data) for _dE in dE]
         sW = [self._compute_slope(dmax, dmin, _dW.data) for _dW in dW]
@@ -101,17 +109,17 @@ class SlopeLimiter:
 
     def _limit(
         self,
-        refBLK: QuadBlock,
-        gqpE: np.ndarray,
-        gqpW: np.ndarray,
-        gqpN: np.ndarray,
-        gqpS: np.ndarray,
+        parent_block: QuadBlock,
+        gqpE: list[np.ndarray],
+        gqpW: list[np.ndarray],
+        gqpN: list[np.ndarray],
+        gqpS: list[np.ndarray],
     ) -> None:
         """
         Calculates the solution slopes to determine the slope limiter values on all quadrature points.
 
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block with solution data for slope calculation
+        :type parent_block: QuadBlock
+        :param parent_block: Reference block with solution data for slope calculation
 
         :type gqpE: np.ndarray
         :param gqpE: reconstructed solution states at east face quadrature points
@@ -129,7 +137,7 @@ class SlopeLimiter:
         :return: lists containing the solution slopes at each quadraure point for each face
         """
         # Calculate values needed to build slopes
-        sE, sW, sN, sS = self._get_slope(refBLK, gqpE, gqpW, gqpN, gqpS)
+        sE, sW, sN, sS = self._get_slope(parent_block, gqpE, gqpW, gqpN, gqpS)
         # Minimum limiter value
         phi = np.minimum.reduce(
             (
