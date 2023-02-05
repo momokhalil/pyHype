@@ -139,30 +139,34 @@ class SecondOrderMUSCL(MUSCL):
         :rtype: None
         :return: None
         """
-        unlimE = [
+        east_unlimited_states = [
             self.unlimited_solution_at_quadrature_point(
                 parent_block=parent_block, qp=qp
             )
             for qp in parent_block.qp.E
         ]
-        unlimW = [
+        west_unlimited_states = [
             self.unlimited_solution_at_quadrature_point(
                 parent_block=parent_block, qp=qp
             )
             for qp in parent_block.qp.W
         ]
-        unlimN = [
+        north_unlimited_states = [
             self.unlimited_solution_at_quadrature_point(
                 parent_block=parent_block, qp=qp
             )
             for qp in parent_block.qp.N
         ]
-        unlimS = [
+        south_unlimited_states = [
             self.unlimited_solution_at_quadrature_point(
                 parent_block=parent_block, qp=qp
             )
             for qp in parent_block.qp.S
         ]
         self.limiter.limit(
-            parent_block, gqpE=unlimE, gqpW=unlimW, gqpN=unlimN, gqpS=unlimS
+            parent_block,
+            gqpE=east_unlimited_states,
+            gqpW=west_unlimited_states,
+            gqpN=north_unlimited_states,
+            gqpS=south_unlimited_states,
         )

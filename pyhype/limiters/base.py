@@ -37,10 +37,10 @@ class SlopeLimiter:
     def limit(
         self,
         parent_block: QuadBlock,
-        gqpE: np.ndarray,
-        gqpW: np.ndarray,
-        gqpN: np.ndarray,
-        gqpS: np.ndarray,
+        gqpE: list[np.ndarray],
+        gqpW: list[np.ndarray],
+        gqpN: list[np.ndarray],
+        gqpS: list[np.ndarray],
     ) -> None:
         self._limit(parent_block, gqpE, gqpW, gqpN, gqpS)
 
@@ -110,10 +110,10 @@ class SlopeLimiter:
     def _limit(
         self,
         parent_block: QuadBlock,
-        gqpE: np.ndarray,
-        gqpW: np.ndarray,
-        gqpN: np.ndarray,
-        gqpS: np.ndarray,
+        gqpE: list[np.ndarray],
+        gqpW: list[np.ndarray],
+        gqpN: list[np.ndarray],
+        gqpS: list[np.ndarray],
     ) -> None:
         """
         Calculates the solution slopes to determine the slope limiter values on all quadrature points.
