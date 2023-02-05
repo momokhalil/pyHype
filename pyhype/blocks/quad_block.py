@@ -213,7 +213,7 @@ class QuadBlock(BaseBlockGhost):
             parent_block=self,
             state_type=ConservativeState,
         )
-        self.reconBlk = ReconstructionBlock(
+        self.recon_block = ReconstructionBlock(
             config,
             block_data,
             qp=qp,
@@ -233,7 +233,7 @@ class QuadBlock(BaseBlockGhost):
             - (str): the reconstruction type
         """
 
-        return type(self.reconBlk.state)
+        return type(self.recon_block.state)
 
     def plot(self, ax: plt.axes = None, show_cell_centre: bool = False):
         """

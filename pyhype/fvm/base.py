@@ -91,27 +91,27 @@ class FiniteVolumeMethod(ABC):
 
         dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
         """
-        parent_block.reconBlk.from_block(parent_block)
-        parent_block.reconBlk.fvm.evaluate_flux(parent_block.reconBlk)
+        parent_block.recon_block.from_block(parent_block)
+        parent_block.recon_block.fvm.evaluate_flux(parent_block.recon_block)
         integrated_east_flux = self.integrate_flux(
-            fluxes=parent_block.reconBlk.fvm.Flux.E,
+            fluxes=parent_block.recon_block.fvm.Flux.E,
             face_length=parent_block.mesh.face.E.L,
-            quadrature_points=parent_block.reconBlk.qp.E,
+            quadrature_points=parent_block.recon_block.qp.E,
         )
         integrated_west_flux = self.integrate_flux(
-            fluxes=parent_block.reconBlk.fvm.Flux.W,
+            fluxes=parent_block.recon_block.fvm.Flux.W,
             face_length=parent_block.mesh.face.W.L,
-            quadrature_points=parent_block.reconBlk.qp.W,
+            quadrature_points=parent_block.recon_block.qp.W,
         )
         integrated_north_flux = self.integrate_flux(
-            fluxes=parent_block.reconBlk.fvm.Flux.N,
+            fluxes=parent_block.recon_block.fvm.Flux.N,
             face_length=parent_block.mesh.face.N.L,
-            quadrature_points=parent_block.reconBlk.qp.N,
+            quadrature_points=parent_block.recon_block.qp.N,
         )
         integrated_south_flux = self.integrate_flux(
-            fluxes=parent_block.reconBlk.fvm.Flux.S,
+            fluxes=parent_block.recon_block.fvm.Flux.S,
             face_length=parent_block.mesh.face.S.L,
-            quadrature_points=parent_block.reconBlk.qp.S,
+            quadrature_points=parent_block.recon_block.qp.S,
         )
         if self.config.use_JIT:
             return self._dUdt_JIT(

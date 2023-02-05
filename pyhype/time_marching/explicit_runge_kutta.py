@@ -68,7 +68,7 @@ class ExplicitRungeKutta(TimeIntegrator):
             parent_block.state.data = intermediate_state
             parent_block.apply_boundary_condition()
             parent_block.clear_cache()
-            parent_block.reconBlk.clear_cache()
+            parent_block.recon_block.clear_cache()
 
     @staticmethod
     @nb.njit(cache=True)
