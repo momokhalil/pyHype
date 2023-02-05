@@ -503,7 +503,7 @@ class QuadBlock(BaseBlockGhost):
             - None
         """
 
-        return self.fvm.dUdt(self)
+        return self.fvm.dUdt()
 
     def apply_boundary_condition(self) -> None:
         """

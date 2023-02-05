@@ -655,6 +655,7 @@ class BaseBlockFVM(BaseBlockGrad):
             flux=FluxFunctionFactory.create(config=config),
             limiter=SlopeLimiterFactory.create(config=config),
             gradient=GradientFactory.create(config=config),
+            parent_block=self,
         )
 
 

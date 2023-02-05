@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyhype.fvm.base import FiniteVolumeMethod
     from pyhype.solvers.base import SolverConfig
-
+    from pyhype.blocks.quad_block import BaseBlockFVM
     from pyhype.flux.base import FluxFunction
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
@@ -38,15 +38,24 @@ class FiniteVolumeMethodFactory(Factory):
         flux: FluxFunction,
         limiter: SlopeLimiter,
         gradient: Gradient,
+        parent_block: BaseBlockFVM,
     ) -> FiniteVolumeMethod:
         if config.fvm_type == "MUSCL":
             if config.fvm_spatial_order == 1:
                 return FirstOrderMUSCL(
-                    config=config, limiter=limiter, flux=flux, gradient=gradient
+                    config=config,
+                    limiter=limiter,
+                    flux=flux,
+                    gradient=gradient,
+                    parent_block=parent_block,
                 )
             if config.fvm_spatial_order == 2:
                 return SecondOrderMUSCL(
-                    config=config, limiter=limiter, flux=flux, gradient=gradient
+                    config=config,
+                    limiter=limiter,
+                    flux=flux,
+                    gradient=gradient,
+                    parent_block=parent_block,
                 )
             raise ValueError(
                 f"No MUSCL finite volume method has been specialized with order {config.fvm_spatial_order}"

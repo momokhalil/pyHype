@@ -46,12 +46,13 @@ class FirstOrderMUSCL(MUSCL):
         flux: FluxFunction,
         limiter: SlopeLimiter,
         gradient: Gradient,
+        parent_block: BaseBlockFVM,
     ):
         if config.nghost != 1:
             raise ValueError(
                 "Number of ghost cells must be equal to 1 for this method."
             )
-        super().__init__(config, limiter, flux, gradient)
+        super().__init__(config, limiter, flux, gradient, parent_block=parent_block)
 
     def compute_limiter(self, parent_block: QuadBlock) -> [np.ndarray]:
         """
