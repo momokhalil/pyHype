@@ -45,7 +45,7 @@ class BaseBlockGhost(BaseBlockFVM):
         self,
         config: SolverConfig,
         block_data: BlockDescription,
-        refBLK: Union[QuadBlock, ReconstructionBlock],
+        parent_block: Union[QuadBlock, ReconstructionBlock],
         mesh: QuadMesh,
         qp: QuadraturePointData,
         state_type: Type[State],
@@ -59,8 +59,8 @@ class BaseBlockGhost(BaseBlockFVM):
         :type block_data: BlockDescription
         :param block_data: Object containing the parameters that describe the block
 
-        :type refBLK: QuadBlock
-        :param refBLK: Reference to the interior block that the ghost cells need to store
+        :type parent_block: QuadBlock
+        :param parent_block: Reference to the interior block that the ghost cells need to store
 
         :type state_type: str
         :param state_type: Type of the state in the block and the ghost blocks
@@ -77,7 +77,7 @@ class BaseBlockGhost(BaseBlockFVM):
         self.ghost = GhostBlocks(
             config,
             block_data=block_data,
-            refBLK=refBLK,
+            parent_block=parent_block,
             state_type=state_type,
         )
 
@@ -185,7 +185,7 @@ class ReconstructionBlock(BaseBlockGhost):
         super().__init__(
             config,
             block_data=block_data,
-            refBLK=self,
+            parent_block=self,
             mesh=mesh,
             qp=qp,
             state_type=config.reconstruction_type,
@@ -210,7 +210,7 @@ class QuadBlock(BaseBlockGhost):
             block_data=block_data,
             mesh=mesh,
             qp=qp,
-            refBLK=self,
+            parent_block=self,
             state_type=ConservativeState,
         )
         self.reconBlk = ReconstructionBlock(
@@ -542,7 +542,7 @@ class QuadBlock(BaseBlockGhost):
         """
         Calculate the derivative of u with respect to the x direction. This is done by applying the chain rule to the
         available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.refBLK.gradx`. To compute this gradient, utilize the chain rule on drhou_dx:
+        available under `self.parent_block.gradx`. To compute this gradient, utilize the chain rule on drhou_dx:
 
         \\frac{\\partial(\\rho u)}{\\partial x} = \\rho \\frac{\\partial u}{\\partial x} +
         u \\frac{\\partial \\rho}{\\partial x},
@@ -567,7 +567,7 @@ class QuadBlock(BaseBlockGhost):
         """
         Calculate the derivative of v with respect to the x direction. This is done by applying the chain rule to the
         available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.refBLK.gradx`. To compute this gradient, utilize the chain rule on drhov_dx:
+        available under `self.parent_block.gradx`. To compute this gradient, utilize the chain rule on drhov_dx:
 
         \\frac{\\partial(\\rho v)}{\\partial x} = \\rho \\frac{\\partial v}{\\partial x} +
         v \\frac{\\partial \\rho}{\\partial x},
@@ -619,7 +619,7 @@ class QuadBlock(BaseBlockGhost):
         """
         Calculate the derivative of u with respect to the x direction. This is done by applying the chain rule to the
         available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.refBLK.grady`. To compute this gradient, utilize the chain rule on drhou_dy:
+        available under `self.parent_block.grady`. To compute this gradient, utilize the chain rule on drhou_dy:
 
         \\frac{\\partial(\\rho u)}{\\partial y} = \\rho \\frac{\\partial u}{\\partial y} +
         u \\frac{\\partial \\rho}{\\partial y},
@@ -644,7 +644,7 @@ class QuadBlock(BaseBlockGhost):
         """
         Calculate the derivative of v with respect to the x direction. This is done by applying the chain rule to the
         available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.refBLK.grady`. To compute this gradient, utilize the chain rule on drhov_dy:
+        available under `self.parent_block.grady`. To compute this gradient, utilize the chain rule on drhov_dy:
 
         \\frac{\\partial(\\rho v)}{\\partial y} = \\rho \\frac{\\partial v}{\\partial y} +
         v \\frac{\\partial \\rho}{\\partial y},

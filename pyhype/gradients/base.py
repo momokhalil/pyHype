@@ -33,26 +33,26 @@ class Gradient:
     def __init__(self, config: SolverConfig):
         self.config = config
 
-    def compute(self, refBLK: QuadBlock) -> None:
+    def compute(self, parent_block: QuadBlock) -> None:
         """
         Interface to call the gradient algorithm.
 
-        :type refBLK: QuadBlock
-        :param refBLK: Solution block containing state solution and mesh geometry data
+        :type parent_block: QuadBlock
+        :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None
         :return: None
         """
-        self._get_gradient(refBLK)
+        self._get_gradient(parent_block)
 
     @staticmethod
     @abstractmethod
-    def _get_gradient(refBLK: QuadBlock) -> None:
+    def _get_gradient(parent_block: QuadBlock) -> None:
         """
         Implementation of the gradient algorithm.
 
-        :type refBLK: QuadBlock
-        :param refBLK: Solution block containing state solution and mesh geometry data
+        :type parent_block: QuadBlock
+        :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None
         :return: None
@@ -70,15 +70,15 @@ class LeastSquares9Point:
         self.stencilSE = [[0, 0], [1, 0], [0, -1], [0, -2], [0, -1], [1, -1], [1, -2]]
         self.stencilNE = [[0, -1], [0, -2], [-1, 0], [-2, 0], [-1, -2], [1, -1], [1, -2]]
 
-    def __call__(self, refBLK):
-        return self.least_squares_nearest_neighbor(refBLK)
+    def __call__(self, parent_block):
+        return self.least_squares_nearest_neighbor(parent_block)
 
-    def least_squares_nearest_neighbor(self, refBLK: QuadBlock):
-        bdr = refBLK.boundary_blocks
+    def least_squares_nearest_neighbor(self, parent_block: QuadBlock):
+        bdr = parent_block.boundary_blocks
 
-        refBLK.grad.x, refBLK.grad.y = least_squares_9_point(refBLK.state.data,
+        parent_block.grad.x, parent_block.grad.y = least_squares_9_point(parent_block.state.data,
                                            bdr.E.state.data, bdr.W.state.data, bdr.N.state.data, bdr.S.state.data,
-                                           refBLK.mesh.x, refBLK.mesh.y,
+                                           parent_block.mesh.x, parent_block.mesh.y,
                                            bdr.E.x, bdr.E.y, bdr.W.x, bdr.W.y,
                                            bdr.N.x, bdr.N.y, bdr.S.x, bdr.S.y,
                                            self.config.nx, self.config.ny,

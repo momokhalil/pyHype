@@ -41,7 +41,7 @@ class GhostBlocks:
         self,
         config: SolverConfig,
         block_data: BlockDescription,
-        refBLK: QuadBlock,
+        parent_block: QuadBlock,
         state_type: Type[State],
     ) -> None:
         """
@@ -56,25 +56,25 @@ class GhostBlocks:
         self.E = GhostBlockEast(
             config,
             BCtype=block_data.bc.E,
-            refBLK=refBLK,
+            parent_block=parent_block,
             state_type=state_type,
         )
         self.W = GhostBlockWest(
             config,
             BCtype=block_data.bc.W,
-            refBLK=refBLK,
+            parent_block=parent_block,
             state_type=state_type,
         )
         self.N = GhostBlockNorth(
             config,
             BCtype=block_data.bc.N,
-            refBLK=refBLK,
+            parent_block=parent_block,
             state_type=state_type,
         )
         self.S = GhostBlockSouth(
             config,
             BCtype=block_data.bc.S,
-            refBLK=refBLK,
+            parent_block=parent_block,
             state_type=state_type,
         )
 
@@ -93,14 +93,14 @@ class GhostBlock(BaseBlockFVM, BoundaryConditionMixin):
         self,
         config: SolverConfig,
         BCtype: Union[str, Callable],
-        refBLK: QuadBlock,
+        parent_block: QuadBlock,
         state_type: Type[State],
         mesh: QuadMesh = None,
         qp: QuadraturePointData = None,
     ):
         self.theta = None
         self.BCtype = BCtype
-        self.refBLK = refBLK
+        self.parent_block = parent_block
         self.nghost = config.nghost
         self.state_type = state_type
 
@@ -182,30 +182,30 @@ class GhostBlockEast(GhostBlock):
         self,
         config: SolverConfig,
         BCtype: str,
-        refBLK: QuadBlock,
+        parent_block: QuadBlock,
         state_type: Type[State],
     ) -> None:
 
         # Calculate coordinates of all four vertices
-        NWx = refBLK.mesh.nodes.x[-1, -1]
-        NWy = refBLK.mesh.nodes.y[-1, -1]
-        SWx = refBLK.mesh.nodes.x[0, -1]
-        SWy = refBLK.mesh.nodes.y[0, -1]
+        NWx = parent_block.mesh.nodes.x[-1, -1]
+        NWy = parent_block.mesh.nodes.y[-1, -1]
+        SWx = parent_block.mesh.nodes.x[0, -1]
+        SWy = parent_block.mesh.nodes.y[0, -1]
         NEx, NEy = utils.reflect_point(
             NWx,
             NWy,
             SWx,
             SWy,
-            xr=refBLK.mesh.nodes.x[-1, -1 - config.nghost],
-            yr=refBLK.mesh.nodes.y[-1, -1 - config.nghost],
+            xr=parent_block.mesh.nodes.x[-1, -1 - config.nghost],
+            yr=parent_block.mesh.nodes.y[-1, -1 - config.nghost],
         )
         SEx, SEy = utils.reflect_point(
             NWx,
             NWy,
             SWx,
             SWy,
-            xr=refBLK.mesh.nodes.x[0, -1 - config.nghost],
-            yr=refBLK.mesh.nodes.y[0, -1 - config.nghost],
+            xr=parent_block.mesh.nodes.x[0, -1 - config.nghost],
+            yr=parent_block.mesh.nodes.y[0, -1 - config.nghost],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -222,14 +222,14 @@ class GhostBlockEast(GhostBlock):
         super().__init__(
             config,
             BCtype,
-            refBLK,
+            parent_block,
             mesh=mesh,
             qp=qp,
             state_type=state_type,
         )
 
     def _get_ghost_state_from_ref_blk(self):
-        return self.refBLK.get_east_ghost_states()
+        return self.parent_block.get_east_ghost_states()
 
     def set_BC_none(
         self,
@@ -239,7 +239,7 @@ class GhostBlockEast(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.from_state(self.refBLK.neighbors.E.get_west_ghost_states())
+        state.from_state(self.parent_block.neighbors.E.get_west_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -249,7 +249,7 @@ class GhostBlockEast(GhostBlock):
         Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.east_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.east_boundary_angle())
 
     def set_BC_slipwall(
         self,
@@ -259,7 +259,7 @@ class GhostBlockEast(GhostBlock):
         Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.east_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.east_boundary_angle())
 
     def set_BC_outlet_dirichlet(
         self,
@@ -283,29 +283,29 @@ class GhostBlockWest(GhostBlock):
         self,
         config: SolverConfig,
         BCtype: str,
-        refBLK: QuadBlock,
+        parent_block: QuadBlock,
         state_type: Type[State],
     ):
         # Calculate coordinates of all four vertices
-        NEx = refBLK.mesh.nodes.x[-1, 0]
-        NEy = refBLK.mesh.nodes.y[-1, 0]
-        SEx = refBLK.mesh.nodes.x[0, 0]
-        SEy = refBLK.mesh.nodes.y[0, 0]
+        NEx = parent_block.mesh.nodes.x[-1, 0]
+        NEy = parent_block.mesh.nodes.y[-1, 0]
+        SEx = parent_block.mesh.nodes.x[0, 0]
+        SEy = parent_block.mesh.nodes.y[0, 0]
         NWx, NWy = utils.reflect_point(
             NEx,
             NEy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[-1, config.nghost],
-            yr=refBLK.mesh.nodes.y[-1, config.nghost],
+            xr=parent_block.mesh.nodes.x[-1, config.nghost],
+            yr=parent_block.mesh.nodes.y[-1, config.nghost],
         )
         SWx, SWy = utils.reflect_point(
             NEx,
             NEy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[0, config.nghost],
-            yr=refBLK.mesh.nodes.y[0, config.nghost],
+            xr=parent_block.mesh.nodes.x[0, config.nghost],
+            yr=parent_block.mesh.nodes.y[0, config.nghost],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -325,14 +325,14 @@ class GhostBlockWest(GhostBlock):
         super().__init__(
             config,
             BCtype,
-            refBLK,
+            parent_block,
             mesh=mesh,
             qp=qp,
             state_type=state_type,
         )
 
     def _get_ghost_state_from_ref_blk(self):
-        return self.refBLK.get_west_ghost_states()
+        return self.parent_block.get_west_ghost_states()
 
     def set_BC_none(
         self,
@@ -342,7 +342,7 @@ class GhostBlockWest(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.from_state(self.refBLK.neighbors.W.get_east_ghost_states())
+        state.from_state(self.parent_block.neighbors.W.get_east_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -352,7 +352,7 @@ class GhostBlockWest(GhostBlock):
         Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.west_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.west_boundary_angle())
 
     def set_BC_slipwall(
         self,
@@ -362,7 +362,7 @@ class GhostBlockWest(GhostBlock):
         Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
         normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.west_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.west_boundary_angle())
 
     def set_BC_outlet_dirichlet(
         self,
@@ -386,29 +386,29 @@ class GhostBlockNorth(GhostBlock):
         self,
         config: SolverConfig,
         BCtype: str,
-        refBLK: QuadBlock,
+        parent_block: QuadBlock,
         state_type: Type[State],
     ):
         # Calculate coordinates of all four vertices
-        SWx = refBLK.mesh.nodes.x[-1, 0]
-        SWy = refBLK.mesh.nodes.y[-1, 0]
-        SEx = refBLK.mesh.nodes.x[-1, -1]
-        SEy = refBLK.mesh.nodes.y[-1, -1]
+        SWx = parent_block.mesh.nodes.x[-1, 0]
+        SWy = parent_block.mesh.nodes.y[-1, 0]
+        SEx = parent_block.mesh.nodes.x[-1, -1]
+        SEy = parent_block.mesh.nodes.y[-1, -1]
         NWx, NWy = utils.reflect_point(
             SWx,
             SWy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[-1 - config.nghost, 0],
-            yr=refBLK.mesh.nodes.y[-1 - config.nghost, 0],
+            xr=parent_block.mesh.nodes.x[-1 - config.nghost, 0],
+            yr=parent_block.mesh.nodes.y[-1 - config.nghost, 0],
         )
         NEx, NEy = utils.reflect_point(
             SWx,
             SWy,
             SEx,
             SEy,
-            xr=refBLK.mesh.nodes.x[-1 - config.nghost, -1],
-            yr=refBLK.mesh.nodes.y[-1 - config.nghost, -1],
+            xr=parent_block.mesh.nodes.x[-1 - config.nghost, -1],
+            yr=parent_block.mesh.nodes.y[-1 - config.nghost, -1],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -428,14 +428,14 @@ class GhostBlockNorth(GhostBlock):
         super().__init__(
             config,
             BCtype,
-            refBLK,
+            parent_block,
             mesh=mesh,
             qp=qp,
             state_type=state_type,
         )
 
     def _get_ghost_state_from_ref_blk(self):
-        return self.refBLK.get_north_ghost_states()
+        return self.parent_block.get_north_ghost_states()
 
     def set_BC_none(
         self,
@@ -445,7 +445,7 @@ class GhostBlockNorth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.from_state(self.refBLK.neighbors.N.get_south_ghost_states())
+        state.from_state(self.parent_block.neighbors.N.get_south_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -455,7 +455,7 @@ class GhostBlockNorth(GhostBlock):
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.north_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.north_boundary_angle())
 
     def set_BC_slipwall(
         self,
@@ -465,7 +465,7 @@ class GhostBlockNorth(GhostBlock):
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.north_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.north_boundary_angle())
 
     def set_BC_outlet_dirichlet(
         self,
@@ -489,29 +489,29 @@ class GhostBlockSouth(GhostBlock):
         self,
         config: SolverConfig,
         BCtype: str,
-        refBLK: QuadBlock,
+        parent_block: QuadBlock,
         state_type: Type[State],
     ) -> None:
         # Calculate coordinates of all four vertices
-        NWx = refBLK.mesh.nodes.x[0, 0]
-        NWy = refBLK.mesh.nodes.y[0, 0]
-        NEx = refBLK.mesh.nodes.x[0, -1]
-        NEy = refBLK.mesh.nodes.y[0, -1]
+        NWx = parent_block.mesh.nodes.x[0, 0]
+        NWy = parent_block.mesh.nodes.y[0, 0]
+        NEx = parent_block.mesh.nodes.x[0, -1]
+        NEy = parent_block.mesh.nodes.y[0, -1]
         SWx, SWy = utils.reflect_point(
             NWx,
             NWy,
             NEx,
             NEy,
-            xr=refBLK.mesh.nodes.x[config.nghost, 0],
-            yr=refBLK.mesh.nodes.y[config.nghost, 0],
+            xr=parent_block.mesh.nodes.x[config.nghost, 0],
+            yr=parent_block.mesh.nodes.y[config.nghost, 0],
         )
         SEx, SEy = utils.reflect_point(
             NWx,
             NWy,
             NEx,
             NEy,
-            xr=refBLK.mesh.nodes.x[config.nghost, -1],
-            yr=refBLK.mesh.nodes.y[config.nghost, -1],
+            xr=parent_block.mesh.nodes.x[config.nghost, -1],
+            yr=parent_block.mesh.nodes.y[config.nghost, -1],
         )
         # Construct Mesh
         block_geometry = BlockGeometry(
@@ -531,14 +531,14 @@ class GhostBlockSouth(GhostBlock):
         super().__init__(
             config,
             BCtype,
-            refBLK,
+            parent_block,
             mesh=mesh,
             qp=qp,
             state_type=state_type,
         )
 
     def _get_ghost_state_from_ref_blk(self):
-        return self.refBLK.get_south_ghost_states()
+        return self.parent_block.get_south_ghost_states()
 
     def set_BC_none(
         self,
@@ -548,7 +548,7 @@ class GhostBlockSouth(GhostBlock):
         Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
         them.
         """
-        state.from_state(self.refBLK.neighbors.S.get_north_ghost_states())
+        state.from_state(self.parent_block.neighbors.S.get_north_ghost_states())
 
     def set_BC_reflection(
         self,
@@ -558,7 +558,7 @@ class GhostBlockSouth(GhostBlock):
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.south_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.south_boundary_angle())
 
     def set_BC_slipwall(
         self,
@@ -568,7 +568,7 @@ class GhostBlockSouth(GhostBlock):
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        self.BC_reflection(state, self.refBLK.mesh.south_boundary_angle())
+        self.BC_reflection(state, self.parent_block.mesh.south_boundary_angle())
 
     def set_BC_outlet_dirichlet(
         self,

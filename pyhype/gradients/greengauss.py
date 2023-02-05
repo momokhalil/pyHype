@@ -32,23 +32,23 @@ if TYPE_CHECKING:
 
 class GreenGauss(Gradient):
     @staticmethod
-    def _get_gradient_NUMPY(refBLK: QuadBlock) -> None:
+    def _get_gradient_NUMPY(parent_block: QuadBlock) -> None:
         """
         Compute the x and y direction gradients using the Green-Gauss method, implemeted fully in numpy.
 
-        :type refBLK: QuadBlock
-        :param refBLK: Solution block containing state solution and mesh geometry data
+        :type parent_block: QuadBlock
+        :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None
         :return: None
         """
-        face = refBLK.mesh.face
+        face = parent_block.mesh.face
         (
             interfaceE,
             interfaceW,
             interfaceN,
             interfaceS,
-        ) = refBLK.get_interface_values()
+        ) = parent_block.get_interface_values()
 
         # Get each face's contribution to dUdx
         E = interfaceE * face.E.L
@@ -57,26 +57,26 @@ class GreenGauss(Gradient):
         S = interfaceS * face.S.L
 
         # Compute dUdx
-        refBLK.grad.x = (
+        parent_block.grad.x = (
             E * face.E.norm.x
             + W * face.W.norm.x
             + N * face.N.norm.x
             + S * face.S.norm.x
-        ) / refBLK.mesh.A
+        ) / parent_block.mesh.A
         # Compute dUdy
-        refBLK.grad.y = (
+        parent_block.grad.y = (
             E * face.E.norm.y
             + W * face.W.norm.y
             + N * face.N.norm.y
             + S * face.S.norm.y
-        ) / refBLK.mesh.A
+        ) / parent_block.mesh.A
 
-    def _get_gradient(self, refBLK: QuadBlock) -> None:
+    def _get_gradient(self, parent_block: QuadBlock) -> None:
         """
         Compute the x and y direction gradients using the Green-Gauss method, implemented with numba JIT.
 
-        :type refBLK: QuadBlock
-        :param refBLK: Solution block containing state solution and mesh geometry data
+        :type parent_block: QuadBlock
+        :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None
         :return: None
@@ -86,27 +86,27 @@ class GreenGauss(Gradient):
             interfaceW,
             interfaceN,
             interfaceS,
-        ) = refBLK.get_interface_values()
+        ) = parent_block.get_interface_values()
         self._get_gradinet_JIT(
             interfaceE,
             interfaceW,
             interfaceN,
             interfaceS,
-            refBLK.mesh.face.E.L[:, :, 0],
-            refBLK.mesh.face.W.L[:, :, 0],
-            refBLK.mesh.face.N.L[:, :, 0],
-            refBLK.mesh.face.S.L[:, :, 0],
-            refBLK.mesh.face.E.norm.x[:, :, 0],
-            refBLK.mesh.face.W.norm.x[:, :, 0],
-            refBLK.mesh.face.N.norm.x[:, :, 0],
-            refBLK.mesh.face.S.norm.x[:, :, 0],
-            refBLK.mesh.face.E.norm.y[:, :, 0],
-            refBLK.mesh.face.W.norm.y[:, :, 0],
-            refBLK.mesh.face.N.norm.y[:, :, 0],
-            refBLK.mesh.face.S.norm.y[:, :, 0],
-            refBLK.mesh.A[:, :, 0],
-            refBLK.grad.x,
-            refBLK.grad.y,
+            parent_block.mesh.face.E.L[:, :, 0],
+            parent_block.mesh.face.W.L[:, :, 0],
+            parent_block.mesh.face.N.L[:, :, 0],
+            parent_block.mesh.face.S.L[:, :, 0],
+            parent_block.mesh.face.E.norm.x[:, :, 0],
+            parent_block.mesh.face.W.norm.x[:, :, 0],
+            parent_block.mesh.face.N.norm.x[:, :, 0],
+            parent_block.mesh.face.S.norm.x[:, :, 0],
+            parent_block.mesh.face.E.norm.y[:, :, 0],
+            parent_block.mesh.face.W.norm.y[:, :, 0],
+            parent_block.mesh.face.N.norm.y[:, :, 0],
+            parent_block.mesh.face.S.norm.y[:, :, 0],
+            parent_block.mesh.A[:, :, 0],
+            parent_block.grad.x,
+            parent_block.grad.y,
         )
 
     @staticmethod

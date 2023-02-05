@@ -53,18 +53,18 @@ class FirstOrderMUSCL(MUSCL):
             )
         super().__init__(config, limiter, flux, gradient)
 
-    def compute_limiter(self, refBLK: QuadBlock) -> [np.ndarray]:
+    def compute_limiter(self, parent_block: QuadBlock) -> [np.ndarray]:
         """
         No limiting in first order
 
-        :param refBLK: Parent block
+        :param parent_block: Parent block
         :return: None
         """
         pass
 
     def unlimited_solution_at_quadrature_point(
         self,
-        refBLK: BaseBlockFVM,
+        parent_block: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> [np.ndarray]:
@@ -72,7 +72,7 @@ class FirstOrderMUSCL(MUSCL):
         Returns the cell average values at each quadrature point on all cell faces.
 
         Parameters:
-            - refBLK (QuadBlock): Reference block whose state is to be reconstructed
+            - parent_block (QuadBlock): Reference block whose state is to be reconstructed
 
         Returns:
             - stateE (np.ndarray): Reconstructed values at the east face midpoints of all cells in the block
@@ -82,16 +82,16 @@ class FirstOrderMUSCL(MUSCL):
         """
 
         # Compute limited values at quadrature points
-        stateE = [refBLK.state.data.copy() for _ in refBLK.qp.E]
-        stateW = [refBLK.state.data.copy() for _ in refBLK.qp.W]
-        stateN = [refBLK.state.data.copy() for _ in refBLK.qp.N]
-        stateS = [refBLK.state.data.copy() for _ in refBLK.qp.S]
+        stateE = [parent_block.state.data.copy() for _ in parent_block.qp.E]
+        stateW = [parent_block.state.data.copy() for _ in parent_block.qp.W]
+        stateN = [parent_block.state.data.copy() for _ in parent_block.qp.N]
+        stateS = [parent_block.state.data.copy() for _ in parent_block.qp.S]
 
         return stateE, stateW, stateN, stateS
 
     def limited_solution_at_quadrature_point(
         self,
-        refBLK: BaseBlockFVM,
+        parent_block: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> [np.ndarray]:
@@ -99,8 +99,8 @@ class FirstOrderMUSCL(MUSCL):
         No limiting or high order terms in a first order MUSCL method,
         simply return the unlimited solution at the quadrature point.
 
-        :type refBLK: QuadBlock
-        :param refBLK: Reference block containing mesh geometry data and gradients
+        :type parent_block: QuadBlock
+        :param parent_block: Reference block containing mesh geometry data and gradients
 
         :type qp: QuadBlock
         :param qp: Quadrature point geometry
@@ -112,7 +112,7 @@ class FirstOrderMUSCL(MUSCL):
         :return: Unlimited solution at the quadrature point
         """
         return self.unlimited_solution_at_quadrature_point(
-            refBLK=refBLK,
+            parent_block=parent_block,
             qp=qp,
             slicer=slicer,
         )

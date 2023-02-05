@@ -60,7 +60,7 @@ class FiniteVolumeMethod(ABC):
         self.flux_function_x, self.flux_function_y = flux
 
     @abstractmethod
-    def compute_limiter(self, refBLK: QuadBlock) -> [np.ndarray]:
+    def compute_limiter(self, parent_block: QuadBlock) -> [np.ndarray]:
         """
         Implementation of the reconstruction method specialized to the Finite Volume Method described in the class.
         """
@@ -69,7 +69,7 @@ class FiniteVolumeMethod(ABC):
     @abstractmethod
     def limited_solution_at_quadrature_point(
         self,
-        refBLK: BaseBlockFVM,
+        parent_block: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> np.ndarray:
@@ -78,40 +78,40 @@ class FiniteVolumeMethod(ABC):
     @abstractmethod
     def unlimited_solution_at_quadrature_point(
         self,
-        refBLK: BaseBlockFVM,
+        parent_block: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> np.ndarray:
         raise NotImplementedError
 
-    def dUdt(self, refBLK: QuadBlock) -> np.ndarray:
+    def dUdt(self, parent_block: QuadBlock) -> np.ndarray:
         """
         Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
         applying the semi-discrete Godunov method:
 
         dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
         """
-        refBLK.reconBlk.from_block(refBLK)
-        refBLK.reconBlk.fvm.evaluate_flux(refBLK.reconBlk)
+        parent_block.reconBlk.from_block(parent_block)
+        parent_block.reconBlk.fvm.evaluate_flux(parent_block.reconBlk)
         integrated_east_flux = self.integrate_flux(
-            fluxes=refBLK.reconBlk.fvm.Flux.E,
-            face_length=refBLK.mesh.face.E.L,
-            quadrature_points=refBLK.reconBlk.qp.E,
+            fluxes=parent_block.reconBlk.fvm.Flux.E,
+            face_length=parent_block.mesh.face.E.L,
+            quadrature_points=parent_block.reconBlk.qp.E,
         )
         integrated_west_flux = self.integrate_flux(
-            fluxes=refBLK.reconBlk.fvm.Flux.W,
-            face_length=refBLK.mesh.face.W.L,
-            quadrature_points=refBLK.reconBlk.qp.W,
+            fluxes=parent_block.reconBlk.fvm.Flux.W,
+            face_length=parent_block.mesh.face.W.L,
+            quadrature_points=parent_block.reconBlk.qp.W,
         )
         integrated_north_flux = self.integrate_flux(
-            fluxes=refBLK.reconBlk.fvm.Flux.N,
-            face_length=refBLK.mesh.face.N.L,
-            quadrature_points=refBLK.reconBlk.qp.N,
+            fluxes=parent_block.reconBlk.fvm.Flux.N,
+            face_length=parent_block.mesh.face.N.L,
+            quadrature_points=parent_block.reconBlk.qp.N,
         )
         integrated_south_flux = self.integrate_flux(
-            fluxes=refBLK.reconBlk.fvm.Flux.S,
-            face_length=refBLK.mesh.face.S.L,
-            quadrature_points=refBLK.reconBlk.qp.S,
+            fluxes=parent_block.reconBlk.fvm.Flux.S,
+            face_length=parent_block.mesh.face.S.L,
+            quadrature_points=parent_block.reconBlk.qp.S,
         )
         if self.config.use_JIT:
             return self._dUdt_JIT(
@@ -119,14 +119,18 @@ class FiniteVolumeMethod(ABC):
                 integrated_west_flux,
                 integrated_north_flux,
                 integrated_south_flux,
-                refBLK.mesh.A,
+                parent_block.mesh.A,
             )
-        return 0.5 * (
-            integrated_west_flux
-            - integrated_east_flux
-            + integrated_south_flux
-            - integrated_north_flux
-        ) / refBLK.mesh.A
+        return (
+            0.5
+            * (
+                integrated_west_flux
+                - integrated_east_flux
+                + integrated_south_flux
+                - integrated_north_flux
+            )
+            / parent_block.mesh.A
+        )
 
     @staticmethod
     @nb.njit(cache=True)
@@ -302,45 +306,45 @@ class MUSCL(FiniteVolumeMethod, ABC):
         )
         return left_state, right_state
 
-    def _get_east_flux_states(self, refBLK: QuadBlock):
-        if refBLK.ghost.E.BCtype is None:
+    def _get_east_flux_states(self, parent_block: QuadBlock):
+        if parent_block.ghost.E.BCtype is None:
             return (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
-                    refBLK=refBLK.ghost.E,
+                    parent_block=parent_block.ghost.E,
                     slicer=self.west_boundary_slice,
                 )
-                for qe in refBLK.qp.E
+                for qe in parent_block.qp.E
             )
         return (
             self.limited_solution_at_quadrature_point(
                 qp=qe,
-                refBLK=refBLK,
+                parent_block=parent_block,
                 slicer=self.east_boundary_slice,
             )
-            for qe in refBLK.qp.E
+            for qe in parent_block.qp.E
         )
 
-    def _get_west_flux_states(self, refBLK: QuadBlock):
-        if refBLK.ghost.W.BCtype is None:
+    def _get_west_flux_states(self, parent_block: QuadBlock):
+        if parent_block.ghost.W.BCtype is None:
             return (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
-                    refBLK=refBLK.ghost.W,
+                    parent_block=parent_block.ghost.W,
                     slicer=self.east_boundary_slice,
                 )
-                for qe in refBLK.qp.W
+                for qe in parent_block.qp.W
             )
         return (
             self.limited_solution_at_quadrature_point(
                 qp=qe,
-                refBLK=refBLK,
+                parent_block=parent_block,
                 slicer=self.west_boundary_slice,
             )
-            for qe in refBLK.qp.W
+            for qe in parent_block.qp.W
         )
 
-    def _evaluate_east_west_flux(self, refBLK: QuadBlock) -> None:
+    def _evaluate_east_west_flux(self, parent_block: QuadBlock) -> None:
         """
         Evaluates the fluxes at each east-west cell boundary. The following steps are followed:
             1. Get list of reconstructed boundary states at each quadrature point on the east boundary
@@ -351,42 +355,46 @@ class MUSCL(FiniteVolumeMethod, ABC):
             5. Compute left and right states
             6. Compute fluxes
 
-        :type refBLK: QuadBlock
-        :param refBLK: Block that holds solution state
+        :type parent_block: QuadBlock
+        :param parent_block: Block that holds solution state
 
         :rtype: None
         :return: None
         """
-        east_boundary_states = self._get_east_flux_states(refBLK=refBLK)
-        west_boundary_states = self._get_west_flux_states(refBLK=refBLK)
+        east_boundary_states = self._get_east_flux_states(parent_block=parent_block)
+        west_boundary_states = self._get_west_flux_states(parent_block=parent_block)
 
         for qe, qw, east_boundary, west_boundary, east_flux, west_flux in zip(
-            refBLK.qp.E,
-            refBLK.qp.W,
+            parent_block.qp.E,
+            parent_block.qp.W,
             east_boundary_states,
             west_boundary_states,
             self.Flux.E,
             self.Flux.W,
         ):
-            east_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK,
+            east_face_states = parent_block.fvm.limited_solution_at_quadrature_point(
+                parent_block=parent_block,
                 qp=qe,
             )
-            west_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK,
+            west_face_states = parent_block.fvm.limited_solution_at_quadrature_point(
+                parent_block=parent_block,
                 qp=qw,
             )
 
-            if refBLK.ghost.E.BCtype is not None:
-                refBLK.ghost.E.apply_boundary_condition(east_boundary)
-            if refBLK.ghost.W.BCtype is not None:
-                refBLK.ghost.W.apply_boundary_condition(west_boundary)
+            if parent_block.ghost.E.BCtype is not None:
+                parent_block.ghost.E.apply_boundary_condition(east_boundary)
+            if parent_block.ghost.W.BCtype is not None:
+                parent_block.ghost.W.apply_boundary_condition(west_boundary)
 
-            if not refBLK.is_cartesian:
-                utils.rotate(refBLK.mesh.face.E.theta, east_face_states.data)
-                utils.rotate(refBLK.mesh.face.W.theta, west_face_states.data)
-                utils.rotate(refBLK.mesh.east_boundary_angle(), east_boundary.data)
-                utils.rotate(refBLK.mesh.west_boundary_angle(), west_boundary.data)
+            if not parent_block.is_cartesian:
+                utils.rotate(parent_block.mesh.face.E.theta, east_face_states.data)
+                utils.rotate(parent_block.mesh.face.W.theta, west_face_states.data)
+                utils.rotate(
+                    parent_block.mesh.east_boundary_angle(), east_boundary.data
+                )
+                utils.rotate(
+                    parent_block.mesh.west_boundary_angle(), west_boundary.data
+                )
 
             left, right = self._get_left_right_riemann_states(
                 right_state=west_face_states,
@@ -398,49 +406,49 @@ class MUSCL(FiniteVolumeMethod, ABC):
             east_flux[:] = east_west_flux[:, 1:, :]
             west_flux[:] = east_west_flux[:, :-1, :]
 
-            if not refBLK.is_cartesian:
-                utils.unrotate(refBLK.mesh.face.E.theta, east_flux)
-                utils.unrotate(refBLK.mesh.face.W.theta, west_flux)
+            if not parent_block.is_cartesian:
+                utils.unrotate(parent_block.mesh.face.E.theta, east_flux)
+                utils.unrotate(parent_block.mesh.face.W.theta, west_flux)
 
-    def _get_north_flux_states(self, refBLK: QuadBlock):
-        if refBLK.ghost.N.BCtype is None:
+    def _get_north_flux_states(self, parent_block: QuadBlock):
+        if parent_block.ghost.N.BCtype is None:
             return (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
-                    refBLK=refBLK.ghost.N,
+                    parent_block=parent_block.ghost.N,
                     slicer=self.south_boundary_slice,
                 )
-                for qe in refBLK.qp.N
+                for qe in parent_block.qp.N
             )
         return (
             self.limited_solution_at_quadrature_point(
                 qp=qe,
-                refBLK=refBLK,
+                parent_block=parent_block,
                 slicer=self.north_boundary_slice,
             )
-            for qe in refBLK.qp.N
+            for qe in parent_block.qp.N
         )
 
-    def _get_south_flux_states(self, refBLK: QuadBlock):
-        if refBLK.ghost.S.BCtype is None:
+    def _get_south_flux_states(self, parent_block: QuadBlock):
+        if parent_block.ghost.S.BCtype is None:
             return (
                 self.limited_solution_at_quadrature_point(
                     qp=qe,
-                    refBLK=refBLK.ghost.S,
+                    parent_block=parent_block.ghost.S,
                     slicer=self.north_boundary_slice,
                 )
-                for qe in refBLK.qp.S
+                for qe in parent_block.qp.S
             )
         return (
             self.limited_solution_at_quadrature_point(
                 qp=qe,
-                refBLK=refBLK,
+                parent_block=parent_block,
                 slicer=self.south_boundary_slice,
             )
-            for qe in refBLK.qp.S
+            for qe in parent_block.qp.S
         )
 
-    def _evaluate_north_south_flux(self, refBLK: QuadBlock) -> None:
+    def _evaluate_north_south_flux(self, parent_block: QuadBlock) -> None:
         """
         Evaluates the fluxes at each north-south cell boundary. The following steps are followed:
             1. Get list of reconstructed boundary states at each quadrature point on the north boundary
@@ -451,38 +459,38 @@ class MUSCL(FiniteVolumeMethod, ABC):
             5. Compute left and right states
             6. Compute fluxes
 
-        :type refBLK: QuadBlock
-        :param refBLK: Block that holds solution state
+        :type parent_block: QuadBlock
+        :param parent_block: Block that holds solution state
 
         :rtype: None
         :return: None
         """
-        north_boundary_states = self._get_north_flux_states(refBLK=refBLK)
-        south_boundary_states = self._get_south_flux_states(refBLK=refBLK)
+        north_boundary_states = self._get_north_flux_states(parent_block=parent_block)
+        south_boundary_states = self._get_south_flux_states(parent_block=parent_block)
 
         for qn, qs, north_boundary, south_boundary, north_flux, south_flux in zip(
-            refBLK.qp.N,
-            refBLK.qp.S,
+            parent_block.qp.N,
+            parent_block.qp.S,
             north_boundary_states,
             south_boundary_states,
             self.Flux.N,
             self.Flux.S,
         ):
-            north_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK,
+            north_face_states = parent_block.fvm.limited_solution_at_quadrature_point(
+                parent_block=parent_block,
                 qp=qn,
             )
-            south_face_states = refBLK.fvm.limited_solution_at_quadrature_point(
-                refBLK=refBLK,
+            south_face_states = parent_block.fvm.limited_solution_at_quadrature_point(
+                parent_block=parent_block,
                 qp=qs,
             )
 
-            if refBLK.ghost.N.BCtype is not None:
-                refBLK.ghost.N.apply_boundary_condition(north_boundary)
-            if refBLK.ghost.S.BCtype is not None:
-                refBLK.ghost.S.apply_boundary_condition(south_boundary)
+            if parent_block.ghost.N.BCtype is not None:
+                parent_block.ghost.N.apply_boundary_condition(north_boundary)
+            if parent_block.ghost.S.BCtype is not None:
+                parent_block.ghost.S.apply_boundary_condition(south_boundary)
 
-            if refBLK.is_cartesian:
+            if parent_block.is_cartesian:
                 utils.rotate90(
                     north_face_states.data,
                     south_face_states.data,
@@ -490,10 +498,14 @@ class MUSCL(FiniteVolumeMethod, ABC):
                     south_boundary.data,
                 )
             else:
-                utils.rotate(refBLK.mesh.face.N.theta, north_face_states.data)
-                utils.rotate(refBLK.mesh.face.S.theta, south_face_states.data)
-                utils.rotate(refBLK.mesh.north_boundary_angle(), north_boundary.data)
-                utils.rotate(refBLK.mesh.south_boundary_angle(), south_boundary.data)
+                utils.rotate(parent_block.mesh.face.N.theta, north_face_states.data)
+                utils.rotate(parent_block.mesh.face.S.theta, south_face_states.data)
+                utils.rotate(
+                    parent_block.mesh.north_boundary_angle(), north_boundary.data
+                )
+                utils.rotate(
+                    parent_block.mesh.south_boundary_angle(), south_boundary.data
+                )
 
             # Transpose to x-frame
             south_boundary.transpose((1, 0, 2))
@@ -513,25 +525,25 @@ class MUSCL(FiniteVolumeMethod, ABC):
             north_flux[:] = north_south_flux[1:, :, :]
             south_flux[:] = north_south_flux[:-1, :, :]
 
-            if refBLK.is_cartesian:
+            if parent_block.is_cartesian:
                 utils.unrotate90(north_flux, south_flux)
             else:
-                utils.unrotate(refBLK.mesh.face.N.theta, north_flux)
-                utils.unrotate(refBLK.mesh.face.S.theta, south_flux)
+                utils.unrotate(parent_block.mesh.face.N.theta, north_flux)
+                utils.unrotate(parent_block.mesh.face.S.theta, south_flux)
 
-    def evaluate_flux(self, refBLK: QuadBlock) -> None:
+    def evaluate_flux(self, parent_block: QuadBlock) -> None:
         """
         Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all of the rows and columns
         of cells on the blocks in a sweeping (but unsplit) fashion.
 
-        :type refBLK: QuadBlock
-        :param refBLK: QuadBlock that holds the solution data for the flux calculation
+        :type parent_block: QuadBlock
+        :param parent_block: QuadBlock that holds the solution data for the flux calculation
 
         :rtype: None
         :return: None
         """
 
-        self.gradient.compute(refBLK)
-        self.compute_limiter(refBLK)
-        self._evaluate_east_west_flux(refBLK)
-        self._evaluate_north_south_flux(refBLK)
+        self.gradient.compute(parent_block)
+        self.compute_limiter(parent_block)
+        self._evaluate_east_west_flux(parent_block)
+        self._evaluate_north_south_flux(parent_block)
