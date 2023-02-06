@@ -22,7 +22,7 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
 from typing import Union
 from typing import TYPE_CHECKING
-from pyhype.states import State
+from pyhype.utils.utils import SidePropertyDict
 
 if TYPE_CHECKING:
     from pyhype.mesh.quad_mesh import QuadMesh
@@ -49,68 +49,9 @@ class QuadraturePoint:
         self.w = w
 
 
-class QuadraturePointDataContainerBase:
-    def __init__(
-        self,
-        dataE: Union[list, tuple] = None,
-        dataW: Union[list, tuple] = None,
-        dataN: Union[list, tuple] = None,
-        dataS: Union[list, tuple] = None,
-    ) -> None:
-        self.E = None
-        self.W = None
-        self.N = None
-        self.S = None
-
-        if dataE and dataW and dataN and dataS:
-            self.create_data(dataE, dataW, dataN, dataS)
-
-    def create_data(
-        self,
-        dataE: Union[list, tuple],
-        dataW: Union[list, tuple],
-        dataN: Union[list, tuple],
-        dataS: Union[list, tuple],
-    ) -> None:
-        self.E = tuple(dataE)
-        self.W = tuple(dataW)
-        self.N = tuple(dataN)
-        self.S = tuple(dataS)
-
-
-class QuadraturePointStateContainer(QuadraturePointDataContainerBase):
-    def __init__(
-        self,
-        dataE: Union[list[State], tuple[State]] = None,
-        dataW: Union[list[State], tuple[State]] = None,
-        dataN: Union[list[State], tuple[State]] = None,
-        dataS: Union[list[State], tuple[State]] = None,
-    ) -> None:
-        super().__init__(dataE, dataW, dataN, dataS)
-
-    def update_data(
-        self,
-        dataE: [np.ndarray],
-        dataW: [np.ndarray],
-        dataN: [np.ndarray],
-        dataS: [np.ndarray],
-    ) -> None:
-        for n, (stateE, stateW, stateN, stateS) in enumerate(
-            zip(dataE, dataW, dataN, dataS)
-        ):
-            self.E[n].data = stateE
-            self.W[n].data = stateW
-            self.N[n].data = stateN
-            self.S[n].data = stateS
-
-
-class QuadraturePointData:
+class QuadraturePointData(SidePropertyDict):
     def __init__(self, config: SolverConfig, refMESH: QuadMesh):
-        self.E = None
-        self.W = None
-        self.N = None
-        self.S = None
-        self._make_quadrature(config, refMESH)
+        super().__init__(*self._make_quadrature(config, refMESH))
 
     @staticmethod
     def _transform(p1: np.ndarray, p2: np.ndarray, p: float):
@@ -123,45 +64,32 @@ class QuadraturePointData:
         xSE, ySE = refMESH.get_SE_vertices()
         xSW, ySW = refMESH.get_SW_vertices()
 
-        self.E = tuple(
+        E = tuple(
             QuadraturePoint(
                 self._transform(xNE, xSE, p), self._transform(yNE, ySE, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
-        self.W = tuple(
+        W = tuple(
             QuadraturePoint(
                 self._transform(xNW, xSW, p), self._transform(yNW, ySW, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
-        self.N = tuple(
+        N = tuple(
             QuadraturePoint(
                 self._transform(xNE, xNW, p), self._transform(yNE, yNW, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
-        self.S = tuple(
+        S = tuple(
             QuadraturePoint(
                 self._transform(xSE, xSW, p), self._transform(ySE, ySW, p), w
             )
             for p, w in _QUADS[config.fvm_num_quadrature_points].items()
         )
 
-    def update_data(
-        self,
-        dataE: [np.ndarray],
-        dataW: [np.ndarray],
-        dataN: [np.ndarray],
-        dataS: [np.ndarray],
-    ) -> None:
-        for n, (stateE, stateW, stateN, stateS) in enumerate(
-            zip(dataE, dataW, dataN, dataS)
-        ):
-            self.E[n].state.data = stateE
-            self.W[n].state.data = stateW
-            self.N[n].state.data = stateN
-            self.S[n].state.data = stateS
+        return E, W, N, S

@@ -40,13 +40,16 @@ class FluxHLLL(FluxFunction):
         UL = ConservativeState(self.config.fluid, state=WL)
         FluxR = WR.F(U=UR)
         FluxL = WL.F(U=UL)
-        return self._HLLL_flux_JIT(
-            Wroe.u, Wroe.a(), FluxL, FluxR, UL.data, UR.data, L_minus, L_plus
+        if self.config.use_JIT:
+            return self._HLLL_flux_JIT(
+                Wroe.u, Wroe.a(), FluxL, FluxR, UL.data, UR.data, L_minus, L_plus
+            )
+        return self._HLLL_flux_numpy(
+            Wroe, FluxL, FluxR, UL.data, UR.data, L_minus, L_plus
         )
 
     @staticmethod
     def _HLLL_flux_numpy(Wroe, FL, FR, UL, UR, L_minus, L_plus):
-
         # Get alhpa
         _u = Wroe.u[:, :, None]
         k = Wroe.a()[:, :, None] * (UR - UL)

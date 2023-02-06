@@ -318,9 +318,15 @@ class RoePrimitiveState(PrimitiveState):
             for j in range(QL.shape[1]):
                 sqRhoL = np.sqrt(QL[i, j, 0])
                 sqRhoR = np.sqrt(QR[i, j, 0])
-                sqRhoRL = sqRhoL + sqRhoR
+                sqRhoRL_inv = 1.0 / (sqRhoL + sqRhoR)
                 _Q[i, j, 0] = np.sqrt(QL[i, j, 0] * QR[i, j, 0])
-                _Q[i, j, 1] = (QL[i, j, 1] * sqRhoL + QR[i, j, 1] * sqRhoR) / sqRhoRL
-                _Q[i, j, 2] = (QL[i, j, 2] * sqRhoL + QR[i, j, 2] * sqRhoR) / sqRhoRL
-                _Q[i, j, 3] = (QL[i, j, 3] * sqRhoL + QR[i, j, 3] * sqRhoR) / sqRhoRL
+                _Q[i, j, 1] = (
+                    QL[i, j, 1] * sqRhoL + QR[i, j, 1] * sqRhoR
+                ) * sqRhoRL_inv
+                _Q[i, j, 2] = (
+                    QL[i, j, 2] * sqRhoL + QR[i, j, 2] * sqRhoR
+                ) * sqRhoRL_inv
+                _Q[i, j, 3] = (
+                    QL[i, j, 3] * sqRhoL + QR[i, j, 3] * sqRhoR
+                ) * sqRhoRL_inv
         return _Q

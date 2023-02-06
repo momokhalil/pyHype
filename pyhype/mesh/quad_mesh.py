@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import matplotlib.pyplot as plt
-from pyhype.utils.utils import SidePropertyContainer
+from pyhype.utils.utils import SidePropertyDict
 from matplotlib.collections import LineCollection
 from pyhype.mesh.base import (
     _mesh_transfinite_gen,
@@ -116,7 +116,7 @@ class QuadMesh(_mesh_transfinite_gen):
         )
 
         # Create cell face classes
-        self.face = SidePropertyContainer(
+        self.face = SidePropertyDict(
             E=CellFace(east_high, east_low, orientation="vertical", direction=1),
             W=CellFace(west_high, west_low, orientation="vertical", direction=-1),
             N=CellFace(north_high, north_low, orientation="horizontal", direction=1),

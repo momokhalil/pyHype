@@ -28,8 +28,9 @@ np.set_printoptions(formatter={"float": "{: 0.3f}".format})
 
 import pyhype.utils.utils as utils
 from pyhype.utils.utils import NumpySlice
-from pyhype.utils.utils import SidePropertyContainer
+from pyhype.utils.utils import SidePropertyDict
 from pyhype.states.primitive import PrimitiveState
+from pyhype.utils.utils import Direction
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
@@ -92,48 +93,32 @@ class FiniteVolumeMethod(ABC):
 
         dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
         """
-        recon_block = self.parent_block.recon_block
-        recon_block.from_block(self.parent_block)
-        recon_block.fvm.evaluate_flux()
+        self.parent_block.recon_block.from_block(self.parent_block)
+        self.parent_block.recon_block.fvm.evaluate_flux()
 
-        integrated_east_flux = self.integrate_flux(
-            fluxes=recon_block.fvm.Flux.E,
-            face_length=recon_block.mesh.face.E.L,
-            quadrature_points=recon_block.qp.E,
-        )
-        integrated_west_flux = self.integrate_flux(
-            fluxes=recon_block.fvm.Flux.W,
-            face_length=recon_block.mesh.face.W.L,
-            quadrature_points=recon_block.qp.W,
-        )
-        integrated_north_flux = self.integrate_flux(
-            fluxes=recon_block.fvm.Flux.N,
-            face_length=recon_block.mesh.face.N.L,
-            quadrature_points=recon_block.qp.N,
-        )
-        integrated_south_flux = self.integrate_flux(
-            fluxes=recon_block.fvm.Flux.S,
-            face_length=recon_block.mesh.face.S.L,
-            quadrature_points=recon_block.qp.S,
-        )
-        if self.config.use_JIT:
-            return self._dUdt_JIT(
-                integrated_east_flux,
-                integrated_west_flux,
-                integrated_north_flux,
-                integrated_south_flux,
-                recon_block.mesh.A,
+        integrated_fluxes = SidePropertyDict(
+            *(
+                self.integrate_flux(
+                    fluxes=flux,
+                    face_length=face.L,
+                    quadrature_points=qp,
+                )
+                for flux, face, qp in zip(
+                    self.parent_block.recon_block.fvm.Flux.values(),
+                    self.parent_block.recon_block.mesh.face.values(),
+                    self.parent_block.recon_block.qp.values(),
+                )
             )
-        return (
-            0.5
-            * (
-                integrated_west_flux
-                - integrated_east_flux
-                + integrated_south_flux
-                - integrated_north_flux
-            )
-            / recon_block.mesh.A
         )
+
+        return self._dUdt_JIT(
+            integrated_fluxes.E,
+            integrated_fluxes.W,
+            integrated_fluxes.N,
+            integrated_fluxes.S,
+            self.parent_block.recon_block.mesh.A,
+        )
+
 
     @staticmethod
     @nb.njit(cache=True)
@@ -239,7 +224,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         super().__init__(config=config, flux=flux, parent_block=parent_block)
 
         # Flux storage arrays
-        self.Flux = SidePropertyContainer(
+        self.Flux = SidePropertyDict(
             E=list(
                 np.empty((self.config.ny, self.config.nx, 4))
                 for _ in range(self.config.fvm_num_quadrature_points)
