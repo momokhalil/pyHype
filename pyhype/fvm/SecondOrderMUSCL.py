@@ -120,11 +120,9 @@ class SecondOrderMUSCL(MUSCL):
         :rtype: np.ndarray
         :return: Limited reconstructed solution at the quadrature point
         """
-        return (
-            self.parent_block.state[slicer]
-            + self.limiter.phi[slicer]
-            * self.high_order_term(qp, slicer)
-        )
+        return self.parent_block.state[slicer] + self.limiter.phi[
+            slicer
+        ] * self.high_order_term(qp, slicer)
 
     def compute_limiter(self) -> None:
         """

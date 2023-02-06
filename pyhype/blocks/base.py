@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod, ABC
+from enum import Enum
 from typing import TYPE_CHECKING, Callable, Union, Type
 
 import numba as nb
@@ -25,8 +26,8 @@ import matplotlib.pyplot as plt
 
 from pyhype.utils.utils import (
     NumpySlice,
-    CornerPropertyContainer,
-    FullPropertyContainer,
+    FullPropertyDict,
+    CornerPropertyDict,
 )
 from pyhype.blocks import quad_block as qb
 from pyhype.flux import FluxFunctionFactory
@@ -40,7 +41,6 @@ if TYPE_CHECKING:
     from pyhype.mesh.quad_mesh import QuadMesh
     from pyhype.solvers.base import SolverConfig
     from pyhype.blocks.quad_block import QuadBlock
-    from pyhype.mesh.quadratures import QuadraturePoint
     from pyhype.mesh.quadratures import QuadraturePointData
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
@@ -672,7 +672,7 @@ class BlockGeometry:
         ny: int = None,
         nghost: int = None,
     ):
-        self.vertices = CornerPropertyContainer(NE=NE, NW=NW, SE=SE, SW=SW)
+        self.vertices = CornerPropertyDict(NE=NE, NW=NW, SE=SE, SW=SW)
         self.n = nx * ny
         self.nx = nx
         self.ny = ny
@@ -684,7 +684,7 @@ class BlockInfo:
         # Set parameter attributes from input dict
         self.nBLK = blk_input["nBLK"]
 
-        self.neighbors = FullPropertyContainer(
+        self.neighbors = FullPropertyDict(
             E=blk_input["NeighborE"],
             W=blk_input["NeighborW"],
             N=blk_input["NeighborN"],
@@ -694,7 +694,7 @@ class BlockInfo:
             SE=blk_input["NeighborSE"],
             SW=blk_input["NeighborSW"],
         )
-        self.bc = FullPropertyContainer(
+        self.bc = FullPropertyDict(
             E=blk_input["BCTypeE"],
             W=blk_input["BCTypeW"],
             N=blk_input["BCTypeN"],

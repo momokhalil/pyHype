@@ -17,6 +17,7 @@ limitations under the License.
 """
 import os
 import functools
+from collections import UserDict
 from dataclasses import dataclass
 from typing import Union, Callable, TYPE_CHECKING, Any
 
@@ -27,6 +28,18 @@ if TYPE_CHECKING:
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
+
+
+@dataclass
+class Direction:
+    east = 1
+    west = 2
+    north = 3
+    south = 4
+    north_east = 5
+    north_west = 6
+    south_east = 7
+    south_west = 8
 
 
 def rotate(
@@ -230,25 +243,62 @@ class Cache:
         return instance.cache[self.func]
 
 
-@dataclass
-class SidePropertyContainer:
-    E: Any
-    W: Any
-    N: Any
-    S: Any
+class SidePropertyDict(UserDict):
+    def __init__(self, E: Any, W: Any, N: Any, S: Any):
+        _items = {
+            Direction.east: E,
+            Direction.west: W,
+            Direction.north: N,
+            Direction.south: S,
+        }
+        super().__init__(_items)
+
+        self.E = E
+        self.W = W
+        self.N = N
+        self.S = S
 
 
-@dataclass
-class CornerPropertyContainer:
-    NE: Any
-    NW: Any
-    SE: Any
-    SW: Any
+class CornerPropertyDict(UserDict):
+    def __init__(self, NE: Any, NW: Any, SE: Any, SW: Any):
+        _items = {
+            Direction.north_east: NE,
+            Direction.north_west: NW,
+            Direction.south_east: SE,
+            Direction.south_west: SW,
+        }
+        super().__init__(_items)
+
+        self.NE = NE
+        self.NW = NW
+        self.SE = SE
+        self.SW = SW
 
 
-@dataclass
-class FullPropertyContainer(SidePropertyContainer, CornerPropertyContainer):
-    pass
+class FullPropertyDict(UserDict):
+    def __init__(
+        self, E: Any, W: Any, N: Any, S: Any, NE: Any, NW: Any, SE: Any, SW: Any
+    ):
+        _items = {
+            Direction.east: E,
+            Direction.west: W,
+            Direction.north: N,
+            Direction.south: S,
+            Direction.north_east: NE,
+            Direction.north_west: NW,
+            Direction.south_east: SE,
+            Direction.south_west: SW,
+        }
+        super().__init__(_items)
+
+        self.E = E
+        self.W = W
+        self.N = N
+        self.S = S
+        self.NE = NE
+        self.NW = NW
+        self.SE = SE
+        self.SW = SW
 
 
 class NumpySlice:

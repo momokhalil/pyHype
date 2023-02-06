@@ -105,8 +105,10 @@ class FluxFunction:
         if Roe_p is None and Roe_m is None:
             Roe_p, Roe_m = self.wavespeeds_x(Wroe)
         # Perform the harten correction using the JITed implementation
-        self._harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m)
-
+        if self.config.use_JIT:
+            self._harten_correction_JIT(R_p, R_m, L_p, L_m, Roe_p, Roe_m)
+        else:
+            self._harten_correction_NUMPY(R_p, R_m, L_p, L_m, Roe_p, Roe_m)
         return Roe_p, Roe_m
 
     @staticmethod
