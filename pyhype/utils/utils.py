@@ -253,10 +253,42 @@ class SidePropertyDict(UserDict):
         }
         super().__init__(_items)
 
-        self.E = E
-        self.W = W
-        self.N = N
-        self.S = S
+        self._E = E
+        self._W = W
+        self._N = N
+        self._S = S
+
+    @property
+    def E(self):
+        return self._E
+
+    @E.setter
+    def E(self, E: Any):
+        self._E = self.data[Direction.east] = E
+
+    @property
+    def W(self):
+        return self._W
+
+    @W.setter
+    def W(self, W: Any):
+        self._W = self.data[Direction.west] = W
+
+    @property
+    def N(self):
+        return self._N
+
+    @N.setter
+    def N(self, N: Any):
+        self._N = self.data[Direction.north] = N
+
+    @property
+    def S(self):
+        return self._S
+
+    @S.setter
+    def S(self, S: Any):
+        self._S = self.data[Direction.south] = S
 
 
 class CornerPropertyDict(UserDict):
@@ -269,10 +301,42 @@ class CornerPropertyDict(UserDict):
         }
         super().__init__(_items)
 
-        self.NE = NE
-        self.NW = NW
-        self.SE = SE
-        self.SW = SW
+        self._NE = NE
+        self._NW = NW
+        self._SE = SE
+        self._SW = SW
+
+    @property
+    def NE(self):
+        return self._NE
+
+    @NE.setter
+    def NE(self, NE: Any):
+        self._NE = self.data[Direction.north_east] = NE
+
+    @property
+    def NW(self):
+        return self._NW
+
+    @NW.setter
+    def NW(self, NW: Any):
+        self._NW = self.data[Direction.north_west] = NW
+
+    @property
+    def SE(self):
+        return self._SE
+
+    @SE.setter
+    def SE(self, SE: Any):
+        self._SE = self.data[Direction.south_east] = SE
+
+    @property
+    def SW(self):
+        return self._SW
+
+    @SW.setter
+    def SW(self, SW: Any):
+        self._SW = self.data[Direction.south_west] = SW
 
 
 class FullPropertyDict(UserDict):
@@ -291,15 +355,78 @@ class FullPropertyDict(UserDict):
         }
         super().__init__(_items)
 
-        self.E = E
-        self.W = W
-        self.N = N
-        self.S = S
-        self.NE = NE
-        self.NW = NW
-        self.SE = SE
-        self.SW = SW
+        self._E = E
+        self._W = W
+        self._N = N
+        self._S = S
+        self._NE = NE
+        self._NW = NW
+        self._SE = SE
+        self._SW = SW
 
+    @property
+    def E(self):
+        return self._E
+
+    @E.setter
+    def E(self, E: Any):
+        self._E = self.data[Direction.east] = E
+
+    @property
+    def W(self):
+        return self._W
+
+    @W.setter
+    def W(self, W: Any):
+        self._W = self.data[Direction.west] = W
+
+    @property
+    def N(self):
+        return self._N
+
+    @N.setter
+    def N(self, N: Any):
+        self._N = self.data[Direction.north] = N
+
+    @property
+    def S(self):
+        return self._S
+
+    @S.setter
+    def S(self, S: Any):
+        self._S = self.data[Direction.south] = S
+
+    @property
+    def NE(self):
+        return self._NE
+
+    @NE.setter
+    def NE(self, NE: Any):
+        self._NE = self.data[Direction.north_east] = NE
+
+    @property
+    def NW(self):
+        return self._NW
+
+    @NW.setter
+    def NW(self, NW: Any):
+        self._NW = self.data[Direction.north_west] = NW
+
+    @property
+    def SE(self):
+        return self._SE
+
+    @SE.setter
+    def SE(self, SE: Any):
+        self._SE = self.data[Direction.south_east] = SE
+
+    @property
+    def SW(self):
+        return self._SW
+
+    @SW.setter
+    def SW(self, SW: Any):
+        self._SW = self.data[Direction.south_west] = SW
 
 class NumpySlice:
     def __init__(self):
