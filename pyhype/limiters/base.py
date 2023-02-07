@@ -91,10 +91,11 @@ class SlopeLimiter:
             axis=0,
         )
         # Values for min/max evaluation
-        vals = (parent_block.state.data, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])
-        # Difference between largest/smallest value and average value
-        dmax = np.maximum.reduce(vals) - parent_block.state.data
-        dmin = np.minimum.reduce(vals) - parent_block.state.data
+        dmax, dmin = self._get_min_max(
+            parent_block.state.data,
+            EW,
+            NS,
+        )
         # Difference between quadrature points and average value
         dE = [_gqpE - parent_block.state.data for _gqpE in gqpE]
         dW = [_gqpW - parent_block.state.data for _gqpW in gqpW]
@@ -106,6 +107,43 @@ class SlopeLimiter:
         sN = [self._compute_slope(dmax, dmin, _dN.data) for _dN in dN]
         sS = [self._compute_slope(dmax, dmin, _dS.data) for _dS in dS]
         return sE, sW, sN, sS
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _get_min_max(state, east_west, north_south):
+        dmax = np.zeros_like(state)
+        dmin = np.zeros_like(state)
+        for i in range(state.shape[0]):
+            for j in range(state.shape[1]):
+                for k in range(state.shape[2]):
+                    ew_minus = east_west[i, j, k]
+                    ew_plus = east_west[i, j + 2, k]
+                    ns_minus = north_south[i, j, k]
+                    ns_plus = north_south[i + 2, j, k]
+                    _state_val = state[i, j, k]
+                    ew_max_min = (
+                        (ew_minus, ew_plus)
+                        if ew_minus > ew_plus
+                        else (ew_plus, ew_minus)
+                    )
+                    ns_max_min = (
+                        (ns_minus, ns_plus)
+                        if ns_minus > ns_plus
+                        else (ns_plus, ns_minus)
+                    )
+                    maximum = (
+                        ew_max_min[0]
+                        if ew_max_min[0] > ns_max_min[0]
+                        else ns_max_min[0]
+                    )
+                    minimum = (
+                        ew_max_min[1]
+                        if ew_max_min[1] < ns_max_min[1]
+                        else ns_max_min[1]
+                    )
+                    dmax[i, j, k] = maximum - _state_val
+                    dmin[i, j, k] = minimum - _state_val
+        return dmax, dmin
 
     def _limit(
         self,

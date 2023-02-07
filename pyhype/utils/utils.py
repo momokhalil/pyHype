@@ -428,6 +428,7 @@ class FullPropertyDict(UserDict):
     def SW(self, SW: Any):
         self._SW = self.data[Direction.south_west] = SW
 
+
 class NumpySlice:
     def __init__(self):
         pass

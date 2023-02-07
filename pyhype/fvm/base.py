@@ -119,7 +119,6 @@ class FiniteVolumeMethod(ABC):
             self.parent_block.recon_block.mesh.A,
         )
 
-
     @staticmethod
     @nb.njit(cache=True)
     def _dUdt_JIT(
