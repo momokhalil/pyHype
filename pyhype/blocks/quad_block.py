@@ -20,6 +20,7 @@ import os
 from typing import TYPE_CHECKING, Type, Union
 from itertools import chain
 
+import numba as nb
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
@@ -151,16 +152,13 @@ class BaseBlockGhost(BaseBlockFVM):
         """
 
         # Concatenate ghost cell and state values in the East-West and North-South directions
-        catx = np.concatenate(
-            (self.ghost.W.state.data, self.state.data, self.ghost.E.state.data), axis=1
+        interfaceEW, interfaceNS = self._get_interface_values_arithmetic_JIT(
+            self.ghost.E.state.data,
+            self.ghost.W.state.data,
+            self.ghost.N.state.data,
+            self.ghost.S.state.data,
+            self.state.data
         )
-        caty = np.concatenate(
-            (self.ghost.S.state.data, self.state.data, self.ghost.N.state.data), axis=0
-        )
-
-        # Compute arithmetic mean
-        interfaceEW = 0.5 * (catx[:, 1:, :] + catx[:, :-1, :])
-        interfaceNS = 0.5 * (caty[1:, :, :] + caty[:-1, :, :])
 
         return (
             interfaceEW[:, 1:, :],
@@ -168,6 +166,37 @@ class BaseBlockGhost(BaseBlockFVM):
             interfaceNS[1:, :, :],
             interfaceNS[:-1, :, :],
         )
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _get_interface_values_arithmetic_JIT(
+        ghostE, ghostW, ghostN, ghostS, state,
+    ):
+        shape = state.shape
+        interfaceEW = np.zeros((shape[0], shape[1] + 1, 4))
+        interfaceNS = np.zeros((shape[0] + 1, shape[1], 4))
+
+        # East-West faces
+        for i in range(state.shape[0]):
+            for k in range(state.shape[2]):
+                interfaceEW[i, 0, k] = 0.5 * (ghostW[i, 0, k] + state[i, 0, k])
+                interfaceEW[i, -1, k] = 0.5 * (ghostE[i, 0, k] + state[i, -1, k])
+
+        # North-South faces
+        for j in range(state.shape[1]):
+            for k in range(state.shape[2]):
+                interfaceNS[0, j, k] = 0.5 * (ghostS[0, j, k] + state[0, j, k])
+                interfaceNS[-1, j, k] = 0.5 * (ghostN[0, j, k] + state[-1, j, k])
+
+        for i in range(state.shape[0]):
+            for j in range(state.shape[1]):
+                for k in range(state.shape[2]):
+                    if j > 0:
+                        interfaceEW[i, j, k] = 0.5 * (state[i, j - 1, k] + state[i, j, k])
+                    if i > 0:
+                        interfaceNS[i, j, k] = 0.5 * (state[i - 1, j, k] + state[i, j, k])
+
+        return interfaceEW, interfaceNS
 
     def clear_cache(self):
         self.state.clear_cache()
