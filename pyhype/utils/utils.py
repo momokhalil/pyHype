@@ -20,6 +20,7 @@ import functools
 from collections import UserDict
 from dataclasses import dataclass
 from typing import Union, Callable, TYPE_CHECKING, Any
+from profilehooks import profile
 
 import numba as nb
 
@@ -41,10 +42,9 @@ class Direction:
     south_east = 7
     south_west = 8
 
-
 def rotate(
     theta: Union[float, np.ndarray],
-    *arrays: np.ndarray,
+    array: np.ndarray,
 ) -> None:
     """
     Rotates a 1 * nx * 4 ndarray that represents a row of nodes from a State by theta degrees counterclockwise.
@@ -65,33 +65,19 @@ def rotate(
     x' = x cos(theta) + y sin(theta)
     y' = y cos(theta) - x sin(theta)
     """
-
-    if np.ndim(theta) == 3:
-        theta = theta[:, :, 0]
-    elif np.ndim(theta) > 3:
-        raise RuntimeError("theta cannot have more than 3 dimensions.")
-
-    for array in arrays:
-        u, v = rotate_JIT(array, theta)
-        array[:, :, 1] = u
-        array[:, :, 2] = v
-
+    rotate_JIT(array, theta)
 
 @nb.njit(cache=True)
 def rotate_JIT(array, theta):
-    u = np.zeros_like(theta)
-    v = np.zeros_like(theta)
     for i in range(array.shape[0]):
         for j in range(array.shape[1]):
-            _theta = theta[i, j]
+            _theta = theta[i, j, 0]
             _u = array[i, j, 1]
             _v = array[i, j, 2]
             s = np.sin(_theta)
             c = np.cos(_theta)
-            u[i, j] = _u * c + _v * s
-            v[i, j] = _v * c - _u * s
-
-    return u, v
+            array[i, j, 1] = _u * c + _v * s
+            array[i, j, 2] = _v * c - _u * s
 
 
 def rotate90(*arrays: np.ndarray) -> None:
@@ -116,10 +102,8 @@ def rotate90(*arrays: np.ndarray) -> None:
     """
 
     for array in arrays:
-
         u = array[:, :, 2].copy()
         v = array[:, :, 1].copy()
-
         array[:, :, 1], array[:, :, 2] = u, -v
 
 
@@ -153,15 +137,11 @@ def unrotate(
         raise RuntimeError("theta cannot have more than 3 dimensions.")
 
     for array in arrays:
-        u, v = unrotate_JIT(array, theta)
-        array[:, :, 1] = u
-        array[:, :, 2] = v
+        unrotate_JIT(array, theta)
 
 
 @nb.njit(cache=True)
 def unrotate_JIT(array, theta):
-    u = np.zeros_like(theta)
-    v = np.zeros_like(theta)
     for i in range(array.shape[0]):
         for j in range(array.shape[1]):
             _theta = theta[i, j]
@@ -169,10 +149,8 @@ def unrotate_JIT(array, theta):
             _v = array[i, j, 2]
             s = np.sin(_theta)
             c = np.cos(_theta)
-            u[i, j] = _u * c - _v * s
-            v[i, j] = _v * c + _u * s
-
-    return u, v
+            array[i, j, 1] = _u * c - _v * s
+            array[i, j, 2] = _v * c + _u * s
 
 
 def unrotate90(*arrays: np.ndarray) -> None:

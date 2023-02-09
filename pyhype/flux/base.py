@@ -47,8 +47,7 @@ class FluxFunction:
             )
         return self.compute_flux(WL, WR)
 
-    @staticmethod
-    def wavespeeds_x(W: PrimitiveState) -> [np.ndarray]:
+    def wavespeeds_x(self, W: PrimitiveState) -> [np.ndarray]:
         """
         Calculates the slow and fast wavespeeds u - a and u + a.
 
@@ -59,15 +58,21 @@ class FluxFunction:
             - slow (np.ndarray): Array that stores the slow wavespeeds
             - fast (np.ndarray): Array that stores the fast wavespeeds
         """
+        a = W.a()
+        return self._wavespeeds_x_JIT(W.u, a)
 
-        # Check if PrimitiveState
-        if isinstance(W, PrimitiveState):
-            # Speed of sound
-            a = W.a()
-            # Compute wavespeeds
-            slow, fast = W.u - a, W.u + a
-            return slow, fast
-        raise TypeError("Input is not PrimitiveState.")
+    @staticmethod
+    @nb.njit(cache=True)
+    def _wavespeeds_x_JIT(u: np.ndarray, a: np.ndarray):
+        slow = np.zeros_like(u)
+        fast = np.zeros_like(u)
+        for i in range(u.shape[0]):
+            for j in range(u.shape[1]):
+                _u = u[i, j]
+                _a = a[i, j]
+                slow[i, j] = _u - _a
+                fast[i, j] = _u + _a
+        return slow, fast
 
     def harten_correction_x(
         self,
@@ -132,11 +137,13 @@ class FluxFunction:
                 # Correct for zero or below zero values
                 tp = 1e-8 if tp <= 0 else tp
                 tm = 1e-8 if tm <= 0 else tm
+                _roe_p = Roe_p[i, j]
+                _roe_m = Roe_m[i, j]
                 # Apply correction
-                if np.absolute(Roe_p[i, j]) < tp:
-                    Roe_p[i, j] = 0.5 * ((Roe_p[i, j] * Roe_p[i, j]) / tp + tp)
-                if np.absolute(Roe_m[i, j]) < tm:
-                    Roe_m[i, j] = 0.5 * ((Roe_m[i, j] * Roe_m[i, j]) / tm + tm)
+                if np.absolute(_roe_p) < tp:
+                    Roe_p[i, j] = 0.5 * ((_roe_p * _roe_p) / tp + tp)
+                if np.absolute(_roe_m) < tm:
+                    Roe_m[i, j] = 0.5 * ((_roe_m * _roe_m) / tm + tm)
 
     @staticmethod
     def _harten_correction_NUMPY(R_p, R_m, L_p, L_m, Roe_p, Roe_m):

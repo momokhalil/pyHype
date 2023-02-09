@@ -205,8 +205,8 @@ class FluxRoe(FluxFunction):
         :return: None
         """
 
-        H = Wroe.H()
         Ek = Wroe.Ek()
+        H = Wroe.H(Ek=Ek)
         ua = Wroe.u * Wroe.a() if ua is None else ua
 
         # -3 subdiagonal entries
