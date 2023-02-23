@@ -23,9 +23,9 @@ if TYPE_CHECKING:
     from pyhype.states import State
 
 
-class BoundaryConditionMixin:
+class BoundaryConditionFunctions:
     @staticmethod
-    def BC_reflection(state: State, wall_angle: Union[np.ndarray, int, float]) -> None:
+    def reflection(state: State, wall_angle: Union[np.ndarray, int, float]) -> None:
         """
         Flips the sign of the u velocity along the wall. Rotates the state
         from global to wall frame and back to ensure

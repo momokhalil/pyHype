@@ -353,9 +353,13 @@ class MUSCL(FiniteVolumeMethod, ABC):
             west_face_states = self.limited_solution_at_quadrature_point(qp=qw)
 
             if self.parent_block.ghost.E.BCtype is not None:
-                self.parent_block.ghost.E.apply_boundary_condition(east_boundary)
+                self.parent_block.ghost.E.apply_boundary_condition_to_state(
+                    east_boundary
+                )
             if self.parent_block.ghost.W.BCtype is not None:
-                self.parent_block.ghost.W.apply_boundary_condition(west_boundary)
+                self.parent_block.ghost.W.apply_boundary_condition_to_state(
+                    west_boundary
+                )
 
             if not self.parent_block.is_cartesian:
                 utils.rotate(self.parent_block.mesh.face.E.theta, east_face_states.data)
@@ -440,9 +444,13 @@ class MUSCL(FiniteVolumeMethod, ABC):
             south_face_states = self.limited_solution_at_quadrature_point(qp=qs)
 
             if self.parent_block.ghost.N.BCtype is not None:
-                self.parent_block.ghost.N.apply_boundary_condition(north_boundary)
+                self.parent_block.ghost.N.apply_boundary_condition_to_state(
+                    north_boundary
+                )
             if self.parent_block.ghost.S.BCtype is not None:
-                self.parent_block.ghost.S.apply_boundary_condition(south_boundary)
+                self.parent_block.ghost.S.apply_boundary_condition_to_state(
+                    south_boundary
+                )
 
             if self.parent_block.is_cartesian:
                 utils.rotate90(
