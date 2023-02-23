@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 from pyhype.mesh import quadratures
-from pyhype.utils.utils import NumpySlice
+from pyhype.utils.utils import NumpySlice, FullPropertyDict
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
@@ -157,7 +157,7 @@ class BaseBlockGhost(BaseBlockFVM):
             self.ghost.W.state.data,
             self.ghost.N.state.data,
             self.ghost.S.state.data,
-            self.state.data
+            self.state.data,
         )
 
         return (
@@ -170,7 +170,11 @@ class BaseBlockGhost(BaseBlockFVM):
     @staticmethod
     @nb.njit(cache=True)
     def _get_interface_values_arithmetic_JIT(
-        ghostE, ghostW, ghostN, ghostS, state,
+        ghostE,
+        ghostW,
+        ghostN,
+        ghostS,
+        state,
     ):
         shape = state.shape
         interfaceEW = np.zeros((shape[0], shape[1] + 1, 4))
@@ -192,9 +196,13 @@ class BaseBlockGhost(BaseBlockFVM):
             for j in range(state.shape[1]):
                 for k in range(state.shape[2]):
                     if j > 0:
-                        interfaceEW[i, j, k] = 0.5 * (state[i, j - 1, k] + state[i, j, k])
+                        interfaceEW[i, j, k] = 0.5 * (
+                            state[i, j - 1, k] + state[i, j, k]
+                        )
                     if i > 0:
-                        interfaceNS[i, j, k] = 0.5 * (state[i - 1, j, k] + state[i, j, k])
+                        interfaceNS[i, j, k] = 0.5 * (
+                            state[i - 1, j, k] + state[i, j, k]
+                        )
 
         return interfaceEW, interfaceNS
 
@@ -434,7 +442,7 @@ class QuadBlock(BaseBlockGhost):
         Return:
             - None
         """
-        self.neighbors = Neighbors(
+        self.neighbors = FullPropertyDict(
             E=NeighborE,
             W=NeighborW,
             N=NeighborN,

@@ -42,6 +42,7 @@ class Direction:
     south_east = 7
     south_west = 8
 
+
 def rotate(
     theta: Union[float, np.ndarray],
     array: np.ndarray,
@@ -66,6 +67,7 @@ def rotate(
     y' = y cos(theta) - x sin(theta)
     """
     rotate_JIT(array, theta)
+
 
 @nb.njit(cache=True)
 def rotate_JIT(array, theta):
