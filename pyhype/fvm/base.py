@@ -365,10 +365,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 utils.rotate(self.parent_block.mesh.face.E.theta, east_face_states.data)
                 utils.rotate(self.parent_block.mesh.face.W.theta, west_face_states.data)
                 utils.rotate(
-                    self.parent_block.mesh.east_boundary_angle(), east_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.east),
+                    east_boundary.data,
                 )
                 utils.rotate(
-                    self.parent_block.mesh.west_boundary_angle(), west_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.west),
+                    west_boundary.data,
                 )
 
             left, right = self._get_left_right_riemann_states(
@@ -467,10 +469,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
                     self.parent_block.mesh.face.S.theta, south_face_states.data
                 )
                 utils.rotate(
-                    self.parent_block.mesh.north_boundary_angle(), north_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.north),
+                    north_boundary.data,
                 )
                 utils.rotate(
-                    self.parent_block.mesh.south_boundary_angle(), south_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.south),
+                    south_boundary.data,
                 )
 
             # Transpose to x-frame

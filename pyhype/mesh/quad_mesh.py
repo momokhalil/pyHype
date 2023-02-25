@@ -22,9 +22,10 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numba as nb
 import matplotlib.pyplot as plt
-from pyhype.utils.utils import SidePropertyDict, Direction, NumpySlice
 from matplotlib.collections import LineCollection
+from pyhype.utils.utils import SidePropertyDict, NumpySlice
 from pyhype.mesh.base import (
     _mesh_transfinite_gen,
     CellFace,
@@ -181,27 +182,6 @@ class QuadMesh(_mesh_transfinite_gen):
 
         self.A = np.sqrt(p1 - 0.5 * p2 * (1 + np.cos(a1 + a2)))
 
-    @staticmethod
-    def get_centroid_from_arrays(x: np.ndarray, y: np.ndarray) -> [np.ndarray]:
-        """
-        Calculates the centroid coordinates from the x and y nodal coordinates. This is a static method that works on
-        any given x and y coordinate arrays.
-
-        :type x: np.ndarray
-        :param x: Array of nodal x-coordinates
-
-        :type y: np.array
-        :param y: Array of nodal y-coordinates
-
-        :rtype: tuple(np.ndarray, np.ndarray)
-        :return: Centroid coordinates from the x and y nodal coordinates
-        """
-        # Kernel of centroids x-coordinates
-        xc = 0.25 * (x[1:, 0:-1] + x[1:, 1:] + x[0:-1, 0:-1] + x[0:-1, 1:])
-        # Kernel of centroids y-coordinates
-        yc = 0.25 * (y[1:, 0:-1] + y[1:, 1:] + y[0:-1, 0:-1] + y[0:-1, 1:])
-        return xc, yc
-
     def get_centroid(self) -> [np.ndarray]:
         """
         Calculates the centroid coordinates from the x and y nodal coordinates.
@@ -209,20 +189,12 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: tuple(np.ndarray, np.ndarray)
         :return: Centroid coordinates from the x and y nodal coordinates
         """
-        # Kernel of centroids x-coordinates
-        x = 0.25 * (
-            self.nodes.x[1:, 0:-1]
-            + self.nodes.x[1:, 1:]
-            + self.nodes.x[0:-1, 0:-1]
-            + self.nodes.x[0:-1, 1:]
-        )
-        # Kernel of centroids x-coordinates
-        y = 0.25 * (
-            self.nodes.y[1:, 0:-1]
-            + self.nodes.y[1:, 1:]
-            + self.nodes.y[0:-1, 0:-1]
-            + self.nodes.y[0:-1, 1:]
-        )
+        x_ne, y_ne = self.get_NE_vertices()
+        x_nw, y_nw = self.get_NW_vertices()
+        x_se, y_se = self.get_SE_vertices()
+        x_sw, y_sw = self.get_SW_vertices()
+        x = 0.25 * (x_ne + x_nw + x_se + x_sw)
+        y = 0.25 * (y_ne + y_nw + y_se + y_sw)
         return x, y
 
     def compute_centroid(self) -> None:
@@ -232,12 +204,11 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: None
         :return: None
         """
-        if isinstance(self.nodes, GridLocation):
-            self.x, self.y = self.get_centroid()
-        else:
-            raise AttributeError(
+        if not isinstance(self.nodes, GridLocation):
+            raise TypeError(
                 "Attribute nodes of class Mesh is not of type GridLocation."
             )
+        self.x, self.y = self.get_centroid()
 
     def east_face_length(self) -> np.ndarray:
         """
@@ -246,12 +217,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: east face lengths
         """
-        return np.sqrt(
-            (
-                (self.nodes.x[1:, 1:] - self.nodes.x[:-1, 1:]) ** 2
-                + (self.nodes.y[1:, 1:] - self.nodes.y[:-1, 1:]) ** 2
-            )
-        )
+        x_ne, y_ne = self.get_NE_vertices()
+        x_se, y_se = self.get_SE_vertices()
+        return self._face_length(x_se, x_ne, y_ne, y_se)
 
     def west_face_length(self) -> np.ndarray:
         """
@@ -260,12 +228,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: west face lengths
         """
-        return np.sqrt(
-            (
-                (self.nodes.x[1:, :-1] - self.nodes.x[:-1, :-1]) ** 2
-                + (self.nodes.y[1:, :-1] - self.nodes.y[:-1, :-1]) ** 2
-            )
-        )
+        x_nw, y_nw = self.get_NW_vertices()
+        x_sw, y_sw = self.get_SW_vertices()
+        return self._face_length(x_sw, x_nw, y_nw, y_sw)
 
     def north_face_length(self) -> np.ndarray:
         """
@@ -274,12 +239,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: south north lengths
         """
-        return np.sqrt(
-            (
-                (self.nodes.x[1:, :-1] - self.nodes.x[1:, 1:]) ** 2
-                + (self.nodes.y[1:, :-1] - self.nodes.y[1:, 1:]) ** 2
-            )
-        )
+        x_ne, y_ne = self.get_NE_vertices()
+        x_nw, y_nw = self.get_NW_vertices()
+        return self._face_length(x_nw, x_ne, y_ne, y_nw)
 
     def south_face_length(self) -> np.ndarray:
         """
@@ -288,12 +250,21 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: np.ndarray
         :return: south face lengths
         """
-        return np.sqrt(
-            (
-                (self.nodes.x[:-1, :-1] - self.nodes.x[:-1, 1:]) ** 2
-                + (self.nodes.y[:-1, :-1] - self.nodes.y[:-1, 1:]) ** 2
-            )
-        )
+        x_se, y_se = self.get_SE_vertices()
+        x_sw, y_sw = self.get_SW_vertices()
+        return self._face_length(x_sw, x_se, y_se, y_sw)
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _face_length(x1, x2, y1, y2):
+        res = np.zeros_like(x1)
+        for i in range(x1.shape[0]):
+            for j in range(x1.shape[1]):
+                for k in range(x1.shape[2]):
+                    dx = x1[i, j, k] - x2[i, j, k]
+                    dy = y1[i, j, k] - y2[i, j, k]
+                    res[i, j, k] = np.sqrt(dx * dx + dy * dy)
+        return res
 
     def get_east_face_midpoint(self) -> [np.ndarray]:
         """
@@ -302,9 +273,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: tuple(np.ndarray, np.ndarray)
         :return: x and y coordinates of the east face midpoint
         """
-        x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[:-1, 1:])
-        y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[:-1, 1:])
-        return x, y
+        x_ne, y_ne = self.get_NE_vertices()
+        x_se, y_se = self.get_SE_vertices()
+        return self._face_midpoint(x_se, x_ne, y_ne, y_se)
 
     def get_west_face_midpoint(self) -> [np.ndarray]:
         """
@@ -313,9 +284,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: tuple(np.ndarray, np.ndarray)
         :return: x and y coordinates of the west face midpoint
         """
-        x = 0.5 * (self.nodes.x[1:, :-1] + self.nodes.x[:-1, :-1])
-        y = 0.5 * (self.nodes.y[1:, :-1] + self.nodes.y[:-1, :-1])
-        return x, y
+        x_nw, y_nw = self.get_NW_vertices()
+        x_sw, y_sw = self.get_SW_vertices()
+        return self._face_midpoint(x_sw, x_nw, y_nw, y_sw)
 
     def get_north_face_midpoint(self) -> [np.ndarray]:
         """
@@ -324,9 +295,9 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: tuple(np.ndarray, np.ndarray)
         :return: x and y coordinates of the north face midpoint
         """
-        x = 0.5 * (self.nodes.x[1:, 1:] + self.nodes.x[1:, :-1])
-        y = 0.5 * (self.nodes.y[1:, 1:] + self.nodes.y[1:, :-1])
-        return x, y
+        x_ne, y_ne = self.get_NE_vertices()
+        x_nw, y_nw = self.get_NW_vertices()
+        return self._face_midpoint(x_nw, x_ne, y_ne, y_nw)
 
     def get_south_face_midpoint(self) -> [np.ndarray]:
         """
@@ -335,8 +306,20 @@ class QuadMesh(_mesh_transfinite_gen):
         :rtype: tuple(np.ndarray, np.ndarray)
         :return: x and y coordinates of the south face midpoint
         """
-        x = 0.5 * (self.nodes.x[:-1, 1:] + self.nodes.x[:-1, :-1])
-        y = 0.5 * (self.nodes.y[:-1, 1:] + self.nodes.y[:-1, :-1])
+        x_se, y_se = self.get_SE_vertices()
+        x_sw, y_sw = self.get_SW_vertices()
+        return self._face_midpoint(x_sw, x_se, y_se, y_sw)
+
+    @staticmethod
+    @nb.njit(cache=True)
+    def _face_midpoint(x1, x2, y1, y2):
+        x = np.zeros_like(x1)
+        y = np.zeros_like(x1)
+        for i in range(x1.shape[0]):
+            for j in range(x1.shape[1]):
+                for k in range(x1.shape[2]):
+                    x[i, j, k] = 0.5 * (x1[i, j, k] + x2[i, j, k])
+                    y[i, j, k] = 0.5 * (y1[i, j, k] + y2[i, j, k])
         return x, y
 
     def compute_east_face_midpoint(self) -> None:
