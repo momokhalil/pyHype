@@ -304,7 +304,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         """
         slicer = self.east_boundary_slice
         func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.E.BCtype is None:
+        if self.parent_block.ghost.E.bc_type is None:
             slicer = self.west_boundary_slice
             func = self.parent_block.ghost.E.fvm.limited_solution_at_quadrature_point
         return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.E)
@@ -319,7 +319,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         """
         slicer = self.west_boundary_slice
         func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.W.BCtype is None:
+        if self.parent_block.ghost.W.bc_type is None:
             slicer = self.east_boundary_slice
             func = self.parent_block.ghost.W.fvm.limited_solution_at_quadrature_point
         return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.W)
@@ -352,11 +352,11 @@ class MUSCL(FiniteVolumeMethod, ABC):
             east_face_states = self.limited_solution_at_quadrature_point(qp=qe)
             west_face_states = self.limited_solution_at_quadrature_point(qp=qw)
 
-            if self.parent_block.ghost.E.BCtype is not None:
+            if self.parent_block.ghost.E.bc_type is not None:
                 self.parent_block.ghost.E.apply_boundary_condition_to_state(
                     east_boundary
                 )
-            if self.parent_block.ghost.W.BCtype is not None:
+            if self.parent_block.ghost.W.bc_type is not None:
                 self.parent_block.ghost.W.apply_boundary_condition_to_state(
                     west_boundary
                 )
@@ -395,7 +395,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         """
         slicer = self.north_boundary_slice
         func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.N.BCtype is None:
+        if self.parent_block.ghost.N.bc_type is None:
             slicer = self.south_boundary_slice
             func = self.parent_block.ghost.N.fvm.limited_solution_at_quadrature_point
         return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.N)
@@ -410,7 +410,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         """
         slicer = self.south_boundary_slice
         func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.S.BCtype is None:
+        if self.parent_block.ghost.S.bc_type is None:
             slicer = self.north_boundary_slice
             func = self.parent_block.ghost.S.fvm.limited_solution_at_quadrature_point
         return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.S)
@@ -443,11 +443,11 @@ class MUSCL(FiniteVolumeMethod, ABC):
             north_face_states = self.limited_solution_at_quadrature_point(qp=qn)
             south_face_states = self.limited_solution_at_quadrature_point(qp=qs)
 
-            if self.parent_block.ghost.N.BCtype is not None:
+            if self.parent_block.ghost.N.bc_type is not None:
                 self.parent_block.ghost.N.apply_boundary_condition_to_state(
                     north_boundary
                 )
-            if self.parent_block.ghost.S.BCtype is not None:
+            if self.parent_block.ghost.S.bc_type is not None:
                 self.parent_block.ghost.S.apply_boundary_condition_to_state(
                     south_boundary
                 )

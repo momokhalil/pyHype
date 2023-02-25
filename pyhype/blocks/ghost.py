@@ -56,25 +56,25 @@ class GhostBlocks:
         """
         self.E = GhostBlockEast(
             config,
-            BCtype=block_data.bc.E,
+            bc_type=block_data.bc.E,
             parent_block=parent_block,
             state_type=state_type,
         )
         self.W = GhostBlockWest(
             config,
-            BCtype=block_data.bc.W,
+            bc_type=block_data.bc.W,
             parent_block=parent_block,
             state_type=state_type,
         )
         self.N = GhostBlockNorth(
             config,
-            BCtype=block_data.bc.N,
+            bc_type=block_data.bc.N,
             parent_block=parent_block,
             state_type=state_type,
         )
         self.S = GhostBlockSouth(
             config,
-            BCtype=block_data.bc.S,
+            bc_type=block_data.bc.S,
             parent_block=parent_block,
             state_type=state_type,
         )
@@ -93,7 +93,7 @@ class GhostBlock(BaseBlockFVM):
     def __init__(
         self,
         config: SolverConfig,
-        BCtype: Union[str, Callable],
+        bc_type: Union[str, Callable],
         parent_block: QuadBlock,
         state_type: Type[State],
         direc: int,
@@ -102,7 +102,7 @@ class GhostBlock(BaseBlockFVM):
         qp: QuadraturePointData = None,
     ):
         self.theta = None
-        self.BCtype = BCtype
+        self.bc_type = bc_type
         self.parent_block = parent_block
         self.nghost = config.nghost
         self.state_type = state_type
@@ -119,20 +119,20 @@ class GhostBlock(BaseBlockFVM):
             S=NumpySlice.rows(None, config.nghost),
         )
 
-        if self.BCtype is None:
+        if self.bc_type is None:
             self._apply_bc_func = self.set_BC_none
-        elif self.BCtype == "Reflection":
+        elif self.bc_type == "Reflection":
             self._apply_bc_func = self.set_BC_reflection
-        elif self.BCtype == "Slipwall":
+        elif self.bc_type == "Slipwall":
             self._apply_bc_func = self.set_BC_slipwall
-        elif self.BCtype == "OutletDirichlet":
+        elif self.bc_type == "OutletDirichlet":
             self._apply_bc_func = self.set_BC_outlet_dirichlet
-        elif isinstance(self.BCtype, BoundaryCondition):
-            self._apply_bc_func = self.BCtype
+        elif isinstance(self.bc_type, BoundaryCondition):
+            self._apply_bc_func = self.bc_type
         else:
             raise ValueError(
                 "Boundary Condition type "
-                + str(self.BCtype)
+                + str(self.bc_type)
                 + " has not been specialized."
             )
         super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
@@ -153,7 +153,7 @@ class GhostBlock(BaseBlockFVM):
     def _fill(self):
         self.state.from_state(
             self.parent_block.neighbors[self.dir].state[self._ghost_idx[self.opp]]
-            if self.BCtype is None
+            if self.bc_type is None
             else self.parent_block.state[self._ghost_idx[self.dir]]
         )
 
@@ -199,7 +199,7 @@ class GhostBlockEast(GhostBlock):
     def __init__(
         self,
         config: SolverConfig,
-        BCtype: str,
+        bc_type: str,
         parent_block: QuadBlock,
         state_type: Type[State],
     ) -> None:
@@ -239,7 +239,7 @@ class GhostBlockEast(GhostBlock):
 
         super().__init__(
             config=config,
-            BCtype=BCtype,
+            bc_type=bc_type,
             parent_block=parent_block,
             mesh=mesh,
             qp=qp,
@@ -253,7 +253,7 @@ class GhostBlockWest(GhostBlock):
     def __init__(
         self,
         config: SolverConfig,
-        BCtype: str,
+        bc_type: str,
         parent_block: QuadBlock,
         state_type: Type[State],
     ):
@@ -295,7 +295,7 @@ class GhostBlockWest(GhostBlock):
 
         super().__init__(
             config,
-            BCtype,
+            bc_type,
             parent_block,
             mesh=mesh,
             qp=qp,
@@ -309,7 +309,7 @@ class GhostBlockNorth(GhostBlock):
     def __init__(
         self,
         config: SolverConfig,
-        BCtype: str,
+        bc_type: str,
         parent_block: QuadBlock,
         state_type: Type[State],
     ):
@@ -351,7 +351,7 @@ class GhostBlockNorth(GhostBlock):
 
         super().__init__(
             config,
-            BCtype,
+            bc_type,
             parent_block,
             mesh=mesh,
             qp=qp,
@@ -365,7 +365,7 @@ class GhostBlockSouth(GhostBlock):
     def __init__(
         self,
         config: SolverConfig,
-        BCtype: str,
+        bc_type: str,
         parent_block: QuadBlock,
         state_type: Type[State],
     ) -> None:
@@ -407,7 +407,7 @@ class GhostBlockSouth(GhostBlock):
 
         super().__init__(
             config,
-            BCtype,
+            bc_type,
             parent_block,
             mesh=mesh,
             qp=qp,
