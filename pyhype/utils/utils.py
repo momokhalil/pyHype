@@ -474,3 +474,12 @@ class NumpySlice:
     @classmethod
     def south_face(cls):
         return cls.rows(end=-1)
+
+    @classmethod
+    def boundary(cls):
+        return SidePropertyDict(
+            E=cls.east_boundary(),
+            W=cls.west_boundary(),
+            N=cls.north_boundary(),
+            S=cls.south_boundary(),
+        )
