@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import matplotlib.pyplot as plt
-from pyhype.utils.utils import SidePropertyDict
+from pyhype.utils.utils import SidePropertyDict, Direction, NumpySlice
 from matplotlib.collections import LineCollection
 from pyhype.mesh.base import (
     _mesh_transfinite_gen,
@@ -55,6 +55,8 @@ class QuadMesh(_mesh_transfinite_gen):
         # x and y locations of each cell centroid
         self.x = np.zeros((self.ny, self.nx), dtype=float)
         self.y = np.zeros((self.ny, self.nx), dtype=float)
+
+        self.boundary_index = NumpySlice.boundary()
 
         self.nodes = None
         self.face = None
@@ -373,41 +375,14 @@ class QuadMesh(_mesh_transfinite_gen):
         """
         self.face.S.midpoint.x, self.face.S.midpoint.y = self.get_south_face_midpoint()
 
-    def east_boundary_angle(self) -> np.ndarray:
+    def boundary_angle(self, direction: int) -> np.ndarray:
         """
         Returns the east boundary angles in radians.
 
         :rtype: np.ndarray
         :return: East face angles
         """
-        return self.face.E.theta[:, -1, None, :]
-
-    def west_boundary_angle(self) -> np.ndarray:
-        """
-        Returns the west boundary angles in radians.
-
-        :rtype: np.ndarray
-        :return: West face angles
-        """
-        return self.face.W.theta[:, 0, None, :]
-
-    def north_boundary_angle(self) -> np.ndarray:
-        """
-        Returns the north boundary angles in radians.
-
-        :rtype: np.ndarray
-        :return: North face angles
-        """
-        return self.face.N.theta[-1, None, :, :]
-
-    def south_boundary_angle(self) -> np.ndarray:
-        """
-        Returns the south boundary angles in radians.
-
-        :rtype: np.ndarray
-        :return: South face angles
-        """
-        return self.face.S.theta[0, None, :, :]
+        return self.face[direction].theta[self.boundary_index[direction]]
 
     def get_NE_vertices(self):
         """

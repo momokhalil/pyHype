@@ -164,26 +164,35 @@ class GhostBlock(BaseBlockFVM):
         """
         pass
 
-    @abstractmethod
     def set_BC_outlet_dirichlet(self, state: State):
         """
         Set outlet dirichlet boundary condition
         """
-        raise NotImplementedError
+        pass
 
-    @abstractmethod
-    def set_BC_reflection(self, state: State):
+    def set_BC_reflection(
+        self,
+        state: State,
+    ) -> None:
         """
-        Set reflection boundary condition
+        Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
+        sign of the normal component.
         """
-        raise NotImplementedError
+        self._bc_funcs.reflection(
+            state, self.parent_block.mesh.boundary_angle(direction=self.dir)
+        )
 
-    @abstractmethod
-    def set_BC_slipwall(self, state: State):
+    def set_BC_slipwall(
+        self,
+        state: State,
+    ) -> None:
         """
-        Set slipwall boundary condition
+        Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
+        normal component.
         """
-        raise NotImplementedError
+        self._bc_funcs.reflection(
+            state, self.parent_block.mesh.boundary_angle(direction=self.dir)
+        )
 
 
 class GhostBlockEast(GhostBlock):
@@ -238,36 +247,6 @@ class GhostBlockEast(GhostBlock):
             direc=Direction.east,
             opp=Direction.west,
         )
-
-    def set_BC_reflection(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set reflection boundary condition on the eastern face, keeps the tangential component as is and reverses the
-        sign of the normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.east_boundary_angle())
-
-    def set_BC_slipwall(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set slipwall boundary condition on the eastern face, keeps the tangential component as is and zeros the
-        normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.east_boundary_angle())
-
-    def set_BC_outlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
-        ghost cells.
-        """
-        pass
 
 
 class GhostBlockWest(GhostBlock):
@@ -325,36 +304,6 @@ class GhostBlockWest(GhostBlock):
             opp=Direction.east,
         )
 
-    def set_BC_reflection(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set reflection boundary condition on the western face, keeps the tangential component as is and reverses the
-        sign of the normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.west_boundary_angle())
-
-    def set_BC_slipwall(
-        self,
-        state: State = None,
-    ) -> None:
-        """
-        Set slipwall boundary condition on the western face, keeps the tangential component as is and zeros the
-        normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.west_boundary_angle())
-
-    def set_BC_outlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
-        ghost cells.
-        """
-        pass
-
 
 class GhostBlockNorth(GhostBlock):
     def __init__(
@@ -411,36 +360,6 @@ class GhostBlockNorth(GhostBlock):
             opp=Direction.south,
         )
 
-    def set_BC_reflection(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
-        sign of the normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.north_boundary_angle())
-
-    def set_BC_slipwall(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
-        normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.north_boundary_angle())
-
-    def set_BC_outlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
-        ghost cells.
-        """
-        pass
-
 
 class GhostBlockSouth(GhostBlock):
     def __init__(
@@ -496,33 +415,3 @@ class GhostBlockSouth(GhostBlock):
             direc=Direction.south,
             opp=Direction.north,
         )
-
-    def set_BC_reflection(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
-        sign of the normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.south_boundary_angle())
-
-    def set_BC_slipwall(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
-        normal component.
-        """
-        self._bc_funcs.reflection(state, self.parent_block.mesh.south_boundary_angle())
-
-    def set_BC_outlet_dirichlet(
-        self,
-        state: State,
-    ) -> None:
-        """
-        Set outlet dirichlet boundary condition, by copying values directly adjacent to the boundary into the
-        ghost cells.
-        """
-        pass
