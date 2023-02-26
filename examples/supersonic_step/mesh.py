@@ -16,7 +16,7 @@ limitations under the License.
 import os
 from pyhype.fluids import Air
 from pyhype.states.primitive import PrimitiveState
-from pyhype.boundary_conditions.base import PrimitiveDirichletBC
+from pyhype.boundary_conditions.bc import PrimitiveDirichletBC
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np

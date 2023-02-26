@@ -25,7 +25,7 @@ from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.mesh import quadratures as quadratures
 from typing import TYPE_CHECKING, Type, Callable, Union
 from pyhype.boundary_conditions.base import BoundaryCondition
-from pyhype.boundary_conditions.mixin import BoundaryConditionFunctions
+from pyhype.boundary_conditions.funcs import BoundaryConditionFunctions
 from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
 
 
@@ -115,13 +115,13 @@ class GhostBlock(BaseBlockFVM):
         )
 
         if self.bc_type is None:
-            self._apply_bc_func = self._set_BC_none
+            self._apply_bc_func = self._apply_none_bc
         elif self.bc_type == "Reflection":
-            self._apply_bc_func = self._set_BC_reflection
+            self._apply_bc_func = self._apply_reflection_bc
         elif self.bc_type == "Slipwall":
-            self._apply_bc_func = self._set_BC_slipwall
+            self._apply_bc_func = self._apply_slipwall_bc
         elif self.bc_type == "OutletDirichlet":
-            self._apply_bc_func = self._set_BC_outlet_dirichlet
+            self._apply_bc_func = self._apply_outlet_dirichlet_bc
         elif isinstance(self.bc_type, BoundaryCondition):
             self._apply_bc_func = self.bc_type
         else:
@@ -177,20 +177,20 @@ class GhostBlock(BaseBlockFVM):
             else self.parent_block.state[self._ghost_idx[self.dir]]
         )
 
-    def _set_BC_none(self, state: State) -> None:
+    def _apply_none_bc(self, state: State) -> None:
         """
         Set no boundary conditions. Equivalent of ensuring two blocks are connected,
         and allows flow to pass between them.
         """
         pass
 
-    def _set_BC_outlet_dirichlet(self, state: State) -> None:
+    def _apply_outlet_dirichlet_bc(self, state: State) -> None:
         """
         Set outlet dirichlet boundary condition
         """
         pass
 
-    def _set_BC_reflection(
+    def _apply_reflection_bc(
         self,
         state: State,
     ) -> None:
@@ -202,7 +202,7 @@ class GhostBlock(BaseBlockFVM):
             state, self.parent_block.mesh.boundary_angle(direction=self.dir)
         )
 
-    def _set_BC_slipwall(
+    def _apply_slipwall_bc(
         self,
         state: State,
     ) -> None:
