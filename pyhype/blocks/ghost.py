@@ -19,7 +19,6 @@ import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
-from abc import abstractmethod
 from pyhype.utils import utils
 from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.mesh.quad_mesh import QuadMesh
@@ -116,13 +115,13 @@ class GhostBlock(BaseBlockFVM):
         )
 
         if self.bc_type is None:
-            self._apply_bc_func = self.set_BC_none
+            self._apply_bc_func = self._set_BC_none
         elif self.bc_type == "Reflection":
-            self._apply_bc_func = self.set_BC_reflection
+            self._apply_bc_func = self._set_BC_reflection
         elif self.bc_type == "Slipwall":
-            self._apply_bc_func = self.set_BC_slipwall
+            self._apply_bc_func = self._set_BC_slipwall
         elif self.bc_type == "OutletDirichlet":
-            self._apply_bc_func = self.set_BC_outlet_dirichlet
+            self._apply_bc_func = self._set_BC_outlet_dirichlet
         elif isinstance(self.bc_type, BoundaryCondition):
             self._apply_bc_func = self.bc_type
         else:
@@ -136,49 +135,74 @@ class GhostBlock(BaseBlockFVM):
     def __getitem__(self, index):
         return self.state.data[index]
 
-    def realizable(self):
+    def realizable(self) -> bool:
+        """
+        Runs a physical realizability check on the block's State.
+
+        :return: bool representing the State's realizability
+        """
         return self.state.realizable()
 
     def apply_boundary_condition(self) -> None:
+        """
+        Applies the boundary condition to the block's State. First, the State is
+        filled with the appropriate state data from either the parent block or the
+        parent block's neighbor on this ghost block's side, then the bc function is
+        applied to this filled state.
+
+        :return: None
+        """
         self._fill()
         self._apply_bc_func(self.state)
 
     def apply_boundary_condition_to_state(self, state: State) -> None:
+        """
+        Applies the boundary condition function to the given State.
+
+        :param state: State object to apply the bc to
+        :return: None
+        """
         self._apply_bc_func(state)
 
-    def _fill(self):
+    def _fill(self) -> None:
+        """
+        Fills this ghost block's State using the parent block's State data on the
+        appropriate side, or the parent blocks neighbor on the appropriate side.
+
+        :return: None
+        """
         self.state.from_state(
             self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
             if self.bc_type is None
             else self.parent_block.state[self._ghost_idx[self.dir]]
         )
 
-    def set_BC_none(self, state: State):
+    def _set_BC_none(self, state: State) -> None:
         """
-        Set no boundary conditions. Equivalent of ensuring two blocks are connected, and allows flow to pass between
-        them.
+        Set no boundary conditions. Equivalent of ensuring two blocks are connected,
+        and allows flow to pass between them.
         """
         pass
 
-    def set_BC_outlet_dirichlet(self, state: State):
+    def _set_BC_outlet_dirichlet(self, state: State) -> None:
         """
         Set outlet dirichlet boundary condition
         """
         pass
 
-    def set_BC_reflection(
+    def _set_BC_reflection(
         self,
         state: State,
     ) -> None:
         """
-        Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
-        sign of the normal component.
+        Set reflection boundary condition on the northern face, keeps the tangential
+        component as is and reverses the sign of the normal component.
         """
         BoundaryConditionFunctions.reflection(
             state, self.parent_block.mesh.boundary_angle(direction=self.dir)
         )
 
-    def set_BC_slipwall(
+    def _set_BC_slipwall(
         self,
         state: State,
     ) -> None:
