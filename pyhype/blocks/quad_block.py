@@ -119,7 +119,9 @@ class BaseBlockGhost(BaseBlockFVM):
         :return: None
         """
         self.state.from_state(from_block.state)
-        for gblk, gblk_from in zip(self.ghost(), from_block.ghost()):
+        for gblk, gblk_from in zip(
+            self.ghost.get_blocks(), from_block.ghost.get_blocks()
+        ):
             gblk.state.from_state(gblk_from.state)
 
     def get_interface_values(self) -> [np.ndarray]:
@@ -811,4 +813,6 @@ class QuadBlock(BaseBlockGhost):
         return U
 
     def realizable(self):
-        return self.state.realizable() and all(blk.realizable() for blk in self.ghost())
+        return self.state.realizable() and all(
+            blk.realizable() for blk in self.ghost.get_blocks()
+        )

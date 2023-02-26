@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from pyhype.mesh.quadratures import QuadraturePointData
 
 
-class GhostBlocks:
+class GhostBlocks(SidePropertyDict):
     def __init__(
         self,
         config: SolverConfig,
@@ -54,33 +54,34 @@ class GhostBlocks:
             - N: Reference to the north ghost block
             - S: Reference to the south ghost block
         """
-        self.E = GhostBlockEast(
+        E = GhostBlockEast(
             config,
             bc_type=block_data.bc.E,
             parent_block=parent_block,
             state_type=state_type,
         )
-        self.W = GhostBlockWest(
+        W = GhostBlockWest(
             config,
             bc_type=block_data.bc.W,
             parent_block=parent_block,
             state_type=state_type,
         )
-        self.N = GhostBlockNorth(
+        N = GhostBlockNorth(
             config,
             bc_type=block_data.bc.N,
             parent_block=parent_block,
             state_type=state_type,
         )
-        self.S = GhostBlockSouth(
+        S = GhostBlockSouth(
             config,
             bc_type=block_data.bc.S,
             parent_block=parent_block,
             state_type=state_type,
         )
+        super().__init__(E=E, W=W, N=N, S=S)
 
-    def __call__(self):
-        return self.__dict__.values()
+    def get_blocks(self):
+        return self.values()
 
     def clear_cache(self):
         self.E.state.clear_cache()
@@ -96,21 +97,16 @@ class GhostBlock(BaseBlockFVM):
         bc_type: Union[str, Callable],
         parent_block: QuadBlock,
         state_type: Type[State],
-        direc: int,
-        opp: int,
+        direction: int,
         mesh: QuadMesh = None,
         qp: QuadraturePointData = None,
     ):
+        self.dir = direction
         self.theta = None
         self.bc_type = bc_type
         self.parent_block = parent_block
         self.nghost = config.nghost
         self.state_type = state_type
-
-        self.dir = direc
-        self.opp = opp
-
-        self._bc_funcs = BoundaryConditionFunctions
 
         self._ghost_idx = SidePropertyDict(
             E=NumpySlice.cols(-config.nghost, None),
@@ -152,7 +148,7 @@ class GhostBlock(BaseBlockFVM):
 
     def _fill(self):
         self.state.from_state(
-            self.parent_block.neighbors[self.dir].state[self._ghost_idx[self.opp]]
+            self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
             if self.bc_type is None
             else self.parent_block.state[self._ghost_idx[self.dir]]
         )
@@ -178,7 +174,7 @@ class GhostBlock(BaseBlockFVM):
         Set reflection boundary condition on the northern face, keeps the tangential component as is and reverses the
         sign of the normal component.
         """
-        self._bc_funcs.reflection(
+        BoundaryConditionFunctions.reflection(
             state, self.parent_block.mesh.boundary_angle(direction=self.dir)
         )
 
@@ -190,7 +186,7 @@ class GhostBlock(BaseBlockFVM):
         Set slipwall boundary condition on the southern face, keeps the tangential component as is and zeros the
         normal component.
         """
-        self._bc_funcs.reflection(
+        BoundaryConditionFunctions.reflection(
             state, self.parent_block.mesh.boundary_angle(direction=self.dir)
         )
 
@@ -244,8 +240,7 @@ class GhostBlockEast(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            direc=Direction.east,
-            opp=Direction.west,
+            direction=Direction.east,
         )
 
 
@@ -300,8 +295,7 @@ class GhostBlockWest(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            direc=Direction.west,
-            opp=Direction.east,
+            direction=Direction.west,
         )
 
 
@@ -356,8 +350,7 @@ class GhostBlockNorth(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            direc=Direction.north,
-            opp=Direction.south,
+            direction=Direction.north,
         )
 
 
@@ -412,6 +405,5 @@ class GhostBlockSouth(GhostBlock):
             mesh=mesh,
             qp=qp,
             state_type=state_type,
-            direc=Direction.south,
-            opp=Direction.north,
+            direction=Direction.south,
         )
