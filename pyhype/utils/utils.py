@@ -34,13 +34,13 @@ import numpy as np
 @dataclass
 class Direction:
     east = 1
-    west = 2
-    north = 3
-    south = 4
-    north_east = 5
-    north_west = 6
-    south_east = 7
-    south_west = 8
+    west = -1
+    north = 2
+    south = -2
+    north_east = 3
+    north_west = -3
+    south_east = 4
+    south_west = -4
 
 
 def rotate(

@@ -243,6 +243,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         )
         self.limiter = limiter
         self.gradient = gradient
+        self._boundary_index = NumpySlice.boundary()
 
     def _get_left_right_riemann_states(
         self,
@@ -294,7 +295,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
         )
         return left_state, right_state
 
-    def _get_east_boundary_flux_states(self) -> [State]:
+    def _get_boundary_flux_states(self, direction: int) -> [State]:
         """
         Get a generator of States that contain the limited solution
         at the east block boundary wuadrature points.
@@ -302,27 +303,14 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: [State]
         :return: Gen exp of State objects
         """
-        slicer = self.east_boundary_slice
+        slicer = self._boundary_index[direction]
         func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.E.bc_type is None:
-            slicer = self.west_boundary_slice
-            func = self.parent_block.ghost.E.fvm.limited_solution_at_quadrature_point
-        return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.E)
-
-    def _get_west_boundary_flux_states(self) -> [State]:
-        """
-        Get a generator of States that contain the limited solution
-        at the west block boundary wuadrature points.
-
-        :rtype: [State]
-        :return: Gen exp of State objects
-        """
-        slicer = self.west_boundary_slice
-        func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.W.bc_type is None:
-            slicer = self.east_boundary_slice
-            func = self.parent_block.ghost.W.fvm.limited_solution_at_quadrature_point
-        return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.W)
+        if self.parent_block.ghost[direction].bc_type is None:
+            slicer = self._boundary_index[-direction]
+            func = self.parent_block.ghost[
+                direction
+            ].fvm.limited_solution_at_quadrature_point
+        return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp[direction])
 
     def _evaluate_east_west_flux(self) -> None:
         """
@@ -338,8 +326,8 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: None
         :return: None
         """
-        east_boundary_states = self._get_east_boundary_flux_states()
-        west_boundary_states = self._get_west_boundary_flux_states()
+        east_boundary_states = self._get_boundary_flux_states(direction=Direction.east)
+        west_boundary_states = self._get_boundary_flux_states(direction=Direction.west)
 
         for qe, qw, east_boundary, west_boundary, east_flux, west_flux in zip(
             self.parent_block.qp.E,
@@ -365,10 +353,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 utils.rotate(self.parent_block.mesh.face.E.theta, east_face_states.data)
                 utils.rotate(self.parent_block.mesh.face.W.theta, west_face_states.data)
                 utils.rotate(
-                    self.parent_block.mesh.east_boundary_angle(), east_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.east),
+                    east_boundary.data,
                 )
                 utils.rotate(
-                    self.parent_block.mesh.west_boundary_angle(), west_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.west),
+                    west_boundary.data,
                 )
 
             left, right = self._get_left_right_riemann_states(
@@ -385,36 +375,6 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 utils.unrotate(self.parent_block.mesh.face.E.theta, east_flux)
                 utils.unrotate(self.parent_block.mesh.face.W.theta, west_flux)
 
-    def _get_north_boundary_flux_states(self) -> [State]:
-        """
-        Get a generator of States that contain the limited solution
-        at the north block boundary wuadrature points.
-
-        :rtype: [State]
-        :return: Gen exp of State objects
-        """
-        slicer = self.north_boundary_slice
-        func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.N.bc_type is None:
-            slicer = self.south_boundary_slice
-            func = self.parent_block.ghost.N.fvm.limited_solution_at_quadrature_point
-        return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.N)
-
-    def _get_south_boundary_flux_states(self) -> [State]:
-        """
-        Get a generator of States that contain the limited solution
-        at the south block boundary wuadrature points.
-
-        :rtype: [State]
-        :return: Gen exp of State objects
-        """
-        slicer = self.south_boundary_slice
-        func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost.S.bc_type is None:
-            slicer = self.north_boundary_slice
-            func = self.parent_block.ghost.S.fvm.limited_solution_at_quadrature_point
-        return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp.S)
-
     def _evaluate_north_south_flux(self) -> None:
         """
         Evaluates the fluxes at each north-south cell boundary. The following steps are followed:
@@ -429,8 +389,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: None
         :return: None
         """
-        north_boundary_states = self._get_north_boundary_flux_states()
-        south_boundary_states = self._get_south_boundary_flux_states()
+        north_boundary_states = self._get_boundary_flux_states(
+            direction=Direction.north
+        )
+        south_boundary_states = self._get_boundary_flux_states(
+            direction=Direction.south
+        )
 
         for qn, qs, north_boundary, south_boundary, north_flux, south_flux in zip(
             self.parent_block.qp.N,
@@ -467,10 +431,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
                     self.parent_block.mesh.face.S.theta, south_face_states.data
                 )
                 utils.rotate(
-                    self.parent_block.mesh.north_boundary_angle(), north_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.north),
+                    north_boundary.data,
                 )
                 utils.rotate(
-                    self.parent_block.mesh.south_boundary_angle(), south_boundary.data
+                    self.parent_block.mesh.boundary_angle(direction=Direction.south),
+                    south_boundary.data,
                 )
 
             # Transpose to x-frame
