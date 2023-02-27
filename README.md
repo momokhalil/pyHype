@@ -280,7 +280,7 @@ from pyhype.solvers import Euler2D
 from pyhype.solvers.base import SolverConfig
 from pyhype.mesh.base import QuadMeshGenerator
 from pyhype.states import PrimitiveState
-from pyhype.boundary_conditions.base import PrimitiveDirichletBC
+from pyhype.boundary_conditions.bc import PrimitiveDirichletBC
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
