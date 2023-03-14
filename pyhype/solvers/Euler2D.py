@@ -134,27 +134,21 @@ class Euler2D(Solver):
             profiler = None
 
         while self.t < self.t_final:
-            if self.cpu == 0:
-                if self.num_time_step % 50 == 0:
-                    self._logger.info(
-                        f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
-                    )
+            if self.cpu == 0 and self.num_time_step % 50 == 0:
+                self._logger.info(
+                    f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
+                )
 
             # Get time step
+            self.mpi.Barrier()
+            self._logger.info((self.cpu, self.dt, self.num_time_step))
             self.dt = self.get_dt()
             self._blocks.update(self.dt)
 
             if self.config.write_solution:
                 self.write_solution()
 
-            ############################################################################################################
-            # THIS IS FOR DEBUGGING PURPOSES ONLY
-            if self.config.realplot:
-                self.real_plot()
-            ############################################################################################################
-
-            # Increment simulation time
-            self.increment_time()
+            self.t += self.dt
             self.num_time_step += 1
 
         if self.cpu == 0:

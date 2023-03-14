@@ -105,21 +105,28 @@ class Solver:
     def blocks(self) -> Iterable[QuadBlock]:
         return self._blocks.blocks.values()
 
-    def get_dt(self):
+    def get_dt(self) -> float:
         """
-        Return the time step for all blocks handled by this process based on the CFL condition.
+        Return the global time step for all processes based on the CFL conditions.
 
-        Parameters:
-            - None
+        1) Calculate dt for all the blocks on the current process
+        2) Calculate minimum dt of all blocks on current process
+        3) Gather minimum dt of all processes on process 0
+        4) Compute global minimum dt for all processes
+        5) Broadcast minimum global dt from process 0 to all others
 
-        Returns:
-            - dt (np.float): Float representing the value of the time step
+        :return: global minimum time step
         """
-        dt = min([block.get_dt() for block in self.blocks])
-        return self.t_final - self.t if self.t_final - self.t < dt else dt
-
-    def increment_time(self):
-        self.t += self.dt
+        min_local_blocks_dt = min([block.get_dt() for block in self.blocks])
+        min_processes_dt = self.mpi.gather(min_local_blocks_dt, root=0)
+        min_global_dt = self.mpi.bcast(
+            min(min_processes_dt) if self.cpu == 0 else None, root=0
+        )
+        return (
+            self.t_final - self.t
+            if self.t_final - self.t < min_global_dt
+            else min_global_dt
+        )
 
     @staticmethod
     def write_output_nodes(filename: str, array: np.ndarray):
