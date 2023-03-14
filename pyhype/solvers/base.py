@@ -20,8 +20,10 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
+from mpi4py import MPI
 from matplotlib.colors import LinearSegmentedColormap
 from pyhype import execution_prints
 from pyhype.blocks.base import BlockDescription
@@ -36,6 +38,7 @@ if TYPE_CHECKING:
     from pyhype.blocks.quad_block import QuadBlock
 
 np.set_printoptions(threshold=sys.maxsize)
+logging.basicConfig(level=logging.INFO)
 
 
 class Solver:
@@ -45,11 +48,7 @@ class Solver:
         mesh_config: Union[MeshGenerator, dict],
     ) -> None:
 
-        print(execution_prints.PYHYPE)
-        print(execution_prints.LICENSE)
-        print(
-            "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
-        )
+        self._logger = logging.getLogger(self.__class__.__name__)
 
         self.config = config
         self.mesh_config = self.get_mesh_config(mesh_config)
@@ -58,11 +57,20 @@ class Solver:
         self.cmap = LinearSegmentedColormap.from_list(
             "my_map", ["royalblue", "midnightblue", "black"]
         )
+        self.mpi = MPI.COMM_WORLD
+        self.cpu = self.mpi.Get_rank()
 
-        print("\t>>> Initializing basic solution attributes")
+        if self.cpu == 0:
+            self._logger.info(execution_prints.PYHYPE)
+            self._logger.info(execution_prints.LICENSE)
+            self._logger.info(
+                "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
+            )
+            self._logger.info("\t>>> Initializing basic solution attributes")
+
         self.t = 0
         self.dt = 0
-        self.numTimeStep = 0
+        self.num_time_step = 0
         self.CFL = self.config.CFL
         self.t_final = self.config.t_final * self.fluid.far_field.a
         self.profile_data = None
@@ -116,13 +124,13 @@ class Solver:
 
     def write_solution(self):
         if self.config.write_solution_mode == "every_n_timesteps":
-            if self.numTimeStep % self.config.write_every_n_timesteps == 0:
+            if self.num_time_step % self.config.write_every_n_timesteps == 0:
                 for block in self.blocks:
                     self.write_output_nodes(
                         "./"
                         + self.config.write_solution_name
                         + "_"
-                        + str(self.numTimeStep)
+                        + str(self.num_time_step)
                         + "_blk_"
                         + str(block.global_nBLK),
                         block.state.data,
@@ -150,7 +158,7 @@ class Solver:
         return state.rho
 
     def real_plot(self):
-        if self.numTimeStep % self.config.plot_every == 0:
+        if self.num_time_step % self.config.plot_every == 0:
             data = [
                 (
                     block.mesh.x[:, :, 0],

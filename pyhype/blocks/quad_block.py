@@ -22,14 +22,15 @@ from itertools import chain
 
 import numba as nb
 import matplotlib.pyplot as plt
+import mpi4py as mpi
 from matplotlib.collections import LineCollection
 
 from pyhype.mesh import quadratures
-from pyhype.utils.utils import NumpySlice, FullPropertyDict
+from pyhype.utils.utils import NumpySlice, SidePropertyDict
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
-from pyhype.blocks.base import Neighbors, BaseBlockFVM, BlockDescription
+from pyhype.blocks.base import BaseBlockFVM, BlockDescription
 from pyhype.time_marching.factory import TimeIntegratorFactory
 
 if TYPE_CHECKING:
@@ -75,8 +76,10 @@ class BaseBlockGhost(BaseBlockFVM):
             state_type=state_type,
         )
 
+        self.cpu = mpi.MPI.COMM_WORLD.Get_rank()
+
         self.ghost = GhostBlocks(
-            config,
+            config=config,
             block_data=block_data,
             parent_block=parent_block,
             state_type=state_type,
@@ -430,10 +433,6 @@ class QuadBlock(BaseBlockGhost):
         NeighborW: QuadBlock,
         NeighborN: QuadBlock,
         NeighborS: QuadBlock,
-        NeighborNE: QuadBlock,
-        NeighborNW: QuadBlock,
-        NeighborSE: QuadBlock,
-        NeighborSW: QuadBlock,
     ) -> None:
         """
         Create the Neighbors class used to set references to the neighbor blocks in each direction.
@@ -444,15 +443,11 @@ class QuadBlock(BaseBlockGhost):
         Return:
             - None
         """
-        self.neighbors = FullPropertyDict(
+        self.neighbors = SidePropertyDict(
             E=NeighborE,
             W=NeighborW,
             N=NeighborN,
             S=NeighborS,
-            NE=NeighborNE,
-            NW=NeighborNW,
-            SE=NeighborSE,
-            SW=NeighborSW,
         )
 
     def get_east_ghost_states(self) -> State:

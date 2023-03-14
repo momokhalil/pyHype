@@ -56,6 +56,7 @@ class QuadMesh(_mesh_transfinite_gen):
         # x and y locations of each cell centroid
         self.x = np.zeros((self.ny, self.nx), dtype=float)
         self.y = np.zeros((self.ny, self.nx), dtype=float)
+        self.shape = (self.ny, self.nx)
 
         self.boundary_index = NumpySlice.boundary()
 

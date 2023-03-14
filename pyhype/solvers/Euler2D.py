@@ -20,11 +20,11 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
+import logging
 import pstats
 import cProfile
 import numpy as np
 from datetime import datetime
-from pyhype.factory import Factory
 from pyhype.blocks.base import Blocks
 from pyhype.solvers.base import Solver
 from pyhype.solver_config import SolverConfig
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from pyhype.mesh.base import MeshGenerator
 
 np.set_printoptions(threshold=sys.maxsize)
+logging.basicConfig(level=logging.INFO)
 
 
 class Euler2D(Solver):
@@ -46,16 +47,16 @@ class Euler2D(Solver):
 
         super().__init__(config=config, mesh_config=mesh_config)
 
-        print("\t>>> Building solution blocks")
+        self._logger.info("\t>>> Building solution blocks")
         self._blocks = Blocks(
             config=self.config,
             mesh_config=self.mesh_config,
         )
 
-        print("\n\tSolver Details:\n")
-        print(self)
-
-        print("\n\tFinished setting up solver")
+        if self.cpu == 0:
+            self._logger.info("\n\tSolver Details:\n")
+            self._logger.info(self)
+            self._logger.info("\n\tFinished setting up solver")
 
     def __str__(self):
         string = (
@@ -86,26 +87,30 @@ class Euler2D(Solver):
         self._blocks.apply_boundary_condition()
 
     def solve(self):
-        print(
-            "\n------------------------------ Initializing Solution Process ---------------------------------"
-        )
+        if self.cpu == 0:
+            self._logger.info(
+                "\n------------------------------ Initializing Solution Process ---------------------------------"
+            )
 
-        print("\nProblem Details: \n")
-        print(self.config)
+        if self.cpu == 0:
+            self._logger.info("\nProblem Details: \n")
+            self._logger.info(self.config)
 
-        print()
-        print("\t>>> Setting Initial Conditions")
+        if self.cpu == 0:
+            self._logger.info("\t>>> Setting Initial Conditions")
         self.apply_initial_condition()
 
-        print("\t>>> Setting Boundary Conditions")
+        if self.cpu == 0:
+            self._logger.info("\t>>> Setting Boundary Conditions")
         self.apply_boundary_condition()
 
         if self.config.realplot:
-            print("\t>>> Building Real-Time Plot")
+            self._logger.info("\t>>> Building Real-Time Plot")
             self.build_real_plot()
 
         if self.config.write_solution:
-            print("\t>>> Writing Mesh to File")
+            if self.cpu == 0:
+                self._logger.info("\t>>> Writing Mesh to File")
             for block in self.blocks:
                 self.write_output_nodes(
                     "./mesh_blk_x_" + str(block.global_nBLK), block.mesh.x
@@ -114,53 +119,53 @@ class Euler2D(Solver):
                     "./mesh_blk_y_" + str(block.global_nBLK), block.mesh.y
                 )
 
-        print(
-            "\n------------------------------------- Start Simulation ---------------------------------------\n"
-        )
-        print("Date and time: ", datetime.today())
+        if self.cpu == 0:
+            self._logger.info(
+                "\n------------------------------------- Start Simulation ---------------------------------------\n"
+            )
+            self._logger.info(f"Date and time: {datetime.today()}")
 
         if self.config.profile:
-            print("\n>>> Enabling Profiler")
+            if self.cpu == 0:
+                self._logger.info("\n>>> Enabling Profiler")
             profiler = cProfile.Profile()
             profiler.enable()
         else:
             profiler = None
 
         while self.t < self.t_final:
-            if self.numTimeStep % 50 == 0:
-                print("\nSimulation time: " + str(self.t / self.fluid.far_field.a))
-                print("Timestep number: " + str(self.numTimeStep))
-            else:
-                print(".", end="")
+            if self.cpu == 0:
+                if self.num_time_step % 50 == 0:
+                    self._logger.info(
+                        f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
+                    )
 
             # Get time step
             self.dt = self.get_dt()
             self._blocks.update(self.dt)
 
-            ############################################################################################################
-            # THIS IS FOR DEBUGGING PURPOSES ONLY
             if self.config.write_solution:
                 self.write_solution()
 
+            ############################################################################################################
+            # THIS IS FOR DEBUGGING PURPOSES ONLY
             if self.config.realplot:
                 self.real_plot()
             ############################################################################################################
 
             # Increment simulation time
             self.increment_time()
-            self.numTimeStep += 1
+            self.num_time_step += 1
 
-        print()
-        print()
-        print("Simulation time: " + str(self.t / self.config.fluid.far_field.a))
-        print("Timestep number: " + str(self.numTimeStep))
-        print()
-        print("End of simulation")
-        print("Date and time: ", datetime.today())
-        print(
-            "----------------------------------------------------------------------------------------"
-        )
-        print()
+        if self.cpu == 0:
+            self._logger.info(
+                f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
+            )
+            self._logger.info("End of simulation")
+            self._logger.info(f"Date and time: {datetime.today()}")
+            self._logger.info(
+                "----------------------------------------------------------------------------------------"
+            )
 
         if self.config.profile:
             profiler.disable()

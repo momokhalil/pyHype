@@ -18,7 +18,6 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
-from profilehooks import profile
 
 np.set_printoptions(linewidth=200)
 np.set_printoptions(precision=3)

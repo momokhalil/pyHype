@@ -1,5 +1,5 @@
-block1 = {
-    "nBLK": 1,
+block0 = {
+    "nBLK": 0,
     "NW": [0, 20],
     "NE": [10, 20],
     "SW": [0, 0],
@@ -21,4 +21,4 @@ block1 = {
     "BCTypeSE": None,
     "BCTypeSW": None,
 }
-mesh_dict = {1: block1}
+mesh_dict = {0: block0}

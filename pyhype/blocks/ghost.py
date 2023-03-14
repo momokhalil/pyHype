@@ -17,22 +17,25 @@ from __future__ import annotations
 
 import os
 
+import numpy as np
+
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+from mpi4py import MPI
 from pyhype.utils import utils
-from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.mesh import quadratures as quadratures
 from typing import TYPE_CHECKING, Type, Callable, Union
 from pyhype.boundary_conditions.base import BoundaryCondition
+from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.boundary_conditions.funcs import BoundaryConditionFunctions
 from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
 
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.blocks.base import QuadBlock
     from pyhype.solvers.base import SolverConfig
+    from pyhype.blocks.quad_block import QuadBlock
     from pyhype.mesh.quadratures import QuadraturePointData
 
 
@@ -53,6 +56,8 @@ class GhostBlocks(SidePropertyDict):
             - N: Reference to the north ghost block
             - S: Reference to the south ghost block
         """
+        self.cpu = MPI.COMM_WORLD.Get_rank()
+
         E = GhostBlockEast(
             config,
             bc_type=block_data.bc.E,
@@ -107,12 +112,14 @@ class GhostBlock(BaseBlockFVM):
         self.nghost = config.nghost
         self.state_type = state_type
 
-        self._ghost_idx = SidePropertyDict(
-            E=NumpySlice.cols(-config.nghost, None),
-            W=NumpySlice.cols(None, config.nghost),
-            N=NumpySlice.rows(-config.nghost, None),
-            S=NumpySlice.rows(None, config.nghost),
-        )
+        self.mpi = MPI.COMM_WORLD
+        self.cpu = self.mpi.Get_rank()
+        self.shape = (mesh.shape[0], mesh.shape[1], 4)
+
+        self._num_elements = mesh.shape[0] * mesh.shape[1] * 4
+        self._send_buf = np.empty((self._num_elements,), dtype=np.float64)
+        self._recv_buf = np.empty((self._num_elements,), dtype=np.float64)
+        self._ghost_idx = NumpySlice.ghost(nghost=config.nghost)
 
         if self.bc_type is None:
             self._apply_bc_func = self._apply_none_bc
@@ -171,11 +178,26 @@ class GhostBlock(BaseBlockFVM):
 
         :return: None
         """
-        self.state.from_state(
-            self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
-            if self.bc_type is None
-            else self.parent_block.state[self._ghost_idx[self.dir]]
-        )
+        if self.bc_type is None:
+            neighbor = self.parent_block.neighbors[self.dir]
+            if neighbor is not None and not isinstance(neighbor, tuple):
+                self.state.from_state(
+                    self.parent_block.neighbors[self.dir].state[
+                        self._ghost_idx[-self.dir]
+                    ]
+                )
+            else:
+                neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
+                self._send_buf[:] = self.parent_block.state[
+                    self._ghost_idx[self.dir]
+                ].data.ravel()
+                self.mpi.Send(
+                    self._send_buf, dest=neighbor_cpu, tag=self.parent_block.global_nBLK
+                )
+                self.mpi.Recv(self._recv_buf, source=neighbor_cpu, tag=neighbor_blk)
+                self.state.data = self._recv_buf.reshape(self.shape)
+        else:
+            self.state.from_state(self.parent_block.state[self._ghost_idx[self.dir]])
 
     def _apply_none_bc(self, state: State) -> None:
         """

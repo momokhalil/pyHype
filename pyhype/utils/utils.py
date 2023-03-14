@@ -20,7 +20,6 @@ import functools
 from collections import UserDict
 from dataclasses import dataclass
 from typing import Union, Callable, TYPE_CHECKING, Any
-from profilehooks import profile
 
 import numba as nb
 
@@ -482,4 +481,13 @@ class NumpySlice:
             W=cls.west_boundary(),
             N=cls.north_boundary(),
             S=cls.south_boundary(),
+        )
+
+    @classmethod
+    def ghost(cls, nghost: int):
+        return SidePropertyDict(
+            E=NumpySlice.cols(-nghost, None),
+            W=NumpySlice.cols(None, nghost),
+            N=NumpySlice.rows(-nghost, None),
+            S=NumpySlice.rows(None, nghost),
         )

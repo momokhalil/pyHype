@@ -19,13 +19,15 @@ from __future__ import annotations
 import os
 from abc import abstractmethod, ABC
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Union, Type
+from typing import TYPE_CHECKING, Union, Type
 
+import mpi4py as mpi
 import numba as nb
 import matplotlib.pyplot as plt
 
 from pyhype.utils.utils import (
     NumpySlice,
+    SidePropertyDict,
     FullPropertyDict,
     CornerPropertyDict,
 )
@@ -392,9 +394,12 @@ class Blocks:
         self.mesh_config = mesh_config
         self.num_BLK = None
         self.blocks = {}
-        self.cpu = None
+        self.mpi = mpi.MPI.COMM_WORLD
+        self.cpu = self.mpi.Get_rank()
 
         self.build()
+
+        print(self.blocks)
 
     def __getitem__(self, blknum: int) -> QuadBlock:
         """
@@ -406,15 +411,16 @@ class Blocks:
         """
         return self.blocks[blknum]
 
-    def add(self, block: QuadBlock) -> None:
+    def add(self, blocks: [QuadBlock]) -> None:
         """
         Adds a block to the dict that contains the SolutionBlocks
 
-        :param block: SolutionBlock to add.
+        :param blocks: Iterable of QuadBlock to add.
 
         :return: None
         """
-        self.blocks[block.global_nBLK] = block
+        for block in blocks:
+            self.blocks[block.global_nBLK] = block
 
     def update(self, dt: float) -> None:
         """
@@ -436,6 +442,23 @@ class Blocks:
         for block in self.blocks.values():
             block.apply_boundary_condition()
 
+    def distribute_blocks(self):
+        num_procs = self.mpi.Get_size()
+        per_cpu = self.num_BLK // num_procs
+        rem = self.num_BLK % num_procs
+
+        print(num_procs, per_cpu)
+
+        dist = {}
+        counter = 0
+        cpus = {}
+        for n in range(num_procs):
+            dist[n] = [counter + i for i in range(per_cpu + 1 if n < rem else per_cpu)]
+            for i in dist[n]:
+                cpus[i] = n
+            counter += len(dist[n])
+        return dist, cpus
+
     def build(self) -> None:
         """
         Builds the SolutionBlocks contained in this Blocks collection.
@@ -443,25 +466,35 @@ class Blocks:
         :return: None
         """
         self.num_BLK = len(self.mesh_config)
-        for blk_data in self.mesh_config.values():
-            self.add(
-                qb.QuadBlock(
-                    self.config,
-                    block_data=blk_data,
-                )
+        dist, cpu_dict = self.distribute_blocks()
+        current_block_nums = dist[self.cpu]
+
+        self.add(
+            qb.QuadBlock(
+                self.config,
+                block_data=self.mesh_config[blk_num],
             )
+            for blk_num in current_block_nums
+        )
+
+        def get_neighbor_ref(neighbor_num):
+            return (
+                (neighbor_num, cpu_dict[neighbor_num])
+                if neighbor_num not in self.blocks
+                else self.blocks[neighbor_num]
+            ) if neighbor_num is not None else None
+
 
         for block in self.blocks.values():
-            neighbors = self.mesh_config[block.global_nBLK].neighbors
+            ne, nw, nn, ns = (
+                get_neighbor_ref(neigh)
+                for neigh in self.mesh_config[block.global_nBLK].neighbors.values()
+            )
             block.connect(
-                NeighborE=self.blocks[neighbors.E] if neighbors.E is not None else None,
-                NeighborW=self.blocks[neighbors.W] if neighbors.W is not None else None,
-                NeighborN=self.blocks[neighbors.N] if neighbors.N is not None else None,
-                NeighborS=self.blocks[neighbors.S] if neighbors.S is not None else None,
-                NeighborNE=None,
-                NeighborNW=None,
-                NeighborSE=None,
-                NeighborSW=None,
+                NeighborE=ne,
+                NeighborW=nw,
+                NeighborN=nn,
+                NeighborS=ns,
             )
 
     def print_connectivity(self) -> None:
@@ -684,15 +717,11 @@ class BlockInfo:
         # Set parameter attributes from input dict
         self.nBLK = blk_input["nBLK"]
 
-        self.neighbors = FullPropertyDict(
+        self.neighbors = SidePropertyDict(
             E=blk_input["NeighborE"],
             W=blk_input["NeighborW"],
             N=blk_input["NeighborN"],
             S=blk_input["NeighborS"],
-            NE=blk_input["NeighborNE"],
-            NW=blk_input["NeighborNW"],
-            SE=blk_input["NeighborSE"],
-            SW=blk_input["NeighborSW"],
         )
         self.bc = FullPropertyDict(
             E=blk_input["BCTypeE"],
