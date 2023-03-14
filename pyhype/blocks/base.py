@@ -460,6 +460,19 @@ class Blocks:
         baseline number of blocks, and some will have one extra if num_blocks is not divisible
         by num_processes.
 
+        Example:
+            num_blocks: 8 (numbered 0, 1, 2, 3, 4, 5, 6, 7)
+            num_processes: 3 (numbered 0, 1, 2)
+
+            then:
+            num_full_processes = 2 (will have baseline + 1 block)
+            blocks_per_process_baseline = 2
+
+            then the processes will contain blocks:
+            process 0: [0, 1, 2] (baseline + 1 num blocks)
+            process 1: [3, 4, 5] (baseline + 1 num blocks)
+            process 2: [6, 7] (baseline num blocks)
+
         :param num_blocks: Number of blocks to distribute
         :param num_processes: Number of processes to distribute blocks into
         :return: dict that maps {block_num: process_num}
