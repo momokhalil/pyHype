@@ -447,8 +447,6 @@ class Blocks:
         per_cpu = self.num_BLK // num_procs
         rem = self.num_BLK % num_procs
 
-        print(num_procs, per_cpu)
-
         dist = {}
         counter = 0
         cpus = {}
