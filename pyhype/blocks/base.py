@@ -17,6 +17,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+import logging
 from abc import abstractmethod, ABC
 from enum import Enum
 from typing import TYPE_CHECKING, Union, Type
@@ -379,7 +380,7 @@ class Blocks:
     Class for containing the solution blocks and necessary methods.
 
     :ivar config: SolverConfigs object
-    :ivar num_BLK: Number of blocks
+    :ivar num_blocks: Number of blocks
     :ivar blocks: Dict for containing the QuadBlock objects
     :ivar cpu: (future use) indicates the rank of the CPU responsible
     for this collection of blocks.
@@ -390,9 +391,11 @@ class Blocks:
         config: SolverConfig,
         mesh_config: dict,
     ) -> None:
+        self._logger = logging.getLogger(self.__class__.__name__)
+
         self.config = config
         self.mesh_config = mesh_config
-        self.num_BLK = None
+        self.num_blocks = None
         self.blocks = {}
         self.mpi = mpi.MPI.COMM_WORLD
         self.cpu = self.mpi.Get_rank()
@@ -400,6 +403,11 @@ class Blocks:
         self.build()
 
         print(self.blocks)
+
+    def __len__(self):
+        if self.num_blocks is None:
+            raise ValueError("num_blocks is None, this should never happen.")
+        return self.num_blocks
 
     def __getitem__(self, blknum: int) -> QuadBlock:
         """
@@ -442,20 +450,34 @@ class Blocks:
         for block in self.blocks.values():
             block.apply_boundary_condition()
 
-    def distribute_blocks(self):
-        num_procs = self.mpi.Get_size()
-        per_cpu = self.num_BLK // num_procs
-        rem = self.num_BLK % num_procs
+    @staticmethod
+    def distribute_blocks_to_processes(
+        num_blocks: int,
+        num_processes: int,
+    ) -> dict[int, int]:
+        """
+        Distributes num_blocks blocks to num_processes processes. Every process will have a
+        baseline number of blocks, and some will have one extra if num_blocks is not divisible
+        by num_processes.
 
-        dist = {}
-        counter = 0
+        :param num_blocks: Number of blocks to distribute
+        :param num_processes: Number of processes to distribute blocks into
+        :return: dict that maps {block_num: process_num}
+        """
         cpus = {}
-        for n in range(num_procs):
-            dist[n] = [counter + i for i in range(per_cpu + 1 if n < rem else per_cpu)]
-            for i in dist[n]:
-                cpus[i] = n
-            counter += len(dist[n])
-        return dist, cpus
+        counter = 0
+        num_full_processes = num_blocks % num_processes
+        blocks_per_process_baseline = num_blocks // num_processes
+
+        for n in range(num_processes):
+            local_num_blocks = (
+                blocks_per_process_baseline + 1
+                if n < num_full_processes
+                else blocks_per_process_baseline
+            )
+            cpus.update({i: n for i in [counter + i for i in range(local_num_blocks)]})
+            counter += local_num_blocks
+        return cpus
 
     def build(self) -> None:
         """
@@ -463,25 +485,45 @@ class Blocks:
 
         :return: None
         """
-        self.num_BLK = len(self.mesh_config)
-        dist, cpu_dict = self.distribute_blocks()
-        current_block_nums = dist[self.cpu]
+        self.num_blocks = len(self.mesh_config)
+        cpu_dict = self.distribute_blocks_to_processes(
+            num_blocks=self.num_blocks,
+            num_processes=self.mpi.Get_size(),
+        )
+        blocks_in_this_proccess = [
+            block_num for block_num, cpu_num in cpu_dict.items() if cpu_num == self.cpu
+        ]
 
         self.add(
             qb.QuadBlock(
                 self.config,
-                block_data=self.mesh_config[blk_num],
+                block_data=self.mesh_config[block_num],
             )
-            for blk_num in current_block_nums
+            for block_num in blocks_in_this_proccess
         )
 
-        def get_neighbor_ref(neighbor_num):
-            return (
-                (neighbor_num, cpu_dict[neighbor_num])
-                if neighbor_num not in self.blocks
-                else self.blocks[neighbor_num]
-            ) if neighbor_num is not None else None
+        def get_neighbor_ref(neighbor_num: int) -> Union[int, QuadBlock]:
+            """
+            Returns a valid reference to the neighbor block with the specified number.
+            If the number is on shared memory (process running on the same machine),
+            the reference to the neighbor's QuadBlock object is returned. If it is on a
+            separate node (non-shared memory), a tuple is returned containing the block's
+            number and process number. If the neighbor number indidated is None, that means
+            that there is no neighbor in that direction, and None is returned.
 
+            :param neighbor_num: Global block number for neighbor
+            :return: Either a block/process number or a QuadBlock reference to the neighbor
+            if it exists, else None.
+            """
+            return (
+                (
+                    (neighbor_num, cpu_dict[neighbor_num])
+                    if neighbor_num not in self.blocks
+                    else self.blocks[neighbor_num]
+                )
+                if neighbor_num is not None
+                else None
+            )
 
         for block in self.blocks.values():
             ne, nw, nn, ns = (

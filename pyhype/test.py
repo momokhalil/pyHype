@@ -1,9 +1,9 @@
 import mpi4py as mpi
 
-num_BLK = 23
+num_blocks = 23
 num_procs = mpi.MPI.COMM_WORLD.Get_size()
-per_cpu = num_BLK // num_procs
-rem = num_BLK % num_procs
+per_cpu = num_blocks // num_procs
+rem = num_blocks % num_procs
 
 dist = {}
 counter = 0

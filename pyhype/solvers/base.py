@@ -60,6 +60,9 @@ class Solver:
         self.mpi = MPI.COMM_WORLD
         self.cpu = self.mpi.Get_rank()
 
+        if self.mpi.Get_size() % 2:
+            raise ValueError("Number of MPI processes must be even!")
+
         if self.cpu == 0:
             self._logger.info(execution_prints.PYHYPE)
             self._logger.info(execution_prints.LICENSE)
