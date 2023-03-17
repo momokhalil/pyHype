@@ -402,8 +402,6 @@ class Blocks:
 
         self.build()
 
-        print(self.blocks)
-
     def __len__(self):
         if self.num_blocks is None:
             raise ValueError("num_blocks is None, this should never happen.")
