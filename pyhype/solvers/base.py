@@ -72,7 +72,6 @@ class Solver:
             self._logger.info("\t>>> Initializing basic solution attributes")
 
         self.t = 0
-        self.dt = 0
         self.num_time_step = 0
         self.CFL = self.config.CFL
         self.t_final = self.config.t_final * self.fluid.far_field.a
@@ -133,18 +132,20 @@ class Solver:
         np.save(file=filename, arr=array)
 
     def write_solution(self):
-        if self.config.write_solution_mode == "every_n_timesteps":
-            if self.num_time_step % self.config.write_every_n_timesteps == 0:
-                for block in self.blocks:
-                    self.write_output_nodes(
-                        "./"
-                        + self.config.write_solution_name
-                        + "_"
-                        + str(self.num_time_step)
-                        + "_blk_"
-                        + str(block.global_nBLK),
-                        block.state.data,
-                    )
+        if (
+            self.config.write_solution_mode == "every_n_timesteps"
+            and self.num_time_step % self.config.write_every_n_timesteps == 0
+        ):
+            for block in self.blocks:
+                self.write_output_nodes(
+                    "./"
+                    + self.config.write_solution_name
+                    + "_"
+                    + str(self.num_time_step)
+                    + "_blk_"
+                    + str(block.global_nBLK),
+                    block.state.data,
+                )
 
     def plot_func_selector(self, state) -> np.ndarray:
         """

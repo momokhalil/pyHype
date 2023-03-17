@@ -141,14 +141,13 @@ class Euler2D(Solver):
 
             # Get time step
             self.mpi.Barrier()
-            self._logger.info((self.cpu, self.dt, self.num_time_step))
-            self.dt = self.get_dt()
-            self._blocks.update(self.dt)
+            dt = self.get_dt()
+            self._blocks.update(dt)
 
             if self.config.write_solution:
                 self.write_solution()
 
-            self.t += self.dt
+            self.t += dt
             self.num_time_step += 1
 
         if self.cpu == 0:
