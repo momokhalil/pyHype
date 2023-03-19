@@ -60,9 +60,6 @@ class Solver:
         self.mpi = MPI.COMM_WORLD
         self.cpu = self.mpi.Get_rank()
 
-        if self.mpi.Get_size() % 2:
-            raise ValueError("Number of MPI processes must be even!")
-
         if self.cpu == 0:
             self._logger.info(execution_prints.PYHYPE)
             self._logger.info(execution_prints.LICENSE)
@@ -116,7 +113,8 @@ class Solver:
 
         :return: global minimum time step
         """
-        min_local_blocks_dt = min([block.get_dt() for block in self.blocks])
+        dts = [block.get_dt() for block in self.blocks]
+        min_local_blocks_dt = min(dts) if len(self._blocks) else np.inf
         min_processes_dt = self.mpi.gather(min_local_blocks_dt, root=0)
         min_global_dt = self.mpi.bcast(
             min(min_processes_dt) if self.cpu == 0 else None, root=0
