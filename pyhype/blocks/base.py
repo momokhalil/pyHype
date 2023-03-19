@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import logging
+import time
 from abc import abstractmethod, ABC
 from enum import Enum
 from typing import TYPE_CHECKING, Union, Type
@@ -380,7 +381,6 @@ class Blocks:
     Class for containing the solution blocks and necessary methods.
 
     :ivar config: SolverConfigs object
-    :ivar num_blocks: Number of blocks
     :ivar blocks: Dict for containing the QuadBlock objects
     :ivar cpu: (future use) indicates the rank of the CPU responsible
     for this collection of blocks.
@@ -395,17 +395,21 @@ class Blocks:
 
         self.config = config
         self.mesh_config = mesh_config
-        self.num_blocks = None
         self.blocks = {}
         self.mpi = mpi.MPI.COMM_WORLD
         self.cpu = self.mpi.Get_rank()
 
         self.build()
 
+    @property
+    def num_blocks(self):
+        return self.__len__()
+
+    def __iter__(self):
+        return self.blocks.items()
+
     def __len__(self):
-        if self.num_blocks is None:
-            raise ValueError("num_blocks is None, this should never happen.")
-        return self.num_blocks
+        return len(self.blocks)
 
     def __getitem__(self, blknum: int) -> QuadBlock:
         """
@@ -445,6 +449,21 @@ class Blocks:
 
         :return: None
         """
+        reqs = []
+
+        for block in self.blocks.values():
+            reqs.extend(block.send_boundary_data())
+            reqs.extend(block.recieve_boundary_data())
+
+        try:
+            mpi.MPI.Request.Waitall(reqs)
+        except mpi.MPI.Exception:
+            error_code = mpi.MPI.Status().Get_error()
+            self._logger.info(error_code)
+
+        for block in self.blocks.values():
+            block.apply_data_buffers()
+
         for block in self.blocks.values():
             block.apply_boundary_condition()
 
@@ -496,15 +515,13 @@ class Blocks:
 
         :return: None
         """
-        self.num_blocks = len(self.mesh_config)
         cpu_dict = self.distribute_blocks_to_processes(
-            num_blocks=self.num_blocks,
+            num_blocks=len(self.mesh_config),
             num_processes=self.mpi.Get_size(),
         )
         blocks_in_this_proccess = [
             block_num for block_num, cpu_num in cpu_dict.items() if cpu_num == self.cpu
         ]
-
         self.add(
             qb.QuadBlock(
                 self.config,
