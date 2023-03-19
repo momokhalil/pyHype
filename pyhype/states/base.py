@@ -72,7 +72,7 @@ class State(ABC):
         self.cache = {}
 
         if state is not None:
-            self._data = np.empty(state.shape)
+            self._data = np.zeros(state.shape)
             self.from_state(state)
         elif array is not None:
             self.from_array(array)
@@ -288,6 +288,7 @@ class State(ABC):
         for condition_name, bad_val_indices in bad_values.items():
             print(f"Condition: {condition_name}, location of bad values:")
             print(bad_val_indices)
+            print(self._data[bad_val_indices])
         raise RealizabilityException(
             "Simulation has failed due to an non-realizable state quantity."
         )
