@@ -16,6 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING, Type, Union
 from itertools import chain
@@ -245,6 +246,8 @@ class QuadBlock(BaseBlockGhost):
         self.block_data = block_data
         self.global_nBLK = block_data.info.nBLK
 
+        self.mpi = mpi.MPI.COMM_WORLD
+
         mesh = QuadMesh(config, block_data.geometry)
         qp = quadratures.QuadraturePointData(config, refMESH=mesh)
         super().__init__(
@@ -261,7 +264,7 @@ class QuadBlock(BaseBlockGhost):
             qp=qp,
             mesh=mesh,
         )
-        self._time_integrator = TimeIntegratorFactory.create(config=config)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def reconstruction_type(self):
@@ -539,6 +542,33 @@ class QuadBlock(BaseBlockGhost):
 
         return self.fvm.dUdt()
 
+    def send_boundary_data(self):
+        """
+        Sends boundary data to the appropriate location, which could be its own ghost blocks,
+        a neighbor's ghost blocks on the same process, or a neighbors ghost blocks on a
+        different process via MPI
+        :return:
+        """
+        send_reqs = [ghost.send_boundary_data() for ghost in self.ghost.values()]
+        return [req for req in send_reqs if req is not None]
+
+    def recieve_boundary_data(self):
+        """
+        Recieves boundary data from neighbors who communicated with MPI
+        :return:
+        """
+        recv_reqs = [ghost.recieve_boundary_data() for ghost in self.ghost.values()]
+        return [req for req in recv_reqs if req is not None]
+
+    def apply_data_buffers(self):
+        """
+        Applies the recieved data buffers via MPI to the state
+
+        :return:
+        """
+        for ghost in self.ghost.values():
+            ghost.apply_recv_buffers_to_state()
+
     def apply_boundary_condition(self) -> None:
         """
         Calls the apply_boundary_condition() method for each ghost block connected to this block. This sets the boundary condition on
@@ -550,10 +580,8 @@ class QuadBlock(BaseBlockGhost):
         Returns:
             - None
         """
-        self.ghost.E.apply_boundary_condition()
-        self.ghost.W.apply_boundary_condition()
-        self.ghost.N.apply_boundary_condition()
-        self.ghost.S.apply_boundary_condition()
+        for ghost in self.ghost.values():
+            ghost.apply_boundary_condition()
 
     # ------------------------------------------------------------------------------------------------------------------
     # Gradient methods
