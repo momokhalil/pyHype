@@ -16,7 +16,10 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+import logging
+from typing import TYPE_CHECKING, Type, Callable, Union, Optional
 
+import mpi4py.MPI
 import numpy as np
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
@@ -25,7 +28,6 @@ from mpi4py import MPI
 from pyhype.utils import utils
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.mesh import quadratures as quadratures
-from typing import TYPE_CHECKING, Type, Callable, Union
 from pyhype.boundary_conditions.base import BoundaryCondition
 from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.boundary_conditions.funcs import BoundaryConditionFunctions
@@ -117,9 +119,9 @@ class GhostBlock(BaseBlockFVM):
         self.shape = (mesh.shape[0], mesh.shape[1], 4)
 
         self._num_elements = mesh.shape[0] * mesh.shape[1] * 4
-        self._send_buf = np.empty((self._num_elements,), dtype=np.float64)
-        self._recv_buf = np.empty((self._num_elements,), dtype=np.float64)
+        self._recv_buf = np.zeros((self._num_elements,), dtype=np.float64)
         self._ghost_idx = NumpySlice.ghost(nghost=config.nghost)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
         if self.bc_type is None:
             self._apply_bc_func = self._apply_none_bc
@@ -159,7 +161,7 @@ class GhostBlock(BaseBlockFVM):
 
         :return: None
         """
-        self._fill()
+        # self._fill()
         self._apply_bc_func(self.state)
 
     def apply_boundary_condition_to_state(self, state: State) -> None:
@@ -170,6 +172,37 @@ class GhostBlock(BaseBlockFVM):
         :return: None
         """
         self._apply_bc_func(state)
+
+    def _send_mpi_buffer(self):
+        neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
+        send_buf = self.parent_block.state[self._ghost_idx[self.dir]].data
+        send_req = self.mpi.Isend(
+            buf=send_buf.ravel(),
+            dest=neighbor_cpu,
+            tag=utils.cantor_pair(self.parent_block.global_nBLK, neighbor_blk),
+        )
+        return send_req
+
+    def send_boundary_data(self) -> [Optional[mpi4py.MPI.Request]]:
+        if self.bc_type is not None or self.parent_block.neighbors[self.dir] is None:
+            self.state.from_state(self.parent_block.state[self._ghost_idx[self.dir]])
+            return
+        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+            return self._send_mpi_buffer()
+        self.state.from_state(
+            self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
+        )
+
+    def recieve_boundary_data(self):
+        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+            neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
+            tag = utils.cantor_pair(neighbor_blk, self.parent_block.global_nBLK)
+            req = self.mpi.Irecv(self._recv_buf, source=neighbor_cpu, tag=tag)
+            return req
+
+    def apply_recv_buffers_to_state(self):
+        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+            self.state.data = self._recv_buf.copy().reshape(self.shape)
 
     def _fill(self) -> None:
         """
