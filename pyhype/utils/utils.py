@@ -42,6 +42,10 @@ class Direction:
     south_west = -4
 
 
+def cantor_pair(a: int, b: int) -> int:
+    return int(0.5 * (a + b) * (a + b + 1) + b)
+
+
 def rotate(
     theta: Union[float, np.ndarray],
     array: np.ndarray,
