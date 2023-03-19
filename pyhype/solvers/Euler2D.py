@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import os
 
+import mpi4py.MPI
+
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
@@ -28,6 +30,7 @@ from datetime import datetime
 from pyhype.blocks.base import Blocks
 from pyhype.solvers.base import Solver
 from pyhype.solver_config import SolverConfig
+from pyhype.time_marching.factory import TimeIntegratorFactory
 
 from typing import Union, TYPE_CHECKING
 
@@ -48,11 +51,15 @@ class Euler2D(Solver):
         super().__init__(config=config, mesh_config=mesh_config)
 
         self._logger.info("\t>>> Building solution blocks")
+
+        self.mpi.Barrier()
         self._blocks = Blocks(
             config=self.config,
             mesh_config=self.mesh_config,
         )
+        self._time_integrator = TimeIntegratorFactory.create(config=config)
 
+        self.mpi.Barrier()
         if self.cpu == 0:
             self._logger.info("\n\tSolver Details:\n")
             self._logger.info(self)
@@ -87,6 +94,11 @@ class Euler2D(Solver):
         self._blocks.apply_boundary_condition()
 
     def solve(self):
+        self._pre_process_solve()
+        self._solve()
+        self._post_process_solve()
+
+    def _pre_process_solve(self):
         if self.cpu == 0:
             self._logger.info(
                 "\n------------------------------ Initializing Solution Process ---------------------------------"
@@ -98,10 +110,12 @@ class Euler2D(Solver):
 
         if self.cpu == 0:
             self._logger.info("\t>>> Setting Initial Conditions")
+        self.mpi.Barrier()
         self.apply_initial_condition()
 
         if self.cpu == 0:
             self._logger.info("\t>>> Setting Boundary Conditions")
+        self.mpi.Barrier()
         self.apply_boundary_condition()
 
         if self.config.realplot:
@@ -125,6 +139,21 @@ class Euler2D(Solver):
             )
             self._logger.info(f"Date and time: {datetime.today()}")
 
+    def _post_process_solve(self):
+        if self.cpu == 0:
+            self._logger.info(
+                f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
+            )
+            self._logger.info("End of simulation")
+            self._logger.info(f"Date and time: {datetime.today()}")
+            self._logger.info(
+                "----------------------------------------------------------------------------------------"
+            )
+
+        mpi4py.MPI.Finalize()
+
+    def _solve(self):
+        self.mpi.Barrier()
         if self.config.profile:
             if self.cpu == 0:
                 self._logger.info("\n>>> Enabling Profiler")
@@ -139,10 +168,11 @@ class Euler2D(Solver):
                     f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
                 )
 
-            # Get time step
             self.mpi.Barrier()
             dt = self.get_dt()
-            self._blocks.update(dt)
+
+            if len(self._blocks):
+                self._time_integrator.integrate(dt, self._blocks)
 
             if self.config.write_solution:
                 self.write_solution()
@@ -150,17 +180,8 @@ class Euler2D(Solver):
             self.t += dt
             self.num_time_step += 1
 
-        if self.cpu == 0:
-            self._logger.info(
-                f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
-            )
-            self._logger.info("End of simulation")
-            self._logger.info(f"Date and time: {datetime.today()}")
-            self._logger.info(
-                "----------------------------------------------------------------------------------------"
-            )
-
         if self.config.profile:
             profiler.disable()
             self.profile_data = pstats.Stats(profiler)
-            self.profile_data.sort_stats("tottime").print_stats()
+            if self.cpu == 0:
+                self.profile_data.sort_stats("tottime").print_stats(50)
