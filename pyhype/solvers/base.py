@@ -16,6 +16,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
@@ -58,13 +59,12 @@ class Solver:
         self.mpi = MPI.COMM_WORLD
         self.cpu = self.mpi.Get_rank()
 
-        if self.cpu == 0:
-            self._logger.info(execution_prints.PYHYPE)
-            self._logger.info(execution_prints.LICENSE)
-            self._logger.info(
-                "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
-            )
-            self._logger.info("\t>>> Initializing basic solution attributes")
+        self._logger.info(execution_prints.PYHYPE)
+        self._logger.info(execution_prints.LICENSE)
+        self._logger.info(
+            "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
+        )
+        self._logger.info("\t>>> Initializing basic solution attributes")
 
         self.t = 0
         self.num_time_step = 0

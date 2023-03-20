@@ -15,12 +15,14 @@ limitations under the License.
 """
 
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
 from typing import Optional, Any
 
 import mpi4py as mpi
 from pyhype.solver_config import SolverConfig
+
 
 class Logger:
     def __init__(self, config: SolverConfig, name: Optional[str] = None):

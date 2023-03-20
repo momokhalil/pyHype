@@ -16,6 +16,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np

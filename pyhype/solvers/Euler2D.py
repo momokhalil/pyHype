@@ -61,10 +61,9 @@ class Euler2D(Solver):
         self._time_integrator = TimeIntegratorFactory.create(config=config)
 
         self.mpi.Barrier()
-        if self.cpu == 0:
-            self._logger.info("\n\tSolver Details:\n")
-            self._logger.info(self)
-            self._logger.info("\n\tFinished setting up solver")
+        self._logger.info("\n\tSolver Details:\n")
+        self._logger.info(self)
+        self._logger.info("\n\tFinished setting up solver")
 
     def __str__(self):
         string = (
@@ -100,22 +99,18 @@ class Euler2D(Solver):
         self._post_process_solve()
 
     def _pre_process_solve(self):
-        if self.cpu == 0:
-            self._logger.info(
-                "\n------------------------------ Initializing Solution Process ---------------------------------"
-            )
+        self._logger.info(
+            "\n------------------------------ Initializing Solution Process ---------------------------------"
+        )
 
-        if self.cpu == 0:
-            self._logger.info("\nProblem Details: \n")
-            self._logger.info(self.config)
+        self._logger.info("\nProblem Details: \n")
+        self._logger.info(self.config)
 
-        if self.cpu == 0:
-            self._logger.info("\t>>> Setting Initial Conditions")
+        self._logger.info("\t>>> Setting Initial Conditions")
         self.mpi.Barrier()
         self.apply_initial_condition()
 
-        if self.cpu == 0:
-            self._logger.info("\t>>> Setting Boundary Conditions")
+        self._logger.info("\t>>> Setting Boundary Conditions")
         self.mpi.Barrier()
         self.apply_boundary_condition()
 
@@ -124,8 +119,7 @@ class Euler2D(Solver):
             self.build_real_plot()
 
         if self.config.write_solution:
-            if self.cpu == 0:
-                self._logger.info("\t>>> Writing Mesh to File")
+            self._logger.info("\t>>> Writing Mesh to File")
             for block in self.blocks:
                 self.write_output_nodes(
                     "./mesh_blk_x_" + str(block.global_nBLK), block.mesh.x
@@ -134,37 +128,34 @@ class Euler2D(Solver):
                     "./mesh_blk_y_" + str(block.global_nBLK), block.mesh.y
                 )
 
-        if self.cpu == 0:
-            self._logger.info(
-                "\n------------------------------------- Start Simulation ---------------------------------------\n"
-            )
-            self._logger.info(f"Date and time: {datetime.today()}")
+        self._logger.info(
+            "\n------------------------------------- Start Simulation ---------------------------------------\n"
+        )
+        self._logger.info(f"Date and time: {datetime.today()}")
 
     def _post_process_solve(self):
-        if self.cpu == 0:
-            self._logger.info(
-                f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
-            )
-            self._logger.info("End of simulation")
-            self._logger.info(f"Date and time: {datetime.today()}")
-            self._logger.info(
-                "----------------------------------------------------------------------------------------"
-            )
+        self._logger.info(
+            f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
+        )
+        self._logger.info("End of simulation")
+        self._logger.info(f"Date and time: {datetime.today()}")
+        self._logger.info(
+            "----------------------------------------------------------------------------------------"
+        )
 
         mpi4py.MPI.Finalize()
 
     def _solve(self):
         self.mpi.Barrier()
         if self.config.profile:
-            if self.cpu == 0:
-                self._logger.info("\n>>> Enabling Profiler")
+            self._logger.info("\n>>> Enabling Profiler")
             profiler = cProfile.Profile()
             profiler.enable()
         else:
             profiler = None
 
         while self.t < self.t_final:
-            if self.cpu == 0 and self.num_time_step % 50 == 0:
+            if self.num_time_step % 50 == 0:
                 self._logger.info(
                     f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
                 )
