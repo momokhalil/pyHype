@@ -16,10 +16,9 @@ limitations under the License.
 
 from __future__ import annotations
 
-import logging
 import os
-from typing import TYPE_CHECKING, Type, Union
 from itertools import chain
+from typing import TYPE_CHECKING, Type, Union, List
 
 import numba as nb
 import matplotlib.pyplot as plt
@@ -27,10 +26,10 @@ import mpi4py as mpi
 from matplotlib.collections import LineCollection
 
 from pyhype.mesh import quadratures
-from pyhype.utils.utils import NumpySlice, SidePropertyDict
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
+from pyhype.utils.utils import NumpySlice, SidePropertyDict
 from pyhype.blocks.base import BaseBlockFVM, BlockDescription
 
 from pyhype.utils.logger import Logger
@@ -522,29 +521,31 @@ class QuadBlock(BaseBlockGhost):
 
         return self.fvm.dUdt()
 
-    def send_boundary_data(self):
+    def send_boundary_data(self) -> List[mpi.MPI.Request]:
         """
         Sends boundary data to the appropriate location, which could be its own ghost blocks,
         a neighbor's ghost blocks on the same process, or a neighbors ghost blocks on a
         different process via MPI
-        :return:
+
+        :return: List of active MPI send requests
         """
         send_reqs = [ghost.send_boundary_data() for ghost in self.ghost.values()]
         return [req for req in send_reqs if req is not None]
 
-    def recieve_boundary_data(self):
+    def recieve_boundary_data(self) -> List[mpi.MPI.Request]:
         """
         Recieves boundary data from neighbors who communicated with MPI
-        :return:
+
+        :return: List of active MPI recieve requests
         """
         recv_reqs = [ghost.recieve_boundary_data() for ghost in self.ghost.values()]
         return [req for req in recv_reqs if req is not None]
 
-    def apply_data_buffers(self):
+    def apply_data_buffers(self) -> None:
         """
         Applies the recieved data buffers via MPI to the state
 
-        :return:
+        :return: None
         """
         for ghost in self.ghost.values():
             ghost.apply_recv_buffers_to_state()
@@ -554,17 +555,10 @@ class QuadBlock(BaseBlockGhost):
         Calls the apply_boundary_condition() method for each ghost block connected to this block. This sets the boundary condition on
         each side.corner of the block.
 
-        Parameters:
-            - None
-
-        Returns:
-            - None
+        :return: None
         """
         for ghost in self.ghost.values():
             ghost.apply_boundary_condition()
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Gradient methods
 
     def drho_dx(self) -> np.ndarray:
         """

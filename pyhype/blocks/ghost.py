@@ -16,7 +16,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Type, Callable, Union, Optional
+from typing import TYPE_CHECKING, Type, Callable, Union, Optional, List
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
@@ -171,17 +171,38 @@ class GhostBlock(BaseBlockFVM):
         """
         self._apply_bc_func(state)
 
-    def _send_mpi_buffer(self):
+    def _send_mpi_buffer(self) -> MPI.Request:
+        """
+        Sends a numpy array buffer from the current (process, block) to the
+        correct neigbor (process, block). Tags the send with a cantor-pair
+        created with the current and neighbor block number.
+
+        :return: List of active MPI send requests
+        """
         neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
         send_buf = self.parent_block.state[self._ghost_idx[self.dir]].data
-        send_req = self.mpi.Isend(
+        return self.mpi.Isend(
             buf=send_buf.ravel(),
             dest=neighbor_cpu,
             tag=utils.cantor_pair(self.parent_block.global_nBLK, neighbor_blk),
         )
-        return send_req
 
-    def send_boundary_data(self) -> [Optional[mpi4py.MPI.Request]]:
+    def send_boundary_data(self) -> Optional[MPI.Request]:
+        """
+        Sends boundary data to the appropriate location. This can be in three forms:
+
+        1) BC type is not None or no neighbor: Send boundary data to this ghost
+        block's State. This is because we are essentially trying to set a BC that
+        is dependent on the block's own State, and not a neighbor. For example, this
+        is used for wall BCs.
+
+        2) Send boundary data to a neighbor on a different process using MPI
+
+        3) Set this ghost block's State using the neighbor's State, which is in the
+        same process.
+
+        :return: Optional MPI send request if MPI is used
+        """
         if self.bc_type is not None or self.parent_block.neighbors[self.dir] is None:
             self.state.from_state(self.parent_block.state[self._ghost_idx[self.dir]])
             return
@@ -191,44 +212,26 @@ class GhostBlock(BaseBlockFVM):
             self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
         )
 
-    def recieve_boundary_data(self):
+    def recieve_boundary_data(self) -> Optional[MPI.Request]:
+        """
+        Recieves the boundary data buffer using MPI if MPI was used by the neighbor
+        to send the boundary data buffer.
+
+        :return: Optional MPI recieve request if MPI was used
+        """
         if isinstance(self.parent_block.neighbors[self.dir], tuple):
             neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
             tag = utils.cantor_pair(neighbor_blk, self.parent_block.global_nBLK)
-            req = self.mpi.Irecv(self._recv_buf, source=neighbor_cpu, tag=tag)
-            return req
+            return self.mpi.Irecv(self._recv_buf, source=neighbor_cpu, tag=tag)
 
-    def apply_recv_buffers_to_state(self):
-        if isinstance(self.parent_block.neighbors[self.dir], tuple):
-            self.state.data = self._recv_buf.copy().reshape(self.shape)
-
-    def _fill(self) -> None:
+    def apply_recv_buffers_to_state(self) -> None:
         """
-        Fills this ghost block's State using the parent block's State data on the
-        appropriate side, or the parent blocks neighbor on the appropriate side.
+        Applies the recieved array buffer from MPI to the block's State
 
         :return: None
         """
-        if self.bc_type is None:
-            neighbor = self.parent_block.neighbors[self.dir]
-            if neighbor is not None and not isinstance(neighbor, tuple):
-                self.state.from_state(
-                    self.parent_block.neighbors[self.dir].state[
-                        self._ghost_idx[-self.dir]
-                    ]
-                )
-            else:
-                neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
-                self._send_buf[:] = self.parent_block.state[
-                    self._ghost_idx[self.dir]
-                ].data.ravel()
-                self.mpi.Send(
-                    self._send_buf, dest=neighbor_cpu, tag=self.parent_block.global_nBLK
-                )
-                self.mpi.Recv(self._recv_buf, source=neighbor_cpu, tag=neighbor_blk)
-                self.state.data = self._recv_buf.reshape(self.shape)
-        else:
-            self.state.from_state(self.parent_block.state[self._ghost_idx[self.dir]])
+        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+            self.state.data = self._recv_buf.copy().reshape(self.shape)
 
     def _apply_none_bc(self, state: State) -> None:
         """
