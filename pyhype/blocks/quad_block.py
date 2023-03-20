@@ -32,7 +32,8 @@ from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
 from pyhype.blocks.base import BaseBlockFVM, BlockDescription
-from pyhype.time_marching.factory import TimeIntegratorFactory
+
+from pyhype.utils.logger import Logger
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
@@ -264,7 +265,7 @@ class QuadBlock(BaseBlockGhost):
             qp=qp,
             mesh=mesh,
         )
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = Logger(config=config)
 
     @property
     def reconstruction_type(self):

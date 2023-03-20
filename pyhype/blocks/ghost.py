@@ -16,14 +16,11 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import logging
 from typing import TYPE_CHECKING, Type, Callable, Union, Optional
-
-import mpi4py.MPI
-import numpy as np
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+import numpy as np
 from mpi4py import MPI
 from pyhype.utils import utils
 from pyhype.mesh.quad_mesh import QuadMesh
@@ -33,6 +30,7 @@ from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.boundary_conditions.funcs import BoundaryConditionFunctions
 from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
 
+from pyhype.utils.logger import Logger
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
@@ -121,7 +119,7 @@ class GhostBlock(BaseBlockFVM):
         self._num_elements = mesh.shape[0] * mesh.shape[1] * 4
         self._recv_buf = np.zeros((self._num_elements,), dtype=np.float64)
         self._ghost_idx = NumpySlice.ghost(nghost=config.nghost)
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = Logger(config=config)
 
         if self.bc_type is None:
             self._apply_bc_func = self._apply_none_bc

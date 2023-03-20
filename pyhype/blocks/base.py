@@ -17,10 +17,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import logging
-import time
 from abc import abstractmethod, ABC
-from enum import Enum
 from typing import TYPE_CHECKING, Union, Type
 
 import mpi4py as mpi
@@ -39,6 +36,8 @@ from pyhype.gradients import GradientFactory
 from pyhype.limiters import SlopeLimiterFactory
 from pyhype.fvm import FiniteVolumeMethodFactory
 from pyhype.states import PrimitiveState, ConservativeState
+
+from pyhype.utils.logger import Logger
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
@@ -391,7 +390,7 @@ class Blocks:
         config: SolverConfig,
         mesh_config: dict,
     ) -> None:
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = Logger(config=config)
 
         self.config = config
         self.mesh_config = mesh_config

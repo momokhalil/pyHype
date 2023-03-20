@@ -16,29 +16,27 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
-import logging
 import numpy as np
-import matplotlib.pyplot as plt
-from mpi4py import MPI
-from matplotlib.colors import LinearSegmentedColormap
-from pyhype import execution_prints
-from pyhype.blocks.base import BlockDescription
-from pyhype.mesh.base import MeshGenerator
-
 from abc import abstractmethod
-
 from typing import Iterable, Union, TYPE_CHECKING
+
+from mpi4py import MPI
+import matplotlib.pyplot as plt
+from pyhype import execution_prints
+from pyhype.utils.logger import Logger
+from pyhype.mesh.base import MeshGenerator
+from pyhype.blocks.base import BlockDescription
+from matplotlib.colors import LinearSegmentedColormap
+
 
 if TYPE_CHECKING:
     from pyhype.solver_config import SolverConfig
     from pyhype.blocks.quad_block import QuadBlock
 
 np.set_printoptions(threshold=sys.maxsize)
-logging.basicConfig(level=logging.INFO)
 
 
 class Solver:
@@ -48,7 +46,7 @@ class Solver:
         mesh_config: Union[MeshGenerator, dict],
     ) -> None:
 
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = Logger(config=config)
 
         self.config = config
         self.mesh_config = self.get_mesh_config(mesh_config)

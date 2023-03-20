@@ -27,6 +27,7 @@ import pstats
 import cProfile
 import numpy as np
 from datetime import datetime
+
 from pyhype.blocks.base import Blocks
 from pyhype.solvers.base import Solver
 from pyhype.solver_config import SolverConfig

@@ -16,14 +16,12 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import time
-import logging
-import numpy as np
-import numba as nb
-import mpi4py as mpi
-
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+import numpy as np
+import numba as nb
+
+from pyhype.utils.logger import Logger
 from pyhype.time_marching.base import TimeIntegrator
 
 from typing import TYPE_CHECKING
@@ -43,7 +41,7 @@ class ExplicitRungeKutta(TimeIntegrator):
         self.a = a
         self.num_stages = len(a)
 
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = Logger(config=config)
 
     def integrate(self, dt, blocks: Blocks) -> None:
         """

@@ -21,7 +21,7 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 from pyhype.states.conservative import ConservativeState
 
-from typing import Type, TYPE_CHECKING
+from typing import Type, TYPE_CHECKING, List, Union
 
 if TYPE_CHECKING:
     from pyhype.initial_conditions.base import InitialCondition
@@ -57,6 +57,7 @@ class SolverConfig:
         "n",
         "nghost",
         "use_JIT",
+        "show_log_for_procs",
     ]
 
     def __init__(
@@ -86,6 +87,7 @@ class SolverConfig:
         reconstruction_type: Type[State] = ConservativeState,
         write_every_n_timesteps: int = 40,
         interface_interpolation: str = "arithmetic_average",
+        show_log_for_procs: Union[List[int], str] = None,
     ) -> None:
 
         self.initial_condition = initial_condition
@@ -121,6 +123,13 @@ class SolverConfig:
         self.write_solution_mode = write_solution_mode
         self.write_solution_name = write_solution_name
         self.write_every_n_timesteps = write_every_n_timesteps
+
+        if show_log_for_procs is None:
+            self.show_log_for_procs = [0]
+        elif show_log_for_procs == "all":
+            self.show_log_for_procs = "all"
+        else:
+            self.show_log_for_procs = show_log_for_procs
 
     def __str__(self):
         return "".join(f"\t{atr}: {getattr(self, atr)}\n" for atr in self.__slots__)
