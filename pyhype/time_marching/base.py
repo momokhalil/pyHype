@@ -18,16 +18,20 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyhype.solver_config import SolverConfig
+    from pyhype.blocks.base import Blocks
 
 
 class TimeIntegrator:
-    def __init__(self, config):
+    def __init__(self, config: SolverConfig):
         self.config = config
 
-    def __call__(self, dt, blocks):
+    def __call__(self, dt: float, blocks: Blocks):
         self.integrate(dt, blocks)
 
-    # Abstract methodo to define integration scheme
     @abstractmethod
-    def integrate(self, dt, blocks):
+    def integrate(self, dt: float, blocks: Blocks):
         raise NotImplementedError
