@@ -145,6 +145,9 @@ class Euler2D(Solver):
 
         mpi4py.MPI.Finalize()
 
+    def realizability_check(self):
+        self._blocks.realizability_check()
+
     def _solve(self):
         self.mpi.Barrier()
         if self.config.profile:
@@ -165,6 +168,7 @@ class Euler2D(Solver):
 
             if len(self._blocks):
                 self._time_integrator.integrate(dt, self._blocks)
+                self.realizability_check()
 
             if self.config.write_solution:
                 self.write_solution()

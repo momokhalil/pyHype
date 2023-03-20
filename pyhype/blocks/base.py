@@ -431,6 +431,10 @@ class Blocks:
         for block in blocks:
             self.blocks[block.global_nBLK] = block
 
+    def realizability_check(self):
+        for block in self.blocks.values():
+            block.realizable()
+
     def apply_boundary_condition(self) -> None:
         """
         Applies the boundary conditions to every block.
