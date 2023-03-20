@@ -431,17 +431,6 @@ class Blocks:
         for block in blocks:
             self.blocks[block.global_nBLK] = block
 
-    def update(self, dt: float) -> None:
-        """
-        Applies the time marching procedure to the blocks.
-
-        :param dt: Time step
-
-        :return: None
-        """
-        for block in self.blocks.values():
-            block.update(dt)
-
     def apply_boundary_condition(self) -> None:
         """
         Applies the boundary conditions to every block.

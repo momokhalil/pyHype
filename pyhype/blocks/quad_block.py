@@ -496,27 +496,6 @@ class QuadBlock(BaseBlockGhost):
         """
         return self.state[self.SOUTH_GHOST_IDX]
 
-    # ------------------------------------------------------------------------------------------------------------------
-    # Time stepping methods
-
-    def update(self, dt: float) -> None:
-        """
-        Updates the solution state stored in the current block. Also includes any pre-processing needed prior to the
-        calculation of the state updates, such as preconditioning, etc. The core operation in this method is calling the
-        _time_integrator class, which steps the solution state through time by an amount of dt seconds.
-
-        Parameters:
-            - dt (float): Time step
-
-        Returns:
-            - N.A
-        """
-        self._time_integrator(self, dt)
-        if not self.realizable():
-            raise ValueError(
-                "Negative or zero pressure, density, or energy. Terminating simulation."
-            )
-
     def get_flux(self) -> None:
         """
         Calls the get_flux() method from the Block's finite-volume-method to compute the flux at each cell wall.

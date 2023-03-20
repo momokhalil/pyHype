@@ -44,7 +44,7 @@ class ExplicitRungeKutta(TimeIntegrator):
 
         self._logger = Logger(config=config)
 
-    def integrate(self, dt, blocks: Blocks) -> None:
+    def integrate(self, dt: float, blocks: Blocks) -> None:
         """
         Perform integration for a general explicit Runge-Kutta scheme based on the Butcher tableau.
 
