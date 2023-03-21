@@ -77,9 +77,10 @@ class Solver:
         self._blocks = None
         self.write_path = None
 
-
         if config.write_solution:
-            self.write_path = pathlib.Path(config.write_solution_base) / config.write_solution_name
+            self.write_path = (
+                pathlib.Path(config.write_solution_base) / config.write_solution_name
+            )
             if self.cpu == 0:
                 self.write_path.mkdir(exist_ok=True, parents=True)
                 self._logger.info(self.write_path)

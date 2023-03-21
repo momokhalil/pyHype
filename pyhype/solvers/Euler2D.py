@@ -141,35 +141,67 @@ class Euler2D(Solver):
 
         mpi4py.MPI.Finalize()
 
-    def realizability_check(self):
+    def _realizability_check(self):
         realizable = self._blocks.realizable()
-        failed = [fail for fail in realizable if isinstance(fail, RealizabilityException)]
+        failed = [
+            fail for fail in realizable if isinstance(fail, RealizabilityException)
+        ]
         if len(failed):
             for fail in failed:
                 self._logger.error(fail)
             self.mpi.Abort()
 
-    def _solve(self):
+    def _log_simulation_progress(self) -> None:
+        """
+        Logs the current time step and the number of performed time steps to console.
+
+        :return: None
+        """
+        t = self.t / self.fluid.far_field.a
+        self._logger.info(
+            f"Simulation time: {t}, Timestep number: {self.num_time_step}",
+        )
+
+    def _update_solution_blocks(self, dt: float) -> None:
+        """
+        Calls the time marching operator to update the solution state in all
+        solution blocks.
+
+        :param dt: current time step
+        :return: None
+        """
+        self._time_integrator.integrate(dt, self._blocks)
+
+    def _solve(self) -> None:
+        """
+        Executes the solution procedure for solving the 2D Euler equations in
+        the given domain with the given simulation parameters. It iterates through
+        time and updates the solution blocks at each time iteration, ensuring the
+        time step obeys the CFL condition for inviscid flow to maintain a stable
+        numerical scheme. It may also write the solution state to file at given
+        intervals if the user wishes.
+
+        :return: None
+        """
+
         self.mpi.Barrier()
+
+        profiler = None
         if self.config.profile:
             self._logger.info("\n>>> Enabling Profiler")
             profiler = cProfile.Profile()
             profiler.enable()
-        else:
-            profiler = None
 
         while self.t < self.t_final:
             if self.num_time_step % 50 == 0:
-                self._logger.info(
-                    f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
-                )
+                self._log_simulation_progress()
 
             self.mpi.Barrier()
             dt = self.get_dt()
 
             if len(self._blocks):
-                self._time_integrator.integrate(dt, self._blocks)
-                self.realizability_check()
+                self._update_solution_blocks(dt=dt)
+                self._realizability_check()
 
             if self.config.write_solution:
                 self.write_solution()
