@@ -60,7 +60,6 @@ class ExplicitRungeKutta(TimeIntegrator):
         temp_state = {
             i: np.zeros_like(block.state.data) for i, block in blocks.blocks.items()
         }
-
         for stage in range(self.num_stages):
             for i, block in reversed(blocks.blocks.items()):
                 stage_residuals[i][stage] = block.dUdt()
@@ -75,8 +74,8 @@ class ExplicitRungeKutta(TimeIntegrator):
                         )
                 block.state.data = intermediate_state
 
+            blocks.apply_boundary_condition()
             for i, block in blocks.blocks.items():
-                block.apply_boundary_condition()
                 block.clear_cache()
                 block.recon_block.clear_cache()
 
