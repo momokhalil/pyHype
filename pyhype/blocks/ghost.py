@@ -142,14 +142,6 @@ class GhostBlock(BaseBlockFVM):
     def __getitem__(self, index):
         return self.state.data[index]
 
-    def realizable(self) -> bool:
-        """
-        Runs a physical realizability check on the block's State.
-
-        :return: bool representing the State's realizability
-        """
-        return self.state.realizable()
-
     def apply_boundary_condition(self) -> None:
         """
         Applies the boundary condition to the block's State. First, the State is

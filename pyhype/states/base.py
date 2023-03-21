@@ -19,6 +19,7 @@ import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+import mpi4py as mpi
 from typing import Union, Type
 from abc import ABC, abstractmethod
 from pyhype.fluids.base import Fluid
@@ -283,15 +284,11 @@ class State(ABC):
             for name, good_vals in conditions.items()
             if not np.all(good_vals)
         }
-        print("ConservativeState has bad values in the following conditions:")
-        print("-------------------------------------------------------------")
-        for condition_name, bad_val_indices in bad_values.items():
-            print(f"Condition: {condition_name}, location of bad values:")
-            print(bad_val_indices)
-            print(self._data[bad_val_indices])
-        raise RealizabilityException(
-            "Simulation has failed due to an non-realizable state quantity."
+        message = (
+            f"{self.__class__.__name__} has unrealizable values in the following conditions: "
+            f"{[name for name in bad_values.values()]} on process {mpi.MPI.COMM_WORLD.Get_rank()}"
         )
+        return RealizabilityException(message)
 
     @abstractmethod
     def realizability_conditions(self) -> dict[str, np.ndarray]:

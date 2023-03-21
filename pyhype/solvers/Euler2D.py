@@ -31,6 +31,7 @@ from datetime import datetime
 from pyhype.blocks.base import Blocks
 from pyhype.solvers.base import Solver
 from pyhype.solver_config import SolverConfig
+from pyhype.states.base import RealizabilityException
 from pyhype.time_marching.factory import TimeIntegratorFactory
 
 from typing import Union, TYPE_CHECKING
@@ -141,7 +142,12 @@ class Euler2D(Solver):
         mpi4py.MPI.Finalize()
 
     def realizability_check(self):
-        self._blocks.realizability_check()
+        realizable = self._blocks.realizable()
+        failed = [fail for fail in realizable if isinstance(fail, RealizabilityException)]
+        if len(failed):
+            for fail in failed:
+                self._logger.error(fail)
+            self.mpi.Abort()
 
     def _solve(self):
         self.mpi.Barrier()

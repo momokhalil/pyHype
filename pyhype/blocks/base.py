@@ -431,9 +431,11 @@ class Blocks:
         for block in blocks:
             self.blocks[block.global_nBLK] = block
 
-    def realizability_check(self):
+    def realizable(self):
+        realizable = []
         for block in self.blocks.values():
-            block.realizable()
+            realizable.extend(block.realizable())
+        return realizable
 
     def apply_boundary_condition(self) -> None:
         """
@@ -452,6 +454,7 @@ class Blocks:
         except mpi.MPI.Exception:
             error_code = mpi.MPI.Status().Get_error()
             self._logger.info(error_code)
+            self.mpi.Abort()
 
         for block in self.blocks.values():
             block.apply_data_buffers()
@@ -690,6 +693,14 @@ class BaseBlockState(BaseBlockMesh):
         column being returned.
         """
         return self.state[NumpySlice.col(index=index)]
+
+    def realizable(self) -> bool:
+        """
+        Runs a physical realizability check on the block's State.
+
+        :return: bool representing the State's realizability
+        """
+        return self.state.realizable()
 
 
 class BaseBlockGrad(BaseBlockState):

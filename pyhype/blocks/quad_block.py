@@ -112,6 +112,11 @@ class BaseBlockGhost(BaseBlockFVM):
         )
         return is_cartesian
 
+    def realizable(self):
+        realizable = [self.state.realizable()]
+        realizable.extend(blk.realizable() for blk in self.ghost.get_blocks())
+        return realizable
+
     def from_block(self, from_block: BaseBlockGhost) -> None:
         """
         Updates the state in the interior and ghost blocks, which may be any subclasss of `State`, using the state in
@@ -808,8 +813,3 @@ class QuadBlock(BaseBlockGhost):
         )
 
         return U
-
-    def realizable(self):
-        return self.state.realizable() and all(
-            blk.realizable() for blk in self.ghost.get_blocks()
-        )
