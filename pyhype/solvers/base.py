@@ -20,6 +20,7 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
+import pathlib
 import numpy as np
 from abc import abstractmethod
 from typing import Iterable, Union, TYPE_CHECKING
@@ -74,6 +75,16 @@ class Solver:
         self.realfig, self.realplot = None, None
         self.plot = None
         self._blocks = None
+        self.write_path = None
+
+
+        if config.write_solution:
+            self.write_path = pathlib.Path(config.write_solution_base) / config.write_solution_name
+            if self.cpu == 0:
+                self.write_path.mkdir(exist_ok=True, parents=True)
+                self._logger.info(self.write_path)
+
+        self.mpi.Barrier()
 
     def get_mesh_config(self, mesh: Union[MeshGenerator, dict]):
         mesh_info = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
@@ -127,17 +138,31 @@ class Solver:
     def write_output_nodes(filename: str, array: np.ndarray):
         np.save(file=filename, arr=array)
 
+    def write_mesh(self):
+        current_path = self.write_path / "mesh"
+        current_path.mkdir(parents=True, exist_ok=True)
+        self.mpi.Barrier()
+
+        for block in self.blocks:
+            self.write_output_nodes(
+                str(current_path / "mesh_x_blk_") + str(block.global_nBLK), block.mesh.x
+            )
+            self.write_output_nodes(
+                str(current_path / "mesh_y_blk_") + str(block.global_nBLK), block.mesh.y
+            )
+
     def write_solution(self):
         if (
             self.config.write_solution_mode == "every_n_timesteps"
             and self.num_time_step % self.config.write_every_n_timesteps == 0
         ):
+            current_path = self.write_path / str(self.num_time_step)
+            current_path.mkdir(parents=True, exist_ok=True)
+            self.mpi.Barrier()
+
             for block in self.blocks:
                 self.write_output_nodes(
-                    "./"
-                    + self.config.write_solution_name
-                    + "_"
-                    + str(self.num_time_step)
+                    str(current_path / self.config.write_solution_name)
                     + "_blk_"
                     + str(block.global_nBLK),
                     block.state.data,

@@ -44,6 +44,7 @@ class SolverConfig:
         "write_solution",
         "write_solution_mode",
         "write_solution_name",
+        "write_solution_base",
         "write_every_n_timesteps",
         "plot_every",
         "plot_function",
@@ -84,6 +85,7 @@ class SolverConfig:
         write_solution: bool = False,
         write_solution_mode: str = "every_n_timesteps",
         write_solution_name: str = "nozzle",
+        write_solution_base: str = None,
         reconstruction_type: Type[State] = ConservativeState,
         write_every_n_timesteps: int = 40,
         interface_interpolation: str = "arithmetic_average",
@@ -122,6 +124,7 @@ class SolverConfig:
         self.write_solution = write_solution
         self.write_solution_mode = write_solution_mode
         self.write_solution_name = write_solution_name
+        self.write_solution_base = write_solution_base
         self.write_every_n_timesteps = write_every_n_timesteps
 
         if show_log_for_procs is None:

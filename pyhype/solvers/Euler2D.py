@@ -120,13 +120,8 @@ class Euler2D(Solver):
 
         if self.config.write_solution:
             self._logger.info("\t>>> Writing Mesh to File")
-            for block in self.blocks:
-                self.write_output_nodes(
-                    "./mesh_blk_x_" + str(block.global_nBLK), block.mesh.x
-                )
-                self.write_output_nodes(
-                    "./mesh_blk_y_" + str(block.global_nBLK), block.mesh.y
-                )
+
+            self.write_mesh()
 
         self._logger.info(
             "\n------------------------------------- Start Simulation ---------------------------------------\n"
