@@ -1,14 +1,14 @@
 from pyhype.fluids import Air
 from pyhype.solvers import Euler2D
 from pyhype.states import ConservativeState
-from pyhype.solvers.base import SolverConfig
+from pyhype.solver_config import SolverConfig
 from examples.implosion.initial_condition import ImplosionInitialCondition
 
 # Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
 
-block1 = {
-    "nBLK": 1,
+block0 = {
+    "nBLK": 0,
     "NW": [0, 10],
     "NE": [10, 10],
     "SW": [0, 0],
@@ -31,7 +31,7 @@ block1 = {
     "BCTypeSW": None,
 }
 
-mesh = {1: block1}
+mesh = {0: block0}
 
 # Solver settings
 config = SolverConfig(
@@ -42,7 +42,6 @@ config = SolverConfig(
     fvm_flux_function_type="Roe",
     fvm_slope_limiter_type="Venkatakrishnan",
     time_integrator="RK2",
-    mesh=mesh,
     initial_condition=ImplosionInitialCondition(),
     interface_interpolation="arithmetic_average",
     reconstruction_type=ConservativeState,
@@ -53,16 +52,18 @@ config = SolverConfig(
     plot_every=10,
     CFL=0.4,
     t_final=0.1,
-    realplot=True,
+    realplot=False,
     profile=True,
     fluid=air,
-    nx=50,
-    ny=50,
+    nx=40,
+    ny=40,
     nghost=1,
     use_JIT=True,
 )
 
-# Create solver
-exp = Euler2D(config=config)
-
-exp.solve()
+if __name__ == "__main__":
+    implosion = Euler2D(
+        config=config,
+        mesh_config=mesh,
+    )
+    implosion.solve()
