@@ -286,7 +286,7 @@ class State(ABC):
         }
         message = (
             f"{self.__class__.__name__} has unrealizable values in the following conditions: "
-            f"{[name for name in bad_values.values()]} on process {mpi.MPI.COMM_WORLD.Get_rank()}"
+            f"{list(bad_values.values())} on process {mpi.MPI.COMM_WORLD.Get_rank()}"
         )
         return RealizabilityException(message)
 
