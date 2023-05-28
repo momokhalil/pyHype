@@ -15,7 +15,6 @@ limitations under the License.
 """
 from __future__ import annotations
 
-import numpy as np
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 from pyhype.states import PrimitiveState

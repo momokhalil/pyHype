@@ -20,13 +20,11 @@ import numba as nb
 import numpy as np
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
-from abc import abstractmethod
 from pyhype.gradients.base import Gradient
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.solvers.base import SolverConfig
     from pyhype.blocks.quad_block import QuadBlock
 
 

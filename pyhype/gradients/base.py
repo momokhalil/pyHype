@@ -16,8 +16,6 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import numba as nb
-import numpy as np
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 from abc import abstractmethod
