@@ -32,14 +32,7 @@ if TYPE_CHECKING:
 
 class ConservativeState(State):
     """
-    #Conservative Solution State#
-    A class that represents the solution state vector of the 2D inviscid Euler equations in conservative form. The
-    conservative solution vector, $U$, is represented mathematically as:
-    $U = \\begin{bmatrix} \\rho \\ \\rho u \\ \\rho v \\ e \\end{bmatrix}^T$, where $\\rho$ is the solution density,
-    $u$ is the $x$-direction momentum per unit volume, $v$ is the $y$-direction momentum per unit volume, and $e$ is
-    the energy per unit volume. `ConservativeState` can be used to represent the solution state of a QuadBlock in a
-    solver that utilizes a conservative formulation. It can also be used to represent the solution state in
-    BoundaryBlocks in a solver that utilizes a conservative formulation.
+    A class that represents the solution state vector of the 2D inviscid Euler equations in conservative form.
     """
 
     RHO_IDX = 0

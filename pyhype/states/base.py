@@ -36,13 +36,9 @@ class RealizabilityException(Exception):
 
 class State(ABC):
     """
-    # State
     Defines an abstract class for implementing primitive and conservative state classes. The core components of a state
     are the state vector and the state variables. The state vector is composed of the state variables in a specific
-    order. For example, for a state X with state variables $x_1, x_2, ..., x_n$ and state vector $X$, the state vector
-    is represented as:
-    $X = \\begin{bmatrix} x_1 \\ x_2 \\ \\dots \\ x_n \\end{bmatrix}^T$. The state vector represents the solution at
-    each physical discretization point.
+    order.
     """
 
     def __init__(

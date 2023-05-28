@@ -136,12 +136,6 @@ class FluxRoe(FluxFunction):
         """
         Calculate the x-direction sparse flux jacobian matrix A. A is defined as:
 
-        \mathcal{A} = \left[\begin{array}{cccc}
-                      0 & 1 & 0 & 0\\
-                      \frac{\gamma-1}{2}\mathbf{V}^2-u^2 & -u\,\left(\gamma-3\right) & -v\,\left(\gamma-1\right) & \gamma-1\\
-                      -u\,v & v & u & 0\\
-                      u\left(\frac{\gamma-1}{2}\mathbf{V}^2 - H\right) & H + (1-\gamma)u^2 & -u\,v\,\left(\gamma-1\right) & \gamma u \end{array}\right]
-
         Parameters:
             - Wroe (RoePrimitiveState): Roe primitive state object, contains the roe average state calculated using
             - Ek (np.ndarray): (Optional) Kinetic energy = 0.5 * (v^2 + u^2)
@@ -270,34 +264,6 @@ class FluxRoe(FluxFunction):
         Computes the flux using the Roe approximate riemann solver. First, the Roe average state is computed based on
         the given left and right states, and then, the euler eigensystem is computed by diagonalization. The
         eigensystem is then used to compute the flux via the Roe flux function.
-
-        Diagonalization
-        ---------------
-
-        The diagonalizaion is possible due to the hyperbolicty of the Euler equations. The 2D Euler equation in
-        conservation form is given as:
-
-        dU     dF     dG
-        --  +  --  +  --  =  0
-        dt     dx     dy
-
-        .. math:
-            \partial_t \mathbf{U} + \partial_x \mathbf{F} + \partial_y \mathbf{G} = 0,
-
-        where :math:'U' is the vector of conserved variables, and :math:'F' and :math:'G' are the x and y direction
-        fluxes, respectively. To diagonalize the system, the Euler equations can be re-expressed as:
-
-        dU     dF dU     dG dU     dU      dU      dU
-        --  +  -- --  +  -- --  =  --  +  A--  +  B--
-        dt     dU dx     dU dy     dt      dx      dy
-
-        .. math:
-            \partial_t \mathbf{U} + \mathcal{A}\partial_x \mathbf{U} + \mathcal{B}\partial_y \mathbf{U} = 0,
-
-        where :math:'A' and :math:'B' are the x and y direction flux jacobians, respectively.
-
-        to be continued...
-
         """
         new_shape = (1, (self.nx + 1) * self.ny, 4)
         WR.reshape(new_shape)

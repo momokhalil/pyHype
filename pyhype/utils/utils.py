@@ -61,9 +61,9 @@ def rotate(
            *                |                *
               *             |             *
                  *          |          *
-                    *       |       *  \
-                       *    |    *      \
-                          * | *    theta \
+                    *       |       *
+                       *    |    *
+                          * | *    theta
                             ------------------------------- x
 
     x' = x cos(theta) + y sin(theta)
@@ -127,9 +127,9 @@ def unrotate(
            *                |                *
               *             |             *
                  *          |          *
-                    *       |       *  \
-                       *    |    *      \
-                          * | *    theta \
+                    *       |       *
+                       *    |    *
+                          * | *    theta
                             ------------------------------- x
 
     x = x' cos(theta) - y' sin(theta)

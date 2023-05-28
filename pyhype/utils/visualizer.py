@@ -55,7 +55,7 @@ class Vizualizer:
 
     def get_solution_file_name(self, blk: int, timestep: int):
         current_path = self.write_path / str(timestep)
-        return f"{current_path}\\{self.config.write_solution_name}_blk_{blk}.npy"
+        return rf"{current_path}\{self.config.write_solution_name}_blk_{blk}.npy"
 
     def get_solution_data(self, timestep: int):
         arrays = [
