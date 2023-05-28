@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from pyhype.solver_config import SolverConfig
 from pyhype.states.conservative import ConservativeState
 
+
 @dataclasses.dataclass
 class PlotSetup:
     timesteps: [int]
@@ -31,6 +32,7 @@ class PlotSetup:
     x_lim: [float]
     y_lim: [float]
 
+
 class Vizualizer:
     def __init__(self, config: SolverConfig):
         self.config = config
@@ -38,7 +40,7 @@ class Vizualizer:
             pathlib.Path(config.write_solution_base) / config.write_solution_name
         )
         self.mesh_path = self.write_path / "mesh"
-        self.num_blk = len(list(self.mesh_path.glob('*'))) // 2
+        self.num_blk = len(list(self.mesh_path.glob("*"))) // 2
 
         self.cmap = "magma"
 
@@ -56,8 +58,13 @@ class Vizualizer:
         return f"{current_path}\\{self.config.write_solution_name}_blk_{blk}.npy"
 
     def get_solution_data(self, timestep: int):
-        arrays = [np.load(self.get_solution_file_name(blk, timestep)) for blk in range(self.num_blk)]
-        states = [ConservativeState(array=array, fluid=self.config.fluid) for array in arrays]
+        arrays = [
+            np.load(self.get_solution_file_name(blk, timestep))
+            for blk in range(self.num_blk)
+        ]
+        states = [
+            ConservativeState(array=array, fluid=self.config.fluid) for array in arrays
+        ]
         return states
 
     def plot(self, setup: PlotSetup):
@@ -68,7 +75,7 @@ class Vizualizer:
 
         fig.set_size_inches(setup.size_y, setup.size_x)
 
-        ax1.set_title('Density')
+        ax1.set_title("Density")
         plt.xlim(setup.x_lim)
         plt.ylim(setup.y_lim)
 
@@ -81,11 +88,11 @@ class Vizualizer:
                 _max = max([np.amax(v) for v in rho])
 
                 for r, x_, y_ in zip(rho, x, y):
-                    ax1.contourf(x_, y_, r, 100, cmap='magma', vmin=_min, vmax=_max)
+                    ax1.contourf(x_, y_, r, 100, cmap="magma", vmin=_min, vmax=_max)
 
-                ax1.set_aspect('equal', adjustable='box')
+                ax1.set_aspect("equal", adjustable="box")
 
                 write_path = self.write_path / "step_rho"
-                plt.savefig(f"{write_path}_{timestep}.png", bbox_inches='tight')
+                plt.savefig(f"{write_path}_{timestep}.png", bbox_inches="tight")
             except Exception as ex:
                 print(ex)
