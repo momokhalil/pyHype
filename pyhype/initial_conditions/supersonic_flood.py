@@ -40,7 +40,7 @@ class SupersonicFloodInitialCondition(InitialCondition):
         self._p = p
 
         a = np.sqrt(fluid.gamma() * p / rho)
-        velocity = np.sqrt(u**2 + v**2)
+        velocity = np.hypot(u, v)
         mach_number = velocity / a
 
         if mach_number < 1.0:
