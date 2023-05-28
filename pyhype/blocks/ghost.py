@@ -23,8 +23,8 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
 from mpi4py import MPI
 from pyhype.utils import utils
+from pyhype.mesh import quadratures
 from pyhype.mesh.quad_mesh import QuadMesh
-from pyhype.mesh import quadratures as quadratures
 from pyhype.boundary_conditions.base import BoundaryCondition
 from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.boundary_conditions.funcs import BoundaryConditionFunctions
