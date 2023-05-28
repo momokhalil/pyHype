@@ -16,7 +16,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Type, Callable, Union, Optional, List
+from typing import TYPE_CHECKING, Type, Callable, Union, Optional
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
