@@ -34,8 +34,12 @@ class RectagularMeshGenerator:
         n_blocks_horizontal: int,
         n_blocks_vertical: int,
     ):
-        assert east > west
-        assert north > south
+        if east <= west:
+            raise ValueError(f"East value {east} must be larger than west {west}")
+
+        if north <= south:
+            raise ValueError(f"North value {north} must be larger than south {south}")
+
         top_bot_y_coords = np.ones(n_blocks_horizontal + 1)
         top_bot_x_coords = np.linspace(west, east, n_blocks_horizontal + 1)
         east_west_x_coords = np.ones(n_blocks_vertical + 1)
