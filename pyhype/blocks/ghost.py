@@ -16,23 +16,26 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING, Type, Callable, Union, Optional
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+import numpy as np
+from mpi4py import MPI
 from pyhype.utils import utils
-from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
+from pyhype.mesh import quadratures
 from pyhype.mesh.quad_mesh import QuadMesh
-from pyhype.mesh import quadratures as quadratures
-from typing import TYPE_CHECKING, Type, Callable, Union
 from pyhype.boundary_conditions.base import BoundaryCondition
+from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.boundary_conditions.funcs import BoundaryConditionFunctions
 from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
 
+from pyhype.utils.logger import Logger
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.blocks.base import QuadBlock
     from pyhype.solvers.base import SolverConfig
+    from pyhype.blocks.quad_block import QuadBlock
     from pyhype.mesh.quadratures import QuadraturePointData
 
 
@@ -53,6 +56,8 @@ class GhostBlocks(SidePropertyDict):
             - N: Reference to the north ghost block
             - S: Reference to the south ghost block
         """
+        self.cpu = MPI.COMM_WORLD.Get_rank()
+
         E = GhostBlockEast(
             config,
             bc_type=block_data.bc.E,
@@ -107,12 +112,14 @@ class GhostBlock(BaseBlockFVM):
         self.nghost = config.nghost
         self.state_type = state_type
 
-        self._ghost_idx = SidePropertyDict(
-            E=NumpySlice.cols(-config.nghost, None),
-            W=NumpySlice.cols(None, config.nghost),
-            N=NumpySlice.rows(-config.nghost, None),
-            S=NumpySlice.rows(None, config.nghost),
-        )
+        self.mpi = MPI.COMM_WORLD
+        self.cpu = self.mpi.Get_rank()
+        self.shape = (mesh.shape[0], mesh.shape[1], 4)
+
+        self._num_elements = mesh.shape[0] * mesh.shape[1] * 4
+        self._recv_buf = np.zeros((self._num_elements,), dtype=np.float64)
+        self._ghost_idx = NumpySlice.ghost(nghost=config.nghost)
+        self._logger = Logger(config=config)
 
         if self.bc_type is None:
             self._apply_bc_func = self._apply_none_bc
@@ -135,14 +142,6 @@ class GhostBlock(BaseBlockFVM):
     def __getitem__(self, index):
         return self.state.data[index]
 
-    def realizable(self) -> bool:
-        """
-        Runs a physical realizability check on the block's State.
-
-        :return: bool representing the State's realizability
-        """
-        return self.state.realizable()
-
     def apply_boundary_condition(self) -> None:
         """
         Applies the boundary condition to the block's State. First, the State is
@@ -152,7 +151,6 @@ class GhostBlock(BaseBlockFVM):
 
         :return: None
         """
-        self._fill()
         self._apply_bc_func(self.state)
 
     def apply_boundary_condition_to_state(self, state: State) -> None:
@@ -164,18 +162,67 @@ class GhostBlock(BaseBlockFVM):
         """
         self._apply_bc_func(state)
 
-    def _fill(self) -> None:
+    def _send_mpi_buffer(self) -> MPI.Request:
         """
-        Fills this ghost block's State using the parent block's State data on the
-        appropriate side, or the parent blocks neighbor on the appropriate side.
+        Sends a numpy array buffer from the current (process, block) to the
+        correct neigbor (process, block). Tags the send with a cantor-pair
+        created with the current and neighbor block number.
+
+        :return: List of active MPI send requests
+        """
+        neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
+        send_buf = self.parent_block.state[self._ghost_idx[self.dir]].data
+        return self.mpi.Isend(
+            buf=send_buf.ravel(),
+            dest=neighbor_cpu,
+            tag=utils.cantor_pair(self.parent_block.global_nBLK, neighbor_blk),
+        )
+
+    def send_boundary_data(self) -> Optional[MPI.Request]:
+        """
+        Sends boundary data to the appropriate location. This can be in three forms:
+
+        1) BC type is not None or no neighbor: Send boundary data to this ghost
+        block's State. This is because we are essentially trying to set a BC that
+        is dependent on the block's own State, and not a neighbor. For example, this
+        is used for wall BCs.
+
+        2) Send boundary data to a neighbor on a different process using MPI
+
+        3) Set this ghost block's State using the neighbor's State, which is in the
+        same process.
+
+        :return: Optional MPI send request if MPI is used
+        """
+        if self.bc_type is not None or self.parent_block.neighbors[self.dir] is None:
+            self.state.from_state(self.parent_block.state[self._ghost_idx[self.dir]])
+            return
+        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+            return self._send_mpi_buffer()
+        self.state.from_state(
+            self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
+        )
+
+    def recieve_boundary_data(self) -> Optional[MPI.Request]:
+        """
+        Recieves the boundary data buffer using MPI if MPI was used by the neighbor
+        to send the boundary data buffer.
+
+        :return: Optional MPI recieve request if MPI was used
+        """
+        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+            neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
+            tag = utils.cantor_pair(neighbor_blk, self.parent_block.global_nBLK)
+            return self.mpi.Irecv(self._recv_buf, source=neighbor_cpu, tag=tag)
+
+    def apply_recv_buffers_to_state(self) -> None:
+        """
+        Applies the recieved array buffer from MPI to the block's State
 
         :return: None
         """
-        self.state.from_state(
-            self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
-            if self.bc_type is None
-            else self.parent_block.state[self._ghost_idx[self.dir]]
-        )
+        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+            self.state.data = self._recv_buf.copy().reshape(self.shape)
 
     def _apply_none_bc(self, state: State) -> None:
         """

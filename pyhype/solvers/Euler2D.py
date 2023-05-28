@@ -17,17 +17,22 @@ from __future__ import annotations
 
 import os
 
+import mpi4py.MPI
+
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
+import logging
 import pstats
 import cProfile
 import numpy as np
 from datetime import datetime
-from pyhype.factory import Factory
+
 from pyhype.blocks.base import Blocks
 from pyhype.solvers.base import Solver
 from pyhype.solver_config import SolverConfig
+from pyhype.states.base import RealizabilityException
+from pyhype.time_marching.factory import TimeIntegratorFactory
 
 from typing import Union, TYPE_CHECKING
 
@@ -35,6 +40,7 @@ if TYPE_CHECKING:
     from pyhype.mesh.base import MeshGenerator
 
 np.set_printoptions(threshold=sys.maxsize)
+logging.basicConfig(level=logging.INFO)
 
 
 class Euler2D(Solver):
@@ -46,16 +52,19 @@ class Euler2D(Solver):
 
         super().__init__(config=config, mesh_config=mesh_config)
 
-        print("\t>>> Building solution blocks")
+        self._logger.info("\t>>> Building solution blocks")
+
+        self.mpi.Barrier()
         self._blocks = Blocks(
             config=self.config,
             mesh_config=self.mesh_config,
         )
+        self._time_integrator = TimeIntegratorFactory.create(config=config)
 
-        print("\n\tSolver Details:\n")
-        print(self)
-
-        print("\n\tFinished setting up solver")
+        self.mpi.Barrier()
+        self._logger.info("\n\tSolver Details:\n")
+        self._logger.info(self)
+        self._logger.info("\n\tFinished setting up solver")
 
     def __str__(self):
         string = (
@@ -86,83 +95,122 @@ class Euler2D(Solver):
         self._blocks.apply_boundary_condition()
 
     def solve(self):
-        print(
+        self._pre_process_solve()
+        self._solve()
+        self._post_process_solve()
+
+    def _pre_process_solve(self):
+        self._logger.info(
             "\n------------------------------ Initializing Solution Process ---------------------------------"
         )
 
-        print("\nProblem Details: \n")
-        print(self.config)
+        self._logger.info("\nProblem Details: \n")
+        self._logger.info(self.config)
 
-        print()
-        print("\t>>> Setting Initial Conditions")
+        self._logger.info("\t>>> Setting Initial Conditions")
+        self.mpi.Barrier()
         self.apply_initial_condition()
 
-        print("\t>>> Setting Boundary Conditions")
+        self._logger.info("\t>>> Setting Boundary Conditions")
+        self.mpi.Barrier()
         self.apply_boundary_condition()
 
         if self.config.realplot:
-            print("\t>>> Building Real-Time Plot")
+            self._logger.info("\t>>> Building Real-Time Plot")
             self.build_real_plot()
 
         if self.config.write_solution:
-            print("\t>>> Writing Mesh to File")
-            for block in self.blocks:
-                self.write_output_nodes(
-                    "./mesh_blk_x_" + str(block.global_nBLK), block.mesh.x
-                )
-                self.write_output_nodes(
-                    "./mesh_blk_y_" + str(block.global_nBLK), block.mesh.y
-                )
+            self._logger.info("\t>>> Writing Mesh to File")
 
-        print(
+            self.write_mesh()
+
+        self._logger.info(
             "\n------------------------------------- Start Simulation ---------------------------------------\n"
         )
-        print("Date and time: ", datetime.today())
+        self._logger.info(f"Date and time: {datetime.today()}")
 
+    def _post_process_solve(self):
+        self._logger.info(
+            f"Simulation time: {str(self.t / self.fluid.far_field.a)}, Timestep number: {str(self.num_time_step)}",
+        )
+        self._logger.info("End of simulation")
+        self._logger.info(f"Date and time: {datetime.today()}")
+        self._logger.info(
+            "----------------------------------------------------------------------------------------"
+        )
+
+        mpi4py.MPI.Finalize()
+
+    def _realizability_check(self):
+        realizable = self._blocks.realizable()
+        failed = [
+            fail for fail in realizable if isinstance(fail, RealizabilityException)
+        ]
+        if len(failed):
+            for fail in failed:
+                self._logger.error(fail)
+            self.mpi.Abort()
+
+    def _log_simulation_progress(self) -> None:
+        """
+        Logs the current time step and the number of performed time steps to console.
+
+        :return: None
+        """
+        t = self.t / self.fluid.far_field.a
+        self._logger.info(
+            f"Simulation time: {t}, Timestep number: {self.num_time_step}",
+        )
+
+    def _update_solution_blocks(self, dt: float) -> None:
+        """
+        Calls the time marching operator to update the solution state in all
+        solution blocks.
+
+        :param dt: current time step
+        :return: None
+        """
+        self._time_integrator.integrate(dt, self._blocks)
+
+    def _solve(self) -> None:
+        """
+        Executes the solution procedure for solving the 2D Euler equations in
+        the given domain with the given simulation parameters. It iterates through
+        time and updates the solution blocks at each time iteration, ensuring the
+        time step obeys the CFL condition for inviscid flow to maintain a stable
+        numerical scheme. It may also write the solution state to file at given
+        intervals if the user wishes.
+
+        :return: None
+        """
+
+        self.mpi.Barrier()
+
+        profiler = None
         if self.config.profile:
-            print("\n>>> Enabling Profiler")
+            self._logger.info("\n>>> Enabling Profiler")
             profiler = cProfile.Profile()
             profiler.enable()
-        else:
-            profiler = None
 
         while self.t < self.t_final:
-            if self.numTimeStep % 50 == 0:
-                print("\nSimulation time: " + str(self.t / self.fluid.far_field.a))
-                print("Timestep number: " + str(self.numTimeStep))
-            else:
-                print(".", end="")
+            if self.num_time_step % 50 == 0:
+                self._log_simulation_progress()
 
-            # Get time step
-            self.dt = self.get_dt()
-            self._blocks.update(self.dt)
+            self.mpi.Barrier()
+            dt = self.get_dt()
 
-            ############################################################################################################
-            # THIS IS FOR DEBUGGING PURPOSES ONLY
+            if len(self._blocks):
+                self._update_solution_blocks(dt=dt)
+                self._realizability_check()
+
             if self.config.write_solution:
                 self.write_solution()
 
-            if self.config.realplot:
-                self.real_plot()
-            ############################################################################################################
-
-            # Increment simulation time
-            self.increment_time()
-            self.numTimeStep += 1
-
-        print()
-        print()
-        print("Simulation time: " + str(self.t / self.config.fluid.far_field.a))
-        print("Timestep number: " + str(self.numTimeStep))
-        print()
-        print("End of simulation")
-        print("Date and time: ", datetime.today())
-        print(
-            "----------------------------------------------------------------------------------------"
-        )
-        print()
+            self.t += dt
+            self.num_time_step += 1
 
         if self.config.profile:
             profiler.disable()
             self.profile_data = pstats.Stats(profiler)
-            self.profile_data.sort_stats("tottime").print_stats()
+            if self.cpu == 0:
+                self.profile_data.sort_stats("tottime").print_stats(50)

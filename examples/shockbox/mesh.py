@@ -1,7 +1,7 @@
-block0 = {
-    "nBLK": 0,
-    "NW": [0, 20],
-    "NE": [10, 20],
+block1 = {
+    "nBLK": 1,
+    "NW": [0, 10],
+    "NE": [10, 10],
     "SW": [0, 0],
     "SE": [10, 0],
     "NeighborE": None,
@@ -21,4 +21,5 @@ block0 = {
     "BCTypeSE": None,
     "BCTypeSW": None,
 }
-mesh_dict = {0: block0}
+
+mesh = {1: block1}

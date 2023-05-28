@@ -20,7 +20,6 @@ from .HLLE import FluxHLLE
 from .HLLL import FluxHLLL
 
 from typing import TYPE_CHECKING
-from functools import partial
 from pyhype.factory import Factory
 
 if TYPE_CHECKING:

@@ -16,17 +16,19 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import numpy as np
-import numba as nb
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+import numpy as np
+import numba as nb
+
+from pyhype.utils.logger import Logger
 from pyhype.time_marching.base import TimeIntegrator
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.blocks import QuadBlock
+    from pyhype.blocks.base import Blocks
 
 
 class ExplicitRungeKutta(TimeIntegrator):
@@ -40,7 +42,9 @@ class ExplicitRungeKutta(TimeIntegrator):
         self.a = a
         self.num_stages = len(a)
 
-    def integrate(self, parent_block: QuadBlock, dt) -> None:
+        self._logger = Logger(config=config)
+
+    def integrate(self, dt: float, blocks: Blocks) -> None:
         """
         Perform integration for a general explicit Runge-Kutta scheme based on the Butcher tableau.
 
@@ -51,24 +55,29 @@ class ExplicitRungeKutta(TimeIntegrator):
         Return:
             - N/A
         """
-        stage_residuals = {}
-        U = parent_block.state.data.copy()
-        temp_state = np.zeros_like(parent_block.state.data)
+        stage_residuals = {i: {} for i in blocks.blocks.keys()}
+        U = {i: block.state.data.copy() for i, block in blocks.blocks.items()}
+        temp_state = {
+            i: np.zeros_like(block.state.data) for i, block in blocks.blocks.items()
+        }
         for stage in range(self.num_stages):
-            stage_residuals[stage] = parent_block.dUdt()
-            intermediate_state = U
-            for step in range(stage + 1):
-                if self.a[stage][step] != 0:
-                    intermediate_state = self._update_state(
-                        temp_state,
-                        intermediate_state,
-                        dt * self.a[stage][step],
-                        stage_residuals[step],
-                    )
-            parent_block.state.data = intermediate_state
-            parent_block.apply_boundary_condition()
-            parent_block.clear_cache()
-            parent_block.recon_block.clear_cache()
+            for i, block in reversed(blocks.blocks.items()):
+                stage_residuals[i][stage] = block.dUdt()
+                intermediate_state = U[i]
+                for step in range(stage + 1):
+                    if self.a[stage][step] != 0:
+                        intermediate_state = self._update_state(
+                            temp_state[i],
+                            intermediate_state,
+                            dt * self.a[stage][step],
+                            stage_residuals[i][step],
+                        )
+                block.state.data = intermediate_state
+
+            blocks.apply_boundary_condition()
+            for i, block in blocks.blocks.items():
+                block.clear_cache()
+                block.recon_block.clear_cache()
 
     @staticmethod
     @nb.njit(cache=True)

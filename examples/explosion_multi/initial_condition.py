@@ -23,37 +23,39 @@ from pyhype.states.conservative import ConservativeState
 from pyhype.initial_conditions.base import InitialCondition
 
 if TYPE_CHECKING:
-    from pyhype.fluids.base import Fluid
     from pyhype.blocks.quad_block import QuadBlock
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 import numpy as np
 
 
-class SupersonicFloodInitialCondition(InitialCondition):
-    def __init__(self, fluid: Fluid, rho: float, u: float, v: float, p: float):
-        if rho <= 0 or p <= 0:
-            raise ValueError(f"Unrealizable density (rho={rho}) or pressure (p={p}).")
-        self._rho = rho
-        self._u = u
-        self._v = v
-        self._p = p
-
-        a = np.sqrt(fluid.gamma() * p / rho)
-        velocity = np.hypot(u, v)
-        mach_number = velocity / a
-
-        if mach_number < 1.0:
-            raise ValueError(
-                "The given set of conditions do not produce a supersonic flow:\n"
-                f"Speed of Sound = {a}, Total Velocity = {velocity}, Mach Number = {mach_number}."
-            )
-
-    def apply_to_block(self, block: QuadBlock):
-        state = PrimitiveState(
+class ExplosionInitialCondition(InitialCondition):
+    @staticmethod
+    def apply_to_block(block: QuadBlock):
+        # Free stream
+        rhoL = 4.6968
+        pL = 404400.0
+        uL = 0.0
+        vL = 0.0
+        left_state = PrimitiveState(
             fluid=block.config.fluid,
-            array=np.array([self._rho, self._u, self._v, self._p]).reshape((1, 1, 4)),
+            array=np.array([rhoL, uL, vL, pL]).reshape((1, 1, 4)),
         ).to_type(ConservativeState)
 
-        block.state.data = state.data
+        # Post shock
+        rhoR = 1.1742
+        pR = 101100.0
+        uR = 0.0
+        vR = 0.0
+        right_state = PrimitiveState(
+            fluid=block.config.fluid,
+            array=np.array([rhoR, uR, vR, pR]).reshape((1, 1, 4)),
+        ).to_type(ConservativeState)
+
+        # Fill state vector in each block
+        _x_cond = np.logical_and(block.mesh.x >= 3, block.mesh.x <= 7)
+        _y_cond = np.logical_and(block.mesh.y >= 3, block.mesh.y <= 7)
+        block.state.data = np.where(
+            np.logical_and(_x_cond, _y_cond), left_state.data, right_state.data
+        )
         block.state.make_non_dimensional()

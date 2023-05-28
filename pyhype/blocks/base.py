@@ -18,14 +18,15 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod, ABC
-from enum import Enum
-from typing import TYPE_CHECKING, Callable, Union, Type
+from typing import TYPE_CHECKING, Union, Type
 
+import mpi4py as mpi
 import numba as nb
 import matplotlib.pyplot as plt
 
 from pyhype.utils.utils import (
     NumpySlice,
+    SidePropertyDict,
     FullPropertyDict,
     CornerPropertyDict,
 )
@@ -35,6 +36,8 @@ from pyhype.gradients import GradientFactory
 from pyhype.limiters import SlopeLimiterFactory
 from pyhype.fvm import FiniteVolumeMethodFactory
 from pyhype.states import PrimitiveState, ConservativeState
+
+from pyhype.utils.logger import Logger
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
@@ -377,7 +380,6 @@ class Blocks:
     Class for containing the solution blocks and necessary methods.
 
     :ivar config: SolverConfigs object
-    :ivar num_BLK: Number of blocks
     :ivar blocks: Dict for containing the QuadBlock objects
     :ivar cpu: (future use) indicates the rank of the CPU responsible
     for this collection of blocks.
@@ -388,13 +390,22 @@ class Blocks:
         config: SolverConfig,
         mesh_config: dict,
     ) -> None:
+        self._logger = Logger(config=config)
+
         self.config = config
         self.mesh_config = mesh_config
-        self.num_BLK = None
         self.blocks = {}
-        self.cpu = None
+        self.mpi = mpi.MPI.COMM_WORLD
+        self.cpu = self.mpi.Get_rank()
 
         self.build()
+
+    @property
+    def num_blocks(self):
+        return self.__len__()
+
+    def __len__(self):
+        return len(self.blocks)
 
     def __getitem__(self, blknum: int) -> QuadBlock:
         """
@@ -406,26 +417,22 @@ class Blocks:
         """
         return self.blocks[blknum]
 
-    def add(self, block: QuadBlock) -> None:
+    def add(self, blocks: [QuadBlock]) -> None:
         """
         Adds a block to the dict that contains the SolutionBlocks
 
-        :param block: SolutionBlock to add.
+        :param blocks: Iterable of QuadBlock to add.
 
         :return: None
         """
-        self.blocks[block.global_nBLK] = block
+        for block in blocks:
+            self.blocks[block.global_nBLK] = block
 
-    def update(self, dt: float) -> None:
-        """
-        Applies the time marching procedure to the blocks.
-
-        :param dt: Time step
-
-        :return: None
-        """
+    def realizable(self):
+        realizable = []
         for block in self.blocks.values():
-            block.update(dt)
+            realizable.extend(block.realizable())
+        return realizable
 
     def apply_boundary_condition(self) -> None:
         """
@@ -433,8 +440,66 @@ class Blocks:
 
         :return: None
         """
+        reqs = []
+
+        for block in self.blocks.values():
+            reqs.extend(block.send_boundary_data())
+            reqs.extend(block.recieve_boundary_data())
+
+        try:
+            mpi.MPI.Request.Waitall(reqs)
+        except mpi.MPI.Exception:
+            error_code = mpi.MPI.Status().Get_error()
+            self._logger.info(error_code)
+            self.mpi.Abort()
+
+        for block in self.blocks.values():
+            block.apply_data_buffers()
+
         for block in self.blocks.values():
             block.apply_boundary_condition()
+
+    @staticmethod
+    def distribute_blocks_to_processes(
+        num_blocks: int,
+        num_processes: int,
+    ) -> dict[int, int]:
+        """
+        Distributes num_blocks blocks to num_processes processes. Every process will have a
+        baseline number of blocks, and some will have one extra if num_blocks is not divisible
+        by num_processes.
+
+        Example:
+            num_blocks: 8 (numbered 0, 1, 2, 3, 4, 5, 6, 7)
+            num_processes: 3 (numbered 0, 1, 2)
+
+            then:
+            num_full_processes = 2 (will have baseline + 1 block)
+            blocks_per_process_baseline = 2
+
+            then the processes will contain blocks:
+            process 0: [0, 1, 2] (baseline + 1 num blocks)
+            process 1: [3, 4, 5] (baseline + 1 num blocks)
+            process 2: [6, 7] (baseline num blocks)
+
+        :param num_blocks: Number of blocks to distribute
+        :param num_processes: Number of processes to distribute blocks into
+        :return: dict that maps {block_num: process_num}
+        """
+        cpus = {}
+        counter = 0
+        num_full_processes = num_blocks % num_processes
+        blocks_per_process_baseline = num_blocks // num_processes
+
+        for n in range(num_processes):
+            local_num_blocks = (
+                blocks_per_process_baseline + 1
+                if n < num_full_processes
+                else blocks_per_process_baseline
+            )
+            cpus.update({i: n for i in [counter + i for i in range(local_num_blocks)]})
+            counter += local_num_blocks
+        return cpus
 
     def build(self) -> None:
         """
@@ -442,26 +507,54 @@ class Blocks:
 
         :return: None
         """
-        self.num_BLK = len(self.mesh_config)
-        for blk_data in self.mesh_config.values():
-            self.add(
-                qb.QuadBlock(
-                    self.config,
-                    block_data=blk_data,
+        cpu_dict = self.distribute_blocks_to_processes(
+            num_blocks=len(self.mesh_config),
+            num_processes=self.mpi.Get_size(),
+        )
+        blocks_in_this_proccess = [
+            block_num for block_num, cpu_num in cpu_dict.items() if cpu_num == self.cpu
+        ]
+        self.add(
+            qb.QuadBlock(
+                self.config,
+                block_data=self.mesh_config[block_num],
+            )
+            for block_num in blocks_in_this_proccess
+        )
+
+        def get_neighbor_ref(neighbor_num: int) -> Union[int, QuadBlock]:
+            """
+            Returns a valid reference to the neighbor block with the specified number.
+            If the number is on shared memory (process running on the same machine),
+            the reference to the neighbor's QuadBlock object is returned. If it is on a
+            separate node (non-shared memory), a tuple is returned containing the block's
+            number and process number. If the neighbor number indidated is None, that means
+            that there is no neighbor in that direction, and None is returned.
+
+            :param neighbor_num: Global block number for neighbor
+            :return: Either a block/process number or a QuadBlock reference to the neighbor
+            if it exists, else None.
+            """
+            return (
+                (
+                    (neighbor_num, cpu_dict[neighbor_num])
+                    if neighbor_num not in self.blocks
+                    else self.blocks[neighbor_num]
                 )
+                if neighbor_num is not None
+                else None
             )
 
         for block in self.blocks.values():
-            neighbors = self.mesh_config[block.global_nBLK].neighbors
+            ne, nw, nn, ns = (
+                get_neighbor_ref(neigh)
+                for neigh in self.mesh_config[block.global_nBLK].neighbors.values()
+            )
             block.connect(
-                NeighborE=self.blocks[neighbors.E] if neighbors.E is not None else None,
-                NeighborW=self.blocks[neighbors.W] if neighbors.W is not None else None,
-                NeighborN=self.blocks[neighbors.N] if neighbors.N is not None else None,
-                NeighborS=self.blocks[neighbors.S] if neighbors.S is not None else None,
-                NeighborNE=None,
-                NeighborNW=None,
-                NeighborSE=None,
-                NeighborSW=None,
+                NeighborE=ne,
+                NeighborW=nw,
+                NeighborN=nn,
+                NeighborS=ns,
             )
 
     def print_connectivity(self) -> None:
@@ -475,7 +568,7 @@ class Blocks:
             print(
                 "CONNECTIVITY FOR GLOBAL BLOCK: ",
                 block.global_nBLK,
-                "<{}>".format(block),
+                f"<{block}>",
             )
             print("North: ", block.neighbors.N)
             print("South: ", block.neighbors.S)
@@ -598,6 +691,14 @@ class BaseBlockState(BaseBlockMesh):
         """
         return self.state[NumpySlice.col(index=index)]
 
+    def realizable(self) -> bool:
+        """
+        Runs a physical realizability check on the block's State.
+
+        :return: bool representing the State's realizability
+        """
+        return self.state.realizable()
+
 
 class BaseBlockGrad(BaseBlockState):
     """
@@ -684,15 +785,11 @@ class BlockInfo:
         # Set parameter attributes from input dict
         self.nBLK = blk_input["nBLK"]
 
-        self.neighbors = FullPropertyDict(
+        self.neighbors = SidePropertyDict(
             E=blk_input["NeighborE"],
             W=blk_input["NeighborW"],
             N=blk_input["NeighborN"],
             S=blk_input["NeighborS"],
-            NE=blk_input["NeighborNE"],
-            NW=blk_input["NeighborNW"],
-            SE=blk_input["NeighborSE"],
-            SW=blk_input["NeighborSW"],
         )
         self.bc = FullPropertyDict(
             E=blk_input["BCTypeE"],

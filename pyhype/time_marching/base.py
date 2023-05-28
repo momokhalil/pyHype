@@ -13,21 +13,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from __future__ import annotations
 import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyhype.solver_config import SolverConfig
+    from pyhype.blocks.base import Blocks
 
 
 class TimeIntegrator:
-    def __init__(self, config):
+    def __init__(self, config: SolverConfig):
         self.config = config
 
-    def __call__(self, parent_block, dt):
-        self.integrate(parent_block, dt)
+    def __call__(self, dt: float, blocks: Blocks):
+        self.integrate(dt, blocks)
 
-    # Abstract methodo to define integration scheme
     @abstractmethod
-    def integrate(self, parent_block, dt):
+    def integrate(self, dt: float, blocks: Blocks):
         raise NotImplementedError

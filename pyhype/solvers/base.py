@@ -20,16 +20,19 @@ import os
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import sys
+import pathlib
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-from pyhype import execution_prints
-from pyhype.blocks.base import BlockDescription
-from pyhype.mesh.base import MeshGenerator
-
 from abc import abstractmethod
-
 from typing import Iterable, Union, TYPE_CHECKING
+
+from mpi4py import MPI
+import matplotlib.pyplot as plt
+from pyhype import execution_prints
+from pyhype.utils.logger import Logger
+from pyhype.mesh.base import MeshGenerator
+from pyhype.blocks.base import BlockDescription
+from matplotlib.colors import LinearSegmentedColormap
+
 
 if TYPE_CHECKING:
     from pyhype.solver_config import SolverConfig
@@ -45,11 +48,7 @@ class Solver:
         mesh_config: Union[MeshGenerator, dict],
     ) -> None:
 
-        print(execution_prints.PYHYPE)
-        print(execution_prints.LICENSE)
-        print(
-            "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
-        )
+        self._logger = Logger(config=config)
 
         self.config = config
         self.mesh_config = self.get_mesh_config(mesh_config)
@@ -58,17 +57,35 @@ class Solver:
         self.cmap = LinearSegmentedColormap.from_list(
             "my_map", ["royalblue", "midnightblue", "black"]
         )
+        self.mpi = MPI.COMM_WORLD
+        self.cpu = self.mpi.Get_rank()
 
-        print("\t>>> Initializing basic solution attributes")
+        self._logger.info(execution_prints.PYHYPE)
+        self._logger.info(execution_prints.LICENSE)
+        self._logger.info(
+            "\n------------------------------------ Setting-Up Solver ---------------------------------------\n"
+        )
+        self._logger.info("\t>>> Initializing basic solution attributes")
+
         self.t = 0
-        self.dt = 0
-        self.numTimeStep = 0
+        self.num_time_step = 0
         self.CFL = self.config.CFL
         self.t_final = self.config.t_final * self.fluid.far_field.a
         self.profile_data = None
         self.realfig, self.realplot = None, None
         self.plot = None
         self._blocks = None
+        self.write_path = None
+
+        if config.write_solution:
+            self.write_path = (
+                pathlib.Path(config.write_solution_base) / config.write_solution_name
+            )
+            if self.cpu == 0:
+                self.write_path.mkdir(exist_ok=True, parents=True)
+                self._logger.info(self.write_path)
+
+        self.mpi.Barrier()
 
     def get_mesh_config(self, mesh: Union[MeshGenerator, dict]):
         mesh_info = mesh.dict if isinstance(mesh, MeshGenerator) else mesh
@@ -94,39 +111,63 @@ class Solver:
     def blocks(self) -> Iterable[QuadBlock]:
         return self._blocks.blocks.values()
 
-    def get_dt(self):
+    def get_dt(self) -> float:
         """
-        Return the time step for all blocks handled by this process based on the CFL condition.
+        Return the global time step for all processes based on the CFL conditions.
 
-        Parameters:
-            - None
+        1) Calculate dt for all the blocks on the current process
+        2) Calculate minimum dt of all blocks on current process
+        3) Gather minimum dt of all processes on process 0
+        4) Compute global minimum dt for all processes
+        5) Broadcast minimum global dt from process 0 to all others
 
-        Returns:
-            - dt (np.float): Float representing the value of the time step
+        :return: global minimum time step
         """
-        dt = min([block.get_dt() for block in self.blocks])
-        return self.t_final - self.t if self.t_final - self.t < dt else dt
-
-    def increment_time(self):
-        self.t += self.dt
+        dts = [block.get_dt() for block in self.blocks]
+        min_local_blocks_dt = min(dts) if len(self._blocks) else np.inf
+        min_processes_dt = self.mpi.gather(min_local_blocks_dt, root=0)
+        min_global_dt = self.mpi.bcast(
+            min(min_processes_dt) if self.cpu == 0 else None, root=0
+        )
+        return (
+            self.t_final - self.t
+            if self.t_final - self.t < min_global_dt
+            else min_global_dt
+        )
 
     @staticmethod
     def write_output_nodes(filename: str, array: np.ndarray):
         np.save(file=filename, arr=array)
 
+    def write_mesh(self):
+        current_path = self.write_path / "mesh"
+        current_path.mkdir(parents=True, exist_ok=True)
+        self.mpi.Barrier()
+
+        for block in self.blocks:
+            self.write_output_nodes(
+                str(current_path / "mesh_x_blk_") + str(block.global_nBLK), block.mesh.x
+            )
+            self.write_output_nodes(
+                str(current_path / "mesh_y_blk_") + str(block.global_nBLK), block.mesh.y
+            )
+
     def write_solution(self):
-        if self.config.write_solution_mode == "every_n_timesteps":
-            if self.numTimeStep % self.config.write_every_n_timesteps == 0:
-                for block in self.blocks:
-                    self.write_output_nodes(
-                        "./"
-                        + self.config.write_solution_name
-                        + "_"
-                        + str(self.numTimeStep)
-                        + "_blk_"
-                        + str(block.global_nBLK),
-                        block.state.data,
-                    )
+        if (
+            self.config.write_solution_mode == "every_n_timesteps"
+            and self.num_time_step % self.config.write_every_n_timesteps == 0
+        ):
+            current_path = self.write_path / str(self.num_time_step)
+            current_path.mkdir(parents=True, exist_ok=True)
+            self.mpi.Barrier()
+
+            for block in self.blocks:
+                self.write_output_nodes(
+                    str(current_path / self.config.write_solution_name)
+                    + "_blk_"
+                    + str(block.global_nBLK),
+                    block.state.data,
+                )
 
     def plot_func_selector(self, state) -> np.ndarray:
         """
@@ -150,7 +191,7 @@ class Solver:
         return state.rho
 
     def real_plot(self):
-        if self.numTimeStep % self.config.plot_every == 0:
+        if self.num_time_step % self.config.plot_every == 0:
             data = [
                 (
                     block.mesh.x[:, :, 0],
@@ -167,8 +208,8 @@ class Solver:
                     z,
                     50,
                     cmap="magma",
-                    vmax=max([np.max(v[2]) for v in data]),
-                    vmin=min([np.min(v[2]) for v in data]),
+                    vmax=max(np.max(v[2]) for v in data),
+                    vmin=min(np.min(v[2]) for v in data),
                 )
             self.realplot.set_aspect("equal")
             plt.show()
@@ -181,15 +222,15 @@ class Solver:
 
         blks = self.mesh_config.values()
 
-        sw_x = min([blk.geometry.vertices.SW[0] for blk in blks])
-        nw_x = min([blk.geometry.vertices.NW[0] for blk in blks])
-        sw_y = min([blk.geometry.vertices.SW[1] for blk in blks])
-        se_y = min([blk.geometry.vertices.SE[1] for blk in blks])
+        sw_x = min(blk.geometry.vertices.SW[0] for blk in blks)
+        nw_x = min(blk.geometry.vertices.NW[0] for blk in blks)
+        sw_y = min(blk.geometry.vertices.SW[1] for blk in blks)
+        se_y = min(blk.geometry.vertices.SE[1] for blk in blks)
 
-        se_x = max([blk.geometry.vertices.SE[0] for blk in blks])
-        ne_x = max([blk.geometry.vertices.NE[0] for blk in blks])
-        nw_y = max([blk.geometry.vertices.NW[1] for blk in blks])
-        ne_y = max([blk.geometry.vertices.NE[1] for blk in blks])
+        se_x = max(blk.geometry.vertices.SE[0] for blk in blks)
+        ne_x = max(blk.geometry.vertices.NE[0] for blk in blks)
+        nw_y = max(blk.geometry.vertices.NW[1] for blk in blks)
+        ne_y = max(blk.geometry.vertices.NE[1] for blk in blks)
 
         W = max(se_x, ne_x) - min(sw_x, nw_x)
         L = max(nw_y, ne_y) - min(sw_y, se_y)

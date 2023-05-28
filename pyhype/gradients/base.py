@@ -16,8 +16,6 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-import numba as nb
-import numpy as np
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 from abc import abstractmethod
@@ -45,9 +43,8 @@ class Gradient:
         """
         self._get_gradient(parent_block)
 
-    @staticmethod
     @abstractmethod
-    def _get_gradient(parent_block: QuadBlock) -> None:
+    def _get_gradient(self, parent_block: QuadBlock) -> None:
         """
         Implementation of the gradient algorithm.
 

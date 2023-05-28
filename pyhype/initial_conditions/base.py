@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 
 class InitialCondition(ABC):
-    @staticmethod
     @abstractmethod
-    def apply_to_block(block: QuadBlock):
+    def apply_to_block(self, block: QuadBlock):
         raise NotImplementedError("Abstract Initial Condition")

@@ -91,11 +91,10 @@ class SlopeLimiter:
             axis=0,
         )
         # Values for min/max evaluation
-        dmax, dmin = self._get_min_max(
-            parent_block.state.data,
-            EW,
-            NS,
-        )
+        vals = (parent_block.state.data, EW[:, :-2], EW[:, 2:], NS[:-2, :], NS[2:, :])
+        # Difference between largest/smallest value and average value
+        dmax = np.maximum.reduce(vals) - parent_block.state.data
+        dmin = np.minimum.reduce(vals) - parent_block.state.data
         # Difference between quadrature points and average value
         dE = [_gqpE - parent_block.state.data for _gqpE in gqpE]
         dW = [_gqpW - parent_block.state.data for _gqpW in gqpW]

@@ -34,15 +34,7 @@ if TYPE_CHECKING:
 
 class PrimitiveState(State):
     """
-    #Primitive Solution State#
-    A class that represents the solution state vector of the 2D inviscid Euler equations in primitive form. The
-    primitive solution vector, $W$, is represented mathematically as:
-    $W = \\begin{bmatrix} \\rho \\ u \\ v \\ p \\end{bmatrix}^T$, where $\\rho$ is the solution density,
-    $u$ is the velocity in the $x$-direction, $v$ is the velocity in the $y$-direction, and $p$ is the solution
-    pressure. `PrimitiveState` can be used to represent the solution state of a QuadBlock in a solver that utilizes
-    a primitive formulation. It can also be used to represent the solution state in BoundaryBlocks in a solver that
-    utilizes a primitive formulation. Another primary use-case for `PrimitiveState` is converting a `ConservativeState`
-    into `PrimitiveState` in order to access primitive solution variables if needed (e.g. flux functions).
+    A class that represents the solution state vector of the 2D inviscid Euler equations in primitive form.
     """
 
     RHO_IDX = 0

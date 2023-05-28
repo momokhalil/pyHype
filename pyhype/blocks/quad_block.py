@@ -17,20 +17,22 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Type, Union
 from itertools import chain
+from typing import TYPE_CHECKING, Type, Union, List
 
 import numba as nb
 import matplotlib.pyplot as plt
+import mpi4py as mpi
 from matplotlib.collections import LineCollection
 
 from pyhype.mesh import quadratures
-from pyhype.utils.utils import NumpySlice, FullPropertyDict
 from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
-from pyhype.blocks.base import Neighbors, BaseBlockFVM, BlockDescription
-from pyhype.time_marching.factory import TimeIntegratorFactory
+from pyhype.utils.utils import NumpySlice, SidePropertyDict
+from pyhype.blocks.base import BaseBlockFVM, BlockDescription
+
+from pyhype.utils.logger import Logger
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
@@ -75,8 +77,10 @@ class BaseBlockGhost(BaseBlockFVM):
             state_type=state_type,
         )
 
+        self.cpu = mpi.MPI.COMM_WORLD.Get_rank()
+
         self.ghost = GhostBlocks(
-            config,
+            config=config,
             block_data=block_data,
             parent_block=parent_block,
             state_type=state_type,
@@ -107,6 +111,11 @@ class BaseBlockGhost(BaseBlockFVM):
             and (self.mesh.vertices.SW[0] == self.mesh.vertices.NW[0])
         )
         return is_cartesian
+
+    def realizable(self):
+        realizable = [self.state.realizable()]
+        realizable.extend(blk.realizable() for blk in self.ghost.get_blocks())
+        return realizable
 
     def from_block(self, from_block: BaseBlockGhost) -> None:
         """
@@ -242,6 +251,8 @@ class QuadBlock(BaseBlockGhost):
         self.block_data = block_data
         self.global_nBLK = block_data.info.nBLK
 
+        self.mpi = mpi.MPI.COMM_WORLD
+
         mesh = QuadMesh(config, block_data.geometry)
         qp = quadratures.QuadraturePointData(config, refMESH=mesh)
         super().__init__(
@@ -258,7 +269,7 @@ class QuadBlock(BaseBlockGhost):
             qp=qp,
             mesh=mesh,
         )
-        self._time_integrator = TimeIntegratorFactory.create(config=config)
+        self._logger = Logger(config=config)
 
     @property
     def reconstruction_type(self):
@@ -430,10 +441,6 @@ class QuadBlock(BaseBlockGhost):
         NeighborW: QuadBlock,
         NeighborN: QuadBlock,
         NeighborS: QuadBlock,
-        NeighborNE: QuadBlock,
-        NeighborNW: QuadBlock,
-        NeighborSE: QuadBlock,
-        NeighborSW: QuadBlock,
     ) -> None:
         """
         Create the Neighbors class used to set references to the neighbor blocks in each direction.
@@ -444,15 +451,11 @@ class QuadBlock(BaseBlockGhost):
         Return:
             - None
         """
-        self.neighbors = FullPropertyDict(
+        self.neighbors = SidePropertyDict(
             E=NeighborE,
             W=NeighborW,
             N=NeighborN,
             S=NeighborS,
-            NE=NeighborNE,
-            NW=NeighborNW,
-            SE=NeighborSE,
-            SW=NeighborSW,
         )
 
     def get_east_ghost_states(self) -> State:
@@ -497,27 +500,6 @@ class QuadBlock(BaseBlockGhost):
         """
         return self.state[self.SOUTH_GHOST_IDX]
 
-    # ------------------------------------------------------------------------------------------------------------------
-    # Time stepping methods
-
-    def update(self, dt: float) -> None:
-        """
-        Updates the solution state stored in the current block. Also includes any pre-processing needed prior to the
-        calculation of the state updates, such as preconditioning, etc. The core operation in this method is calling the
-        _time_integrator class, which steps the solution state through time by an amount of dt seconds.
-
-        Parameters:
-            - dt (float): Time step
-
-        Returns:
-            - N.A
-        """
-        self._time_integrator(self, dt)
-        if not self.realizable():
-            raise ValueError(
-                "Negative or zero pressure, density, or energy. Terminating simulation."
-            )
-
     def get_flux(self) -> None:
         """
         Calls the get_flux() method from the Block's finite-volume-method to compute the flux at each cell wall.
@@ -544,24 +526,44 @@ class QuadBlock(BaseBlockGhost):
 
         return self.fvm.dUdt()
 
+    def send_boundary_data(self) -> List[mpi.MPI.Request]:
+        """
+        Sends boundary data to the appropriate location, which could be its own ghost blocks,
+        a neighbor's ghost blocks on the same process, or a neighbors ghost blocks on a
+        different process via MPI
+
+        :return: List of active MPI send requests
+        """
+        send_reqs = [ghost.send_boundary_data() for ghost in self.ghost.values()]
+        return [req for req in send_reqs if req is not None]
+
+    def recieve_boundary_data(self) -> List[mpi.MPI.Request]:
+        """
+        Recieves boundary data from neighbors who communicated with MPI
+
+        :return: List of active MPI recieve requests
+        """
+        recv_reqs = [ghost.recieve_boundary_data() for ghost in self.ghost.values()]
+        return [req for req in recv_reqs if req is not None]
+
+    def apply_data_buffers(self) -> None:
+        """
+        Applies the recieved data buffers via MPI to the state
+
+        :return: None
+        """
+        for ghost in self.ghost.values():
+            ghost.apply_recv_buffers_to_state()
+
     def apply_boundary_condition(self) -> None:
         """
         Calls the apply_boundary_condition() method for each ghost block connected to this block. This sets the boundary condition on
         each side.corner of the block.
 
-        Parameters:
-            - None
-
-        Returns:
-            - None
+        :return: None
         """
-        self.ghost.E.apply_boundary_condition()
-        self.ghost.W.apply_boundary_condition()
-        self.ghost.N.apply_boundary_condition()
-        self.ghost.S.apply_boundary_condition()
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Gradient methods
+        for ghost in self.ghost.values():
+            ghost.apply_boundary_condition()
 
     def drho_dx(self) -> np.ndarray:
         """
@@ -811,8 +813,3 @@ class QuadBlock(BaseBlockGhost):
         )
 
         return U
-
-    def realizable(self):
-        return self.state.realizable() and all(
-            blk.realizable() for blk in self.ghost.get_blocks()
-        )

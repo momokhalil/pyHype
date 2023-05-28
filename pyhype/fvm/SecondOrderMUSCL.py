@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
     from pyhype.solver_config import SolverConfig
+    from pyhype.states.base import State
 
 
 class SecondOrderMUSCL(MUSCL):

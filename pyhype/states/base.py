@@ -19,6 +19,7 @@ import os
 
 os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
+import mpi4py as mpi
 from typing import Union, Type
 from abc import ABC, abstractmethod
 from pyhype.fluids.base import Fluid
@@ -35,13 +36,9 @@ class RealizabilityException(Exception):
 
 class State(ABC):
     """
-    # State
     Defines an abstract class for implementing primitive and conservative state classes. The core components of a state
     are the state vector and the state variables. The state vector is composed of the state variables in a specific
-    order. For example, for a state X with state variables $x_1, x_2, ..., x_n$ and state vector $X$, the state vector
-    is represented as:
-    $X = \\begin{bmatrix} x_1 \\ x_2 \\ \\dots \\ x_n \\end{bmatrix}^T$. The state vector represents the solution at
-    each physical discretization point.
+    order.
     """
 
     def __init__(
@@ -72,7 +69,7 @@ class State(ABC):
         self.cache = {}
 
         if state is not None:
-            self._data = np.empty(state.shape)
+            self._data = np.zeros(state.shape)
             self.from_state(state)
         elif array is not None:
             self.from_array(array)
@@ -283,14 +280,11 @@ class State(ABC):
             for name, good_vals in conditions.items()
             if not np.all(good_vals)
         }
-        print("ConservativeState has bad values in the following conditions:")
-        print("-------------------------------------------------------------")
-        for condition_name, bad_val_indices in bad_values.items():
-            print(f"Condition: {condition_name}, location of bad values:")
-            print(bad_val_indices)
-        raise RealizabilityException(
-            "Simulation has failed due to an non-realizable state quantity."
+        message = (
+            f"{self.__class__.__name__} has unrealizable values in the following conditions: "
+            f"{list(bad_values.values())} on process {mpi.MPI.COMM_WORLD.Get_rank()}"
         )
+        return RealizabilityException(message)
 
     @abstractmethod
     def realizability_conditions(self) -> dict[str, np.ndarray]:
