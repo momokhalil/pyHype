@@ -151,7 +151,6 @@ class GhostBlock(BaseBlockFVM):
 
         :return: None
         """
-        # self._fill()
         self._apply_bc_func(self.state)
 
     def apply_boundary_condition_to_state(self, state: State) -> None:
