@@ -568,7 +568,7 @@ class Blocks:
             print(
                 "CONNECTIVITY FOR GLOBAL BLOCK: ",
                 block.global_nBLK,
-                "<{}>".format(block),
+                f"<{block}>",
             )
             print("North: ", block.neighbors.N)
             print("South: ", block.neighbors.S)
