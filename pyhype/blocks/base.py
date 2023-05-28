@@ -404,9 +404,6 @@ class Blocks:
     def num_blocks(self):
         return self.__len__()
 
-    def __iter__(self):
-        return self.blocks.items()
-
     def __len__(self):
         return len(self.blocks)
 
