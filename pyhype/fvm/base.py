@@ -223,23 +223,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
         super().__init__(config=config, flux=flux, parent_block=parent_block)
 
         # Flux storage arrays
+        rng = range(self.config.fvm_num_quadrature_points)
         self.Flux = SidePropertyDict(
-            E=list(
-                np.empty((self.config.ny, self.config.nx, 4))
-                for _ in range(self.config.fvm_num_quadrature_points)
-            ),
-            W=list(
-                np.empty((self.config.ny, self.config.nx, 4))
-                for _ in range(self.config.fvm_num_quadrature_points)
-            ),
-            N=list(
-                np.empty((self.config.ny, self.config.nx, 4))
-                for _ in range(self.config.fvm_num_quadrature_points)
-            ),
-            S=list(
-                np.empty((self.config.ny, self.config.nx, 4))
-                for _ in range(self.config.fvm_num_quadrature_points)
-            ),
+            E=[np.empty((self.config.ny, self.config.nx, 4)) for _ in rng],
+            W=[np.empty((self.config.ny, self.config.nx, 4)) for _ in rng],
+            N=[np.empty((self.config.ny, self.config.nx, 4)) for _ in rng],
+            S=[np.empty((self.config.ny, self.config.nx, 4)) for _ in rng],
         )
         self.limiter = limiter
         self.gradient = gradient
