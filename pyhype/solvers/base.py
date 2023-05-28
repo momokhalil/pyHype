@@ -208,8 +208,8 @@ class Solver:
                     z,
                     50,
                     cmap="magma",
-                    vmax=max([np.max(v[2]) for v in data]),
-                    vmin=min([np.min(v[2]) for v in data]),
+                    vmax=max(np.max(v[2]) for v in data),
+                    vmin=min(np.min(v[2]) for v in data),
                 )
             self.realplot.set_aspect("equal")
             plt.show()
@@ -222,15 +222,15 @@ class Solver:
 
         blks = self.mesh_config.values()
 
-        sw_x = min([blk.geometry.vertices.SW[0] for blk in blks])
-        nw_x = min([blk.geometry.vertices.NW[0] for blk in blks])
-        sw_y = min([blk.geometry.vertices.SW[1] for blk in blks])
-        se_y = min([blk.geometry.vertices.SE[1] for blk in blks])
+        sw_x = min(blk.geometry.vertices.SW[0] for blk in blks)
+        nw_x = min(blk.geometry.vertices.NW[0] for blk in blks)
+        sw_y = min(blk.geometry.vertices.SW[1] for blk in blks)
+        se_y = min(blk.geometry.vertices.SE[1] for blk in blks)
 
-        se_x = max([blk.geometry.vertices.SE[0] for blk in blks])
-        ne_x = max([blk.geometry.vertices.NE[0] for blk in blks])
-        nw_y = max([blk.geometry.vertices.NW[1] for blk in blks])
-        ne_y = max([blk.geometry.vertices.NE[1] for blk in blks])
+        se_x = max(blk.geometry.vertices.SE[0] for blk in blks)
+        ne_x = max(blk.geometry.vertices.NE[0] for blk in blks)
+        nw_y = max(blk.geometry.vertices.NW[1] for blk in blks)
+        ne_y = max(blk.geometry.vertices.NE[1] for blk in blks)
 
         W = max(se_x, ne_x) - min(sw_x, nw_x)
         L = max(nw_y, ne_y) - min(sw_y, se_y)

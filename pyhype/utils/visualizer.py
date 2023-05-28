@@ -84,8 +84,8 @@ class Vizualizer:
                 states = self.get_solution_data(timestep)
 
                 rho = [state.rho for state in states]
-                _min = min([np.amin(v) for v in rho])
-                _max = max([np.amax(v) for v in rho])
+                _min = min(np.amin(v) for v in rho)
+                _max = max(np.amax(v) for v in rho)
 
                 for r, x_, y_ in zip(rho, x, y):
                     ax1.contourf(x_, y_, r, 100, cmap="magma", vmin=_min, vmax=_max)
