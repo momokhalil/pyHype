@@ -43,9 +43,8 @@ class Gradient:
         """
         self._get_gradient(parent_block)
 
-    @staticmethod
     @abstractmethod
-    def _get_gradient(parent_block: QuadBlock) -> None:
+    def _get_gradient(self, parent_block: QuadBlock) -> None:
         """
         Implementation of the gradient algorithm.
 

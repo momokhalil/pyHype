@@ -26,11 +26,8 @@ if TYPE_CHECKING:
 class Factory(ABC):
     @classmethod
     @abstractmethod
-    def create(cls, config: SolverConfig, *args, **kwargs):
+    def create(cls, *args, **kwargs):
         """
-        Creates a concrete object of type SolverComponent.
-
-        :type config: SolverConfig
-        :param config: Solver configuration that contains all user-defined params
+        Creates a concrete object for a certain type.
         """
         raise NotImplementedError("Calling a base class create()")

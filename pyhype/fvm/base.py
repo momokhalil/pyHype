@@ -80,7 +80,6 @@ class FiniteVolumeMethod(ABC):
     @abstractmethod
     def unlimited_solution_at_quadrature_point(
         self,
-        parent_block: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> State:

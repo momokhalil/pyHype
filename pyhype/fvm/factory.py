@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyhype.fvm.base import FiniteVolumeMethod
     from pyhype.solvers.base import SolverConfig
-    from pyhype.blocks.quad_block import BaseBlockFVM
+    from pyhype.blocks.quad_block import QuadBlock
     from pyhype.flux.base import FluxFunction
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
@@ -38,7 +38,7 @@ class FiniteVolumeMethodFactory(Factory):
         flux: FluxFunction,
         limiter: SlopeLimiter,
         gradient: Gradient,
-        parent_block: BaseBlockFVM,
+        parent_block: QuadBlock,
     ) -> FiniteVolumeMethod:
         if config.fvm_type == "MUSCL":
             if config.fvm_spatial_order == 1:
