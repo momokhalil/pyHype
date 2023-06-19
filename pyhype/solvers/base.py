@@ -146,10 +146,12 @@ class Solver:
 
         for block in self.blocks:
             self.write_output_nodes(
-                str(current_path / "mesh_x_blk_") + str(block.global_nBLK), block.mesh.x
+                str(current_path / "mesh_x_blk_") + str(block.global_block_num),
+                block.mesh.x,
             )
             self.write_output_nodes(
-                str(current_path / "mesh_y_blk_") + str(block.global_nBLK), block.mesh.y
+                str(current_path / "mesh_y_blk_") + str(block.global_block_num),
+                block.mesh.y,
             )
 
     def write_solution(self):
@@ -165,7 +167,7 @@ class Solver:
                 self.write_output_nodes(
                     str(current_path / self.config.write_solution_name)
                     + "_blk_"
-                    + str(block.global_nBLK),
+                    + str(block.global_block_num),
                     block.state.data,
                 )
 

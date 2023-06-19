@@ -30,7 +30,7 @@ from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.blocks.ghost import GhostBlocks
 from pyhype.states.conservative import ConservativeState
 from pyhype.utils.utils import NumpySlice, SidePropertyDict
-from pyhype.blocks.base import BaseBlockFVM, BlockDescription
+from pyhype.blocks.base import BaseBlockFVM, BlockDescription, ExtraProcessNeighborInfo
 
 from pyhype.utils.logger import Logger
 
@@ -249,7 +249,7 @@ class QuadBlock(BaseBlockGhost):
         self.config = config
         self.neighbors = None
         self.block_data = block_data
-        self.global_nBLK = block_data.info.nBLK
+        self.global_block_num = block_data.info.nBLK
 
         self.mpi = mpi.MPI.COMM_WORLD
 
@@ -457,6 +457,14 @@ class QuadBlock(BaseBlockGhost):
             N=NeighborN,
             S=NeighborS,
         )
+
+    def neighbor_in_this_process(self, direction: int):
+        """
+        Returns True if the neighbor in the specified direction exists in the current process
+        :param direction: Direction of neighbor (east, west, etc...)
+        :return: If the neighbor is in the current process
+        """
+        return not isinstance(self.neighbors[direction], ExtraProcessNeighborInfo)
 
     def get_east_ghost_states(self) -> State:
         """

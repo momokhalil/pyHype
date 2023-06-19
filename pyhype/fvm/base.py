@@ -382,8 +382,8 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 left_ghost_state=west_boundary,
             )
             east_west_flux = self.flux_function_x(WL=left, WR=right)
-            east_flux[:] = east_west_flux[:, self.config.nghost:, :]
-            west_flux[:] = east_west_flux[:, :-self.config.nghost, :]
+            east_flux[:] = east_west_flux[:, self.config.nghost :, :]
+            west_flux[:] = east_west_flux[:, : -self.config.nghost, :]
 
             if not self.parent_block.is_cartesian:
                 utils.unrotate(self.parent_block.mesh.face.E.theta, east_flux)
@@ -476,8 +476,8 @@ class MUSCL(FiniteVolumeMethod, ABC):
             north_south_flux = self.flux_function_y(WL=left, WR=right).transpose(
                 (1, 0, 2)
             )
-            north_flux[:] = north_south_flux[self.config.nghost:, :, :]
-            south_flux[:] = north_south_flux[:-self.config.nghost, :, :]
+            north_flux[:] = north_south_flux[self.config.nghost :, :, :]
+            south_flux[:] = north_south_flux[: -self.config.nghost, :, :]
 
             if self.parent_block.is_cartesian:
                 utils.unrotate90(north_flux, south_flux)
