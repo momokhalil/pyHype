@@ -16,9 +16,10 @@ limitations under the License.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 from abc import abstractmethod, ABC
-from typing import TYPE_CHECKING, Union, Type
+from typing import TYPE_CHECKING, Union, Type, Optional
 
 import mpi4py as mpi
 import numba as nb
@@ -375,6 +376,16 @@ class GradientsFactory:
         )
 
 
+@dataclasses.dataclass
+class ExtraProcessNeighborInfo:
+    """
+    Stores basic information about neighbor blocks residing on a different process (extra-process neighbors).
+    """
+
+    global_block_num: int
+    process_num: int
+
+
 class Blocks:
     """
     Class for containing the solution blocks and necessary methods.
@@ -426,7 +437,7 @@ class Blocks:
         :return: None
         """
         for block in blocks:
-            self.blocks[block.global_nBLK] = block
+            self.blocks[block.global_block_num] = block
 
     def realizable(self):
         realizable = []
@@ -440,14 +451,14 @@ class Blocks:
 
         :return: None
         """
-        reqs = []
+        requests = []
 
         for block in self.blocks.values():
-            reqs.extend(block.send_boundary_data())
-            reqs.extend(block.recieve_boundary_data())
+            requests.extend(block.send_boundary_data())
+            requests.extend(block.recieve_boundary_data())
 
         try:
-            mpi.MPI.Request.Waitall(reqs)
+            mpi.MPI.Request.Waitall(requests)
         except mpi.MPI.Exception:
             error_code = mpi.MPI.Status().Get_error()
             self._logger.info(error_code)
@@ -522,7 +533,9 @@ class Blocks:
             for block_num in blocks_in_this_proccess
         )
 
-        def get_neighbor_ref(neighbor_num: int) -> Union[int, QuadBlock]:
+        def get_neighbor_ref(
+            neighbor_num: int,
+        ) -> Optional[Union[ExtraProcessNeighborInfo, QuadBlock]]:
             """
             Returns a valid reference to the neighbor block with the specified number.
             If the number is on shared memory (process running on the same machine),
@@ -535,20 +548,21 @@ class Blocks:
             :return: Either a block/process number or a QuadBlock reference to the neighbor
             if it exists, else None.
             """
+            if neighbor_num is None:
+                return None
+
             return (
-                (
-                    (neighbor_num, cpu_dict[neighbor_num])
-                    if neighbor_num not in self.blocks
-                    else self.blocks[neighbor_num]
+                ExtraProcessNeighborInfo(
+                    global_block_num=neighbor_num, process_num=cpu_dict[neighbor_num]
                 )
-                if neighbor_num is not None
-                else None
+                if neighbor_num not in self.blocks
+                else self.blocks[neighbor_num]
             )
 
         for block in self.blocks.values():
             ne, nw, nn, ns = (
                 get_neighbor_ref(neigh)
-                for neigh in self.mesh_config[block.global_nBLK].neighbors.values()
+                for neigh in self.mesh_config[block.global_block_num].neighbors.values()
             )
             block.connect(
                 NeighborE=ne,
@@ -567,7 +581,7 @@ class Blocks:
             print("-----------------------------------------")
             print(
                 "CONNECTIVITY FOR GLOBAL BLOCK: ",
-                block.global_nBLK,
+                block.global_block_num,
                 f"<{block}>",
             )
             print("North: ", block.neighbors.N)

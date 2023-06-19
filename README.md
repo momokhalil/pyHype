@@ -2,10 +2,11 @@
 
 # [pyHype](https://github.com/momokhalil/pyHype): Computational Fluid Dynamics in Python
 
-pyHype is a Python framework for developing parallelized Computational Fluid Dynamics software to solve the hyperbolic 2D Euler equations on distributed, multi-block structured grids. I started writing pyHype in python as a challenge to achieve high performance in scientific applications traditionally written in low level languages like C/C++ and FORTRAN. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! pyHype is in early stages of development, I will be updating it regularly, along with its documentation.
+pyHype is a Python framework for developing parallelized Computational Fluid Dynamics software to solve the hyperbolic 2D Euler equations on distributed, multi-block structured grids. I started developing pyHype as a challenge to create a python CFD package that competes with packages written in lower level languages like C/C++ and FORTRAN in terms of performance. It can be used as a solver to generate numerical predictions of 2D inviscid flow fields, or as a platform for developing new CFD techniques and methods. Contributions are welcome! I will be periodeically updating it, but there is no predetermined schedule.
 
 ## Explosion Simulation
-Here is an example of an explosion simulation performed on one block. The simulation was performed with the following: 
+Here is an example of an explosion simulation:
+- 2 x 4 grid blocks (150 x 150 cells per block)
 - 600 x 1200 cartesian grid
 - Roe approximate riemann solver
 - Venkatakrishnan flux limiter
@@ -13,42 +14,18 @@ Here is an example of an explosion simulation performed on one block. The simula
 - Green-Gauss gradient method
 - RK4 time stepping with CFL=0.8
 - Reflection boundary conditions
+- Run on 4 processors
 
-The example in given in the file [examples/explosion/explosion.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion/explosion.py). The file is as follows:
+The example in given in [examples/explosion_multi](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_multi).
 
+The first file to look at is [examples/explosion_multi/config.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_multi/config.py). This defines the solver settings used for the simulation.
 ```python
 from pyhype.fluids import Air
-from pyhype.solvers import Euler2D
+from pyhype.solver_config import SolverConfig
 from pyhype.states import ConservativeState
-from pyhype.solvers.base import SolverConfig
+from examples.explosion.initial_condition import ExplosionInitialCondition
 
-# Define fluid
 air = Air(a_inf=343.0, rho_inf=1.0)
-
-block1 = {
-    "nBLK": 1,
-    "NW": [0, 20],
-    "NE": [10, 20],
-    "SW": [0, 0],
-    "SE": [10, 0],
-    "NeighborE": None,
-    "NeighborW": None,
-    "NeighborN": None,
-    "NeighborS": None,
-    "NeighborNE": None,
-    "NeighborNW": None,
-    "NeighborSE": None,
-    "NeighborSW": None,
-    "BCTypeE": "Reflection",
-    "BCTypeW": "Reflection",
-    "BCTypeN": "Reflection",
-    "BCTypeS": "Reflection",
-    "BCTypeNE": None,
-    "BCTypeNW": None,
-    "BCTypeSE": None,
-    "BCTypeSW": None,
-}
-mesh = {1: block1}
 
 config = SolverConfig(
     fvm_type="MUSCL",
@@ -58,117 +35,119 @@ config = SolverConfig(
     fvm_flux_function_type="Roe",
     fvm_slope_limiter_type="Venkatakrishnan",
     time_integrator="RK4",
-    mesh=mesh,
-    problem_type="explosion",
+    initial_condition=ExplosionInitialCondition(),
     interface_interpolation="arithmetic_average",
     reconstruction_type=ConservativeState,
-    write_solution=False,
+    write_solution=True,
     write_solution_mode="every_n_timesteps",
-    write_solution_name="nozzle",
-    write_every_n_timesteps=40,
-    plot_every=2,
+    write_solution_name="explosion_multi",
+    write_solution_base=r"PATH_TO_STORE_DATA",
+    write_every_n_timesteps=50,
+    plot_every=10,
     CFL=0.8,
     t_final=0.07,
-    realplot=True,
+    realplot=False,
     profile=True,
     fluid=air,
-    nx=50,
-    ny=50,
+    nx=150,
+    ny=150,
     nghost=1,
     use_JIT=True,
 )
+```
 
-# Create solver
-exp = Euler2D(config=config)
+The next file [examples/explosion_multi/initial_condition.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_multi/initial_condition.py) defines the initial condition on the grid, which governs the state of the state variables at the 
+beginning of the simulation. In this example, the grid will have a square shaped high pressure region in the lower part.
+```python
+from __future__ import annotations
 
-# Solve
-exp.solve()
+import os
+from typing import TYPE_CHECKING
+
+from pyhype.states.primitive import PrimitiveState
+from pyhype.states.conservative import ConservativeState
+from pyhype.initial_conditions.base import InitialCondition
+
+if TYPE_CHECKING:
+    from pyhype.blocks.quad_block import QuadBlock
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+import numpy as np
+
+
+class ExplosionInitialCondition(InitialCondition):
+    def apply_to_block(self, block: QuadBlock):
+        # Free stream
+        rhoL = 4.6968
+        pL = 404400.0
+        uL = 0.0
+        vL = 0.0
+        left_state = PrimitiveState(
+            fluid=block.config.fluid,
+            array=np.array([rhoL, uL, vL, pL]).reshape((1, 1, 4)),
+        ).to_type(ConservativeState)
+
+        # Post shock
+        rhoR = 1.1742
+        pR = 101100.0
+        uR = 0.0
+        vR = 0.0
+        right_state = PrimitiveState(
+            fluid=block.config.fluid,
+            array=np.array([rhoR, uR, vR, pR]).reshape((1, 1, 4)),
+        ).to_type(ConservativeState)
+
+        # Fill state vector in each block
+        _x_cond = np.logical_and(block.mesh.x >= 3, block.mesh.x <= 7)
+        _y_cond = np.logical_and(block.mesh.y >= 3, block.mesh.y <= 7)
+        block.state.data = np.where(
+            np.logical_and(_x_cond, _y_cond), left_state.data, right_state.data
+        )
+        block.state.make_non_dimensional()
+```
+
+The next file [examples/explosion_multi/mesh.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_multi/mesh.py) defines the computational mesh for the simulation:
+```python
+from pyhype.mesh.rectangular import RectagularMeshGenerator
+
+mesh = RectagularMeshGenerator.generate(
+    BCE=["Reflection"],
+    BCW=["Reflection"],
+    BCN=["Reflection"],
+    BCS=["Reflection"],
+    east=10.0,
+    west=0.0,
+    north=20.0,
+    south=0.0,
+    n_blocks_horizontal=2,
+    n_blocks_vertical=4,
+)
+```
+
+The last file [examples/explosion_multi/explosion.py](https://github.com/momokhalil/pyHype/blob/main/examples/explosion_multi/explosion.py) brings it all together:
+```python
+from pyhype.solvers import Euler2D
+from examples.explosion_multi.config import config
+from examples.explosion_multi.mesh import mesh
+
+
+if __name__ == "__main__":
+    exp_sim = Euler2D(
+        config=config,
+        mesh_config=mesh,
+    )
+    exp_sim.solve()
 
 ```
+
+To run this simulation, make sure you are in `/src_path/pyHype-main`, and run the make command
+```shell
+make run_explosion_multi
+```
+
 ![alt text](/examples/explosion/explosion.gif)
 
-## Shockbox Simulation
-Here is an example of an shockbox simulation performed on one block. The simulation was performed with the following: 
-- 500 x 500 cartesian grid
-- Roe approximate riemann solver
-- Venkatakrishnan flux limiter
-- Piecewise-Linear second order reconstruction
-- Green-Gauss gradient method
-- RK2 time stepping with CFL=0.4
-- Reflection boundary conditions
-
-The example in given in the file [examples/shockbox/shockbox.py](https://github.com/momokhalil/pyHype/blob/main/examples/shockbox/shockbox.py). The file is as follows:
-
-```python
-from pyhype.fluids import Air
-from pyhype.solvers import Euler2D
-from pyhype.states import ConservativeState
-from pyhype.solvers.base import SolverConfig
-
-# Define fluid
-air = Air(a_inf=343.0, rho_inf=1.0)
-
-block1 = {
-    "nBLK": 1,
-    "NW": [0, 10],
-    "NE": [10, 10],
-    "SW": [0, 0],
-    "SE": [10, 0],
-    "NeighborE": None,
-    "NeighborW": None,
-    "NeighborN": None,
-    "NeighborS": None,
-    "NeighborNE": None,
-    "NeighborNW": None,
-    "NeighborSE": None,
-    "NeighborSW": None,
-    "BCTypeE": "Reflection",
-    "BCTypeW": "Reflection",
-    "BCTypeN": "Reflection",
-    "BCTypeS": "Reflection",
-    "BCTypeNE": None,
-    "BCTypeNW": None,
-    "BCTypeSE": None,
-    "BCTypeSW": None,
-}
-
-mesh = {1: block1}
-
-# Solver settings
-config = SolverConfig(
-    fvm_type="MUSCL",
-    fvm_spatial_order=2,
-    fvm_num_quadrature_points=1,
-    fvm_gradient_type="GreenGauss",
-    fvm_flux_function_type="Roe",
-    fvm_slope_limiter_type="Venkatakrishnan",
-    time_integrator="RK2",
-    mesh=mesh,
-    problem_type="shockbox",
-    interface_interpolation="arithmetic_average",
-    reconstruction_type=ConservativeState,
-    write_solution=False,
-    write_solution_mode="every_n_timesteps",
-    write_solution_name="shockbox",
-    write_every_n_timesteps=30,
-    plot_every=10,
-    CFL=0.4,
-    t_final=2.0,
-    realplot=True,
-    profile=False,
-    fluid=air,
-    nx=50,
-    ny=50,
-    nghost=1,
-    use_JIT=True,
-)
-
-# Create solver
-exp = Euler2D(config=config)
-
-exp.solve()
-```
-![alt text](/examples/shockbox/rho.gif)
+This framework will be available as an installable package soon.
 
 ## Double Mach Reflection (DMR)
 Here is an example of a Mach 10 DMR simulation performed on five blocks. The simulation was performed with the following: 
@@ -179,85 +158,8 @@ Here is an example of a Mach 10 DMR simulation performed on five blocks. The sim
 - Green-Gauss gradient method
 - Strong-Stability-Preserving (SSP)-RK2 time stepping with CFL=0.4
 
-The example in given in the file [examples/dmr/dmr.py](https://github.com/momokhalil/pyHype/blob/main/examples/dmr/dmr.py). The file is as follows:
+The example in given in the file [examples/dmr/dmr.py](https://github.com/momokhalil/pyHype/blob/main/examples/dmr/dmr.py).
 
-```python
-import numpy as np
-from pyhype.fluids import Air
-from pyhype.solvers import Euler2D
-from pyhype.states import PrimitiveState
-from pyhype.solvers.base import SolverConfig
-from pyhype.mesh.base import QuadMeshGenerator
-
-k = 1
-a = 2 / np.sqrt(3)
-d = np.tan(30 * np.pi / 180)
-
-_left_x = [0, 0]
-_left_y = [0, a]
-_right_x = [4 * k, 4 * k]
-_right_y = [3 * d, a + 3 * d]
-_x = [0, k, 2 * k, 3 * k, 4 * k]
-_top_y = [a, a, a + d, a + 2 * d, a + 3 * d]
-_bot_y = [0, 0, d, 2 * d, 3 * d]
-
-BCS = ["OutletDirichlet", "Slipwall", "Slipwall", "Slipwall"]
-
-_mesh = QuadMeshGenerator(
-    nx_blk=4,
-    ny_blk=1,
-    BCE=["OutletDirichlet"],
-    BCW=["OutletDirichlet"],
-    BCN=["OutletDirichlet"],
-    BCS=BCS,
-    top_x=_x,
-    bot_x=_x,
-    top_y=_top_y,
-    bot_y=_bot_y,
-    left_x=_left_x,
-    right_x=_right_x,
-    left_y=_left_y,
-    right_y=_right_y,
-)
-
-# Define fluid
-air = Air(a_inf=343.0, rho_inf=1.0)
-
-# Solver settings
-config = SolverConfig(
-    fvm_type="MUSCL",
-    fvm_spatial_order=2,
-    fvm_num_quadrature_points=1,
-    fvm_gradient_type="GreenGauss",
-    fvm_flux_function_type="HLLL",
-    fvm_slope_limiter_type="Venkatakrishnan",
-    time_integrator="RK2",
-    problem_type="mach_reflection",
-    interface_interpolation="arithmetic_average",
-    reconstruction_type=PrimitiveState,
-    write_solution=False,
-    write_solution_mode="every_n_timesteps",
-    write_solution_name="machref",
-    write_every_n_timesteps=20,
-    plot_every=1,
-    CFL=0.4,
-    t_final=0.25,
-    realplot=True,
-    profile=False,
-    fluid=air,
-    nx=50,
-    ny=50,
-    nghost=1,
-    use_JIT=True,
-    mesh=_mesh,
-)
-
-# Create solver
-exp = Euler2D(config=config)
-
-# Solve
-exp.solve()
-```
 ![alt text](/examples/dmr/dmr.png)
 
 
@@ -271,115 +173,10 @@ Here is an example of high-speed jet simulation performed on 5 blocks. The simul
 - Green-Gauss gradient method
 - RK2 time stepping with CFL=0.4
 
-The example in given in the file [examples/jet/jet.py](https://github.com/momokhalil/pyHype/blob/main/examples/jet/jet.py). The file is as follows:
+The example in given in the file [examples/jet/jet.py](https://github.com/momokhalil/pyHype/blob/main/examples/jet/jet.py).
 
-```python
-import numpy as np
-from pyhype.fluids import Air
-from pyhype.solvers import Euler2D
-from pyhype.solvers.base import SolverConfig
-from pyhype.mesh.base import QuadMeshGenerator
-from pyhype.states import PrimitiveState
-from pyhype.boundary_conditions.bc import PrimitiveDirichletBC
-
-# Define fluid
-air = Air(a_inf=343.0, rho_inf=1.0)
-
-inlet_rho = 1.0
-inlet_u = 0.25
-inlet_v = 0.0
-inlet_p = 1.0 / 1.4
-
-inlet_state = PrimitiveState(
-    fluid=air,
-    array=np.array(
-        [
-            inlet_rho,
-            inlet_u,
-            inlet_v,
-            inlet_p,
-        ]
-    ).reshape((1, 1, 4)),
-)
-subsonic_inlet_bc = PrimitiveDirichletBC(primitive_state=inlet_state)
-
-BCE = [
-    "OutletDirichlet",
-    "OutletDirichlet",
-    "OutletDirichlet",
-    "OutletDirichlet",
-    "OutletDirichlet",
-]
-BCW = ["Slipwall", "Slipwall", subsonic_inlet_bc, "Slipwall", "Slipwall"]
-BCN = ["OutletDirichlet"]
-BCS = ["OutletDirichlet"]
-
-_mesh = QuadMeshGenerator(
-    nx_blk=1,
-    ny_blk=5,
-    BCE=BCE,
-    BCW=BCW,
-    BCN=BCN,
-    BCS=BCS,
-    NE=(1, 0.5),
-    SW=(0, 0),
-    NW=(0, 0.5),
-    SE=(1, 0),
-)
-
-# Solver settings
-config = SolverConfig(
-    fvm_type="MUSCL",
-    fvm_spatial_order=2,
-    fvm_num_quadrature_points=1,
-    fvm_gradient_type="GreenGauss",
-    fvm_flux_function_type="HLLL",
-    fvm_slope_limiter_type="Venkatakrishnan",
-    time_integrator="RK2",
-    mesh=_mesh,
-    problem_type="subsonic_rest",
-    interface_interpolation="arithmetic_average",
-    reconstruction_type=PrimitiveState,
-    write_solution=False,
-    write_solution_mode="every_n_timesteps",
-    write_solution_name="kvi",
-    write_every_n_timesteps=20,
-    plot_every=10,
-    CFL=0.4,
-    t_final=25.0,
-    realplot=True,
-    profile=False,
-    fluid=air,
-    nx=100,
-    ny=10,
-    nghost=1,
-    use_JIT=True,
-)
-
-# Create solver
-exp = Euler2D(config=config)
-
-# Solve
-exp.solve()
-```
 Mach Number:
 ![alt text](/examples/jet/Ma.gif)
 
 Density:
 ![alt text](/examples/jet/rho.gif)
-
-## Current work
-1. Integrate airfoil meshing and mesh optimization using elliptic PDEs
-2. Compile gradient and reconstruction calculations with numba
-3. Integrate PyTecPlot to use for writing solution files and plotting
-4. Implement riemann-invariant-based boundary conditions
-5. Implement subsonic and supersonic inlet and outlet boundary conditions
-6. Implement connectivity algorithms for calculating block connectivity and neighbor-finding
-7. Create a fully documented simple example to explain usage
-8. Documentation!!
-
-## Major future work
-1. Use MPI to distrubute computation to multiple processors
-2. Adaptive mesh refinement (maybe with Machine Learning :))
-3. Interactive gui for mesh design
-4. Advanced interactive plotting

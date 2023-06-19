@@ -2,6 +2,7 @@ import numpy as np
 from pyhype.states import PrimitiveState
 from pyhype.boundary_conditions.base import PrimitiveDirichletBC
 
+
 def make_supersonic_wedge_mesh(fluid):
     # Define inlet BC
     inlet_rho = 1.0

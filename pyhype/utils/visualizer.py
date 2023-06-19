@@ -20,6 +20,8 @@ from typing import Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+from pyhype.states.base import State
 from pyhype.solver_config import SolverConfig
 from pyhype.states.conservative import ConservativeState
 
@@ -31,6 +33,7 @@ class PlotSetup:
     size_y: float
     x_lim: [float]
     y_lim: [float]
+    variable: str
 
 
 class Vizualizer:
@@ -67,6 +70,17 @@ class Vizualizer:
         ]
         return states
 
+    @staticmethod
+    def get_plot_states(variable: str, states: [State]):
+        if variable == "density":
+            return [state.rho for state in states]
+        if variable == "pressure":
+            return [state.p for state in states]
+        if variable == "u":
+            return [state.u for state in states]
+        if variable == "v":
+            return [state.v for state in states]
+
     def plot(self, setup: PlotSetup):
         x, y = self.get_mesh_data()
 
@@ -83,11 +97,11 @@ class Vizualizer:
             try:
                 states = self.get_solution_data(timestep)
 
-                rho = [state.rho for state in states]
-                _min = min(np.amin(v) for v in rho)
-                _max = max(np.amax(v) for v in rho)
+                variable = self.get_plot_states(variable=setup.variable, states=states)
+                _min = min(np.amin(v) for v in variable)
+                _max = max(np.amax(v) for v in variable)
 
-                for r, x_, y_ in zip(rho, x, y):
+                for r, x_, y_ in zip(variable, x, y):
                     ax1.contourf(x_, y_, r, 100, cmap="magma", vmin=_min, vmax=_max)
 
                 ax1.set_aspect("equal", adjustable="box")

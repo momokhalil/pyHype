@@ -28,7 +28,11 @@ from pyhype.mesh.quad_mesh import QuadMesh
 from pyhype.boundary_conditions.base import BoundaryCondition
 from pyhype.utils.utils import NumpySlice, SidePropertyDict, Direction
 from pyhype.boundary_conditions.funcs import BoundaryConditionFunctions
-from pyhype.blocks.base import BaseBlockFVM, BlockGeometry, BlockDescription
+from pyhype.blocks.base import (
+    BaseBlockFVM,
+    BlockGeometry,
+    BlockDescription,
+)
 
 from pyhype.utils.logger import Logger
 
@@ -170,38 +174,46 @@ class GhostBlock(BaseBlockFVM):
 
         :return: List of active MPI send requests
         """
-        neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
+        neighbor_info = self.parent_block.neighbors[self.dir]
         send_buf = self.parent_block.state[self._ghost_idx[self.dir]].data
         return self.mpi.Isend(
             buf=send_buf.ravel(),
-            dest=neighbor_cpu,
-            tag=utils.cantor_pair(self.parent_block.global_nBLK, neighbor_blk),
+            dest=neighbor_info.process_num,
+            tag=utils.cantor_pair(
+                self.parent_block.global_block_num, neighbor_info.global_block_num
+            ),
         )
 
     def send_boundary_data(self) -> Optional[MPI.Request]:
         """
         Sends boundary data to the appropriate location. This can be in three forms:
 
-        1) BC type is not None or no neighbor: Send boundary data to this ghost
+        1) Send boundary data to a neighbor on a different process using MPI
+
+        2) BC type is not None or no neighbor: Send boundary data to this ghost
         block's State. This is because we are essentially trying to set a BC that
         is dependent on the block's own State, and not a neighbor. For example, this
         is used for wall BCs.
-
-        2) Send boundary data to a neighbor on a different process using MPI
 
         3) Set this ghost block's State using the neighbor's State, which is in the
         same process.
 
         :return: Optional MPI send request if MPI is used
         """
-        if self.bc_type is not None or self.parent_block.neighbors[self.dir] is None:
-            self.state.from_state(self.parent_block.state[self._ghost_idx[self.dir]])
-            return
-        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+        # Use MPI since neighbor is on another process
+        if not self.parent_block.neighbor_in_this_process(direction=self.dir):
             return self._send_mpi_buffer()
-        self.state.from_state(
-            self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
-        )
+
+        neighbor_block = self.parent_block.neighbors[self.dir]
+
+        # No need to get any data from neighbor, get from self
+        if self.bc_type is not None or neighbor_block is None:
+            return self.state.from_state(
+                self.parent_block.state[self._ghost_idx[self.dir]]
+            )
+
+        # Neighbor on the same process, get data without MPI
+        self.state.from_state(neighbor_block.state[self._ghost_idx[-self.dir]])
 
     def recieve_boundary_data(self) -> Optional[MPI.Request]:
         """
@@ -210,10 +222,14 @@ class GhostBlock(BaseBlockFVM):
 
         :return: Optional MPI recieve request if MPI was used
         """
-        if isinstance(self.parent_block.neighbors[self.dir], tuple):
-            neighbor_blk, neighbor_cpu = self.parent_block.neighbors[self.dir]
-            tag = utils.cantor_pair(neighbor_blk, self.parent_block.global_nBLK)
-            return self.mpi.Irecv(self._recv_buf, source=neighbor_cpu, tag=tag)
+        if not self.parent_block.neighbor_in_this_process(direction=self.dir):
+            neighbor_info = self.parent_block.neighbors[self.dir]
+            tag = utils.cantor_pair(
+                neighbor_info.global_block_num, self.parent_block.global_block_num
+            )
+            return self.mpi.Irecv(
+                buf=self._recv_buf, source=neighbor_info.process_num, tag=tag
+            )
 
     def apply_recv_buffers_to_state(self) -> None:
         """
@@ -221,7 +237,7 @@ class GhostBlock(BaseBlockFVM):
 
         :return: None
         """
-        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+        if not self.parent_block.neighbor_in_this_process(direction=self.dir):
             self.state.data = self._recv_buf.copy().reshape(self.shape)
 
     def _apply_none_bc(self, state: State) -> None:
