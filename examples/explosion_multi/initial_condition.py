@@ -30,8 +30,7 @@ import numpy as np
 
 
 class ExplosionInitialCondition(InitialCondition):
-    @staticmethod
-    def apply_to_block(block: QuadBlock):
+    def apply_to_block(self, block: QuadBlock):
         # Free stream
         rhoL = 4.6968
         pL = 404400.0
