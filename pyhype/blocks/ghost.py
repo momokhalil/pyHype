@@ -194,14 +194,21 @@ class GhostBlock(BaseBlockFVM):
 
         :return: Optional MPI send request if MPI is used
         """
-        if self.bc_type is not None or self.parent_block.neighbors[self.dir] is None:
-            self.state.from_state(self.parent_block.state[self._ghost_idx[self.dir]])
-            return
-        if isinstance(self.parent_block.neighbors[self.dir], tuple):
+        neighbor_block = self.parent_block.neighbors[self.dir]
+
+        # No need to get any data from neighbor, get from self because this block either doesnt set a BC (BC is None)
+        # or does not have a neighbor block in the context direction (self.dir)
+        if self.bc_type is not None or neighbor_block is None:
+            return self.state.from_state(
+                self.parent_block.state[self._ghost_idx[self.dir]]
+            )
+
+        # If there is a neighbor that lives in another process, use MPI to exchange boundary data
+        if isinstance(neighbor_block, tuple):
             return self._send_mpi_buffer()
-        self.state.from_state(
-            self.parent_block.neighbors[self.dir].state[self._ghost_idx[-self.dir]]
-        )
+
+        # Neighbor on the same process, get data without MPI
+        self.state.from_state(neighbor_block.state[self._ghost_idx[-self.dir]])
 
     def recieve_boundary_data(self) -> Optional[MPI.Request]:
         """

@@ -35,11 +35,13 @@ from pyhype.utils.utils import Direction
 if TYPE_CHECKING:
     from pyhype.states.base import State
     from pyhype.blocks.quad_block import QuadBlock
-    from pyhype.blocks.base import BaseBlockFVM
+    from pyhype.blocks.ghost import GhostBlock
     from pyhype.mesh.quadratures import QuadraturePoint
     from pyhype.flux.base import FluxFunction
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
+
+BOUNDARY_INDEX = NumpySlice.boundary()
 
 
 class FiniteVolumeMethod(ABC):
@@ -84,6 +86,24 @@ class FiniteVolumeMethod(ABC):
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> State:
         raise NotImplementedError
+
+    def ghost_bc_type(self, direction: int):
+        """
+        Get the boundary condition type associated with the given direction
+
+        :param direction: Direction to check BC type
+        :return: bc type
+        """
+        return self.parent_block.ghost[direction].bc_type
+
+    def ghost_block(self, direction: int) -> GhostBlock:
+        """
+        Return reference to the ghost block in the specified direction
+
+        :param direction: Direction to get the ghost block for
+        :return: Ghost block in that direction
+        """
+        return self.parent_block.ghost[direction]
 
     def dUdt(self) -> np.ndarray:
         """
@@ -231,7 +251,6 @@ class MUSCL(FiniteVolumeMethod, ABC):
         )
         self.limiter = limiter
         self.gradient = gradient
-        self._boundary_index = NumpySlice.boundary()
 
     def _get_left_right_riemann_states(
         self,
@@ -285,20 +304,25 @@ class MUSCL(FiniteVolumeMethod, ABC):
 
     def _get_boundary_flux_states(self, direction: int) -> [State]:
         """
-        Get a generator of States that contain the limited solution
-        at the east block boundary wuadrature points.
+        Get a generator that yields the limited solution states at the specified direction.
 
         :rtype: [State]
         :return: Gen exp of State objects
         """
-        slicer = self._boundary_index[direction]
-        func = self.limited_solution_at_quadrature_point
-        if self.parent_block.ghost[direction].bc_type is None:
-            slicer = self._boundary_index[-direction]
-            func = self.parent_block.ghost[
-                direction
-            ].fvm.limited_solution_at_quadrature_point
-        return (func(qp=qe, slicer=slicer) for qe in self.parent_block.qp[direction])
+        slicer = (
+            BOUNDARY_INDEX[-direction]
+            if self.ghost_bc_type(direction) is None
+            else BOUNDARY_INDEX[direction]
+        )
+        fvm = (
+            self.ghost_block(direction).fvm
+            if self.ghost_bc_type(direction) is None
+            else self
+        )
+        return (
+            fvm.limited_solution_at_quadrature_point(qp=qe, slicer=slicer)
+            for qe in self.parent_block.qp[direction]
+        )
 
     def _evaluate_east_west_flux(self) -> None:
         """
@@ -325,18 +349,20 @@ class MUSCL(FiniteVolumeMethod, ABC):
             self.Flux.E,
             self.Flux.W,
         ):
+            east_ghost = self.ghost_block(direction=Direction.east)
+            if east_ghost.bc_type is not None:
+                east_ghost.apply_boundary_condition_to_state(
+                    state=east_boundary,
+                )
+
+            west_ghost = self.ghost_block(direction=Direction.west)
+            if west_ghost.bc_type is not None:
+                west_ghost.apply_boundary_condition_to_state(
+                    state=west_boundary,
+                )
+
             east_face_states = self.limited_solution_at_quadrature_point(qp=qe)
             west_face_states = self.limited_solution_at_quadrature_point(qp=qw)
-
-            if self.parent_block.ghost.E.bc_type is not None:
-                self.parent_block.ghost.E.apply_boundary_condition_to_state(
-                    east_boundary
-                )
-            if self.parent_block.ghost.W.bc_type is not None:
-                self.parent_block.ghost.W.apply_boundary_condition_to_state(
-                    west_boundary
-                )
-
             if not self.parent_block.is_cartesian:
                 utils.rotate(self.parent_block.mesh.face.E.theta, east_face_states.data)
                 utils.rotate(self.parent_block.mesh.face.W.theta, west_face_states.data)
@@ -356,8 +382,8 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 left_ghost_state=west_boundary,
             )
             east_west_flux = self.flux_function_x(WL=left, WR=right)
-            east_flux[:] = east_west_flux[:, 1:, :]
-            west_flux[:] = east_west_flux[:, :-1, :]
+            east_flux[:] = east_west_flux[:, self.config.nghost:, :]
+            west_flux[:] = east_west_flux[:, :-self.config.nghost, :]
 
             if not self.parent_block.is_cartesian:
                 utils.unrotate(self.parent_block.mesh.face.E.theta, east_flux)
@@ -392,18 +418,20 @@ class MUSCL(FiniteVolumeMethod, ABC):
             self.Flux.N,
             self.Flux.S,
         ):
+            north_ghost = self.ghost_block(direction=Direction.north)
+            if north_ghost.bc_type is not None:
+                north_ghost.apply_boundary_condition_to_state(
+                    state=north_boundary,
+                )
+
+            south_ghost = self.ghost_block(direction=Direction.south)
+            if south_ghost.bc_type is not None:
+                south_ghost.apply_boundary_condition_to_state(
+                    state=south_boundary,
+                )
+
             north_face_states = self.limited_solution_at_quadrature_point(qp=qn)
             south_face_states = self.limited_solution_at_quadrature_point(qp=qs)
-
-            if self.parent_block.ghost.N.bc_type is not None:
-                self.parent_block.ghost.N.apply_boundary_condition_to_state(
-                    north_boundary
-                )
-            if self.parent_block.ghost.S.bc_type is not None:
-                self.parent_block.ghost.S.apply_boundary_condition_to_state(
-                    south_boundary
-                )
-
             if self.parent_block.is_cartesian:
                 utils.rotate90(
                     north_face_states.data,
@@ -413,18 +441,24 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 )
             else:
                 utils.rotate(
-                    self.parent_block.mesh.face.N.theta, north_face_states.data
+                    theta=self.parent_block.mesh.face.N.theta,
+                    array=north_face_states.data,
                 )
                 utils.rotate(
-                    self.parent_block.mesh.face.S.theta, south_face_states.data
+                    theta=self.parent_block.mesh.face.S.theta,
+                    array=south_face_states.data,
                 )
                 utils.rotate(
-                    self.parent_block.mesh.boundary_angle(direction=Direction.north),
-                    north_boundary.data,
+                    theta=self.parent_block.mesh.boundary_angle(
+                        direction=Direction.north
+                    ),
+                    array=north_boundary.data,
                 )
                 utils.rotate(
-                    self.parent_block.mesh.boundary_angle(direction=Direction.south),
-                    south_boundary.data,
+                    theta=self.parent_block.mesh.boundary_angle(
+                        direction=Direction.south
+                    ),
+                    array=south_boundary.data,
                 )
 
             # Transpose to x-frame
@@ -442,8 +476,8 @@ class MUSCL(FiniteVolumeMethod, ABC):
             north_south_flux = self.flux_function_y(WL=left, WR=right).transpose(
                 (1, 0, 2)
             )
-            north_flux[:] = north_south_flux[1:, :, :]
-            south_flux[:] = north_south_flux[:-1, :, :]
+            north_flux[:] = north_south_flux[self.config.nghost:, :, :]
+            south_flux[:] = north_south_flux[:-self.config.nghost, :, :]
 
             if self.parent_block.is_cartesian:
                 utils.unrotate90(north_flux, south_flux)
