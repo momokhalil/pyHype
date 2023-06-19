@@ -158,7 +158,7 @@ Here is an example of a Mach 10 DMR simulation performed on five blocks. The sim
 - Green-Gauss gradient method
 - Strong-Stability-Preserving (SSP)-RK2 time stepping with CFL=0.4
 
-The example in given in the file [examples/dmr/dmr.py](https://github.com/momokhalil/pyHype/blob/main/examples/dmr/dmr.py). The file is as follows:
+The example in given in the file [examples/dmr/dmr.py](https://github.com/momokhalil/pyHype/blob/main/examples/dmr/dmr.py).
 
 ![alt text](/examples/dmr/dmr.png)
 
@@ -173,7 +173,7 @@ Here is an example of high-speed jet simulation performed on 5 blocks. The simul
 - Green-Gauss gradient method
 - RK2 time stepping with CFL=0.4
 
-The example in given in the file [examples/jet/jet.py](https://github.com/momokhalil/pyHype/blob/main/examples/jet/jet.py). The file is as follows:
+The example in given in the file [examples/jet/jet.py](https://github.com/momokhalil/pyHype/blob/main/examples/jet/jet.py).
 
 Mach Number:
 ![alt text](/examples/jet/Ma.gif)
