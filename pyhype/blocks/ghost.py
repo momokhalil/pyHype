@@ -32,7 +32,6 @@ from pyhype.blocks.base import (
     BaseBlockFVM,
     BlockGeometry,
     BlockDescription,
-    ExtraProcessNeighborInfo,
 )
 
 from pyhype.utils.logger import Logger
