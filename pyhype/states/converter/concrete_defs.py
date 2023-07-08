@@ -28,35 +28,19 @@ if TYPE_CHECKING:
     from pyhype.states.base import State
 
 
-class StateConverter(ABC):
-    @staticmethod
-    def from_state(state: states.State, from_state: states.State) -> None:
-        converter = from_state.get_class_type_converter()
-        state.data = converter.to(state_type=type(state))(from_state)
-
-    @staticmethod
-    def to_type(
-        state: states.State,
-        to_type: Type[states.State],
-    ) -> states.State:
-        converter = state.get_class_type_converter()
-        array = converter.to(to_type)(state)
-        created = to_type(fluid=state.fluid, array=array)
-        return created
-
-
-class BaseConverter(ABC):
+class ConverterLogic(ABC):
     """
     Defines interface for implementing State converters.
     """
 
     @classmethod
-    def to(cls, state_type: Type[states.State]) -> Callable[[states.State], np.ndarray]:
+    def get_func(
+        cls, state_type: Type[states.State]
+    ) -> Callable[[states.State], np.ndarray]:
         """
-        Returns the conversion function that converts a Base type
-        to a state_type.
+        Returns the conversion function that converts a Base type to a state_type.
 
-        :param state_type:
+        :param state_type: State type to get conversion function for
         :return:
         """
         if state_type == states.PrimitiveState:
@@ -67,42 +51,86 @@ class BaseConverter(ABC):
     @staticmethod
     @abstractmethod
     def to_primitive(state: states.State) -> np.ndarray:
+        """
+        Defines the conversion logic to convert from the base state type to the
+        primitive state type. This shall return a numpy array filled with the new
+        state values. The array then gets built into the correct State object type
+        inside the StateConverter.
+
+        :param state: The State object to convert
+        :return: Numpy array with the correct data values
+        """
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
     def to_conservative(state: states.State) -> np.ndarray:
+        """
+        Defines the conversion logic to convert from the base state type to the
+        conservative state type. This shall return a numpy array filled with the new
+        state values. The array then gets built into the correct State object type
+        inside the StateConverter.
+
+        :param state: The State object to convert
+        :return: Numpy array with the correct data values
+        """
         raise NotImplementedError
 
 
-class ConservativeConverter(BaseConverter):
+class ConservativeConverter(ConverterLogic):
     """
     Converts `ConservativeState` objects to other `State` types.
     """
 
     @staticmethod
     def to_primitive(state: states.ConservativeState) -> np.ndarray:
+        """
+        Logic that converts from a conservative state into a primitive state.
+
+        :param state: ConservativeState object to convert
+        :return: Numpy array with the equivalent state in the primitive basis
+        """
         return np.dstack(
             (
                 state.rho.copy(),
-                state.u.copy(),
-                state.v.copy(),
+                state.u,
+                state.v,
                 (state.fluid.gamma() - 1) * (state.e - state.ek()),
             )
         )
 
     @staticmethod
     def to_conservative(state: states.ConservativeState) -> np.ndarray:
+        """
+        Logic that converts from a conservative state into a conservative state.
+        This simply returns a copy of the state array.
+
+        :param state: ConservativeState object to convert
+        :return: Numpy array with the equivalent state in the conservative basis
+        """
         return state.data.copy()
 
 
-class PrimitiveConverter(BaseConverter):
+class PrimitiveConverter(ConverterLogic):
     @staticmethod
     def to_primitive(state: states.PrimitiveState):
+        """
+        Logic that converts from a primitive state into a primitive state.
+        This simply returns a copy of the state array.
+
+        :param state: PrimitveState object to convert
+        :return: Numpy array with the equivalent state in the primitive basis
+        """
         return state.data.copy()
 
     @staticmethod
     def to_conservative(state: states.PrimitiveState) -> np.ndarray:
+        """
+        Logic that converts from a primitive state into a conservative state.
+
+        :param state: PrimitiveState object to convert
+        :return: Numpy array with the equivalent state in the primitive basis
+        """
         return np.dstack(
             (
                 state.rho.copy(),

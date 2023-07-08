@@ -23,7 +23,6 @@ import numba as nb
 import numpy as np
 from pyhype.states.base import State
 from pyhype.states.conservative import ConservativeState
-from pyhype.states.converter import PrimitiveConverter
 from pyhype.utils.utils import cache
 
 from typing import TYPE_CHECKING, Union, Type
@@ -51,9 +50,6 @@ class PrimitiveState(State):
         fill: Union[float, int] = None,
     ):
         super().__init__(fluid=fluid, state=state, array=array, shape=shape, fill=fill)
-
-    def get_class_type_converter(self) -> Type[PrimitiveConverter]:
-        return PrimitiveConverter
 
     @property
     def rho(self) -> np.ndarray:
