@@ -23,7 +23,7 @@ import mpi4py as mpi
 from typing import Union, Type
 from abc import ABC, abstractmethod
 from pyhype.fluids.base import Fluid
-from pyhype.states.converter import StateConverter, BaseConverter
+from pyhype.states.converter.state_converter import StateConverter
 
 import numpy as np
 
@@ -306,14 +306,6 @@ class State(ABC):
     def H(self):
         """
         Returns total entalpy over entire grid
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_class_type_converter(self) -> Type[BaseConverter]:
-        """
-        Returns the converter class that converts objects of this class
-        :return:
         """
         raise NotImplementedError
 

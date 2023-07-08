@@ -21,10 +21,9 @@ os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
 
 import numpy as np
 from pyhype.states.base import State
-from pyhype.states.converter import ConservativeConverter
 from pyhype.utils.utils import cache
 
-from typing import TYPE_CHECKING, Union, Type
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from pyhype.fluids.base import Fluid
@@ -48,10 +47,8 @@ class ConservativeState(State):
         shape: tuple[int, int] = None,
         fill: Union[float, int] = None,
     ):
-        super().__init__(fluid=fluid, state=state, array=array, shape=shape, fill=fill)
 
-    def get_class_type_converter(self) -> Type[ConservativeConverter]:
-        return ConservativeConverter
+        super().__init__(fluid=fluid, state=state, array=array, shape=shape, fill=fill)
 
     @property
     def rho(self) -> np.ndarray:
