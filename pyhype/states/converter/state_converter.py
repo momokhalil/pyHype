@@ -20,18 +20,18 @@ from typing import TYPE_CHECKING, Type
 
 import pyhype.states as states
 from pyhype.states.converter.concrete_defs import (
-    BaseConverter,
     PrimitiveConverter,
     ConservativeConverter,
 )
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
+    from pyhype.states.converter.concrete_defs import ConverterLogic
 
 
 class StateConverter(ABC):
     @staticmethod
-    def get_converter(state_type: Type[states.State]) -> Type[BaseConverter]:
+    def get_converter(state_type: Type[states.State]) -> Type[ConverterLogic]:
         """
         Returns the converter type associated with state_type
 
