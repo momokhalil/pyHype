@@ -1,6 +1,6 @@
 from pyhype.fluids import Air
 from pyhype.solver_config import SolverConfig
-from pyhype.states import ConservativeState
+from pyhype.states import ConservativeState, PrimitiveState
 from examples.explosion.initial_condition import ExplosionInitialCondition
 
 air = Air(a_inf=343.0, rho_inf=1.0)
@@ -15,7 +15,7 @@ config = SolverConfig(
     time_integrator="RK4",
     initial_condition=ExplosionInitialCondition(),
     interface_interpolation="arithmetic_average",
-    reconstruction_type=ConservativeState,
+    reconstruction_type=PrimitiveState,
     write_solution=True,
     write_solution_mode="every_n_timesteps",
     write_solution_name="explosion_multi",
@@ -27,8 +27,8 @@ config = SolverConfig(
     realplot=False,
     profile=True,
     fluid=air,
-    nx=150,
-    ny=150,
+    nx=50,
+    ny=50,
     nghost=1,
     use_JIT=True,
 )

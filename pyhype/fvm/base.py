@@ -91,7 +91,7 @@ class FiniteVolumeMethod(ABC):
         """
         Get the boundary condition type associated with the given direction
 
-        :param direction: Direction to check BC type
+        :param direction: Direction to check bc type
         :return: bc type
         """
         return self.parent_block.ghost[direction].bc_type
@@ -280,26 +280,16 @@ class MUSCL(FiniteVolumeMethod, ABC):
         :rtype: tuple(PrimitiveState, PrimitiveState)
         :return: PrimitiveStates that hold the left and right states for the flux calculation
         """
-        left_arr = np.concatenate((left_ghost_state.data, left_state.data), axis=1)
-        right_arr = np.concatenate((right_state.data, right_ghost_state.data), axis=1)
-
-        if self.config.reconstruction_type is PrimitiveState:
-            left_state = PrimitiveState(self.config.fluid, array=left_arr)
-            right_state = PrimitiveState(self.config.fluid, array=right_arr)
-            return left_state, right_state
-
-        left_state = PrimitiveState(
+        left_state = self.config.reconstruction_type(
             fluid=self.config.fluid,
-            state=self.config.reconstruction_type(
-                fluid=self.config.fluid, array=left_arr
-            ),
-        )
-        right_state = PrimitiveState(
+            array=np.concatenate((left_ghost_state.data, left_state.data), axis=1),
+        ).to_type(to_type=PrimitiveState, copy=False)
+
+        right_state = self.config.reconstruction_type(
             fluid=self.config.fluid,
-            state=self.config.reconstruction_type(
-                fluid=self.config.fluid, array=right_arr
-            ),
-        )
+            array=np.concatenate((right_state.data, right_ghost_state.data), axis=1),
+        ).to_type(to_type=PrimitiveState, copy=False)
+
         return left_state, right_state
 
     def _get_boundary_flux_states(self, direction: int) -> [State]:
@@ -487,7 +477,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
 
     def evaluate_flux(self) -> None:
         """
-        Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all of the rows and columns
+        Calculates the fluxes at all cell boundaries. Solves the 1-D riemann problem along all the rows and columns
         of cells on the blocks in a sweeping (but unsplit) fashion.
 
         :rtype: None

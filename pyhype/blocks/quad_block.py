@@ -123,7 +123,7 @@ class BaseBlockGhost(BaseBlockFVM):
         the interior and ghost blocks from the input block, which is of type `PrimitiveState`.
 
         :type from_block: BaseBlock_With_Ghost
-        :param from_block: Block whos interior and ghost block states are used to update self.
+        :param from_block: Block whose interior and ghost block states are used to update self.
 
         :return: None
         """
