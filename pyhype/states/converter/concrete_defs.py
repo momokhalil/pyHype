@@ -36,7 +36,7 @@ class ConverterLogic(ABC):
     @classmethod
     def get_func(
         cls, state_type: Type[states.State]
-    ) -> Callable[[states.State], np.ndarray]:
+    ) -> Callable[[states.State, bool], np.ndarray]:
         """
         Returns the conversion function that converts a Base type to a state_type.
 

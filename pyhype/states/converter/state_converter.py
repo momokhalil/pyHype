@@ -16,7 +16,7 @@ limitations under the License.
 from __future__ import annotations
 
 from abc import ABC
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING
 
 import pyhype.states as states
 from pyhype.states.converter.concrete_defs import (
@@ -26,6 +26,8 @@ from pyhype.states.converter.concrete_defs import (
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
+    from typing import Callable, Type
+    import numpy as np
 
 
 class StateConverter(ABC):
@@ -37,7 +39,16 @@ class StateConverter(ABC):
 
     def _get_conversion_func(
         self, from_type: Type[states.State], to_type: Type[states.State]
-    ):
+    ) -> Callable[[states.State, bool], np.ndarray]:
+        """
+        Gets the conversion function needed to go from state type from_type to state
+        types to_type from the appropriate state converter logic class.
+
+        :param from_type: The type of class being converted from
+        :param to_type: The type of class being converter to.
+        :return: the conversion function that takes in a state of a certain type
+        and returns the data array for an equivalent state of a different type.
+        """
         return self._converter_map[from_type].get_func(state_type=to_type)
 
     def from_state(
