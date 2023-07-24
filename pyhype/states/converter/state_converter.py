@@ -19,7 +19,7 @@ from abc import ABC
 from typing import TYPE_CHECKING
 
 import pyhype.states as states
-from pyhype.states.converter.concrete_defs import (
+from pyhype.states.converter.converter_logic import (
     PrimitiveConverter,
     ConservativeConverter,
 )
