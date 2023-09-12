@@ -16,34 +16,44 @@ limitations under the License.
 from __future__ import annotations
 
 from abc import ABC
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING
 
 import pyhype.states as states
-from pyhype.states.converter.concrete_defs import (
+from pyhype.states.converter.converter_logic import (
     PrimitiveConverter,
     ConservativeConverter,
 )
 
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.states.converter.concrete_defs import ConverterLogic
+    from typing import Callable, Type
+    import numpy as np
 
 
 class StateConverter(ABC):
-    @staticmethod
-    def get_converter(state_type: Type[states.State]) -> Type[ConverterLogic]:
-        """
-        Returns the converter type associated with state_type
+    def __init__(self):
+        self._converter_map = {
+            states.PrimitiveState: PrimitiveConverter,
+            states.ConservativeState: ConservativeConverter,
+        }
 
-        :param state_type: Type of state to get converter for
-        :return:
+    def _get_conversion_func(
+        self, from_type: Type[states.State], to_type: Type[states.State]
+    ) -> Callable[[states.State, bool], np.ndarray]:
         """
-        if state_type == states.PrimitiveState:
-            return PrimitiveConverter
-        if state_type == states.ConservativeState:
-            return ConservativeConverter
+        Gets the conversion function needed to go from state type from_type to state
+        types to_type from the appropriate state converter logic class.
 
-    def from_state(self, state: states.State, from_state: states.State) -> None:
+        :param from_type: The type of class being converted from
+        :param to_type: The type of class being converter to.
+        :return: the conversion function that takes in a state of a certain type
+        and returns the data array for an equivalent state of a different type.
+        """
+        return self._converter_map[from_type].get_func(state_type=to_type)
+
+    def from_state(
+        self, state: states.State, from_state: states.State, copy: bool = True
+    ) -> None:
         """
         Copies the data from from_state into state, while converting the data's variable
         basis from from_state's type to state's type.
@@ -55,30 +65,35 @@ class StateConverter(ABC):
 
         :param state: The state to copy data into
         :param from_state: The state to copy data from
+        :param copy: To copy the state array if converting to the same type
         :return: None
         """
         if not state.shape == from_state.shape:
             raise ValueError(
                 f"States must have equal shape, but state has {state.shape} and from_state has {from_state.shape}"
             )
-        converter = self.get_converter(type(from_state))
-        func = converter.get_func(state_type=type(state))
-        state.data = func(state=from_state)
+        func = self._get_conversion_func(
+            from_type=type(from_state),
+            to_type=type(state),
+        )
+        state.data = func(state=from_state, copy=copy)
 
     def to_type(
         self,
         state: states.State,
         to_type: Type[states.State],
+        copy: bool = True,
     ) -> states.State:
         """
         Creates a new State from state, with type to_type.
 
         :param state: The state to create from
         :param to_type: The type of the new state
+        :param copy: To copy the state array if converting to the same type
         :return: State with type to_type
         """
-        converter = self.get_converter(type(state))
-        func = converter.get_func(state_type=to_type)
-        array = func(state=state)
-        created = to_type(fluid=state.fluid, array=array)
-        return created
+        func = self._get_conversion_func(
+            from_type=type(state),
+            to_type=to_type,
+        )
+        return to_type(fluid=state.fluid, array=func(state=state, copy=copy))

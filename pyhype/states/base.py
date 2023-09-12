@@ -247,12 +247,12 @@ class State(ABC):
     def clear_cache(self) -> None:
         self.cache.clear()
 
-    def from_state(self, state: State):
-        self.converter.from_state(state=self, from_state=state)
+    def from_state(self, state: State, copy: bool = True):
+        self.converter.from_state(state=self, from_state=state, copy=copy)
         self.clear_cache()
 
-    def to_type(self, to_type: Type[State]):
-        return self.converter.to_type(state=self, to_type=to_type)
+    def to_type(self, to_type: Type[State], copy: bool = True):
+        return self.converter.to_type(state=self, to_type=to_type, copy=copy)
 
     def from_array(self, array: np.ndarray):
         if not isinstance(array, np.ndarray):

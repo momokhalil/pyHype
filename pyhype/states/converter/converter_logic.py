@@ -16,7 +16,7 @@ limitations under the License.
 from __future__ import annotations
 
 import os
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING, Type, Callable
 
 import pyhype.states as states
@@ -36,7 +36,7 @@ class ConverterLogic(ABC):
     @classmethod
     def get_func(
         cls, state_type: Type[states.State]
-    ) -> Callable[[states.State], np.ndarray]:
+    ) -> Callable[[states.State, bool], np.ndarray]:
         """
         Returns the conversion function that converts a Base type to a state_type.
 
@@ -49,32 +49,36 @@ class ConverterLogic(ABC):
             return cls.to_conservative
 
     @staticmethod
-    @abstractmethod
-    def to_primitive(state: states.State) -> np.ndarray:
+    def to_primitive(state: states.State, copy: bool = True) -> np.ndarray:
         """
         Defines the conversion logic to convert from the base state type to the
         primitive state type. This shall return a numpy array filled with the new
         state values. The array then gets built into the correct State object type
         inside the StateConverter.
 
+        Defaults to returning the input state array, or its copy.
+
         :param state: The State object to convert
+        :param copy: To copy the state array if converting to the same type
         :return: Numpy array with the correct data values
         """
-        raise NotImplementedError
+        return state.data.copy() if copy else state.data
 
     @staticmethod
-    @abstractmethod
-    def to_conservative(state: states.State) -> np.ndarray:
+    def to_conservative(state: states.State, copy: bool = True) -> np.ndarray:
         """
         Defines the conversion logic to convert from the base state type to the
         conservative state type. This shall return a numpy array filled with the new
         state values. The array then gets built into the correct State object type
         inside the StateConverter.
 
+        Defaults to returning the input state array, or its copy.
+
         :param state: The State object to convert
+        :param copy: To copy the state array if converting to the same type
         :return: Numpy array with the correct data values
         """
-        raise NotImplementedError
+        return state.data.copy() if copy else state.data
 
 
 class ConservativeConverter(ConverterLogic):
@@ -83,11 +87,12 @@ class ConservativeConverter(ConverterLogic):
     """
 
     @staticmethod
-    def to_primitive(state: states.ConservativeState) -> np.ndarray:
+    def to_primitive(state: states.ConservativeState, copy: bool = True) -> np.ndarray:
         """
         Logic that converts from a conservative state into a primitive state.
 
         :param state: ConservativeState object to convert
+        :param copy: To copy the state array if converting to the same type
         :return: Numpy array with the equivalent state in the primitive basis
         """
         return np.dstack(
@@ -99,36 +104,15 @@ class ConservativeConverter(ConverterLogic):
             )
         )
 
-    @staticmethod
-    def to_conservative(state: states.ConservativeState) -> np.ndarray:
-        """
-        Logic that converts from a conservative state into a conservative state.
-        This simply returns a copy of the state array.
-
-        :param state: ConservativeState object to convert
-        :return: Numpy array with the equivalent state in the conservative basis
-        """
-        return state.data.copy()
-
 
 class PrimitiveConverter(ConverterLogic):
     @staticmethod
-    def to_primitive(state: states.PrimitiveState):
-        """
-        Logic that converts from a primitive state into a primitive state.
-        This simply returns a copy of the state array.
-
-        :param state: PrimitveState object to convert
-        :return: Numpy array with the equivalent state in the primitive basis
-        """
-        return state.data.copy()
-
-    @staticmethod
-    def to_conservative(state: states.PrimitiveState) -> np.ndarray:
+    def to_conservative(state: states.PrimitiveState, copy: bool = True) -> np.ndarray:
         """
         Logic that converts from a primitive state into a conservative state.
 
         :param state: PrimitiveState object to convert
+        :param copy: To copy the state array if converting to the same type
         :return: Numpy array with the equivalent state in the primitive basis
         """
         return np.dstack(
