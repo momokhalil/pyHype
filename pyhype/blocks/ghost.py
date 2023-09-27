@@ -39,7 +39,7 @@ from pyhype.utils.logger import Logger
 if TYPE_CHECKING:
     from pyhype.states.base import State
     from pyhype.solvers.base import SolverConfig
-    from pyhype.blocks.quad_block import QuadBlock
+    from pyhype.blocks.quad_block import BaseBlockGhost
     from pyhype.mesh.quadratures import QuadraturePointData
 
 
@@ -48,7 +48,7 @@ class GhostBlocks(SidePropertyDict):
         self,
         config: SolverConfig,
         block_data: BlockDescription,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         state_type: Type[State],
     ) -> None:
         """
@@ -103,7 +103,7 @@ class GhostBlock(BaseBlockFVM):
         self,
         config: SolverConfig,
         bc_type: Union[str, Callable],
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         state_type: Type[State],
         direction: int,
         mesh: QuadMesh = None,
@@ -283,7 +283,7 @@ class GhostBlockEast(GhostBlock):
         self,
         config: SolverConfig,
         bc_type: str,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         state_type: Type[State],
     ) -> None:
 
@@ -336,7 +336,7 @@ class GhostBlockWest(GhostBlock):
         self,
         config: SolverConfig,
         bc_type: str,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         state_type: Type[State],
     ):
         # Calculate coordinates of all four vertices
@@ -391,7 +391,7 @@ class GhostBlockNorth(GhostBlock):
         self,
         config: SolverConfig,
         bc_type: str,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         state_type: Type[State],
     ):
         # Calculate coordinates of all four vertices
@@ -446,7 +446,7 @@ class GhostBlockSouth(GhostBlock):
         self,
         config: SolverConfig,
         bc_type: str,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         state_type: Type[State],
     ) -> None:
         # Calculate coordinates of all four vertices
