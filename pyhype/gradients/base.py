@@ -24,18 +24,18 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyhype.solvers.base import SolverConfig
-    from pyhype.blocks.quad_block import QuadBlock
+    from pyhype.blocks.quad_block import BaseBlockGhost
 
 
 class Gradient:
     def __init__(self, config: SolverConfig):
         self.config = config
 
-    def compute(self, parent_block: QuadBlock) -> None:
+    def compute(self, parent_block: BaseBlockGhost) -> None:
         """
         Interface to call the gradient algorithm.
 
-        :type parent_block: QuadBlock
+        :type parent_block: BaseBlockGhost
         :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None
@@ -44,11 +44,11 @@ class Gradient:
         self._get_gradient(parent_block)
 
     @abstractmethod
-    def _get_gradient(self, parent_block: QuadBlock) -> None:
+    def _get_gradient(self, parent_block: BaseBlockGhost) -> None:
         """
         Implementation of the gradient algorithm.
 
-        :type parent_block: QuadBlock
+        :type parent_block: BaseBlockGhost
         :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None
@@ -70,7 +70,7 @@ class LeastSquares9Point:
     def __call__(self, parent_block):
         return self.least_squares_nearest_neighbor(parent_block)
 
-    def least_squares_nearest_neighbor(self, parent_block: QuadBlock):
+    def least_squares_nearest_neighbor(self, parent_block: BaseBlockGhost):
         bdr = parent_block.boundary_blocks
 
         parent_block.grad.x, parent_block.grad.y = least_squares_9_point(parent_block.state.data,

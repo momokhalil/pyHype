@@ -605,41 +605,6 @@ class Blocks:
 
 
 class BaseBlock:
-    def __init__(self, config: SolverConfig):
-        self.config = config
-
-    @staticmethod
-    def _is_all_blk_conservative(blks: dict.values):
-        return all(map(lambda blk: isinstance(blk.state, ConservativeState), blks))
-
-    @staticmethod
-    def _is_all_blk_primitive(blks: dict.values):
-        return all(map(lambda blk: isinstance(blk.state, PrimitiveState), blks))
-
-
-class BaseBlockMesh(BaseBlock):
-    """
-    BaseBlock class that contains a mesh and quadrature point object.
-    This is the basic building block for all block types.
-
-    :ivar config: SolverConfigs object
-    :ivar mesh: QuadMesh object containing the block's mesh
-    :ivar qp: QuadraturePointData object that contains the quadrature point
-    locations and methods for quadrature point calculations.
-    """
-
-    def __init__(
-        self,
-        config: SolverConfig,
-        mesh: QuadMesh = None,
-        qp: QuadraturePointData = None,
-    ):
-        super().__init__(config=config)
-        self.mesh = mesh
-        self.qp = qp
-
-
-class BaseBlockState(BaseBlockMesh):
     """
     Block object that inherits from BaseBlockMesh,
     which also contains the solution State and relevant methods.
@@ -668,14 +633,31 @@ class BaseBlockState(BaseBlockMesh):
     south_face_slice = NumpySlice.south_face()
 
     def __init__(
-        self,
-        config: SolverConfig,
-        mesh: QuadMesh,
-        qp: QuadraturePointData,
-        state_type: Type[State],
+            self,
+            config: SolverConfig,
+            state_type: Type[State],
+            qp: QuadraturePointData = None,
+            mesh: QuadMesh = None,
     ):
-        super().__init__(config=config, mesh=mesh, qp=qp)
+        self.qp = qp
+        self.mesh = mesh
+        self.config = config
         self.state = state_type(fluid=config.fluid, shape=(mesh.ny, mesh.nx, 4))
+
+        self.grad = GradientsFactory.create(
+            config=config,
+            reconstruction_order=config.fvm_spatial_order,
+            nx=mesh.nx,
+            ny=mesh.ny,
+        )
+
+    @staticmethod
+    def _is_all_blk_conservative(blks: dict.values):
+        return all(map(lambda blk: isinstance(blk.state, ConservativeState), blks))
+
+    @staticmethod
+    def _is_all_blk_primitive(blks: dict.values):
+        return all(map(lambda blk: isinstance(blk.state, PrimitiveState), blks))
 
     def row(self, index: Union[int, slice]) -> State:
         """
@@ -705,38 +687,6 @@ class BaseBlockState(BaseBlockMesh):
         """
         return self.state[NumpySlice.col(index=index)]
 
-    def realizable(self) -> bool:
-        """
-        Runs a physical realizability check on the block's State.
-
-        :return: bool representing the State's realizability
-        """
-        return self.state.realizable()
-
-
-class BaseBlockGrad(BaseBlockState):
-    """
-    Class that inherits from BaseBlockState and adds a SolutionGradient
-    object.
-
-    :ivar grad: SolutionGradients object
-    """
-
-    def __init__(
-        self,
-        config: SolverConfig,
-        mesh: QuadMesh,
-        qp: QuadraturePointData,
-        state_type: Type[State],
-    ):
-        super().__init__(config, mesh=mesh, qp=qp, state_type=state_type)
-        self.grad = GradientsFactory.create(
-            config=config,
-            reconstruction_order=config.fvm_spatial_order,
-            nx=mesh.nx,
-            ny=mesh.ny,
-        )
-
     def high_order_term_at_location(
         self,
         x_c: np.ndarray,
@@ -747,8 +697,16 @@ class BaseBlockGrad(BaseBlockState):
     ) -> np.ndarray:
         return self.grad.get_high_order_term(x_c, x_p, y_c, y_p, slicer)
 
+    def realizable(self) -> bool:
+        """
+        Runs a physical realizability check on the block's State.
 
-class BaseBlockFVM(BaseBlockGrad):
+        :return: bool representing the State's realizability
+        """
+        return self.state.realizable()
+
+
+class BaseBlockFVM(BaseBlock):
     """
     Class that inherits from BaseBlockGrad and adds a finite volume method
     object and approriate functions.

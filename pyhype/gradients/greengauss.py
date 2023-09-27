@@ -25,16 +25,16 @@ from pyhype.gradients.base import Gradient
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.blocks.quad_block import QuadBlock
+    from pyhype.blocks.quad_block import BaseBlockGhost
 
 
 class GreenGauss(Gradient):
     @staticmethod
-    def _get_gradient_NUMPY(parent_block: QuadBlock) -> None:
+    def _get_gradient_NUMPY(parent_block: BaseBlockGhost) -> None:
         """
         Compute the x and y direction gradients using the Green-Gauss method, implemeted fully in numpy.
 
-        :type parent_block: QuadBlock
+        :type parent_block: BaseBlockGhost
         :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None
@@ -69,11 +69,11 @@ class GreenGauss(Gradient):
             + S * face.S.norm.y
         ) / parent_block.mesh.A
 
-    def _get_gradient(self, parent_block: QuadBlock) -> None:
+    def _get_gradient(self, parent_block: BaseBlockGhost) -> None:
         """
         Compute the x and y direction gradients using the Green-Gauss method, implemented with numba JIT.
 
-        :type parent_block: QuadBlock
+        :type parent_block: BaseBlockGhost
         :param parent_block: Solution block containing state solution and mesh geometry data
 
         :rtype: None

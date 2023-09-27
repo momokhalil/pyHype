@@ -97,9 +97,7 @@ class State(ABC):
         self.data[:, :, 3] /= self.fluid.far_field.rho * self.fluid.far_field.a**2
 
     def _set_data_array_from_array(self, array: np.ndarray):
-        if self.data is None:
-            self._data = array
-        elif self.shape == array.shape:
+        if self.data is None or self.shape == array.shape:
             self._data = array
         else:
             # Broadcast to array, if this fails then
