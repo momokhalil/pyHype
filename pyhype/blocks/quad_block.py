@@ -75,6 +75,10 @@ class BaseBlockGhost(BaseBlockFVM):
 
         :return: None
         """
+        self.neighbors = None
+        self.block_data = block_data
+        self.global_block_num = block_data.info.nBLK
+
         super().__init__(
             config,
             mesh=mesh,
@@ -83,7 +87,6 @@ class BaseBlockGhost(BaseBlockFVM):
         )
 
         self.cpu = mpi.MPI.COMM_WORLD.Get_rank()
-
         self.ghost = GhostBlocks(
             config=config,
             block_data=block_data,
@@ -251,211 +254,6 @@ class BaseBlockGhost(BaseBlockFVM):
         self.state.clear_cache()
         self.ghost.clear_cache()
 
-
-class ReconstructionBlock(BaseBlockGhost):
-    def __init__(
-        self,
-        config: SolverConfig,
-        block_data: BlockDescription,
-        mesh: QuadMesh,
-        qp: QuadraturePointData,
-    ) -> None:
-        super().__init__(
-            config,
-            block_data=block_data,
-            parent_block=self,
-            mesh=mesh,
-            qp=qp,
-            state_type=config.reconstruction_type,
-        )
-
-
-class QuadBlock(BaseBlockGhost):
-    def __init__(
-        self,
-        config: SolverConfig,
-        block_data: BlockDescription,
-    ) -> None:
-        self.config = config
-        self.neighbors = None
-        self.block_data = block_data
-        self.global_block_num = block_data.info.nBLK
-
-        self.mpi = mpi.MPI.COMM_WORLD
-
-        mesh = QuadMesh(config, block_data.geometry)
-        qp = quadratures.QuadraturePointData(config, refMESH=mesh)
-        super().__init__(
-            config,
-            block_data=block_data,
-            mesh=mesh,
-            qp=qp,
-            parent_block=self,
-            state_type=ConservativeState,
-        )
-        self.recon_block = ReconstructionBlock(
-            config,
-            block_data,
-            qp=qp,
-            mesh=mesh,
-        )
-        self._logger = Logger(config=config)
-
-    @property
-    def reconstruction_type(self):
-        """
-        Returns the reconstruction type used in the finite volume method.
-
-        Parameters:
-            - None
-
-        Return:
-            - (str): the reconstruction type
-        """
-
-        return type(self.recon_block.state)
-
-    def get_updated_recon_block(self) -> BaseBlockGhost:
-        if self.config.reconstruction_type == type(self):
-            return self
-        self.recon_block.from_block(self)
-        return self.recon_block
-
-    def plot(self, ax: plt.axes = None, show_cell_centre: bool = False):
-        """
-        # FOR DEBUGGING
-
-        Plot mesh. Plots the nodes and cell center locations and connect them.
-
-        Parameters:
-            - None
-
-        Returns:
-            - None
-        """
-
-        show = ax is None
-
-        if not ax:
-            _, ax = plt.subplots(1, 1)
-
-        # Create scatter plots for nodes
-        ax.scatter(
-            self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0], color="black", s=0
-        )
-
-        # Create nodes mesh for LineCollection
-        east = np.stack(
-            (self.mesh.nodes.x[:, -1, None, 0], self.mesh.nodes.y[:, -1, None, 0]),
-            axis=2,
-        )
-
-        west = np.stack(
-            (self.mesh.nodes.x[:, 0, None, 0], self.mesh.nodes.y[:, 0, None, 0]), axis=2
-        )
-
-        north = np.stack(
-            (self.mesh.nodes.x[-1, None, :, 0], self.mesh.nodes.y[-1, None, :, 0]),
-            axis=2,
-        )
-
-        south = np.stack(
-            (self.mesh.nodes.x[0, None, :, 0], self.mesh.nodes.y[0, None, :, 0]), axis=2
-        )
-
-        block_sides = chain((east, west, north, south))
-
-        body = np.stack(
-            (self.mesh.nodes.x[:, :, 0], self.mesh.nodes.y[:, :, 0]), axis=2
-        )
-
-        # Create LineCollection for nodes
-        ax.add_collection(LineCollection(body, colors="black", linewidths=1, alpha=1))
-        ax.add_collection(
-            LineCollection(
-                body.transpose((1, 0, 2)), colors="black", linewidths=1, alpha=1
-            )
-        )
-
-        for side in block_sides:
-
-            ax.add_collection(
-                LineCollection(side, colors="black", linewidths=2, alpha=1)
-            )
-            ax.add_collection(
-                LineCollection(
-                    side.transpose((1, 0, 2)), colors="black", linewidths=2, alpha=1
-                )
-            )
-
-        if show_cell_centre:
-
-            # Create scatter plots cell centers
-            ax.scatter(
-                self.mesh.x[:, :, 0],
-                self.mesh.y[:, :, 0],
-                color="mediumslateblue",
-                s=0,
-                alpha=0.5,
-            )
-
-            # Create cell center mesh for LineCollection
-            segs1 = np.stack((self.mesh.x[:, :, 0], self.mesh.y[:, :, 0]), axis=2)
-            segs2 = segs1.transpose((1, 0, 2))
-
-            # Create LineCollection for cell centers
-            ax.add_collection(
-                LineCollection(
-                    segs1,
-                    colors="mediumslateblue",
-                    linestyles="--",
-                    linewidths=1,
-                    alpha=0.5,
-                )
-            )
-            ax.add_collection(
-                LineCollection(
-                    segs2,
-                    colors="mediumslateblue",
-                    linestyles="--",
-                    linewidths=1,
-                    alpha=0.5,
-                )
-            )
-        if show:
-            # Show Plot
-            plt.show()
-
-            # Close plot
-            plt.close()
-
-    def __getitem__(self, index):
-
-        # Extract variables
-        y, x, var = index
-
-        if self._index_in_west_ghost_block(x, y):
-            return self.ghost.W.state[y, 0, var]
-        if self._index_in_east_ghost_block(x, y):
-            return self.ghost.E.state[y, 0, var]
-        if self._index_in_north_ghost_block(x, y):
-            return self.ghost.N.state[0, x, var]
-        if self._index_in_south_ghost_block(x, y):
-            return self.ghost.N.state[0, x, var]
-        raise ValueError("Incorrect indexing")
-
-    def _index_in_west_ghost_block(self, x, y):
-        return x < 0 and 0 <= y <= self.mesh.ny
-
-    def _index_in_east_ghost_block(self, x, y):
-        return x > self.mesh.nx and 0 <= y <= self.mesh.ny
-
-    def _index_in_south_ghost_block(self, x, y):
-        return y < 0 and 0 <= x <= self.mesh.nx
-
-    def _index_in_north_ghost_block(self, x, y):
-        return y > self.mesh.ny and 0 <= x <= self.mesh.nx
-
     def get_dt(self) -> np.float:
         """
         Return the time step for this block based on the CFL condition.
@@ -583,161 +381,6 @@ class QuadBlock(BaseBlockGhost):
         for ghost in self.ghost.values():
             ghost.apply_boundary_condition()
 
-    def drho_dx(self) -> np.ndarray:
-        """
-        Calculate the derivative of density with respect to the x direction. This is equivalent of returning
-        gradx[:, :, 0], and no further calculations are needed.
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - drho_dx(np.ndarray): Derivative of rho with respect to the x direction.
-        """
-
-        return self.gradx[:, :, 0, None]
-
-    def du_dx(self) -> np.ndarray:
-        """
-        Calculate the derivative of u with respect to the x direction. This is done by applying the chain rule to the
-        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.parent_block.gradx`. To compute this gradient, utilize the chain rule on drhou_dx:
-
-        \\frac{\\partial(\\rho u)}{\\partial x} = \\rho \\frac{\\partial u}{\\partial x} +
-        u \\frac{\\partial \\rho}{\\partial x},
-
-        and rearrange to compute du_dx:
-
-        \\frac{\\partial u}{\\partial x} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho u)}{\\partial x} -
-        u \\frac{\\partial \\rho}{\\partial x} \\right).
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - du_dx (np.ndarray): Derivative of u with respect to the x direction.
-        """
-
-        return (
-            self.gradx[:, :, 1, None] - self.state.u * self.drho_dx()
-        ) / self.state.rho
-
-    def dv_dx(self) -> np.ndarray:
-        """
-        Calculate the derivative of v with respect to the x direction. This is done by applying the chain rule to the
-        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.parent_block.gradx`. To compute this gradient, utilize the chain rule on drhov_dx:
-
-        \\frac{\\partial(\\rho v)}{\\partial x} = \\rho \\frac{\\partial v}{\\partial x} +
-        v \\frac{\\partial \\rho}{\\partial x},
-
-        and rearrange to compute dv_dx:
-
-        \\frac{\\partial v}{\\partial x} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho v)}{\\partial x} -
-        v \\frac{\\partial \\rho}{\\partial x} \\right).
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - dv_dx (np.ndarray): Derivative of v with respect to the x direction.
-        """
-
-        return (
-            self.gradx[:, :, 2, None] - self.state.v * self.drho_dx()
-        ) / self.state.rho
-
-    def de_dx(self) -> np.ndarray:
-        """
-        Calculate the derivative of energy with respect to the x direction. This is equivalent of returning
-        gradx[:, :, 3], and no further calculations are needed.
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - de_dx (np.ndarray): Derivative of e with respect to the x direction.
-        """
-
-        return self.gradx[:, :, -1, None]
-
-    def drho_dy(self) -> np.ndarray:
-        """
-        Calculate the derivative of density with respect to the y direction. This is equivalent of returning
-        grady[:, :, 0], and no further calculations are needed.
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - drho_dy (np.ndarray): Derivative of rho with respect to the y direction.
-        """
-        return self.grady[:, :, 0, None]
-
-    def du_dy(self) -> np.ndarray:
-        """
-        Calculate the derivative of u with respect to the x direction. This is done by applying the chain rule to the
-        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.parent_block.grady`. To compute this gradient, utilize the chain rule on drhou_dy:
-
-        \\frac{\\partial(\\rho u)}{\\partial y} = \\rho \\frac{\\partial u}{\\partial y} +
-        u \\frac{\\partial \\rho}{\\partial y},
-
-        and rearrange to compute du_dy:
-
-        \\frac{\\partial u}{\\partial y} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho u)}{\\partial y} -
-        u \\frac{\\partial \\rho}{\\partial y} \\right).
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - du_dy (np.ndarray): Derivative of u with respect to the y direction.
-        """
-
-        return (
-            self.grady[:, :, 1, None] - self.state.u * self.drho_dx()
-        ) / self.state.rho
-
-    def dv_dy(self) -> np.ndarray:
-        """
-        Calculate the derivative of v with respect to the x direction. This is done by applying the chain rule to the
-        available x-direction gradients. The derivatives of the conservative variables (rho, rho*u, rho*v, e) are
-        available under `self.parent_block.grady`. To compute this gradient, utilize the chain rule on drhov_dy:
-
-        \\frac{\\partial(\\rho v)}{\\partial y} = \\rho \\frac{\\partial v}{\\partial y} +
-        v \\frac{\\partial \\rho}{\\partial y},
-
-        and rearrange to compute dv_dx:
-
-        \\frac{\\partial v}{\\partial x} = \\frac{1}{\\rho}\\left(\\frac{\\partial(\\rho v)}{\\partial y} -
-        v \\frac{\\partial \\rho}{\\partial y} \\right).
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - dv_dy (np.ndarray): Derivative of v with respect to the y direction.
-        """
-
-        return (
-            self.grady[:, :, 2, None] - self.state.v * self.drho_dx()
-        ) / self.state.rho
-
-    def de_dy(self) -> np.ndarray:
-        """
-        Calculate the derivative of energy with respect to the y direction. This is equivalent of returning
-        grady[:, :, 3], and no further calculations are needed.
-
-        Parameters:
-            - N.A
-
-        Returns:
-            - de_dy (np.ndarray): Derivative of e with respect to the y direction.
-        """
-
-        return self.grady[:, :, -1, None]
-
     def get_nodal_solution(
         self,
         interpolation: str = "piecewise_linear",
@@ -831,3 +474,69 @@ class QuadBlock(BaseBlockGhost):
         )
 
         return U
+
+
+class ReconstructionBlock(BaseBlockGhost):
+    def __init__(
+        self,
+        config: SolverConfig,
+        block_data: BlockDescription,
+        mesh: QuadMesh,
+        qp: QuadraturePointData,
+    ) -> None:
+        super().__init__(
+            config,
+            block_data=block_data,
+            parent_block=self,
+            mesh=mesh,
+            qp=qp,
+            state_type=config.reconstruction_type,
+        )
+
+
+class QuadBlock(BaseBlockGhost):
+    def __init__(
+        self,
+        config: SolverConfig,
+        block_data: BlockDescription,
+    ) -> None:
+        self.block_data = block_data
+        self.global_block_num = block_data.info.nBLK
+        self.mpi = mpi.MPI.COMM_WORLD
+        mesh = QuadMesh(config, block_data.geometry)
+        qp = quadratures.QuadraturePointData(config, refMESH=mesh)
+        super().__init__(
+            config,
+            block_data=block_data,
+            mesh=mesh,
+            qp=qp,
+            parent_block=self,
+            state_type=ConservativeState,
+        )
+        self.recon_block = ReconstructionBlock(
+            config,
+            block_data,
+            qp=qp,
+            mesh=mesh,
+        )
+        self._logger = Logger(config=config)
+
+    @property
+    def reconstruction_type(self):
+        """
+        Returns the reconstruction type used in the finite volume method.
+
+        Parameters:
+            - None
+
+        Return:
+            - (str): the reconstruction type
+        """
+
+        return type(self.recon_block.state)
+
+    def get_updated_recon_block(self) -> BaseBlockGhost:
+        if self.config.reconstruction_type == type(self):
+            return self
+        self.recon_block.from_block(self)
+        return self.recon_block
