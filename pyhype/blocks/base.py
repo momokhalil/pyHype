@@ -633,11 +633,11 @@ class BaseBlock:
     south_face_slice = NumpySlice.south_face()
 
     def __init__(
-            self,
-            config: SolverConfig,
-            state_type: Type[State],
-            qp: QuadraturePointData = None,
-            mesh: QuadMesh = None,
+        self,
+        config: SolverConfig,
+        state_type: Type[State],
+        qp: QuadraturePointData = None,
+        mesh: QuadMesh = None,
     ):
         self.qp = qp
         self.mesh = mesh
