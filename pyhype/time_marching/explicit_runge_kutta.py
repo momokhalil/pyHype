@@ -73,7 +73,7 @@ class ExplicitRungeKutta(TimeIntegrator):
                             dt * self.a[stage][step],
                             stage_residuals[i][step],
                         )
-                recon_block.state.data = intermediate_state
+                block.state.data = intermediate_state
 
             blocks.apply_boundary_condition()
             for i, block in blocks.blocks.items():
