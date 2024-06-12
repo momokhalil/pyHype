@@ -29,7 +29,7 @@ from pyhype.utils.utils import NumpySlice
 
 if TYPE_CHECKING:
     from pyhype.mesh.quadratures import QuadraturePoint
-    from pyhype.blocks.base import QuadBlock
+    from pyhype.blocks.quad_block import BaseBlockGhost
     from pyhype.flux.base import FluxFunction
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
@@ -44,7 +44,7 @@ class SecondOrderMUSCL(MUSCL):
         flux: FluxFunction,
         limiter: SlopeLimiter,
         gradient: Gradient,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
     ):
         if config.nghost != 1:
             raise ValueError(

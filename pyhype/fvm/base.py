@@ -32,14 +32,15 @@ from pyhype.utils.utils import SidePropertyDict
 from pyhype.states.primitive import PrimitiveState
 from pyhype.utils.utils import Direction
 
+
 if TYPE_CHECKING:
     from pyhype.states.base import State
-    from pyhype.blocks.quad_block import QuadBlock
-    from pyhype.blocks.ghost import GhostBlock
+    from pyhype.blocks.quad_block import BaseBlockGhost
     from pyhype.mesh.quadratures import QuadraturePoint
     from pyhype.flux.base import FluxFunction
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
+    from pyhype.solvers.base import SolverConfig
 
 BOUNDARY_INDEX = NumpySlice.boundary()
 
@@ -58,7 +59,7 @@ class FiniteVolumeMethod(ABC):
         self,
         config,
         flux: [FluxFunction],
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
     ):
         self.config = config
         self.flux_function_x, self.flux_function_y = flux
@@ -87,24 +88,6 @@ class FiniteVolumeMethod(ABC):
     ) -> State:
         raise NotImplementedError
 
-    def ghost_bc_type(self, direction: int):
-        """
-        Get the boundary condition type associated with the given direction
-
-        :param direction: Direction to check BC type
-        :return: bc type
-        """
-        return self.parent_block.ghost[direction].bc_type
-
-    def ghost_block(self, direction: int) -> GhostBlock:
-        """
-        Return reference to the ghost block in the specified direction
-
-        :param direction: Direction to get the ghost block for
-        :return: Ghost block in that direction
-        """
-        return self.parent_block.ghost[direction]
-
     def dUdt(self) -> np.ndarray:
         """
         Compute residuals used for marching the solution through time by integrating the fluxes on each cell face and
@@ -112,8 +95,7 @@ class FiniteVolumeMethod(ABC):
 
         dUdt[i] = - (1/A[i]) * sum[over all faces] (F[face] * length[face])
         """
-        self.parent_block.recon_block.from_block(self.parent_block)
-        self.parent_block.recon_block.fvm.evaluate_flux()
+        self.parent_block.fvm.evaluate_flux()
 
         integrated_fluxes = SidePropertyDict(
             *(
@@ -123,9 +105,9 @@ class FiniteVolumeMethod(ABC):
                     quadrature_points=qp,
                 )
                 for flux, face, qp in zip(
-                    self.parent_block.recon_block.fvm.Flux.values(),
-                    self.parent_block.recon_block.mesh.face.values(),
-                    self.parent_block.recon_block.qp.values(),
+                    self.parent_block.fvm.Flux.values(),
+                    self.parent_block.mesh.face.values(),
+                    self.parent_block.qp.values(),
                 )
             )
         )
@@ -135,7 +117,7 @@ class FiniteVolumeMethod(ABC):
             integrated_fluxes.W,
             integrated_fluxes.N,
             integrated_fluxes.S,
-            self.parent_block.recon_block.mesh.A,
+            self.parent_block.mesh.A,
         )
 
     @staticmethod
@@ -193,11 +175,11 @@ class FiniteVolumeMethod(ABC):
 class MUSCL(FiniteVolumeMethod, ABC):
     def __init__(
         self,
-        config,
+        config: SolverConfig,
         flux: [FluxFunction],
         limiter: SlopeLimiter,
         gradient: Gradient,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
     ) -> None:
         """
         Monotonic Upstream-centered Scheme for Conservation Laws.
@@ -311,12 +293,12 @@ class MUSCL(FiniteVolumeMethod, ABC):
         """
         slicer = (
             BOUNDARY_INDEX[-direction]
-            if self.ghost_bc_type(direction) is None
+            if self.parent_block.ghost_bc_type(direction) is None
             else BOUNDARY_INDEX[direction]
         )
         fvm = (
-            self.ghost_block(direction).fvm
-            if self.ghost_bc_type(direction) is None
+            self.parent_block.ghost_block(direction).fvm
+            if self.parent_block.ghost_bc_type(direction) is None
             else self
         )
         return (
@@ -349,13 +331,13 @@ class MUSCL(FiniteVolumeMethod, ABC):
             self.Flux.E,
             self.Flux.W,
         ):
-            east_ghost = self.ghost_block(direction=Direction.east)
+            east_ghost = self.parent_block.ghost_block(direction=Direction.east)
             if east_ghost.bc_type is not None:
                 east_ghost.apply_boundary_condition_to_state(
                     state=east_boundary,
                 )
 
-            west_ghost = self.ghost_block(direction=Direction.west)
+            west_ghost = self.parent_block.ghost_block(direction=Direction.west)
             if west_ghost.bc_type is not None:
                 west_ghost.apply_boundary_condition_to_state(
                     state=west_boundary,
@@ -382,7 +364,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
                 left_ghost_state=west_boundary,
             )
             east_west_flux = self.flux_function_x(WL=left, WR=right)
-            east_flux[:] = east_west_flux[:, self.config.nghost :, :]
+            east_flux[:] = east_west_flux[:, self.config.nghost:, :]
             west_flux[:] = east_west_flux[:, : -self.config.nghost, :]
 
             if not self.parent_block.is_cartesian:
@@ -418,13 +400,13 @@ class MUSCL(FiniteVolumeMethod, ABC):
             self.Flux.N,
             self.Flux.S,
         ):
-            north_ghost = self.ghost_block(direction=Direction.north)
+            north_ghost = self.parent_block.ghost_block(direction=Direction.north)
             if north_ghost.bc_type is not None:
                 north_ghost.apply_boundary_condition_to_state(
                     state=north_boundary,
                 )
 
-            south_ghost = self.ghost_block(direction=Direction.south)
+            south_ghost = self.parent_block.ghost_block(direction=Direction.south)
             if south_ghost.bc_type is not None:
                 south_ghost.apply_boundary_condition_to_state(
                     state=south_boundary,
@@ -476,7 +458,7 @@ class MUSCL(FiniteVolumeMethod, ABC):
             north_south_flux = self.flux_function_y(WL=left, WR=right).transpose(
                 (1, 0, 2)
             )
-            north_flux[:] = north_south_flux[self.config.nghost :, :, :]
+            north_flux[:] = north_south_flux[self.config.nghost:, :, :]
             south_flux[:] = north_south_flux[: -self.config.nghost, :, :]
 
             if self.parent_block.is_cartesian:

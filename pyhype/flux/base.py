@@ -23,11 +23,6 @@ import numba as nb
 from abc import abstractmethod
 from pyhype.states.primitive import PrimitiveState, RoePrimitiveState
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pyhype.solvers.base import SolverConfig
-
 
 class FluxFunction:
     def __init__(self, config, nx, ny):

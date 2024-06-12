@@ -62,7 +62,8 @@ class ExplicitRungeKutta(TimeIntegrator):
         }
         for stage in range(self.num_stages):
             for i, block in reversed(blocks.blocks.items()):
-                stage_residuals[i][stage] = block.dUdt()
+                recon_block = block.get_updated_recon_block()
+                stage_residuals[i][stage] = recon_block.fvm.dUdt()
                 intermediate_state = U[i]
                 for step in range(stage + 1):
                     if self.a[stage][step] != 0:

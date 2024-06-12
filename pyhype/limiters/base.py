@@ -26,7 +26,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyhype.blocks.quad_block import QuadBlock
+    from pyhype.blocks.quad_block import BaseBlockGhost
 
 
 class SlopeLimiter:
@@ -36,7 +36,7 @@ class SlopeLimiter:
 
     def limit(
         self,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         gqpE: list[np.ndarray],
         gqpW: list[np.ndarray],
         gqpN: list[np.ndarray],
@@ -46,7 +46,7 @@ class SlopeLimiter:
 
     def _get_slope(
         self,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         gqpE: np.ndarray,
         gqpW: np.ndarray,
         gqpN: np.ndarray,
@@ -55,7 +55,7 @@ class SlopeLimiter:
         """
         Calculates the solution slopes to determine the slope limiter values on all quadrature points.
 
-        :type parent_block: QuadBlock
+        :type parent_block: BaseBlockGhost
         :param parent_block: Reference block with solution data for slope calculation
 
         :type gqpE: np.ndarray
@@ -146,7 +146,7 @@ class SlopeLimiter:
 
     def _limit(
         self,
-        parent_block: QuadBlock,
+        parent_block: BaseBlockGhost,
         gqpE: list[np.ndarray],
         gqpW: list[np.ndarray],
         gqpN: list[np.ndarray],
@@ -155,7 +155,7 @@ class SlopeLimiter:
         """
         Calculates the solution slopes to determine the slope limiter values on all quadrature points.
 
-        :type parent_block: QuadBlock
+        :type parent_block: BaseBlockGhost
         :param parent_block: Reference block with solution data for slope calculation
 
         :type gqpE: np.ndarray

@@ -27,8 +27,8 @@ config = SolverConfig(
     realplot=False,
     profile=True,
     fluid=air,
-    nx=150,
-    ny=150,
+    nx=50,
+    ny=50,
     nghost=1,
     use_JIT=True,
 )

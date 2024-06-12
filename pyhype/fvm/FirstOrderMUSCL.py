@@ -23,10 +23,8 @@ from typing import TYPE_CHECKING, Union
 from pyhype.utils.utils import NumpySlice
 
 if TYPE_CHECKING:
-    from pyhype.states.base import State
-    from pyhype.blocks.base import QuadBlock
+    from pyhype.blocks.quad_block import BaseBlockGhost
     from pyhype.flux.base import FluxFunction
-    from pyhype.blocks.base import BaseBlockFVM
     from pyhype.limiters.base import SlopeLimiter
     from pyhype.gradients.base import Gradient
     from pyhype.solver_config import SolverConfig
@@ -46,26 +44,30 @@ class FirstOrderMUSCL(MUSCL):
         flux: FluxFunction,
         limiter: SlopeLimiter,
         gradient: Gradient,
-        parent_block: BaseBlockFVM,
+        parent_block: BaseBlockGhost,
     ):
         if config.nghost != 1:
             raise ValueError(
                 "Number of ghost cells must be equal to 1 for this method."
             )
-        super().__init__(config, limiter, flux, gradient, parent_block=parent_block)
+        super().__init__(
+            config=config,
+            flux=flux,
+            limiter=limiter,
+            gradient=gradient,
+            parent_block=parent_block,
+        )
 
-    def compute_limiter(self, parent_block: QuadBlock) -> [np.ndarray]:
+    def compute_limiter(self) -> [np.ndarray]:
         """
         No limiting in first order
 
-        :param parent_block: Parent block
         :return: None
         """
-        pass
+        return
 
     def unlimited_solution_at_quadrature_point(
         self,
-        parent_block: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> [np.ndarray]:
@@ -83,37 +85,16 @@ class FirstOrderMUSCL(MUSCL):
         """
 
         # Compute limited values at quadrature points
-        stateE = [parent_block.state.data.copy() for _ in parent_block.qp.E]
-        stateW = [parent_block.state.data.copy() for _ in parent_block.qp.W]
-        stateN = [parent_block.state.data.copy() for _ in parent_block.qp.N]
-        stateS = [parent_block.state.data.copy() for _ in parent_block.qp.S]
+        stateE = [self.parent_block.state.data.copy() for _ in self.parent_block.qp.E]
+        stateW = [self.parent_block.state.data.copy() for _ in self.parent_block.qp.W]
+        stateN = [self.parent_block.state.data.copy() for _ in self.parent_block.qp.N]
+        stateS = [self.parent_block.state.data.copy() for _ in self.parent_block.qp.S]
 
         return stateE, stateW, stateN, stateS
 
     def limited_solution_at_quadrature_point(
         self,
-        parent_block: BaseBlockFVM,
         qp: QuadraturePoint,
         slicer: Union[slice, tuple, int] = NumpySlice.all(),
     ) -> [np.ndarray]:
-        """
-        No limiting or high order terms in a first order MUSCL method,
-        simply return the unlimited solution at the quadrature point.
-
-        :type parent_block: QuadBlock
-        :param parent_block: Reference block containing mesh geometry data and gradients
-
-        :type qp: QuadBlock
-        :param qp: Quadrature point geometry
-
-        :type slicer: slice or int or tuple
-        :param slicer: Numpy array slice object (which is actually a tuple)
-
-        :rtype: [np.ndarray]
-        :return: Unlimited solution at the quadrature point
-        """
-        return self.unlimited_solution_at_quadrature_point(
-            parent_block=parent_block,
-            qp=qp,
-            slicer=slicer,
-        )
+        raise RuntimeError("There is no slop elimiting in first order FVM schemes.")
